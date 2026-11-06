@@ -1,6 +1,12 @@
 # Supplied research returns
 
-**Latest lifecycle collection, 7 November Brisbane (17:49 UTC on 6 November):** P2/P3 have completed the intervention-response and equilibrium-response turns. P1 is still visibly working. No new researcher prompt was sent in that collection pass; next P2/P3 assignments are not supplied to Capital. Earlier live-start notices refer to the preceding state. The coordinator/dispatcher owns scientific decisions and delivery; Capital publishes sources only. Sol remains closed/held, Dots protected, and all source/resource limits remain.
+**Current lifecycle receipts, 7 November Brisbane:** all three same-warm successors are posted once with task-specific starts confirmed by dispatcher reports: P1dbbce65d, P28064a4de and P3f31bb645. Their preceding completed results remain separate; earlier live and pending handoff observations are historical. Starts establish no new scientific result or policy efficacy. The coordinator/dispatcher owns scientific work; Capital sends no prompt. Sol remains closed/held, Dots protected, N1683's payload hold and all source/resource limits remain.
+
+**Supplied P1 assessment:** [certified causal reuse](2026-11-07-p1-certified-reuse/README.md) has NEW achieved consequence65–75, correctness assumed; constructed whole operation at its full-vector/refinable/dissipative/fixed-port/zero-state contract. Programme frontier75–85 remains, ordinal/nonadditive/no90+ or exceptional-platform/policy claim. Earlier primary model-reduction and N997/N1018 operations retain credit.
+
+
+**Latest supplied assessments:** [P2 intervention response](2026-11-07-p2-intervention-response/README.md) and [P3 equilibrium response](2026-11-07-p3-equilibrium-response/README.md) each have provisional NEW contribution70–80, correctness assumed; cumulative effective-law/programme frontier75–85 retained, ordinal/nonadditive, provisional upper80/no90+/95+ or coordination winner. P2 prior N1150–N1152 learning/value-only/global optimization and P3 prior certified-equilibrium algorithms retain credit. P1's supplied65–75 assessment is recorded above. Generated indexing remains pending.
+
 
 **Latest supplied P1 assessment:** [experimental learnability](2026-11-07-p1-experimental-learnability/README.md) has provisional NEW consequence65–75, assuming correctness; prior whole families/programme frontier75–85 retained, no score sum/review/source penalty/no90+ or causal policy winner. The guide credits N997 sections9–10 numerical acquisition/precision/later-task transfer/full-span tie and N1018 sections5–7 guarded nonlinear transfer as existing capital. Convex/positive-noise general theorem, programme-presented nonconvex negative theorem and finite-catalogue software retain separate contracts. Generated indexing remains pending.
 
@@ -37,6 +43,7 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| P1 certified causal reuse | [Acquired fixed-port memory, simultaneous later monotone interventions and exact-information boundary; complete17-member original ZIP](2026-11-07-p1-certified-reuse/README.md) |
 | P2 intervention response | [Reusable tensor predictor, paid-record polynomial global design and cross-actuator obstruction; complete19-member ZIP](2026-11-07-p2-intervention-response/README.md) |
 | P3 equilibrium response | [Whole-cell/all-TI-phase prediction, controlled refusal volume and sharp calibration law; complete response/activity, bundle held](2026-11-07-p3-equilibrium-response/README.md) |
 | P1 experimental learnability | [Optimal achievable accuracy, near-optimal experiments and indistinguishable models; programme-presentation obstruction and executed finite-budget design](2026-11-07-p1-experimental-learnability/README.md) |
