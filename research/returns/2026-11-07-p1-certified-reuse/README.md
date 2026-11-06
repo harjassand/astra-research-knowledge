@@ -1,6 +1,7 @@
 # Certified causal reuse before complete identification
 
-**Latest lifecycle receipts, 7 November Brisbane:** all three same-warm successors are POSTED ONCE/START CONFIRMED by dispatcher reports: P125f1c5fa, P23fb4f347 and P34fbb961e. P3's exact2912-character programme body matched with its terminal newline restored. Its visible start accepts persistent endpoint ownership and examines governing results; no final scientific question was supplied at that start. This is a started one-role treatment, not a scientific outcome or established across-return effect; one-turn closure would leave that contrast untested. Earlier pending snapshots are historical. P1/P2 work remains undisturbed, Capital sends no prompt/recovery attempt, Sol closed/held, Dots protected and all source/resource limits remain. Expanded activity/native access remains separate from Dots' reported workspace recovery.
+**Latest lifecycle, 7 November Brisbane (22:57 UTC collection on 6 November):** P2's3fb4f347 rare-event-chain turn completed. No next P2 assignment has been supplied, handed off or queued in the supplied receipt. P1/P3's25f1c5fa/4fbb961e work remains undisturbed as reported; P3's programme treatment is started, without an established scientific/across-return effect. Earlier all-three-started observations are historical. Expanded activity remains unstaged after native Mac unlock failed; no Capital prompt/unlock/recollection. Dots' reported workspace recovery is separate from native access. Sol closed/held, Dots protected and all source/resource limits remain.
+
 
 
 
