@@ -1,6 +1,6 @@
 # Native direction geometry and the affine-operation compiler
 
-These are claims visible in the [incomplete response prefix](P3_NONLINEAR_SENSOR_20261106_RETURN.txt), without a new Capital proof check. Later comparisons and conclusions are not yet available.
+These are claims in the [complete visible response](P3_NONLINEAR_SENSOR_20261106_COMPLETE_RETURN.txt), including its recovered comparisons and conclusions. No new Capital proof check was performed. The historical published prefix remains available separately.
 
 The exact source class has latent dimension `n≥2`, a nonexplosive finite-activity Markov jump-diffusion, and a finite collection of nonparallel constant jump directions spanning the state space. Drift, diffusion, jump rates and amplitude laws may be unknown and state-dependent. Every direction has positive jump measure arbitrarily close to zero at every state. Observation is a `C³` diffeomorphism of the full state; the stationary observed path law has full support with the stated continuity conditions. This is exact-law information, not an already acquired finite-data oracle.
 
@@ -29,4 +29,12 @@ for uniform chart error `ε`, inverse Lipschitz constant `L_H` and inverse resid
 
 The exact-law corollaries cover finite adaptive protocols alternating native Markov evolution with specified affine state updates, assuming the same dynamics resume after updates. They identify protocol laws, without supplying actuators or proving an unmodelled environment remains unchanged. Learning future transition laws and sampling trajectories remain separate costs. Affine drift linearity/polynomial degree become invariant under the remaining affine changes, while labelled interaction graphs need not. Counting extra perturbation directions does not pay for their fabrication, rates or observation.
 
-[Finite acquisition and implemented example](finite-access-and-diagnostic.md) · [Overview](README.md)
+## Sharp failures in the recovered ending
+
+With coordinate directions alone, `F(x₁,x₂)=(x₁+x₁³,x₂)` preserves the declared class after changing amplitude laws and sensor. The same observed process can assign different physical midpoint readings: endpoints `(0,0)` and `(2,0)` yield `(1,0)` in one representation and `(φ⁻¹(5),0)`, `φ(t)=t+t³`, in another, with first coordinate above `1.5`. Arbitrarily small diagonal-direction jumps exclude that transformation. This is an indistinguishability within the declared state-dependent source class, without retracting the earlier homogeneous-source result.
+
+Integer-sized kicks are not a substitute for arbitrarily small jump support: `F_i(x_i)=x_i+ε sin(2πx_i)`, `0<ε<1/(2π)`, commutes with integer translations. Coordinate and common integer kicks can therefore retain nonlinear calibration ambiguity. A replacement rigidity assumption must be earned separately.
+
+For the specified coupled starting campaign, two sources agree until a rare informative-direction event of rate `λ`. The source reuses accepted first-event coupling to obtain `TV(P_T,P̃_T)≤1−exp(−λT)`, hence `T≥λ⁻¹ log[1/(2δ)]` for uniform binary error at most `δ`. This is not a new universal acquisition lower bound, and does not supply stationary prehistory for a modified source for free.
+
+[Finite acquisition, diagnostics and strongest comparators](finite-access-and-diagnostic.md) · [Overview](README.md)
