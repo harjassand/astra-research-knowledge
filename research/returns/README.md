@@ -19,6 +19,8 @@ Final supplements: the [complete native Sol lead-turn capture](2026-11-06-sol-pi
 
 The current **no-dispatch hold remains in force**. Preserving completed existing returns and original packages does not authorise another Pro/Sol research turn.
 
+[P2 certified-response assessment](2026-11-06-p2-certified-degenerate-response/README.md): provisional65–75 new operation, connected elliptic family75–85, assuming correctness/no score sum/review-status penalty. Finite-energy existence/uniqueness, both energy-density directions, inverse data, terminating valid-name certificates and periodic macroscopic law are earned at the scalar linear/symmetric/periodic digital contract, without uniform succinct-input efficiency or general nonlinear/stochastic/finite-scale claims. **P2 is completed/IDLE/HELD; no next scientific message or queued assignment is prepared or released.** Warm compounding here establishes no causal policy optimum or95+ result. Human no-dispatch and all other holds remain.
+
 Use these links to read complete source reports and packages directly. Use the [current retrieval interface](../../knowledge/README.md) for normalized cards, reusable units and their exact governing conditions. A source's availability does not confer scientific acceptance.
 
 | Material | Source route |
