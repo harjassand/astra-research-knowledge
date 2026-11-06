@@ -7,6 +7,8 @@ The explicitly released bounded Sol pilot (manifest prefix `89cedca5`) retains t
 [The completed one-way SAT→QUBO episode](2026-11-06-p2-first-failure-object-transfer/README.md) has a30–45 provisional added-impact assessment for its scoped mathematics, no demonstrated feedback benefit or frontier increase. The [completed scientist-owned elliptic selection](2026-11-06-p2-sharp-elliptic/README.md) now reports a stronger scoped return; that observation does not establish a causal allocation winner. Automatic renewal of that fixed pairing has ended; a same-chat scientist-owned full-question turn is released, without forcing a field/source or a partial stop. These notices do not change scientific claims, source holds or Capital's resource limits.
 
 
+The [P1 decision-and-witness field return](2026-11-06-p1-sat-decision-field/README.md) has a correctness-assumed provisional20–35 additional-consequence assessment, preserving earlier capital. Automatic SAT allocation is released; a same-warm capability-first origination prompt is reported released, without confirming posting/start. SAT remains unresolved. Actual output clarification was followed, not a conclusion of model inability. The mixed target/selection change is not a matched source-order-only control or established policy winner.
+
 Use these links to read complete source reports and packages directly. Use the [current retrieval interface](../../knowledge/README.md) for normalized cards, reusable units and their exact governing conditions. A source's availability does not confer scientific acceptance.
 
 | Material | Source route |
