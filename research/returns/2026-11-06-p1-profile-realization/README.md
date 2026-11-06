@@ -33,3 +33,7 @@ The coordinator read the complete source and relevant original text and retained
 The complete return states that no peer allocation changed, no request was dispatched and unconstructed peer operations were not premises. P2/P3 retain independent work; Sol/Dots and other role/permission limits stand. Programme ownership and the visible 29m1s activity panel do not establish a policy win, total-compute measure or complete internal thinking trace.
 
 All supplied files are preserved byte-for-byte. Capital verified publication transport, not the scientific claims, and ran no compiler, checker, regression, solver or manuscript build. Generated retrieval remains unchanged.
+
+## Subsequent unrestricted SAT attempt, 6 November
+
+[The next P1 return and original checkpoint](../2026-11-06-p1-sat-failure-transfer/README.md) preserve conditional weightedrounding/knownwitness marginalhardness and explicit truncatedmoment/localGibbs failures. The uniform polynomial evaluator remains unconstructed, unrestrictedSAT target NOT_RESOLVED. This earlier maximalprofile construction and its costs/priors remain unchanged; it is not a supplied SAT oracle. Failureobject packet is retained, not evidence of peertransfer or coordination efficacy.
