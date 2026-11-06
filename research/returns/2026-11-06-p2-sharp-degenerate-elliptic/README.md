@@ -1,0 +1,25 @@
+# P2: sharp local regularity with unbounded elliptic distortion
+
+P2 supplies a completed analytic derivation of the sharp logarithmic regularity threshold for **finite-energy real scalar div–curl fields in every dimension d≥2**, using the retained arbitrary-dimensional calibration. The distortion may be unbounded. The result concerns existing weak solutions and concentration; it supplies no general efficient solver for arbitrary measurable media. A civilisation-changing capability is not demonstrated, and historical priority is not established.
+
+| Read | Contents |
+|---|---|
+| [Complete received return](P2_SHARP_DEGENERATE_ELLIPTIC_20261106_RETURN.txt) | Exact scientist-owned question prompt, full response and available28m18s activity |
+| [Original ZIP](original/Sharp_Degenerate_Elliptic_20261106.zip) | Byte-exact six-file package |
+| [Full research report](package/RESEARCH_REPORT.txt), [packet guide](package/PACKET_INDEX.txt) | Complete finite-energy proof, localization, damped estimates, exact constants and primary dependencies |
+| [Failure objects](package/FAILURE_OBJECTS.json) | Explicit critical-endpoint and all-exponential-moment/no-power-gain families |
+| [Absorption certificate](package/ABSORPTION_CERTIFICATE.json) | Exact algebraic identity for the full parameter interval, not finite testing or a standalone proof of the analytic theorem |
+| [Manifest](package/SHA256_MANIFEST.json), [predecessor integrity](package/PREDECESSOR_INTEGRITY.json), [publication receipt](SOURCES.json) | Exact bytes and retained source/solver limits |
+| [Previous sharp elliptic theory](../2026-11-06-p2-sharp-elliptic/README.md) | Retained real-vector norm, bounded-ellipticity interval and Fourier solver |
+
+Let curl E=0 and div B=0 distributionally, J=E·B≥0 with finite local integral, and K≥1 satisfy `|E|²+|B|²≤(K+K⁻¹)J`. If `exp(τK)` is locally integrable, then for **every0<β<τ** both `J log^β(e+J)` and `(|E|²+|B|²) log^(β−1)(e+sqrt(|E|²+|B|²))` are locally integrable. Both can fail at **β=τ**, even for explicit symmetric coefficients and a continuous scalar solution. The exponent threshold is dimension independent; localized constants may depend on dimension and grow near the limiting exponents.
+
+For target field logarithmic exponent α>−1, the sharp universal strict condition is `τ>α+1`. In particular τ>1 gives local L² for field and flux, while τ=1 can fail. Even **all finite exponential moments** of K do not imply any L^(2+ε) gain. The supplied radial families prove the endpoint and power-gain limits, and embed into every higher dimension by adding independent coordinates. The families are analytic examples, not computational lower bounds or hardware observations.
+
+The proof first obtains the critical `L² log⁻¹ L` starting class from finite energy. Sbordone's critical div–curl product theorem identifies its nonnegative product without an unaccounted singular energy measure; regularized Poincaré potentials justify localization. A damped logarithmic integral of the retained calibration is bounded before damping is removed. It does not assume L² or the desired logarithmic moment in advance. The explicit normalization yields uniform energy-concentration control on fixed inner balls for families with uniform energy and exponential-moment bounds, without identifying a homogenized coefficient or physical failure threshold.
+
+For a symmetric scalar PDE coefficient, `K⁻¹I≤A≤KI` controls **A and its inverse in fixed units**. A fixed global scale is allowed; an x-dependent normalization changes the equation, and local condition number alone is insufficient. The nonlinear consequence applies to existing finite-energy solutions whose constitutive law satisfies the stated distortion inequality. It asserts neither general existence/uniqueness nor a theorem for arbitrary coupled systems.
+
+The Iwaniec–Sbordone conjecture supplies the historical target; Astala–Gill–Rohde–Saksman supplies planar sharp/radial precedent. Agazzi et al. arXiv2609.28311v2 retains credit for its planar theorem, scalar projection lemma and announced higher-dimensional programme. The report states the exact critical-product/potential source uses. This derivation does not establish first discovery.
+
+The earlier Fourier implementation still needs explicit Fourier input and a checked uniform contraction certificate, with dimension, frequency, precision and inverse-gap costs. This result supplies no missing discretization rate, arbitrary-measurable-input inversion or efficient solver when the gap vanishes. Unrestricted QUBO and P versus NP remain open. No peer construction, extra worker, physical experiment or matched algorithm advantage is reported; the activity duration is not a compute measurement or causal allocation comparison. Capital archived the originals without scientific reproof, code replay, source recovery or corpus build. References to unchanged predecessors are provenance, not new members or resolved older holds.
