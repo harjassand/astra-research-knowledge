@@ -1,6 +1,7 @@
 # Finite information for intervention response and global design
 
-**Latest lifecycle collection, 7 November Brisbane (19:57 UTC on 6 November):** P1/P2 have completed the port-experiment-reuse and compositional-transfer turns. Their full responses/prompts/original ZIPs are available; only opening explanations were staged, with expanded activity remaining in the source chats after native Mac unlock failed. No Capital unlock/recollection or scientific prompt is issued. P1/P2 next assignments are not supplied to Capital; P3's last known start remainsf31bb645, with no new P3 return in this intake. Sol closed/held, Dots protected, N1683's payload hold and all source/resource limits remain.
+**Latest lifecycle, 7 November Brisbane:** P1/P2 completed these port-experiment and compositional-transfer returns. Their same-warm successors were handed once to the existing dispatcher; actual POST/START remains pending in the supplied receipt. P3's f31bb645 turn has also completed; its new collective-thermodynamics return is a separate intake. No new P3 assignment is supplied here. Only opening explanations were staged; expanded activity remains in predecessor chats after native Mac unlock failed. Capital sends no scientific prompt or unlock/recollection attempt. Sol closed/held, Dots protected and all source/resource limits remain.
+
 
 
 

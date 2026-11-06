@@ -1,10 +1,16 @@
 # Acquired interfaces for genuinely new passive interventions
 
+The coordinator assigns **NEW consequence 65–75, assuming correctness**. The cumulative family/programme frontier **75–85** remains; scores are ordinal and nonadditive. Earlier results retain their credit. Missing activity supplies no impact penalty, and no90+/95+ or exceptional general platform is claimed.
+
+
+**Latest lifecycle, 7 November Brisbane:** P1/P2 completed these port-experiment and compositional-transfer returns. Their same-warm successors were handed once to the existing dispatcher; actual POST/START remains pending in the supplied receipt. P3's f31bb645 turn has also completed; its new collective-thermodynamics return is a separate intake. No new P3 assignment is supplied here. Only opening explanations were staged; expanded activity remains in predecessor chats after native Mac unlock failed. Capital sends no scientific prompt or unlock/recollection attempt. Sol closed/held, Dots protected and all source/resource limits remain.
+
+
 P2's completed return acquires complete finite static quadratic port laws and retains their relative uncertainty through **every later finite passive assembly** in the stated class. New wiring, copies and positive couplings can be chosen after acquisition, without new source measurements. The full-interface prior and its acquisition/calibration costs are substantive.
 
 [Verbatim response, exact prompt and opening explanation](P2_COMPOSITIONAL_INTERVENTION_TRANSFER_20261107_RETURN.txt) · [Original ZIP](original/Compositional_Intervention_Transfer_20261107.zip) · [Full report](package/RESEARCH_REPORT.txt) · [Source identities](SOURCES.json).
 
-Expanded visible activity remains in the source chat: native staging failed because Computer Use could not unlock the Mac. Only the opening explanation is included here. Capital made no unlock/recollection attempt and ran no scientific code. Missing activity is not an impact penalty; no new coordinator grade is inferred.
+Expanded visible activity remains in the source chat: native staging failed because Computer Use could not unlock the Mac. Only the opening explanation is included here. Capital made no unlock/recollection attempt and ran no scientific code. Missing activity is not an impact penalty; the supplied coordinator assessment is recorded below.
 
 | Read next | Contents |
 |---|---|
@@ -46,3 +52,5 @@ The producer's four rational microscopic sources have port dimensions3,4,5,6 and
 N1150–N1152's acquired-law/global-task certificates and N997's retained uncertain histories, calibration and direct-code comparisons keep their scopes. Graph Schur-composition and component static-condensation precedents retain credit; no first port-model, tomography, spectral composition or optimization claim is made. A prior component-reduction PDF access failure supplies no imported unread rate or free small complete interface. All original research limits and holds remain, including open QUBO and the exact logarithmic upper endpoint. No new worker, installation, outreach or source recovery occurred.
 
 Collected7November2026Brisbane. The complete16-member archive and capture are published with original bytes preserved. No historical priority, universal transfer beyond the warranted interface or civilisation-changing consequence follows from the construction alone. Generated retrieval was not rebuilt under the resource limit.
+
+Classical nonaccumulating approximate-Schur composition is already present in [Goranci–Henzinger–Peng, section3.2/Lemma3.8](https://arxiv.org/abs/1802.09111). New credit concerns the acquired interface, exact operational metric, scoped information bounds and compiler/design composition. The producer's tangent certificate is a separate implementation, not an independent researcher audit; its true-source regret bound is **below0.004740029**. The lower band for this new contribution does not downgrade earlier effective-law results.

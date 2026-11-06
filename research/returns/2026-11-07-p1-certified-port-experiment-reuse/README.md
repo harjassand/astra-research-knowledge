@@ -1,10 +1,16 @@
 # Finite port experiments to reusable nonlinear component models
 
+The coordinator assigns **NEW consequence 70–80, assuming correctness**. The cumulative family/programme frontier **75–85** remains; scores are ordinal and nonadditive. Earlier results retain their credit. Missing activity supplies no impact penalty, and no90+/95+ or exceptional general platform is claimed.
+
+
+**Latest lifecycle, 7 November Brisbane:** P1/P2 completed these port-experiment and compositional-transfer returns. Their same-warm successors were handed once to the existing dispatcher; actual POST/START remains pending in the supplied receipt. P3's f31bb645 turn has also completed; its new collective-thermodynamics return is a separate intake. No new P3 assignment is supplied here. Only opening explanations were staged; expanded activity remains in predecessor chats after native Mac unlock failed. Capital sends no scientific prompt or unlock/recollection attempt. Sol closed/held, Dots protected and all source/resource limits remain.
+
+
 P1's completed return constructs a finite causal model from calibrated finite input/output histories at fixed accessible ports. The same model certifies a family of later monotone nonlinear attachments, added damped states and component networks. Whole-state readout, Hq actions, source order and an exact transfer-function oracle are not learner inputs.
 
 [Verbatim response, exact prompt and opening explanation](P1_CERTIFIED_PORT_EXPERIMENT_REUSE_20261107_RETURN.txt) · [Original ZIP](original/Certified_port_experiment_reuse_2026-11-07.zip) · [Complete theorem](package/THEOREM.txt) · [Execution report](package/EXECUTION_REPORT.txt) · [Sources](SOURCES.json).
 
-The expanded visible activity could not be staged because native Computer Use could not unlock the Mac. It remains in the source chat; only its opening explanation is retained here. Capital did not retry collection, unlock the Mac, install dependencies or execute scientific programs. This availability limitation supplies no correctness-assumed impact penalty; no new coordinator grade is inferred at this publication.
+The expanded visible activity could not be staged because native Computer Use could not unlock the Mac. It remains in the source chat; only its opening explanation is retained here. Capital did not retry collection, unlock the Mac, install dependencies or execute scientific programs. This availability limitation supplies no correctness-assumed impact penalty; the supplied coordinator assessment is recorded below.
 
 ## Governing interface
 
@@ -39,3 +45,5 @@ Read [SOURCES.txt](package/SOURCES.txt) for N1068 known-order recurrence, N1069 
 The [unchanged previous archive](package/predecessors/Certified_reuse_before_identification_2026-11-07.zip) preserves the [whole-state-action result](../2026-11-07-p1-certified-reuse/README.md) and earlier inference/SAT/mechanics qualifications. It is not a duplicate intake. See [MANIFEST.json](package/MANIFEST.json) for all27 original members, [acquisition summary](package/results/acquisition_summary.json), [later-task summary](package/results/later_task_summary.json), [component A model](package/results/component_A_model.json), [component B model](package/results/component_B_model.json), [A raw records](package/results/component_A_port_record.json), [B raw records](package/results/component_B_port_record.json), [controls](package/results/controls.json), and the [package guide](package/README.txt) for code/results roles.
 
 Collected7November2026Brisbane. No historical priority, optimal acquisition rate, practical superiority, unqualified physical source identification or civilisation-scale impact is established. Original bytes are preserved; generated retrieval was not rebuilt under the resource limit.
+
+The costed physical digital-hold alternative requires approximately **2.05e17 active updates per component**. That count was **not executed** and is not economical physical acquisition. The executed smaller LP and rational certificates are separate from the proved/costed general SDP. No global structural promise is acquired merely by fitting finite port data.
