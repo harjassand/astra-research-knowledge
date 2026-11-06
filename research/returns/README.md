@@ -17,6 +17,7 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| P3 coherent cloning/transposition compiler | [Complete visible construction, whole-isometry/copy-quality limits and unavailable new ZIP](2026-11-06-p3-coherent-cloning/README.md) |
 | P2 sharp degenerate elliptic regularity | [Finite-energy scalar div–curl theorem, exact logarithmic threshold, endpoint families and complete original](2026-11-06-p2-sharp-degenerate-elliptic/README.md) |
 | P1 SAT decision/witness field continuation | [Complete algebraic proofs, explicit CNF failures and original package](2026-11-06-p1-sat-decision-field/README.md) |
 | Sol lead: positive-rate source control | [Fixed computable channel, positive-rate sources and arbitrarily long negative initial segments](2026-11-06-sol-positive-rate-source-control/README.md) |
