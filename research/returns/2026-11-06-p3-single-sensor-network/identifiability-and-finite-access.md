@@ -1,6 +1,6 @@
 # Exact-law identification and a separate finite acquisition contract
 
-These are claims visible in the [incomplete P3 prefix](P3_SINGLE_SENSOR_NETWORK_20261106_RETURN.txt). The complete return and research package are unavailable; no new Capital proof check or original-literature review was performed.
+These are claims in the [complete visible P3 return](P3_SINGLE_SENSOR_NETWORK_20261106_COMPLETE_RETURN.txt), including its recovered rendered ending. The research package remains unavailable. No new Capital proof check or original-literature review was performed; the original published prefix is retained separately as history.
 
 The impulse profile from physical coordinate `j` is `h_j(t)=e₁ᵀ exp(At)e_j 1_(t≥0)`. The supplied proof credits **Kabluchko–Stoev's uniqueness theorem for minimal spectral representations of infinitely divisible processes**, then reports verifying its conditions for the local source model. Causal analytic profiles fix onset within the exact-law representation, and observability makes coordinate profiles linearly independent. Matching profile directions gives monomial similarity of drifts. Derivatives and source onsets occur in this identifiability argument; they are not observation oracles or event labels supplied to the finite algorithm.
 
