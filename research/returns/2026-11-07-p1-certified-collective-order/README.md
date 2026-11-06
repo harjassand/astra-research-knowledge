@@ -1,6 +1,7 @@
 # Certified collective order from acquired port models
 
-**Latest lifecycle, 7 November Brisbane (22:57 UTC collection on 6 November):** P2's3fb4f347 rare-event-chain turn completed. No next P2 assignment has been supplied, handed off or queued in the supplied receipt. P1/P3's25f1c5fa/4fbb961e work remains undisturbed as reported; P3's programme treatment is started, without an established scientific/across-return effect. Earlier all-three-started observations are historical. Expanded activity remains unstaged after native Mac unlock failed; no Capital prompt/unlock/recollection. Dots' reported workspace recovery is separate from native access. Sol closed/held, Dots protected and all source/resource limits remain.
+**Latest lifecycle, 7 November Brisbane:** P2's rare-event-chain return is completed and assessed. Its2797-character same-warm successor was handed ONCE to the existing dispatcher; actual POST/START is pending in the supplied receipt. P2 receives persistent rare-transition endpoint ownership while the coordinator retains full assessment/opportunity-cost/stop-or-pivot judgment. This extends the unestablished across-return hypothesis beginning on P3, with different tasks/warm history and no matched control, new architecture or efficacy claim. P1/P3's25f1c5fa/4fbb961e work remains undisturbed as reported. Earlier missing-next-assignment snapshots are historical. Expanded activity/native access gap, Dots workspace distinction, Sol closed/held and all source/resource limits remain; Capital sends no prompt/recovery attempt.
+
 
 
 
