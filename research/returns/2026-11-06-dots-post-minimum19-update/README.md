@@ -22,3 +22,7 @@ Dots reports that its available tools cannot enforce or measure the agents' tota
 The actual human prompt was “any upadates since last update”. A visible interim message and complete final response are preserved. The visible response time is 6 November 2026, 11:44 AM Brisbane, with no seconds supplied; capture time is recorded separately. No ZIP was supplied. This synopsis does not deliver the subsequent code, full proofs, benchmark records or a new original package, and none is reconstructed.
 
 Capital did not rerun checks, contact/restart Dots, wait for producer idle, create workers or launch a harder trial. Source statements about continued searching are archived as data. No scientific verification or full corpus build was performed; generated retrieval remains unchanged.
+
+## Later update, 6 November at 2:44 pm Brisbane
+
+[The next complete Dots update](../2026-11-06-dots-grid-binary-stars-update/README.md) reports fixed240bus certified-bound results without improving the tighter published numerical comparator, binary-star sensitivity/one compatible companion scenario without detection or gravity verdict, and restricted outage success without a general standard-grid advantage. No ZIP was supplied. This is recent-search reporting, not a new global mission-impact ranking or change to earlier results.
