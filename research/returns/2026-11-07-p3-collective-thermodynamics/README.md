@@ -1,6 +1,7 @@
 # Acquired collective quantum thermodynamics
 
-**Latest lifecycle, 7 November Brisbane:** P1's collective-order return is completed and assessed. Its same-warm3497-character successor was handed ONCE to the existing dispatcher; actual POST/START remains pending in the supplied receipt. P2/P3's3fb4f347/9dbe116b work is undisturbed as the coordinator reports. Earlier “next assignment not supplied” and all-three-started snapshots are historical. Starts/assignments are not achieved results or policy efficacy. Expanded activity remains unstaged after native Mac unlock failed; no Capital recovery/prompt. Dots' reported workspace recovery is separate from native access. Sol closed/held, Dots protected and all source/resource limits remain.
+**Latest lifecycle, 7 November Brisbane:** P1's collective-order successor is now POSTED ONCE/START CONFIRMED by dispatcher report, native25f1c5fa; exact3497-character body matched with sole terminal newline restored. P2/P3's3fb4f347/9dbe116b work remains undisturbed as reported. All three successor starts are confirmed; earlier pending handoff/completed-turn snapshots are historical. Starts establish no new result or policy efficacy. Expanded activity remains unstaged after native Mac unlock failed; Capital sends no prompt/recovery attempt. Dots' reported workspace recovery is separate from native access. Sol closed/held, Dots protected and all source/resource limits remain.
+
 
 
 
