@@ -29,3 +29,7 @@ The original prompt describes a deliberate SAT/equivalent-problem failure-object
 ## Independent QUBO counterpart return, 6 November
 
 [The QUBO first-leg return/original objects](../2026-11-06-p2-qubo-failure-transfer/README.md) are now available. They report explicit monomial/separator/submodular-envelope and PSD-certificate failures at their actual restrictions; severalfamilies have easyglobalminima. Both unrestrictedtargets remain unresolved. The QUBO packet states nopeertransmission occurred; publicavailability is not an intentional scientifictransfer, feedbackbenefit or blindexperiment. The coordinator retains the first-transfer rule: objects, failedclaims and scope, withoutpreferredrepairs/proofnarratives. This SATsource and N1118costs/conditions stay unchanged.
+
+## Subsequent human-continued global correlations, 6 November
+
+[The full next P1 response and nine-file original](../2026-11-06-p1-global-correlations/README.md) give an exactparameterisedglobalcontractor, sharpfinite-ringwhole-boundarycost and validrestrictedCauchycoefficientformula/scopedhighermodefailure. The chargedSATcompiler leavesall2^Estates, unrestrictedSAT staysunresolved; strongerfullcount/kernel tasks are not generaldecision/witness lowerbounds. Actualhumancontinue supersededanunsentrecovery. No deliberateP2object toP1/newcausalfeedbackbenefit isclaimed; earlierconditionalrounding/failurefamilies/N1118conditions remainunchanged.
