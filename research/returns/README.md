@@ -1,6 +1,9 @@
 # Supplied research returns
 
-**Latest lifecycle receipts, 7 November Brisbane:** all three same-warm assignments are POSTED ONCE/START CONFIRMED by dispatcher reports: P125f1c5fa, P2c77d3c5e and P34fbb961e. P2's exact2797-character body matched with its terminal newline restored; no scientific handoff remains pending in the supplied receipt. Its visible start accepts persistent rare-transition endpoint ownership and considers candidate target/dynamics directions with full costs. Candidates/starts are not new results or observed policy effects. P2/P3's across-return hypothesis remains unestablished; P1/P3 work is undisturbed as reported. Earlier pending snapshots are historical. Expanded activity/native access gap, Dots workspace distinction, Sol closed/held and all source/resource limits remain; Capital sends no prompt/recovery attempt.
+**Latest lifecycle receipts, 7 November Brisbane:** all three same-warm assignments are POSTED ONCE/START CONFIRMED by dispatcher reports: P1166a3f5e, P2c77d3c5e and P34fbb961e. P1's exact2897-character programme body matched with its terminal newline restored. Its visible opening reviews current sources/candidate directions by full capability; no final scientific question was supplied at that start. There is no pending scientific handoff in the supplied receipt. Started endpoint-ownership treatments are not scientific results or observed across-return/policy effects; different tasks/history and no matched control remain. P2/P3 work is undisturbed as reported. Earlier pending snapshots are historical. Expanded activity/native access gap, Dots workspace distinction, Sol closed/held and all source/resource limits remain; Capital sends no prompt/recovery attempt.
+
+**P1 supplied assessment:** [state selection and retention](2026-11-07-p1-certified-state-selection/README.md) has NEW consequence70–80, correctness assumed. Connected acquired-component/programme frontier75–85 unchanged, ordinal/nonadditive/no90+ or commissioned-device claim. Six-port software/source-family guarantee differs from the finer-acquisition all-n addressed n-bit register.
+
 
 
 **P2 supplied assessment:** [rare-event-chain first passage](2026-11-07-p2-rare-event-chain/README.md) has NEW provisional consequence70–80, correctness assumed. Earlier effective-law family/programme75–85 unchanged, ordinal/nonadditive/no90+. Explicit microscopic clocks/target list, full computational costs and lack of general2D/acquired-kinetics/practical-advantage claims remain.
@@ -71,6 +74,7 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| P1 selected and retained collective states | [Write/handover/retention, complete33MB control record, source/hardware costs and conditional addressed-register family;26-member original](2026-11-07-p1-certified-state-selection/README.md) |
 | P2 rare-event chain | [Explicit kinetic Ising-model first-passage CDF/relative mean/entrance certificates, finite target renewal and full costs;14-member original](2026-11-07-p2-rare-event-chain/README.md) |
 | P3 operational thermal state | [Full Gibbs/hard-window randomized logical compiler, active-vs-tagged interface and model/hardware error separation;28-member original](2026-11-07-p3-operational-thermal-state/README.md) |
 | P1 certified collective order | [Acquired static landscape, attractive cubic global computation, robust signed-amplitude inverse design and physical/complexity limits;18-member original](2026-11-07-p1-certified-collective-order/README.md) |
