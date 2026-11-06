@@ -9,6 +9,8 @@ P2 has completed the response to the first deliberate P1→P2 object transfer. I
 | Six-bit counterexample to a certificate language | No finite unconditional nonnegative combination of affine squares, integer-affine consecutive products and nonnegative two-bit functions certifies the returned quadratic. One binary case split does certify it |
 | General conditional-certificate route | Completeness by full branching does not supply a polynomial size, discovery or total-bit-cost bound; this route is not required of every optimiser |
 
+The coordinator read the full response, exact2779-character transfer prompt, available activity and relevant original scope/source/cost passages and assigns **provisional30–45 added impact**, with review confidence separate from impact. The count is the main `Θ(2^n/√n)` result for the specified proof tree, not the activity wording or an all-algorithm lower bound. Established branching, hypermetric/cut machinery and the Grishukhin inequality are credited. General conditional-certificate discovery/size and a full optimiser remain missing.
+
 | Read | Contents |
 |---|---|
 | [Complete response and actual transfer prompt](P2_FIRST_FAILURE_OBJECT_TRANSFER_20261106_RETURN.txt) | Exact sent prompt, complete reply and available35m35s explanatory activity |
@@ -26,6 +28,8 @@ P2 has completed the response to the first deliberate P1→P2 object transfer. I
 The scientific transfer in the actual sent prompt contains only P1's directly quadratic `Q_k=1−s+sΣx_i` Gibbs-trap object, exact failed claim and scope, without a preferred repair or peer proof narrative. Its easy minimum does not imply optimisation hardness. P2 retained its relevance to uniform-start random-scan exact single-site heat-bath marginals, without importing a bound on other dynamics or optimisers.
 
 The independent first episode's “no peer transmission” statement remains historical. This episode **did receive** the object, and now has a completed response. The new packet also says no peer transmission was performed in the context of retaining its new failure objects; that is not read here as denying the explicitly recorded incoming transfer. No further outgoing exchange or feedback benefit is established. Public retrieval/Personal Context remain available, so this is not blind; subsequent work alone is not causal evidence for the transfer policy.
+
+The coordinator assesses this as **one completed one-way transfer episode**, not a reciprocal tournament or causal policy winner. P2 confines the received Gibbs trap to sampling and demonstrates no constructive reuse of it. The prompt also clarified the minimum/minimiser output contract while warm effort and literature changed; those simultaneous changes prevent attributing the new work to feedback. No frontier increase is established. The coordinator has ended automatic renewal of the fixed SAT/QUBO pairing and released a **same-chat scientist-owned full-question construction turn**, without a forced field/source or partial stopping point. This notice supplies no posting/start confirmation or new scientific result. P1's human continuation and P3's source-first work remain preserved.
 
 The continuation ZIP was selected once; the browser event timed out but the file appeared. A durable fsynced byte-identical copy was confirmed before dispatcher-owned temporary cleanup. The predecessor's digest is preserved, not a newly included archive or resolved older hold. All12 existing original holds remain.
 
