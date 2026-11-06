@@ -1,6 +1,7 @@
 # Supplied research returns
 
-**Latest lifecycle, 7 November Brisbane:** P1's collective-order successor is now POSTED ONCE/START CONFIRMED by dispatcher report, native25f1c5fa; exact3497-character body matched with sole terminal newline restored. P2/P3's3fb4f347/9dbe116b work remains undisturbed as reported. All three successor starts are confirmed; earlier pending handoff/completed-turn snapshots are historical. Starts establish no new result or policy efficacy. Expanded activity remains unstaged after native Mac unlock failed; Capital sends no prompt/recovery attempt. Dots' reported workspace recovery is separate from native access. Sol closed/held, Dots protected and all source/resource limits remain.
+**Latest lifecycle, 7 November Brisbane (22:37 UTC collection on 6 November):** P3's9dbe116b operational thermal-state turn completed; its next assignment is not supplied to Capital at this snapshot. P1/P2's latest supplied once-only starts remain25f1c5fa/3fb4f347, with no new return in this intake. Earlier all-three-started observations are historical. Expanded activity remains unstaged in predecessor chats after native Mac unlock failed; no Capital prompt/unlock/recollection. Dots' reported workspace recovery is separate from native access. Sol closed/held, Dots protected and all source/resource limits remain.
+
 
 
 **P1 supplied assessment:** [certified collective order](2026-11-07-p1-certified-collective-order/README.md) has NEW consequence70–80, correctness assumed. Programme frontier75–85 and earlier science unchanged, ordinal/nonadditive/no90+. The static task uses S=Z(0); zero new acquisition does not prove full causal-memory acquisition necessary/economical or superior to an equally informed static-data route.
@@ -60,6 +61,7 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| P3 operational thermal state | [Full Gibbs/hard-window randomized logical compiler, active-vs-tagged interface and model/hardware error separation;28-member original](2026-11-07-p3-operational-thermal-state/README.md) |
 | P1 certified collective order | [Acquired static landscape, attractive cubic global computation, robust signed-amplitude inverse design and physical/complexity limits;18-member original](2026-11-07-p1-certified-collective-order/README.md) |
 | P3 acquired collective thermodynamics | [Tagged records, all-equilibrium response/decision certificates, finiteN64, symmetric-probe obstruction and full sampling costs;24-member original](2026-11-07-p3-collective-thermodynamics/README.md) |
 | P1 finite port experiments to reuse | [Paid finite I/O histories, certified causal models, nonlinear/network reuse and scoped structural limits; complete27-member ZIP](2026-11-07-p1-certified-port-experiment-reuse/README.md) |
