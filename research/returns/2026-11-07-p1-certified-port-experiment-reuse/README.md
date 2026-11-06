@@ -1,6 +1,7 @@
 # Finite port experiments to reusable nonlinear component models
 
-**Latest lifecycle receipts, 7 November Brisbane:** all three same-warm successors are POSTED ONCE/START CONFIRMED by dispatcher reports: P1caa51c7e, P23fb4f347 and P39dbe116b. P3's exact3385-character collective-thermodynamics successor body matched with its sole terminal newline restored. Earlier pending handoffs and completed-turn/live snapshots are historical. Starts establish no new scientific result or policy efficacy. Expanded activity from the preceding returns remains unstaged in source chats; Capital sends no prompt or unlock/recollection attempt. Sol closed/held, Dots protected and all source/resource limits remain.
+**Latest lifecycle, 7 November Brisbane (21:17 UTC collection on 6 November):** P1's caa51c7e collective-order turn has completed; its next assignment is not supplied to Capital at this snapshot. P2/P3's latest supplied once-only starts remain3fb4f347/9dbe116b, with no new return in this intake. Earlier all-three-started observations are historical. Expanded activity remains unstaged in predecessor chats after native Mac unlock failed. Capital sends no scientific prompt or unlock/recollection attempt. Dots' reported workspace recovery is a separate operational receipt; Sol closed/held, Dots protected and all source/resource limits remain.
+
 
 
 
@@ -49,3 +50,5 @@ The [unchanged previous archive](package/predecessors/Certified_reuse_before_ide
 Collected7November2026Brisbane. No historical priority, optimal acquisition rate, practical superiority, unqualified physical source identification or civilisation-scale impact is established. Original bytes are preserved; generated retrieval was not rebuilt under the resource limit.
 
 The costed physical digital-hold alternative requires approximately **2.05e17 active updates per component**. That count was **not executed** and is not economical physical acquisition. The executed smaller LP and rational certificates are separate from the proved/costed general SDP. No global structural promise is acquired merely by fitting finite port data.
+
+Later completed source: [certified collective ordering and pattern design](../2026-11-07-p1-certified-collective-order/README.md), using the acquired statistic under a new reciprocal attractive/balanced cubic task contract. Earlier source/acquisition/theorem scopes and costs retain credit.
