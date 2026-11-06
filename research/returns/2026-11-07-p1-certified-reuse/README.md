@@ -1,6 +1,7 @@
 # Certified causal reuse before complete identification
 
-**Latest lifecycle receipts, 7 November Brisbane:** all three same-warm assignments are POSTED ONCE/START CONFIRMED by dispatcher reports: P125f1c5fa, P2c77d3c5e and P34fbb961e. P2's exact2797-character body matched with its terminal newline restored; no scientific handoff remains pending in the supplied receipt. Its visible start accepts persistent rare-transition endpoint ownership and considers candidate target/dynamics directions with full costs. Candidates/starts are not new results or observed policy effects. P2/P3's across-return hypothesis remains unestablished; P1/P3 work is undisturbed as reported. Earlier pending snapshots are historical. Expanded activity/native access gap, Dots workspace distinction, Sol closed/held and all source/resource limits remain; Capital sends no prompt/recovery attempt.
+**Latest lifecycle receipts, 7 November Brisbane:** all three same-warm assignments are POSTED ONCE/START CONFIRMED by dispatcher reports: P1166a3f5e, P2c77d3c5e and P34fbb961e. P1's exact2897-character programme body matched with its terminal newline restored. Its visible opening reviews current sources/candidate directions by full capability; no final scientific question was supplied at that start. There is no pending scientific handoff in the supplied receipt. Started endpoint-ownership treatments are not scientific results or observed across-return/policy effects; different tasks/history and no matched control remain. P2/P3 work is undisturbed as reported. Earlier pending snapshots are historical. Expanded activity/native access gap, Dots workspace distinction, Sol closed/held and all source/resource limits remain; Capital sends no prompt/recovery attempt.
+
 
 
 
@@ -83,3 +84,5 @@ The next scientific turn examines an accessible-port acquisition interface, init
 Later completed source: [finite port-experiment acquisition to reuse](../2026-11-07-p1-certified-port-experiment-reuse/README.md). Source/structural/channel and cost contracts differ explicitly; preceding results and all holds remain.
 
 Later completed source: [certified collective ordering and pattern design](../2026-11-07-p1-certified-collective-order/README.md), using the acquired statistic under a new reciprocal attractive/balanced cubic task contract. Earlier source/acquisition/theorem scopes and costs retain credit.
+
+Later completed source: [finite write/handover/state-selection and retention](../2026-11-07-p1-certified-state-selection/README.md), with programmable total-drive override, acquired static data plus dynamical/channel priors and actual cost bounds. Earlier static/global-order/transient scopes remain unchanged; the all-n register has its separate finer acquisition condition.
