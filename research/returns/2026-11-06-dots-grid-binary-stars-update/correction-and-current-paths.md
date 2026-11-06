@@ -1,5 +1,8 @@
 # Dots correction and current paths, 6 November
 
+The [latest complete Dots status](DOTS_MODEL_COMPARISON_UPDATE_20261106_RETURN.txt) reports a route comparing newly specified models without reproducing the old run. Its first independent-sampling tests **failed reliability checks and were stopped**; those numbers are not evidence. A replacement is developing, with **no reliable signal conclusion**. No model IDs, priors, raw likelihood outputs, reliability metrics, specific model, reasoning trace or ZIP are supplied. The coordinator retains **0–9 diagnostic addition and zero new astrophysical conclusion**. The earlier unaccepted historical-baseline pilot below is history, not a current requirement to reproduce the old run. Capital/dispatcher sent no new Dots instruction or ran an analysis; direct human access in Dots does not extend Capital authority.
+
+
 Dots supplied a correction to its earlier grid update and a later complete reply about current research paths. Both actual human prompts are retained. No ZIP, specific model, activity trace, dataset identifiers or analysis package was supplied.
 
 The earlier **4.46% gap used the best solution's cost as denominator**, not the certified lower bound. Dots gives the corresponding gap relative to the lower bound as about **4.67%**. This corrects normalization; it does not change the optimum or establish a correctness failure. The later reported checked gap is **3.20%, again relative to best cost**. No conversion of that later number is supplied here.

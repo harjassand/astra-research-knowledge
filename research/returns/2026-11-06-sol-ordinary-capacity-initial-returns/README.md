@@ -26,3 +26,7 @@ The common autonomous initial prompts produced substantial overlap, **not demons
 The pilot is still active. The latest supplied phase notice reports r1/r2 sparse scientific continuations and r4's own-depth continuation running within the second-turn ceiling; no r3 peer transfer had occurred. Initial originals are archived without waiting for those continuations or for whole-pilot completion. Later scientific exchange/continuation choices remain lead-owned; Capital sends no constructor instructions.
 
 All17 originals are byte-exact, and the already published common question is unchanged. Code and finite-check records are supplied for review, **not executed by Capital**. No new scientific audit, package installation, worker, source acquisition or corpus build was performed. Accepted prior scopes and all source/transfer holds remain; generated retrieval is unchanged.
+
+Later supplied source: [Completed final r1/r2/r4 turns are linked from the source index; common question remains unresolved.](../2026-11-06-sol-expander-environment-history/README.md)
+
+Final continuations: [r1 environment history](../2026-11-06-sol-expander-environment-history/README.md), [r2 divergence/symmetrization](../2026-11-06-sol-divergence-and-symmetrization/README.md), [r4 own-depth polar obstruction](../2026-11-06-sol-ordinary-code-polar-obstruction/README.md). These supersede the running-phase notices above; r3 remains pending as the latest available notice.

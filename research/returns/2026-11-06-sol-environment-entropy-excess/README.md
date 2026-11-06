@@ -29,3 +29,5 @@ N1677/N1680 offered packages remain unavailable, as do the separately recorded f
 The note states that the four constructors' developing work had not been read. This source is one completed lead contribution, **not completion of the pilot or its full question**, a causal representation-policy result, historical priority or a new impact score. Public retrieval/Personal Context remain available under the pilot contract; no blind-trial claim or intentional delivery to another constructor is made.
 
 The original note and common question are retained byte-for-byte. Capital ran no scientific computation, package installation, worker, source search or corpus build; generated retrieval and the shared checkout remain unchanged.
+
+Later supplied source: [Later connected flagged-dilution/source-clock notes; original conditional theorem unchanged.](../2026-11-06-sol-flagged-dilution/README.md)

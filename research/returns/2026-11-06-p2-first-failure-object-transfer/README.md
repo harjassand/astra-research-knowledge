@@ -34,3 +34,5 @@ The coordinator assesses this as **one completed one-way transfer episode**, not
 The continuation ZIP was selected once; the browser event timed out but the file appeared. A durable fsynced byte-identical copy was confirmed before dispatcher-owned temporary cleanup. The predecessor's digest is preserved, not a newly included archive or resolved older hold. All12 existing original holds remain.
 
 Capital checked archive/publication transport only. It ran no verifier, optimiser, determinant computation, scientific replay or corpus build. The producer's finite exact records remain credited at their stated scope; historical novelty/external validation are not claimed. The source completed **6 November2026,08:19:38.720UTC** (18:19:38.720Brisbane). Available activity is not full internal reasoning or total compute.
+
+Later supplied source: [Later scientist-owned sharp elliptic return; unrestricted QUBO stays unresolved.](../2026-11-06-p2-sharp-elliptic/README.md)
