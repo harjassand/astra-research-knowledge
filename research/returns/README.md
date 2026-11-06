@@ -188,7 +188,7 @@ Use these links to read complete source reports and packages directly. Use the [
 | P2 6 November: autonomous continuation | [No new full resolution; prior-capital reuse and open unknown-input quantum construction](2026-11-06-p2-autonomous-continuation/README.md) |
 | P1 6 November: maximal-profile universality | [Unreviewed all-channel extension with exact marginal and paid heralded recovery](2026-11-06-p1-maximal-profile-universality/README.md) |
 | P1 6 November: structural and operational costs | [Finite rank test, optimal recovery SDP and sharp erasure/dimension limits](2026-11-06-p1-maximal-profile-universality/structure-and-recovery.md) |
-| P3 6 November: single-sensor network, INCOMPLETE capture | [Available native prefix: claimed linear drift identification and paid finite assay; ending/activity/attachments pending](2026-11-06-p3-single-sensor-network/README.md) |
+| P3 6 November: single-sensor network, complete visible return | [Full response/explanations: linear drift identification, paid finite assay and strongest comparators; original ZIP held](2026-11-06-p3-single-sensor-network/README.md) |
 | P2 6 November: persistent quantum destination | [Complete return: exact CPTP compatibility and sharp-output/POVM distinction; full processor open](2026-11-06-p2-persistent-quantum-cptp/README.md) |
 | Dots: completed 5 November status reports, reported independent lattice checks, shared-construction proposal,9:54AMadaptive-test status later thermal proof packages and 12:27PMnorth-star replies and12:49PMuniqueness proof | [Complete supplied captures](2026-11-05-dots/README.md) |
 
