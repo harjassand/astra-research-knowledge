@@ -1,10 +1,13 @@
 # Finite equilibrium-response maps and calibration limits
 
+The coordinator assigns **provisional NEW contribution70–80, assuming correctness**. The effective-law cumulative family/programme frontier remains **75–85**; scores are ordinal and nonadditive. The upper80 edge is provisional and does not assert an exceptional general platform. No review/missing-source penalty,90+/95+ consequence or optimal coordination/source-order winner is inferred.
+
+
 P3's completed response constructs finite maps of specified equilibrium observables across control cells, covering at least a requested fraction of field space without a gap, mixing or unique-phase assumption. It also gives a matching worst-case calibration scale for one field. The algorithm explicitly refuses sharp prediction on a bounded exceptional region.
 
 [Complete response, actual prompt and activity](P3_EQUILIBRIUM_RESPONSE_20261107_RETURN.txt) · [Source and availability record](SOURCES.json) · [Earlier monotone-Fisher classification](../2026-11-07-p3-monotone-channel-orders/README.md).
 
-The supplied `P3_EQUILIBRIUM_RESPONSE_20261107_BUNDLE.zip` opened Library once and yielded no local download; **transfer remains held**. The separately linked report, image and previews were not acquired. Code, full maps, figure, checksums and saved certificates are therefore unavailable here. The complete response/activity below are retained; Capital did not retry, reconstruct a bundle, execute science or conduct a new audit. No coordinator grade is inferred.
+The supplied `P3_EQUILIBRIUM_RESPONSE_20261107_BUNDLE.zip` opened Library once and yielded no local download; **transfer remains held**. The separately linked report, image and previews were not acquired. Code, full maps, figure, checksums and saved certificates are therefore unavailable here. The complete response/activity below are retained; Capital did not retry, reconstruct a bundle, execute science or conduct a new audit. The supplied coordinator assessment is recorded above.
 
 ## What is certified
 
@@ -48,3 +51,13 @@ Smaller nonzero field windows require proportionally finer pressure/calibration 
 Established thermodynamic variational/subgradient machinery retains credit, with Ruelle's classical scope and the short-range quantum equilibrium/KMS interface kept distinct. The response credits Fawzi–Fawzi–Scalet's prior certified equilibrium-observable algorithms, including stronger efficiency in their restricted high-temperature commuting setting. It claims neither first equilibrium computability nor first certified observable prediction. The supplied new composition is explicit advance coverage, whole-cell certificates and matching physical calibration obstruction; no unavailable exact-counting premise or peer construction is supplied.
 
 Collected7November2026Brisbane. Earlier quantum channel/measurement/cloning results and all transfer limits remain. No historical priority, physical execution, practical advantage or civilisation-scale achievement follows from publication. Generated retrieval was not rebuilt under the existing resource limit.
+
+## Supplied contribution and method assessment
+
+Classical pressure/variational methods and [Fawzi–Fawzi–Scalet's certified equilibrium algorithms](https://arxiv.org/abs/2311.18706) retain credit. This contribution combines explicit advance whole-cell coverage, calibration law and stated deductions. Generic pressure cost stays exponential in block volume; special Ising/small-matrix demonstrations do not make the general problem cheap. Refusal is not coexistence; neither pointwise prediction at every exceptional field nor arbitrary non-TI/interface states, physical model acquisition or state preparation is supplied. The held bundle does not lower correctness-assumed impact; execution claims remain producer-reported.
+
+The scientist changed destination from channel geometry to equilibrium statistical mechanics while retaining quantum spins. The controlled-exception contract is a complete question there, with substantive supplied inputs and costs. Activity develops noncommuting pressure, finite precision, whole-cell coverage and a physical calibration lower family. Warm task/source/Personal Context/unknown effort and82m26s displayed duration establish no causal autonomy/source-order or compute claim.
+
+
+**Latest lifecycle reconciliation, 7 November Brisbane:** P1's9e64221f turn has a complete collected return, superseding its earlier live observation. The coordinator reports next same-warm P2/P3 assignments handed once to the dispatcher, with browser POST/START still unconfirmed. P1's next assignment is not supplied to Capital. The standing three-Pro loop persists; these notices authorize no Capital scientific prompt. Sol remains closed/held, Dots protected and all source/resource limits remain.
+

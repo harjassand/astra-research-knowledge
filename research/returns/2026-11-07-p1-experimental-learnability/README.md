@@ -1,5 +1,8 @@
 # What finite experiments can determine
 
+**Latest lifecycle reconciliation, 7 November Brisbane:** P1's9e64221f turn has a complete collected return, superseding its earlier live observation. The coordinator reports next same-warm P2/P3 assignments handed once to the dispatcher, with browser POST/START still unconfirmed. P1's next assignment is not supplied to Capital. The standing three-Pro loop persists; these notices authorize no Capital scientific prompt. Sol remains closed/held, Dots protected and all source/resource limits remain.
+
+
 The coordinator assigns **provisional new consequence65–75, assuming correctness**, to this experimental-learnability operation and its scoped deductions. Prior whole families and the programme **75–85** frontier remain; scores are not added. Review status or unavailable source access incurs no correctness-assumed impact penalty. No90+/95+ consequence or causal coordination-policy winner is established.
 
 
@@ -78,7 +81,7 @@ The new theorem constructs a genuine next operation after history-conditioned in
 Visible activity develops query, convexity, quantization and representation distinctions. Warm source/task/Personal Context/unknown effort and110m14s displayed activity do not identify model compute or a source-first, Zenodo, positive-only or general coordination winner. The general CAD operation remains proved/costed rather than executed; actual global bounds and the physical observation contract remain supplied. The next scientific assignment is owned by the coordinator and researcher; this assessment creates no Capital follow-up or worker.
 
 
-**Latest lifecycle collection, 7 November Brisbane (17:49 UTC on 6 November):** P2/P3 have completed the intervention-response and equilibrium-response turns. P1 is still visibly working. No new researcher prompt was sent in that collection pass; next P2/P3 assignments are not supplied to Capital. Earlier live-start notices refer to the preceding state. The coordinator/dispatcher owns scientific decisions and delivery; Capital publishes sources only. Sol remains closed/held, Dots protected, and all source/resource limits remain.
-
 
 **Historical pending snapshot, superseded by the current confirmed start:** the coordinator had handed the next P1 assignment once to the dispatcher while web POST/START was unconfirmed. That earlier handoff record is preserved in the preceding source-publication revision; the later receipt above supplies the start.
+
+Later completed source: [certified causal port reuse](../2026-11-07-p1-certified-reuse/README.md), retaining full-vector/refinable access, global dissipativity/fixed-port/zero-state premises and all acquisition/online/error costs. The included predecessor archive is unchanged.
