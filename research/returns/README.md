@@ -1,5 +1,8 @@
 # Supplied research returns
 
+**Dots operational outcome qualification, 7 November Brisbane:** [current provenance](2026-11-07-dots-running-and-policy-update/README.md) records a reported research-computer failed start, followed by a reported fresh workspace/earlier-package preservation. Latest scratch and the final gravitational-wave screen outcome remain unrecovered; no reliable recovered final physical conclusion, permanent-loss finding or lower verdict on prior science follows. Dots stays protected/unmessaged and the three Pro turns remain active. No new result, grade, repair, attachment acquisition or index build.
+
+
 **Current lifecycle receipts, 7 November Brisbane:** all three same-warm successors are posted once with task-specific starts confirmed by dispatcher reports: P1dbbce65d, P28064a4de and P3f31bb645. Their preceding completed results remain separate; earlier live and pending handoff observations are historical. Starts establish no new scientific result or policy efficacy. The coordinator/dispatcher owns scientific work; Capital sends no prompt. Sol remains closed/held, Dots protected, N1683's payload hold and all source/resource limits remain.
 
 **Supplied P1 assessment:** [certified causal reuse](2026-11-07-p1-certified-reuse/README.md) has NEW achieved consequence65–75, correctness assumed; constructed whole operation at its full-vector/refinable/dissipative/fixed-port/zero-state contract. Programme frontier75–85 remains, ordinal/nonadditive/no90+ or exceptional-platform/policy claim. Earlier primary model-reduction and N997/N1018 operations retain credit.
