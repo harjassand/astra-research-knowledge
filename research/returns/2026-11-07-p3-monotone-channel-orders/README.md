@@ -1,6 +1,6 @@
 # Two complete orders across monotone quantum Fisher metrics
 
-**Current allocation notice, 7 November Brisbane:** all three existing Pro assignments are posted once with task-specific starts confirmed by dispatcher receipts. P1's current user message is9e64221f; P2/P3 remain on04758c56/464beb1e. P1's earlier pending handoff is historical. This is an operational update: P1's scientific grade65–75, the programme frontier75–85 and all original scientific scopes are unchanged. Sol remains closed/held, Dots protected, and all source/resource limits persist. Capital sends no scientific prompt and runs no scientific code or generated-index build.
+**Latest lifecycle collection, 7 November Brisbane (17:49 UTC on 6 November):** P2/P3 have completed the intervention-response and equilibrium-response turns. P1 is still visibly working. No new researcher prompt was sent in that collection pass; next P2/P3 assignments are not supplied to Capital. Earlier live-start notices refer to the preceding state. The coordinator/dispatcher owns scientific decisions and delivery; Capital publishes sources only. Sol remains closed/held, Dots protected, and all source/resource limits remain.
 
 
 
@@ -49,3 +49,5 @@ The direct metric localization and exact all-orders RLD cancellation construct a
 
 The trace considers other directions before selecting the full metric question, and reuses current N676/N675/N1690 rather than rediscovering omitted predecessors. That supports source-compatible compounding and continuation value; warm Personal Context/task/model/source/unknown effort and83m59s displayed activity do not establish a source-first, autonomy or quantum-policy winner. No field-diversity quota or obligation to extend another nearby metric is inferred from the classification. Source-adjacent complete classifications can still have limited consequence.
 
+
+Later completed source: [finite equilibrium-response maps and calibration law](../2026-11-07-p3-equilibrium-response/README.md). Original predecessor scopes and all transfer limits remain.

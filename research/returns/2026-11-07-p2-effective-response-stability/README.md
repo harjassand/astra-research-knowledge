@@ -1,6 +1,6 @@
 # Information stability of effective response
 
-**Current allocation notice, 7 November Brisbane:** all three existing Pro assignments are posted once with task-specific starts confirmed by dispatcher receipts. P1's current user message is9e64221f; P2/P3 remain on04758c56/464beb1e. P1's earlier pending handoff is historical. This is an operational update: P1's scientific grade65–75, the programme frontier75–85 and all original scientific scopes are unchanged. Sol remains closed/held, Dots protected, and all source/resource limits persist. Capital sends no scientific prompt and runs no scientific code or generated-index build.
+**Latest lifecycle collection, 7 November Brisbane (17:49 UTC on 6 November):** P2/P3 have completed the intervention-response and equilibrium-response turns. P1 is still visibly working. No new researcher prompt was sent in that collection pass; next P2/P3 assignments are not supplied to Capital. Earlier live-start notices refer to the preceding state. The coordinator/dispatcher owns scientific decisions and delivery; Capital publishes sources only. Sol remains closed/held, Dots protected, and all source/resource limits remain.
 
 
 
@@ -58,3 +58,5 @@ The new bridge carries accepted energy concentration into response stability und
 
 The visible activity explores spectral/network alternatives before geometric interpolation and radial witnesses. The original report says catalogue search supplied no new peer premise. This is useful compounding of retained science rather than repetition of a certificate, while changed warm task/source/effort and the83m37s display do not identify causal policy or model compute. The acquired informative-input problem remains an important continuation limit; another passive-gauge restatement or endpoint refinement alone would not establish a broader predictive operation. No P1 transfer is inferred without compatible model/observation contracts.
 
+
+Later completed source: [intervention-family prediction and global design](../2026-11-07-p2-intervention-response/README.md). Original predecessor scopes and all transfer limits remain.

@@ -1,6 +1,6 @@
 # Supplied research returns
 
-**Current allocation notice, 7 November Brisbane:** all three existing Pro assignments are posted once with task-specific starts confirmed by dispatcher receipts. P1's current user message is9e64221f; P2/P3 remain on04758c56/464beb1e. P1's earlier pending handoff is historical. This is an operational update: P1's scientific grade65–75, the programme frontier75–85 and all original scientific scopes are unchanged. Sol remains closed/held, Dots protected, and all source/resource limits persist. Capital sends no scientific prompt and runs no scientific code or generated-index build.
+**Latest lifecycle collection, 7 November Brisbane (17:49 UTC on 6 November):** P2/P3 have completed the intervention-response and equilibrium-response turns. P1 is still visibly working. No new researcher prompt was sent in that collection pass; next P2/P3 assignments are not supplied to Capital. Earlier live-start notices refer to the preceding state. The coordinator/dispatcher owns scientific decisions and delivery; Capital publishes sources only. Sol remains closed/held, Dots protected, and all source/resource limits remain.
 
 **Latest supplied P1 assessment:** [experimental learnability](2026-11-07-p1-experimental-learnability/README.md) has provisional NEW consequence65–75, assuming correctness; prior whole families/programme frontier75–85 retained, no score sum/review/source penalty/no90+ or causal policy winner. The guide credits N997 sections9–10 numerical acquisition/precision/later-task transfer/full-span tie and N1018 sections5–7 guarded nonlinear transfer as existing capital. Convex/positive-noise general theorem, programme-presented nonconvex negative theorem and finite-catalogue software retain separate contracts. Generated indexing remains pending.
 
@@ -37,6 +37,8 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| P2 intervention response | [Reusable tensor predictor, paid-record polynomial global design and cross-actuator obstruction; complete19-member ZIP](2026-11-07-p2-intervention-response/README.md) |
+| P3 equilibrium response | [Whole-cell/all-TI-phase prediction, controlled refusal volume and sharp calibration law; complete response/activity, bundle held](2026-11-07-p3-equilibrium-response/README.md) |
 | P1 experimental learnability | [Optimal achievable accuracy, near-optimal experiments and indistinguishable models; programme-presentation obstruction and executed finite-budget design](2026-11-07-p1-experimental-learnability/README.md) |
 | P2 effective-response stability | [Exact leading logarithmic sensitivity, finite-name operation, intervention obstruction and six-member original package](2026-11-07-p2-effective-response-stability/README.md) |
 | P3 monotone Fisher complete orders | [Full-family RLD/SLD classification, finite witness construction and decidability boundary; ZIP held](2026-11-07-p3-monotone-channel-orders/README.md) |
