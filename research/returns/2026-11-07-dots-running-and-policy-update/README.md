@@ -13,4 +13,6 @@ The running analysis supports no reliable black-hole signal, physical-effect cla
 
 No ZIP was visible and Dots provides no reasoning trace. Exact underlying model, live agent inventory, compute and execution of the latest acknowledgement are not established by these captures. Capital retained the replies without prompting Dots, contacting its agents, launching work, obtaining an attachment or running scientific checks. These archived instructions apply to the Dots conversation where they were issued and do not authorize new Capital workers or change the current human no-dispatch hold. Sol remains closed and held.
 
-This publication adds source access and navigation. It does not rebuild generated retrieval or change earlier scientific results. No new coordinator impact score is inferred.
+This publication adds source access and navigation. It does not rebuild generated retrieval or change earlier scientific results. The coordinator assesses these status/diagnostic additions at0–9, with no new astrophysical conclusion; this is not a lower grade for any earlier scientific family.
+
+The proposed sharing-versus-independence experiment is still at task/scoring design, **not run**, with no outcome to compare. The six-slot/nested-delegation directive is acknowledged only; child prompts/models/effort/exposure and maximum occupancy remain unobserved. All three Pro chats are now completed/IDLE/HELD, with no next prompt prepared, queued or sent. Dots's separate human-owned instructions do not change the coordinator's team ceiling or permission.
