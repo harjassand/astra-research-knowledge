@@ -1,6 +1,9 @@
 # Supplied research returns
 
-**Latest lifecycle, 7 November Brisbane:** P1/P2 completed these port-experiment and compositional-transfer returns. Their same-warm successors were handed once to the existing dispatcher; actual POST/START remains pending in the supplied receipt. P3's f31bb645 turn has also completed; its new collective-thermodynamics return is a separate intake. No new P3 assignment is supplied here. Only opening explanations were staged; expanded activity remains in predecessor chats after native Mac unlock failed. Capital sends no scientific prompt or unlock/recollection attempt. Sol closed/held, Dots protected and all source/resource limits remain.
+**Latest lifecycle, 7 November Brisbane:** P1/P2 successors are now POSTED ONCE/START CONFIRMED by dispatcher reports, native messagescaa51c7e/3fb4f347. Earlier pending snapshots are historical. P3's f31bb645 turn completed with the collective-thermodynamics return; its next3385-character assignment was handed once to the existing dispatcher, with actual POST/START unconfirmed in the supplied receipt. Starts are not new results or causal policy efficacy. Expanded activity remains unstaged in source chats; no Capital unlock/recollection or scientific prompt. Sol closed/held, Dots protected and all source/resource limits remain.
+
+**P3 supplied new assessment:** acquired collective quantum thermodynamics70–80, correctness assumed. Earlier finite-range results and programme frontier75–85 unchanged, ordinal/nonadditive. Finite digital records and specialized certificates are executed producer evidence;~9.36e29-shot physical schedule is costed, unexecuted and not economical commissioning.
+
 
 **New supplied assessments, correctness assumed:** P1 finite port-experiment reuse70–80; P2 compositional intervention transfer65–75. Earlier science and cumulative family/programme frontier75–85 remain. Ordinal/nonadditive, no activity-availability penalty,90+/95+ or exceptional general platform.
 
@@ -50,6 +53,7 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| P3 acquired collective thermodynamics | [Tagged records, all-equilibrium response/decision certificates, finiteN64, symmetric-probe obstruction and full sampling costs;24-member original](2026-11-07-p3-collective-thermodynamics/README.md) |
 | P1 finite port experiments to reuse | [Paid finite I/O histories, certified causal models, nonlinear/network reuse and scoped structural limits; complete27-member ZIP](2026-11-07-p1-certified-port-experiment-reuse/README.md) |
 | P2 compositional intervention transfer | [Acquired complete static interfaces, exact contextual metric, assembly-stable relative uncertainty and new passive design; complete16-member ZIP](2026-11-07-p2-compositional-intervention-transfer/README.md) |
 | P1 certified causal reuse | [Acquired fixed-port memory, simultaneous later monotone interventions and exact-information boundary; complete17-member original ZIP](2026-11-07-p1-certified-reuse/README.md) |
