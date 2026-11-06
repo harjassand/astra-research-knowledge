@@ -1,0 +1,437 @@
+CERTIFIED CONSEQUENCES OF AN UNKNOWN POTENTIAL
+Complete finite-horizon inference and robust-design construction
+6 November 2026
+
+STATUS AND QUESTION
+
+The resolved question in this document is the following.
+
+Given finitely described calibration information about one stationary
+potential, supplied global lower/upper curvature bounds, a finite time
+horizon, and a specified dynamical experiment, can one compute arbitrarily
+sharp bounds on a scientific task over EVERY compatible potential, and
+construct actual compatible models approaching both endpoints?
+
+Yes, under the explicit contract below. The proof gives a terminating
+ordinary deterministic algorithm. It also gives approximately optimal
+robust interventions from a compact polynomially described intervention
+family. General computation is expensive. It is not polynomial-time SAT,
+unrestricted scientific inference, an algorithm for all infinite-time
+limits, or a proof of practical/civilisation-scale advantage.
+
+The smooth interpolation theorem and its conjugate construction are
+accepted results of Taylor, Hendrickx and Glineur (THG). Exact real-algebraic
+computation is an accepted algorithmic ingredient, with its costs paid.
+The contribution here is the specified composition, uniform approximation
+argument, witness extraction, resource accounting and reference software.
+No historical priority or independent/formal verification is claimed.
+
+Implementation boundary: algebraic_problem.py emits and checks finite
+quadratic problems. interpolation.py evaluates rational interpolants. A
+general CAD optimizer was NOT implemented or run in this package. The
+cooperative-network operation in COOPERATIVE_INFERENCE.txt IS implemented
+end to end, including exact numerical certificate replay.
+
+1. COMPLETE INPUT CONTRACT
+
+All rational inputs use finite binary numerator/denominator encodings.
+All dimensions, polynomial terms/exponents, matrices, constraints, times,
+and output tolerances are part of the charged input.
+
+Let n,d >= 1. Supply rational matrices A (n by n), B (n by d), C (d by n).
+The system is
+
+    z'(t) = A z(t) + B grad V(C z(t)) + u(t).
+
+Here u is a specified rational piecewise-constant function on [0,T], T is
+a nonnegative rational, and all break times are supplied. Initial states
+belong to a closed bounded semialgebraic set Z, given by a finite formula
+using AND/OR of weak polynomial inequalities/equalities, together with an
+explicit rational containing box. Empty Z is allowed and is detected.
+
+Supply rational mu <= L and G >= 0. The unknown V is one function on ALL
+of R^d, with V(0)=0, |grad V(0)|_2 <= G. For mu < L define beta=L-mu and
+
+    h(x) = V(x) - mu |x|^2/2.
+
+Require h to be convex, continuously differentiable, with beta-Lipschitz
+gradient. Equivalently, V is C^(1,1) with curvature between mu and L in
+the usual almost-everywhere/convex-shift sense. Negative mu is permitted.
+For mu=L, the class is V(x)=mu|x|^2/2+a.x with |a|<=G.
+
+Supply finitely many rational calibration locations. Their values and
+gradients obey a finite closed semialgebraic constraint D. This permits
+interval errors, exact observations, and specified correlations among
+observations. D may be infeasible. No unlisted observation is available.
+The potential and initial-state uncertainty are independent unless their
+joint closed constraints are explicitly included in the finite problem;
+the robust-design result below uses a design-independent product family.
+
+Supply finitely many rational observation times in [0,T], and a rational
+polynomial H in any of the corresponding z(t), V(Cz(t)), grad V(Cz(t)).
+The task is the scalar H. A vector of finitely many tasks is handled by
+repeating this operation and paying the repetitions. Supply epsilon>0.
+
+The global curvature and anchor bounds are substantive information. They
+are not certified for an unknown physical system by finitely many local
+measurements. No statistical noise model, measurement acquisition,
+hardware actuation, or model validity is obtained at zero cost.
+
+2. OUTPUT CONTRACT
+
+Either report that the compatible model/initial-state set is empty, or
+return rational numbers ell,u and two finitely described compatible
+potentials V_minus,V_plus and compatible initial states such that
+
+    ell <= H(V,z0) <= u                 for every compatible pair,
+    H(V_minus,z0_minus) <= ell+epsilon,
+    H(V_plus,z0_plus) >= u-epsilon.
+
+Thus both numerical endpoints are epsilon-sharp. The entire interval
+need not be narrow: a large interval can be the exact consequence of
+insufficient model information. The witnesses are actual stationary
+C^(1,1) potentials, not sequences of unrelated per-step forces.
+
+Witness coefficients and initial states may be real algebraic numbers,
+returned as exact polynomial/root-isolation encodings. Rational input
+does not imply rational optimal witnesses. They have complete finite
+evaluation algorithms; neither a real-number oracle nor infinite advice
+is supplied. The rational implementation is an explicitly smaller case.
+
+3. EXACT FINITE INTERPOLATION
+
+For any finite triples (x_i,g_i,f_i), the required potential exists iff
+every ordered pair satisfies
+
+ f_i-f_j-g_j.(x_i-x_j)-mu|x_i-x_j|^2/2
+       >= |g_i-g_j-mu(x_i-x_j)|^2/(2 beta).                 (I)
+
+This is THG's smooth convex interpolation theorem applied to h. The
+extension to negative mu in this formulation is simply the stated
+convex shift, not an assertion that THG assumed negative strong convexity.
+
+For completeness, the imported constructive witness is explicit. Put
+
+ s_i=g_i-mu x_i,  h_i=f_i-mu|x_i|^2/2,
+ a_i=x_i-s_i/beta, b_i=|s_i|^2/(2 beta)-h_i,
+ h_star(s)=|s|^2/(2 beta)+max_i(a_i.s+b_i),
+ V(x)=sup_s[x.s-h_star(s)]+mu|x|^2/2.                     (W)
+
+Inequality (I), with its indices reversed, makes the i-th quadratic attain
+the maximum at s_i. Its gradient there is x_i, so x_i belongs to the
+subdifferential of h_star at s_i. Strong convexity of h_star makes its
+conjugate differentiable with beta-Lipschitz gradient. Fenchel equality
+gives exactly V(x_i)=f_i and grad V(x_i)=g_i. The maximum of finitely many
+quadratics is finite and strongly convex, so (W) defines V globally.
+
+At a query x the unique optimizer s satisfies
+
+    x-s/beta in conv{a_i : a_i.s+b_i is maximal}.
+
+By finite-dimensional convex geometry, an affinely independent active
+subset of size <=d+1 suffices. For each candidate subset, solve
+
+    beta (a_i.a_j) lambda_j + nu = beta a_i.x+b_i,
+    sum lambda_j=1.
+
+Reject singular systems, negative weights, or positive-weight indices
+whose affine height is not globally maximal. A valid subset must occur.
+Then s=beta(x-sum lambda_i a_i), and (W) gives value and gradient.
+This is an actual finite evaluation algorithm. For rational data/query,
+all of these calculations are rational. For algebraic data they are
+ordinary algebraic-number arithmetic and comparisons. At arbitrary
+computable query points, use rational approximations and the explicit
+Lipschitz bounds below; the requested precision and input-access cost are
+charged.
+
+Face enumeration tries at most sum_{k=1}^{min(M,d+1)} binomial(M,k)
+supports for M data points. Each support uses a system of order k+1,
+finite vector products and M height comparisons. This cost is not hidden
+behind a QP oracle. Algebraic witness degrees and isolating-bit costs are
+part of the real-algebraic computation cost.
+
+For fixed rational x_i,g_i with unknown unconstrained values, (I) is a
+system f_i>=f_j+w_ij. Bellman-Ford with reversed sign either supplies
+values or a positive directed cycle. This is the cyclic compatibility
+observation already stated in THG Remark 3, not a new interpolation
+theorem. O(M^3) relaxations after O(M^2 d) arithmetic build the graph.
+
+4. A UNIFORM DYNAMICAL AND NUMERICAL BOUND
+
+Put K=max(|mu|,|L|). Every V in the class has K-Lipschitz gradient.
+One direct verification uses the beta-cocoercivity of grad h:
+grad h(x)-grad h(y) lies in the ball with center beta(x-y)/2 and
+radius beta|x-y|/2. Adding mu(x-y) bounds the resulting norm by
+max(|mu|,|L|)|x-y|. Therefore
+
+    |grad V(x)| <= G+K|x|,
+    |V(x)| <= G|x|+K|x|^2/2.                             (B1)
+
+Choose rational upper bounds a,b,c on the Euclidean operator norms of
+A,B,C (the sums of absolute matrix entries suffice), R0 on |z0|, and U
+on |u(t)|. These are computed from the input, including its containing
+boxes. Define the following rational/integer quantities:
+
+    Lambda = a+b K c,       D0 = b G+U,
+    E = 2^ceil(2 Lambda T), R = (R0+D0 T) E,
+    M = Lambda R+D0,        C_E = Lambda M T E/2.          (B2)
+
+Because 2^(2x)>=exp(x) for x>=0, E>=exp(Lambda T).
+Gronwall gives |z(t)|<=R and |z'(t)|<=M. The vector field is globally
+Lipschitz, so every initial condition has a unique complete finite-time
+solution. No bounded-trajectory promise or ODE-solving oracle is needed.
+
+Take an Euler mesh including every forcing switch and observation time,
+with maximum step hmax. Its states obey the same bound R: apply the
+discrete inequality |z_{k+1}|<=(1+Lambda h_k)|z_k|+D0 h_k and
+product(1+Lambda h_k)<=exp(Lambda T). The one-step truncation error is
+at most Lambda M h_k^2/2. Propagation gives, at EVERY mesh node,
+
+    |z(t_k)-z_k| <= C_E hmax.                            (B3)
+
+Time switches cause no extra truncation term because the mesh contains
+them. If T=0 or C_E=0, use the direct zero-error construction.
+
+For task coordinates, the same state error e changes grad V(Cz) by at
+most K c e and V(Cz) by at most (G+K c R)c e. Let
+
+    C_obs=max(1,K c,(G+K c R)c).
+
+Choose rational W>=1 bounding every scalar argument of H, using (B1),
+R and the observation definition. If H(y)=sum_alpha c_alpha y^alpha,
+
+    L_H=sum_alpha |c_alpha| |alpha| W^max(|alpha|-1,0)
+
+is a Lipschitz constant for H in the sup norm on that box. This sum
+already counts multiple observations and coordinates. Consequently
+
+    |H_true-H_Euler| <= C_task hmax,
+    C_task=L_H C_obs C_E.                                (B4)
+
+All constants are explicit computable rational expressions. Their large
+numeric sizes, integer powers, and resulting bit lengths are charged.
+
+5. THE FINITE ALGEBRAIC PROBLEM
+
+If C_task>0 choose hmax<=epsilon/(4 C_task). Partition each interval
+between listed switches/observations into ceil(length/hmax) equal steps.
+If C_task=0 any such finite mesh suffices. Let N be its step count.
+
+Introduce variables z_k and a value/gradient pair (f_k,g_k) at C z_k,
+including the final node. Include calibration pairs and the anchor
+(0,grad V(0),0). Impose:
+
+  (a) the initial-set and calibration constraints;
+  (b) |grad V(0)|^2<=G^2;
+  (c) every Euler equation z_{k+1}=z_k+h_k(Az_k+B g_k+u_k);
+  (d) inequality (I) for EVERY ordered pair of all these points.
+
+The variables remain in the actual physical coordinate dimension d.
+Replacing them by an unrestricted Gram matrix would require additional
+rank reasoning and is not part of this algorithm. All constraints (b)--(d)
+have degree at most two. Only input calibration/initial constraints and
+the task may have higher degree.
+
+Add explicit redundant bounds to make compactness transparent. If X is
+a rational upper bound on max(cR, norms of calibration locations,0), add
+|z_k|<=R, |g_i|<=G+KX, and |f_i|<=G X+KX^2/2. Squared-norm bounds and
+coordinate boxes are polynomial. They remove no legal table by (B1)--(B3).
+
+Every genuine model supplies a feasible Euler table. Conversely, every
+feasible table extends by (W) to ONE genuine model, and uniqueness of
+Euler updates makes the recorded states exactly that model's Euler
+trajectory. Thus feasibility is exact, and the feasible tables form a
+closed bounded semialgebraic set. Model inconsistency is detected exactly.
+An empty initial set is reported as no admissible experiment, not as a
+statement about physical law impossibility.
+
+Use a complete real-algebraic algorithm, for example sign-invariant
+cylindrical algebraic decomposition with algebraic sample points, to
+find the exact minimum a_N and maximum b_N of H on this compact set,
+and exact algebraic optimizing tables. Standard quantifier elimination
+describes the attainable objective values; extrema are its boundary
+points and the optimizer fibers supply the tables. This includes the
+cost of detecting empty sets, comparisons, root isolation and witnesses.
+
+Isolate a_N and b_N to rational intervals of width <=epsilon/4. Write
+a_lo for the lower endpoint of the minimum's isolation interval and
+b_hi for the upper endpoint of the maximum's interval. Let
+
+    delta=C_task hmax <= epsilon/4,
+    ell=a_lo-delta,  u=b_hi+delta.
+
+For every true model, (B4) gives ell<=H_true<=u. The two optimizing
+tables extend to genuine potentials by (W). Their true tasks are at most
+epsilon/4+2 delta<=3epsilon/4 from the corresponding outer endpoints.
+This proves the complete output contract, including attainable witness
+models. It does not infer a universal result from finite testing.
+
+Degenerate cases are explicit. For mu=L substitute the quadratic-affine
+form and its unknown bounded vector a; skip the divided expression (I).
+For mu>L reject the contract. For T=0 use a single state and no Euler
+equations. Repeated locations or coincident trajectory/calibration nodes
+are allowed: (I) forces equal gradients and values there. Empty
+calibration data are allowed because the anchor and gradient bound remain.
+
+6. COMPLETE RESOURCE ACCOUNTING
+
+Let q be the calibration count, J the number of positive intervals cut
+out by observation/switch times. When C_task>0,
+
+    N <= 4 T C_task/epsilon + J.
+
+The potential table has M=q+N+2 points. There are
+
+    v=(N+1)n+M(d+1)+O(1)
+
+real variables (this overcounts fixed anchor entries) and
+
+    S=O(M^2+N n+v)+S_input
+
+polynomial constraints. Let D=max(2, input polynomial degrees, degree H),
+and let tau be the bit length of the integer coefficients after clearing
+rational denominators in the ACTUALLY CONSTRUCTED problem. Each constraint
+can be expanded explicitly using polynomial arithmetic; mesh construction,
+matrix products, the M^2 d pair computations, and all generated
+coefficients are charged. Binary-encoded high degree still incurs its
+actual numeric-degree and power/bit costs.
+
+A standard conservative CAD bound has the form
+
+    (S D)^(2^O(v)) (tau+b+1)^O(1) bit operations,
+
+where b is the requested objective-isolation precision after the explicit
+task bound is included. The fixed constants depend on the selected
+ordinary CAD implementation, not on an instance-specific oracle. Output
+algebraic degrees/coefficient sizes and exact witness extraction have
+the corresponding finite algebraic bounds. This is an accepted
+real-algebraic algorithm, not an uncharged feasibility oracle. Subsequent
+potential evaluation pays the active-face/algebraic arithmetic costs in
+section 3 and any requested numerical evaluation precision.
+
+The exponent ceil(2 Lambda T) has that many output bits when E is formed.
+N can be exponential in epsilon's requested accuracy bits and in
+binary-encoded physical magnitudes. CAD can then be doubly exponential
+in this already-large N. There is no polynomial complete-input claim,
+no free real arithmetic, and no uncharged preprocessing, advice or
+nonuniform lookup. The mathematical resolution is total computability
+and sharp attainable inference under the stated contract.
+
+7. ROBUST INTERVENTION DESIGN IS A CONSTRUCTED CONSEQUENCE
+
+Extend the input with a nonempty compact rational semialgebraic design
+set Theta in R^p and a containing rational box. Replace each prescribed
+forcing value by a supplied polynomial u_k(theta); allow H also to be a
+polynomial in theta. The calibration/model family and initial set are
+fixed independently of theta. Bounds on u and H over the containing box
+are computed by coefficient sums, so (B2)--(B4) hold UNIFORMLY in theta.
+
+Let P_N(theta,w) be the finite table constraints. Define
+
+    G_N(theta)=max_{w:P_N(theta,w)} H_N(theta,w),
+    Q_N=min_{theta in Theta} G_N(theta).
+
+Quantifier elimination computes the least q satisfying
+
+    exists theta in Theta, for every w,
+        [ P_N(theta,w) implies H_N(theta,w)<=q ].          (D1)
+
+It also supplies an exact algebraic minimizing theta_N and a maximizing
+table at theta_N. The extrema exist. For fixed models, Euler trajectories
+depend continuously on theta with uniform bounds, hence G_N is continuous
+on compact Theta; alternatively the finite feasible fibers plus this
+uniform modulus establish the same fact. The actual dynamics has the
+same uniform dependence. Nonemptiness of the model family was checked
+first, so (D1) is not a vacuous adversarial constraint.
+
+Write G(theta)=sup_{V,z0} H_true(theta,V,z0) and Q=min_Theta G(theta).
+Then |G-G_N|<=delta uniformly, whence
+
+    |Q-Q_N|<=delta,
+    G(theta_N)<=Q+2delta.                                (D2)
+
+Choose delta<=epsilon/4 and isolate Q_N as above. This outputs an
+epsilon-optimal intervention, a certified bound on its worst compatible
+outcome, and an explicit compatible near-worst-case model. It is a
+mathematical robust-design operation, not an application bridge left to
+an unspecified future optimizer. It is also not a claim that a physical
+intervention has been authorized, executed or verified.
+
+The quantified problem has p additional variables and the degrees and
+coefficients of u(theta), Theta and H. They enter S,D,v,tau in section 6;
+quantifier alternation is handled and charged by the chosen CAD method.
+Exact algebraic controls have finite encodings. If an application requires
+rational controls, it must supply a rationally approximable feasible
+design interface or interior margin; this is not inferred for a design
+set consisting of isolated irrational points.
+
+8. FURTHER SCIENTIFIC CONSEQUENCES
+
+Task identification without full model identification. If the interval is
+narrow, the task is accurately determined even if many potentials remain.
+The midpoint has worst-case absolute error <=(u-ell)/2. The two witness
+models prove that ANY estimator based only on the same information has
+worst-case error at least max(0,u-ell-2epsilon)/2. Thus the operation also
+approximates the optimal information-limited prediction accuracy.
+
+Model falsification. Empty finite compatibility constraints prove that no
+member of the declared model class explains the data. This conclusion is
+conditional on the data/error and curvature contracts; it does not
+identify which premise failed in a physical experiment.
+
+Certified task inequalities. If u<c, H<c for every compatible model. If
+ell>c, H>c for every compatible model. For a strict positive gap, refining
+epsilon eventually certifies the correct side whenever the whole family
+lies on that side. Equality or a family spanning c need not be classified
+as a strict universal inequality. Returning a sharp interval remains a
+complete operation in those cases.
+
+Reusable information. Added compatible calibration constraints shrink
+the feasible family, so exact task minima increase and maxima decrease.
+Previously computed outer intervals may be intersected with new certified
+ones. A single simultaneous data-coverage event E implies that all later
+conditional model conclusions are valid on E, even if tasks are chosen
+after seeing the history. This is a pathwise implication, not a new
+confidence theorem. Independent physical/model validity and simultaneous
+coverage must be supplied; marginal per-reading coverage is insufficient.
+
+Reach. The equation includes natural mechanics with z=(q,p),
+A=[[0,I],[0,-D]], B=[[0],[-I]], C=[I,0]; overdamped gradient flow; and
+known linear networks driven by unknown gradient constitutive laws.
+Finite-horizon tasks may be nonlinear and may involve nonconvex V when
+mu<0. No convergence assumption is used for this finite-time theorem.
+
+9. RETAINED FAILURE OBJECT
+
+At points (0,0),(1,0),(1,1),(0,1), set
+g(x)=(x_1-x_2,x_1+x_2), mu=0,L=2. Every two-point sector test satisfies
+
+    (g_i-g_j).(x_i-x_j) = |x_i-x_j|^2 = |g_i-g_j|^2/2.
+
+Nevertheless the interpolation weights w_ij around the oriented square
+sum to 2>0. Summing the required value inequalities would assert 0>=2.
+Thus no compatible potential exists. Pairwise sector constraints after
+discarding values do not enforce a single potential. The implementation
+finds a positive three-edge cycle of weight 1 as another exact witness.
+This falsifies that relaxation, not unrestricted inference or SAT.
+
+10. PRIMARY REFERENCES
+
+Adrien B. Taylor, Julien M. Hendrickx, Francois Glineur,
+Smooth Strongly Convex Interpolation and Exact Worst-case Performance of
+First-order Methods, Mathematical Programming 161 (2017), 307--345.
+https://arxiv.org/abs/1502.05666
+https://doi.org/10.1007/s10107-016-1009-3
+Theorem 4, constructive conjugate remark, and cyclic Remark 3 are used.
+
+Saugata Basu, Algorithms in Real Algebraic Geometry: A Survey.
+https://www.math.purdue.edu/~sbasu/raag_survey2011_final.pdf
+See the CAD and effective quantifier-elimination algorithms and their
+arithmetic/bit-complexity accounting. Their primary antecedents include
+Collins' cylindrical algebraic decomposition and algorithms of
+Basu--Pollack--Roy. The present package does not reimplement those engines.
+
+The Zenodo interpolation formalization, Astra source contracts, exact
+source pins, predecessor credit and access limitations are recorded in
+SOURCES_AND_PROVENANCE.txt. They are not substitutes for the proof and
+full resource contract above.

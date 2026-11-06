@@ -34,3 +34,5 @@ The earlier tooling-blocker assessment recorded **zero additional gravitational-
 The visible response time is **6 November 2026, 2:44 pm Brisbane**; seconds and a separate capture timestamp were not supplied. The specific model and user-visible reasoning/activity trace are unavailable. No ZIP was supplied, and no new original-transfer hold is created. The synopsis does not deliver raw analyses, bound certificates, orbit records or code; none is reconstructed.
 
 Capital performed no scientific verification, optimisation, orbital simulation, source acquisition, producer contact or full corpus build. Existing source/transfer/role limits remain. Generated retrieval is unchanged.
+
+Latest captured status: [running comparison and reported coordination policy](../2026-11-07-dots-running-and-policy-update/README.md). Four visible replies report ongoing work and a latest acknowledgement, with no reliable new scientific conclusion or established policy advantage.
