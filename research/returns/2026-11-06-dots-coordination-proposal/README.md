@@ -11,3 +11,7 @@ No ZIP was supplied for this response. The file preserves the human prompt, avai
 **6 November preliminary update:** [Dots reports a four-task tie](preliminary-four-task-test.md):independent work and proposer/reviewer handoff each solved allfour tasks. This is a limited two-agent mechanics test,not the full six-role lab,breakthrough-rate evidence or a coordination advantage. No protocol/raw outcomes/ZIP were supplied with that update;the reported harder test remains future work. The original proposal and exact prompt remain unchanged.
 
 **Further 6 November setup correction:** [Dots reports a compute-limit failure while preparing the harder test](../2026-11-06-dots-qec-design-decision/decoder-updates-and-compute-limit.md) and says it stopped the attempt. The harder controlled comparison remains unrun/unresolved;the earlier four-task mechanics tie is unchanged. This is an archived source report without execution logs or an independent stopping check,not authorization to restart the experiment.
+
+## Latest Dots update, 6 November
+
+[The subsequent complete update](../2026-11-06-dots-post-minimum19-update/README.md) says the easy comparison tied and the harder trial has not run. Available tools could not enforce or measure total agent model-compute budgets; equal agent counts alone do not make a fair comparison. No coordination winner, repaired enforcement, Capital/Pro host-resource incident or scientific policy efficacy is established. Source continued-search statements do not authorize Capital to restart Dots or launch a trial.
