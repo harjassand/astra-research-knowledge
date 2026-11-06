@@ -1,6 +1,6 @@
 # Realization requires more than positivity
 
-These are the [incomplete prefix's unreviewed claims](P1_PROFILE_REALIZATION_20261106_RETURN.txt), without a new Capital proof check. Supplied channels `Φ_j: M_a→M_(b_j)` have explicit rational-complex Choi matrices, and rational signed coefficients obey `Σc_j=1`.
+These are the [complete return's unreviewed claims](P1_PROFILE_REALIZATION_20261106_COMPLETE_RETURN.txt), with the [supplied manuscript](package/maximal_profile_geometry_and_realization.pdf) now archived. Capital performed no new proof check. Supplied channels `Φ_j: M_a→M_(b_j)` have explicit rational-complex Choi matrices, and rational signed coefficients obey `Σc_j=1`.
 
 On the effective output support, set `Ω_j=Φ_j(I_a)` and `T_j(X)=Ω_j^(−1/2)Φ_j(X)Ω_j^(−1/2)`. The generated algebra is `A=C*(⊕_j T_j(M_a))`, with state functionals `τ_j(A)=Tr[Ω_j π_j(A)]/a` and `ell_c=Σc_j τ_j`. These are generally **nontracial**: ordered real and imaginary moments must be preserved.
 
@@ -28,7 +28,7 @@ For the source's `κ=1/4` normalized map and two rational channels `Γ_0, Γ_(3/
 
 Every channel in the open family has the same reference-free maximal profile for every operator-convex generator, while complete profiles differ in an ordered imaginary moment exposed by a reference. This is an example-specific separation, not an assertion that reference-free tests always fail.
 
-As `s→1`, the actual channels approach a pure-output replacer, which exists. Their **formal affine endpoint profile** is the nonphysical object. The source's quadratic-divergence test tends to `1/64`, while the replacer's value is `0`. No historical-priority claim for maximal-divergence discontinuity is made.
+As `s→1`, the actual channels approach a pure-output replacer, which exists. Their **formal affine endpoint profile** is the nonphysical object. The source's displayed quadratic-divergence query tends to `1/64`, while that query's replacer value is `0`. A replacer retains the untouched reference's information, so its complete profile is not generally zero. No historical-priority claim for maximal-divergence discontinuity is made.
 
 Within the fixed supplied affine span, physical profiles are convex and need not be closed; the closure is the positive-functional slice in finite moment/query coordinates, with pointwise convergence for each fixed query, not uniform convergence over all queries. Commutative algebras remove this noncentral-support obstruction. Minimum complex dimension is the sum of active simple-component sizes, using prior N1698 machinery; rational compilation may enlarge output. The example's automatic rational output is dimension 14 while an explicit dimension-two realization exists. No polynomial minimum-rational-dimension guarantee is added.
 
