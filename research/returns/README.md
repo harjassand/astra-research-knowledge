@@ -1,9 +1,10 @@
 # Supplied research returns
 
-**Latest supplied assessments, 7 November Brisbane:** [P2 effective-response information law](2026-11-07-p2-effective-response-stability/README.md) and [P3 full monotone-Fisher complete-order classification](2026-11-07-p3-monotone-channel-orders/README.md) each receive **provisional new consequence 70–80, assuming correctness**. Connected elliptic family/programme frontier75–85 retained; scores not added, no review/missing-source penalty, no90+/95+ or causal policy winner. These are constructed bridges and useful compounding. P3's original ZIP remains held. P1 remains live; next exact same-warm P2/P3 assignments are reported handed once to the dispatcher, with actual web posting/start unconfirmed. Sol closed/held, Dots protected; Capital performs source integration only. Published source assessments do not establish a generated-index rebuild.
+**Latest lifecycle report, 7 November 2026 Brisbane (16:34 UTC on 6 November):** P1 has completed its experimental-learnability turn; P2/P3 are reported continuing their current turns. Their exact new native post/start identifiers were not supplied in this collection. The earlier P2/P3 handoff-pending notice predates this observation. P1's next assignment is not supplied to Capital. The standing three-Pro coordinator/dispatcher authority persists; Capital sends no scientific assignment. Sol remains closed/held, Dots protected, and all source/resource limits remain.
 
 
-**Lifecycle update, 7 November 2026 Brisbane:** Harjas restored standing dispatch authority for the existing three-Pro coordinator/dispatcher loop. Earlier held-phase lifecycle wording below records the state at that assessment. At the latest collection P1 was visibly working and P2/P3 had completed their current turns; next scientific assignments or deliveries are not inferred by Capital. Sol remains closed/held, Dots protected, and all source/resource limits remain. Capital publishes sources and sends no scientific assignment.
+**P2/P3 assessment and handoff record, before the latest P1 collection:** [P2 effective-response information law](2026-11-07-p2-effective-response-stability/README.md) and [P3 full monotone-Fisher complete-order classification](2026-11-07-p3-monotone-channel-orders/README.md) each receive **provisional new consequence 70–80, assuming correctness**. Connected elliptic family/programme frontier75–85 retained; scores not added, no review/missing-source penalty, no90+/95+ or causal policy winner. These are constructed bridges and useful compounding. P3's original ZIP remains held. P1 remains live; next exact same-warm P2/P3 assignments are reported handed once to the dispatcher, with actual web posting/start unconfirmed. Sol closed/held, Dots protected; Capital performs source integration only. Published source assessments do not establish a generated-index rebuild.
+
 
 
 ## Current coordination notice, 6 November2026
@@ -33,6 +34,7 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| P1 experimental learnability | [Optimal achievable accuracy, near-optimal experiments and indistinguishable models; programme-presentation obstruction and executed finite-budget design](2026-11-07-p1-experimental-learnability/README.md) |
 | P2 effective-response stability | [Exact leading logarithmic sensitivity, finite-name operation, intervention obstruction and six-member original package](2026-11-07-p2-effective-response-stability/README.md) |
 | P3 monotone Fisher complete orders | [Full-family RLD/SLD classification, finite witness construction and decidability boundary; ZIP held](2026-11-07-p3-monotone-channel-orders/README.md) |
 | P1 certified model-family inference | [Shared-potential sharp finite-horizon consequences, robust design and implemented cooperative-network operation; original23-member ZIP](2026-11-07-p1-certified-model-family-inference/README.md) |

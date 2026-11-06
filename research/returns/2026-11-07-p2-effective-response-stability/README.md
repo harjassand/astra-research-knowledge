@@ -1,5 +1,8 @@
 # Information stability of effective response
 
+**Latest lifecycle report, 7 November 2026 Brisbane (16:34 UTC on 6 November):** P1 has completed its experimental-learnability turn; P2/P3 are reported continuing their current turns. Their exact new native post/start identifiers were not supplied in this collection. The earlier P2/P3 handoff-pending notice predates this observation. P1's next assignment is not supplied to Capital. The standing three-Pro coordinator/dispatcher authority persists; Capital sends no scientific assignment. Sol remains closed/held, Dots protected, and all source/resource limits remain.
+
+
 The coordinator assigns **provisional 70–80 new consequence, assuming correctness**, to this result and its deductions. The connected elliptic family remains **75–85**. The programme frontier remains **75–85**. Scores are not added; review status or missing-source availability does not reduce correctness-assumed impact. No 90+/95+ consequence or causal policy winner is established.
 
 
@@ -54,4 +57,3 @@ The new bridge carries accepted energy concentration into response stability und
 
 The visible activity explores spectral/network alternatives before geometric interpolation and radial witnesses. The original report says catalogue search supplied no new peer premise. This is useful compounding of retained science rather than repetition of a certificate, while changed warm task/source/effort and the83m37s display do not identify causal policy or model compute. The acquired informative-input problem remains an important continuation limit; another passive-gauge restatement or endpoint refinement alone would not establish a broader predictive operation. No P1 transfer is inferred without compatible model/observation contracts.
 
-**Latest allocation notice, 7 November Brisbane:** the coordinator reports handing the next exact same-warm P2 assignment once to the existing dispatcher. Actual web posting/start is pending confirmation. P1 remains live. This notice is an operational handoff record, not a Capital instruction to dispatch or evidence of scientific progress. Sol remains closed/held, Dots protected, and all source/resource limits persist.
