@@ -17,10 +17,13 @@ Final supplements: the [complete native Sol lead-turn capture](2026-11-06-sol-pi
 
 [P1 mechanical assessment/attribution update](2026-11-06-p1-near-harmonic-compiler/README.md): provisional40–55 additional explicit effectivity/evaluation/resource work, connected natural-well/convergent-prediction family65–75, assuming correctness/no review-status penalty/no score sum. N1226 already has the geometry, readouts, D1852, near-round geodesics and Section9 effective Fourier/tube/projection approach; missing code alone is not a new theorem. N716's prior convergent-bit/latch route uses a different mixed-momentum Hamiltonian. The full mathematical evaluator is separate from executed embedding/certification code, with exact initialization and all costs retained. Automatic allocation to further near-harmonic hardness is released; a same-warm constructive scientific-inference endpoint is reported released, delivery/start pending. Changed endpoint/context/task/effort prevent a causal policy winner; no95+/frontier gain, no forced index rebuild.
 
+The current **no-dispatch hold remains in force**. Preserving completed existing returns and original packages does not authorise another Pro/Sol research turn.
+
 Use these links to read complete source reports and packages directly. Use the [current retrieval interface](../../knowledge/README.md) for normalized cards, reusable units and their exact governing conditions. A source's availability does not confer scientific acceptance.
 
 | Material | Source route |
 |---|---|
+| P2 certified degenerate periodic response | [Existence/uniqueness, valid-input terminating certificate algorithm, effective tensor/macroscopic limit and original package](2026-11-06-p2-certified-degenerate-response/README.md) |
 | P1 capability-first: near-harmonic mechanical compiler | [Full mathematical evaluation algorithm, executed Fourier core, exact prediction obstructions and original package](2026-11-06-p1-near-harmonic-compiler/README.md) |
 | Sol bounded pilot: final preservation | [Full target not achieved; completed lead return, exact prompts, visible records and resource-only interruption](2026-11-06-sol-pilot-final-preservation/README.md) |
 | P3 coherent cloning/transposition compiler | [Complete visible construction, whole-isometry/copy-quality limits and unavailable new ZIP](2026-11-06-p3-coherent-cloning/README.md) |
