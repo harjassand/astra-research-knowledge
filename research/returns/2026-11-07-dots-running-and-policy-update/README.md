@@ -1,5 +1,8 @@
 # Dots: running comparison and reported coordination policy
 
+**Current operational qualification, 7 November Brisbane (04:52 dispatcher receipt):** Dots reported that its research computer failed to start. A later Dots report describes a fresh workspace and preservation of earlier results/several proof packages, while the latest scratch files and final gravitational-wave screen outcome remain unrecovered. Preservation/recovery is producer-reported. There is no reliable recovered final physical conclusion, permanent-loss finding or change to prior scientific grades. The earlier four replies below retain their historical status. Dots remains protected/unmessaged; no repair, retry, replacement, reconstruction or extra attachment collection is authorized by this notice. The three existing Pro turns remain active.
+
+
 **Lifecycle update, 7 November 2026 Brisbane:** Harjas restored standing dispatch authority for the existing three-Pro coordinator/dispatcher loop. Earlier held-phase lifecycle wording below records the state at that assessment. At the latest collection P1 was visibly working and P2/P3 had completed their current turns; next scientific assignments or deliveries are not inferred by Capital. Sol remains closed/held, Dots protected, and all source/resource limits remain. Capital publishes sources and sends no scientific assignment.
 
 
@@ -19,3 +22,5 @@ The running analysis supports no reliable black-hole signal, physical-effect cla
 This publication adds source access and navigation. It does not rebuild generated retrieval or change earlier scientific results. The coordinator assesses these status/diagnostic additions at0–9, with no new astrophysical conclusion; this is not a lower grade for any earlier scientific family.
 
 **Earlier held-phase lifecycle notice (superseded by the 7 November Pro release):** The proposed sharing-versus-independence experiment is still at task/scoring design, **not run**, with no outcome to compare. The six-slot/nested-delegation directive is acknowledged only; child prompts/models/effort/exposure and maximum occupancy remain unobserved. All three Pro chats are now completed/IDLE/HELD, with no next prompt prepared, queued or sent. Dots's separate human-owned instructions do not change the coordinator's team ceiling or permission.
+
+A fresh workspace does not establish that earlier jobs resumed, nor identify a coordination policy as the cause or a success. This is a qualification of outcome availability in the reported research environment, with no new result/grade or Capital proof replay. Original captures and prior science remain unchanged.
