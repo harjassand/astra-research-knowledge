@@ -1,5 +1,8 @@
 # Conditional quantum predictive processes
 
+**Lifecycle update, 7 November 2026 Brisbane:** Harjas restored standing dispatch authority for the existing three-Pro coordinator/dispatcher loop. Earlier held-phase lifecycle wording below records the state at that assessment. At the latest collection P1 was visibly working and P2/P3 had completed their current turns; next scientific assignments or deliveries are not inferred by Capital. Sol remains closed/held, Dots protected, and all source/resource limits remain. Capital publishes sources and sends no scientific assignment.
+
+
 The coordinator assigns **provisional60–70 consequence, assuming correctness**, to the new conditional predictive-process operation and deductions. This credits the stated composition, not invention of compressed Haar simulation or Bayesian amplification. Missing original/activity access is not an impact penalty. Earlier scientific families and the programme **75–85** frontier remain unchanged; scores are not added and no90+/95+ or policy winner is established.
 
 
@@ -31,11 +34,13 @@ The response reports a binary64 phase scheduler and bounded dense diagnostic ver
 
 Compressed Haar simulation, quantum rejection/Bayesian updating, fixed-point amplification, finite-alphabet synthesis and search lower bounds retain established primary credit. No historical priority is established. The response preserves current Astra source conditions and withdraws an exploratory metric claim; no unconstructed complete-order or ordinary-capacity theorem is used. Earlier control, hard-capacity, measurement and cloning scopes remain intact, including the distinction between correlated approximate clones and independent new preparations.
 
-The current human no-dispatch hold remains in force. P3's completed return authorizes no next scientific message. Source publication does not rebuild generated retrieval or resolve earlier original/archive holds.
+**Earlier held-phase lifecycle notice (superseded by the 7 November Pro release):** The current human no-dispatch hold remains in force. P3's completed return authorizes no next scientific message. Source publication does not rebuild generated retrieval or resolve earlier original/archive holds.
 
 
 ## Supplied method assessment and current status
 
 The scientist selected an external constructive opening and changed destination from cloning, without a compulsory cloning extension or peer solution. The response reports considering current Astra successors; the uncaptured expanded activity prevents independent confirmation of source order, retrieval breadth, collaboration or effort. Warm context/Personal Context, changed question/source and unknown compute confound policy comparisons. The preceding prompt's cloning/IID/inverse warnings may have favoured a compatible model-simulator contract; that effect is unestablished. Grinko–Yoshida supplies the compressed representation/backend, Wiebe–Granade supplies established Bayesian updating/search limitations, and fixed-point phases/synthesis/OR lower bounds retain their primary credit.
 
-P3 is **completed / IDLE / HELD** for human discussion. No next assignment, queued prompt or recovery is authorized. The ZIP transfer and missing activity remain exactly as recorded above; neither is a scientific rejection or impact penalty.
+**Earlier held-phase lifecycle notice (superseded by the 7 November Pro release):** P3 is **completed / IDLE / HELD** for human discussion. No next assignment, queued prompt or recovery is authorized. The ZIP transfer and missing activity remain exactly as recorded above; neither is a scientific rejection or impact penalty.
+
+[Later completed monotone-Fisher complete-order classification; the new response/activity are available while its original ZIP remains held.](../2026-11-07-p3-monotone-channel-orders/README.md)

@@ -1,5 +1,8 @@
 # Certified inference over compatible scientific models
 
+**Lifecycle update, 7 November 2026 Brisbane:** Harjas restored standing dispatch authority for the existing three-Pro coordinator/dispatcher loop. Earlier held-phase lifecycle wording below records the state at that assessment. At the latest collection P1 was visibly working and P2/P3 had completed their current turns; next scientific assignments or deliveries are not inferred by Capital. Sol remains closed/held, Dots protected, and all source/resource limits remain. Capital publishes sources and sends no scientific assignment.
+
+
 The coordinator assigns **provisional65–75 consequence, assuming correctness**, to this complete model-family inference operation/composition and its deductions. Imported interpolation, envelopes and positive-system methods retain their earlier credit. Scores are not added to predecessor grades; source review status and unavailable attachments incur no correctness-assumed impact penalty. The programme frontier remains **75–85**, with no90+/95+ consequence or policy winner established.
 
 
@@ -42,7 +45,7 @@ All model/data acquisition, expanded mesh/constraint output, rational/algebraic 
 
 N1039 supplies the compatible scalar envelopes and analytic-slack qualifications. N1656 supplies a conditional known-tree/known-flow operational precedent: these looped dynamics with direct law data do not solve its unknown-loop boundary inverse problem. THG interpolation, real-algebraic algorithms, monotone comparison, positive-system contraction and logarithmic-norm validation retain primary credit. N1226 already supplied both the natural-well geometric architecture and its stated effective Fourier/tube/projection construction approach; N716 retains its distinct mixed position-momentum simulator/latch scope. [Earlier mechanical compiler and assessment](../2026-11-06-p1-near-harmonic-compiler/README.md) and all SAT predecessors remain unchanged, with unrestricted SAT unresolved and its automatic allocation ended.
 
-The current human no-dispatch hold remains in force. This completed return supplies no new assignment. Sources are published here; generated retrieval was not rebuilt under the existing resource limit.
+**Earlier held-phase lifecycle notice (superseded by the 7 November Pro release):** The current human no-dispatch hold remains in force. This completed return supplies no new assignment. Sources are published here; generated retrieval was not rebuilt under the existing resource limit.
 
 ## All original package members
 
@@ -75,4 +78,4 @@ The current human no-dispatch hold remains in force. This completed return suppl
 
 The positive-endpoint treatment produced a constructive inference operation, while changing the scientific question and access contract from near-harmonic asymptotic hardness to finite-horizon supplied-curvature inference and computed contraction. It does not contradict the earlier hardness. Warm context/Personal Context, changed task/premises and unknown effort confound a causal claim about positive-only wording; displayed61m50s is not compute. P3 independently selected an inference operation too, so this is no demonstrated positive-only policy winner. Source reuse includes THG and N1039; the cited Zenodo item formalizes established interpolation and does not verify this composition or establish a venue-first benefit.
 
-P1 is **completed / IDLE / HELD** for human discussion. No next prompt is prepared, queued or sent, and no automatic recovery or replacement is authorized. The supplied assessment is an update to the existing intake, not another research result or source-acquisition request.
+**Earlier held-phase lifecycle notice (superseded by the 7 November Pro release):** P1 is **completed / IDLE / HELD** for human discussion. No next prompt is prepared, queued or sent, and no automatic recovery or replacement is authorized. The supplied assessment is an update to the existing intake, not another research result or source-acquisition request.
