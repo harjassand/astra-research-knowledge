@@ -1,0 +1,13 @@
+# Positive source rate still does not give a uniform good-block cutoff
+
+The completed lead note extends the [r1 coherent expander-source construction](../2026-11-06-sol-expander-environment-history/README.md). It closes the proposed positive-bulk-rate restriction of one source-forgetting route. The common ordinary-capacity problem remains **UNRESOLVED**.
+
+Read the [full exact argument](original/POSITIVE_RATE_SOURCE_CONTROL.md) and [source receipt](SOURCES.json). No additional fixture or worker was used, and Capital performed no scientific execution or new audit.
+
+The single fixed rational physical channel is `id₂ ⊗ (full-erasure₈)^⊗4`, with input dimension8192 and output dimension2. Its ordinary capacity is exactly one bit: the transmitting qubit is a counted physical input/output, and better inputs expose that rate in one use. It is not a free identity wire added to a hard zero-capacity promise.
+
+For four independent stationary r1 sources on the erased inputs and maximally mixed qubit inputs, the exact n-call coherent information is `n−4S(σ_D^(n))`. For every fixed finite D, the source entropy is bounded by `2log₂D`, so each actual source's asymptotic coherent-information rate is **+1**.
+
+Nevertheless, for any selected horizon N an effective finite odd D satisfying `D²≥(256/3)(5/4)^N` gives **negative coherent information at every initial block `1≤n≤N`**, bounded above by `[1−4log₂(5/4)]n<−0.287712n`. The proof uses the true complementary environment, expander contraction and two-boundary purity, with every wire and call counted. Across horizons D changes; one fixed source is not claimed to retain linear excess forever.
+
+Thus channel dimensions, a known positive source-rate margin and this dimension-independent retained-memory contraction do not supply a uniform environment-excess envelope or good-block cutoff **for the declared source family**. This is not a channel detection-delay theorem, ordinary-capacity noncomputability, or an obstruction to evaluators choosing other inputs. Its physical channel already has a simple one-use optimum. No causal ensemble advantage, historical priority or new impact score is assigned.

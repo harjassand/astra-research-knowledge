@@ -34,3 +34,5 @@ P1 reports no new peer result received or messages/transfer sent in this continu
 The coordinator records no deliberate peer transfer to P1; interrupted earlier effort, public retrieval and Personal Context confound attribution. A clarification retaining **SAT decision and one witness, rather than exact counting**, is released for one same-chat full-resolution continuation. Posting/start is not confirmed in this notice, and no preferred scientific repair is supplied. Capital sends no prompt or object.
 
 The ZIP was retained from the coordinator's confirmed durable original after a single timed-out browser event with a file present. Capital did not access Downloads or delete files. All existing holds and unavailable-source boundaries remain. Capital ran no checker, contractor, determinant computation, scientific replay or corpus build. The original note/fixtures/results are preserved byte-for-byte; available activity does not establish total compute.
+
+Later completed source: [Decision-and-witness field continuation: conditional search, exact fixed-probe failures and unresolved unrestricted SAT](../2026-11-06-p1-sat-decision-field/README.md).
