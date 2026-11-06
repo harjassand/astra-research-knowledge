@@ -1,5 +1,8 @@
 # Finite equilibrium-response maps and calibration limits
 
+**Current lifecycle receipts, 7 November Brisbane:** all three same-warm successors are posted once with task-specific starts confirmed by dispatcher reports: P1dbbce65d, P28064a4de and P3f31bb645. Their preceding completed results remain separate; earlier live and pending handoff observations are historical. Starts establish no new scientific result or policy efficacy. The coordinator/dispatcher owns scientific work; Capital sends no prompt. Sol remains closed/held, Dots protected, N1683's payload hold and all source/resource limits remain.
+
+
 The coordinator assigns **provisional NEW contribution70–80, assuming correctness**. The effective-law cumulative family/programme frontier remains **75–85**; scores are ordinal and nonadditive. The upper80 edge is provisional and does not assert an exceptional general platform. No review/missing-source penalty,90+/95+ consequence or optimal coordination/source-order winner is inferred.
 
 
@@ -58,6 +61,4 @@ Classical pressure/variational methods and [Fawzi–Fawzi–Scalet's certified e
 
 The scientist changed destination from channel geometry to equilibrium statistical mechanics while retaining quantum spins. The controlled-exception contract is a complete question there, with substantive supplied inputs and costs. Activity develops noncommuting pressure, finite precision, whole-cell coverage and a physical calibration lower family. Warm task/source/Personal Context/unknown effort and82m26s displayed duration establish no causal autonomy/source-order or compute claim.
 
-
-**Latest lifecycle reconciliation, 7 November Brisbane:** P1's9e64221f turn has a complete collected return, superseding its earlier live observation. The coordinator reports next same-warm P2/P3 assignments handed once to the dispatcher, with browser POST/START still unconfirmed. P1's next assignment is not supplied to Capital. The standing three-Pro loop persists; these notices authorize no Capital scientific prompt. Sol remains closed/held, Dots protected and all source/resource limits remain.
 

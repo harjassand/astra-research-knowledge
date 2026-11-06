@@ -1,6 +1,7 @@
 # What finite experiments can determine
 
-**Latest lifecycle reconciliation, 7 November Brisbane:** P1's9e64221f turn has a complete collected return, superseding its earlier live observation. The coordinator reports next same-warm P2/P3 assignments handed once to the dispatcher, with browser POST/START still unconfirmed. P1's next assignment is not supplied to Capital. The standing three-Pro loop persists; these notices authorize no Capital scientific prompt. Sol remains closed/held, Dots protected and all source/resource limits remain.
+**Current lifecycle receipts, 7 November Brisbane:** all three same-warm successors are posted once with task-specific starts confirmed by dispatcher reports: P1dbbce65d, P28064a4de and P3f31bb645. Their preceding completed results remain separate; earlier live and pending handoff observations are historical. Starts establish no new scientific result or policy efficacy. The coordinator/dispatcher owns scientific work; Capital sends no prompt. Sol remains closed/held, Dots protected, N1683's payload hold and all source/resource limits remain.
+
 
 
 The coordinator assigns **provisional new consequence65–75, assuming correctness**, to this experimental-learnability operation and its scoped deductions. Prior whole families and the programme **75–85** frontier remain; scores are not added. Review status or unavailable source access incurs no correctness-assumed impact penalty. No90+/95+ consequence or causal coordination-policy winner is established.

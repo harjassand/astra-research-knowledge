@@ -1,5 +1,11 @@
 # Certified causal reuse before complete identification
 
+The coordinator assigns **NEW achieved consequence65–75, assuming correctness**. This is a constructed whole reuse operation, not a numeric regression or an exceptional general platform. Prior families/programme frontier **75–85** remain; scores are ordinal/nonadditive, no review/source penalty or90+/95+ or optimal-policy claim.
+
+
+**Current lifecycle receipts, 7 November Brisbane:** all three same-warm successors are posted once with task-specific starts confirmed by dispatcher reports: P1dbbce65d, P28064a4de and P3f31bb645. Their preceding completed results remain separate; earlier live and pending handoff observations are historical. Starts establish no new scientific result or policy efficacy. The coordinator/dispatcher owns scientific work; Capital sends no prompt. Sol remains closed/held, Dots protected, N1683's payload hold and all source/resource limits remain.
+
+
 P1's completed return acquires a finite causal port-memory model of an incompletely known strongly dissipative linear medium. One retained representation supports a declared family of later nonlinear loads, added dynamic components, inputs and component compositions, with deterministic source-ambiguity and numerical-error certificates. The source assumptions and access interface are substantive.
 
 [Complete response, actual prompt and expanded activity](P1_CERTIFIED_REUSE_20261107_RETURN.txt) · [Original ZIP](original/Certified_reuse_before_identification_2026-11-07.zip) · [Full proof and costs](package/RESULT.txt) · [Source identities](SOURCES.json).
@@ -51,4 +57,12 @@ A compatible pair of distinct cyclic sources survives the main acquisition. A st
 
 Mori–Zwanzig elimination/memory, passivity and conventional model reduction retain primary credit. N997 sections9–10 already supply checked software accuracy/cost acquisition and later-task transfer, including the full-span retaining tie. N1018 sections5–7 and9 already supply guarded local Jacobian actions, unguarded-transfer limits and task-output versus reusable-memory distinctions; these do not establish the new global stationary linear premise. THG, N1039, real-algebraic/optimal-recovery methods, N1226's geometry/effective route, N716 and all SAT/mechanics predecessors remain credited. The N1683 proof/code/data no-export hold was preserved; its payload was not acquired or adopted.
 
-Collected7November2026Brisbane. The complete17-member ZIP includes the unchanged experimental-learnability predecessor. No new coordinator grade is inferred here. No physical acquisition, unrestricted scientific reuse, historical priority, general efficient discovery engine or civilisation-scale achievement is established. All earlier limitations remain. Generated retrieval was not rebuilt under the resource limit.
+Collected7November2026Brisbane. The complete17-member ZIP includes the unchanged experimental-learnability predecessor. The supplied coordinator assessment is recorded above. No physical acquisition, unrestricted scientific reuse, historical priority, general efficient discovery engine or civilisation-scale achievement is established. All earlier limitations remain. Generated retrieval was not rebuilt under the resource limit.
+
+## Supplied contribution and method assessment
+
+The all-horizon memory certificate covers later monotone loads, added damped states and modular composition, with retained THG product-family deductions at full cost. Its online state count can be independent of n at fixed source bounds/ports/error; full-vector acquisition work, traffic, audit history and bit lengths remain n-dependent, and conditioning can worsen with system size. The192-state/33-call/three-task example demonstrates this declared interface. General equilibrium, Euler and CAD algorithms remain mathematical/costed rather than executed general software. Neither a port-only measurement theorem nor acquisition of the global physical law is earned by those examples.
+
+Classical memory/series/Krylov/passivity reduction is credited, including Besselink's nonlinear/passivity reduction programme, [rational Krylov matrix-function methods](https://arxiv.org/abs/1908.02032), and [SOPRBT prior software](https://zenodo.org/records/4519721) with its matrix-equation/dependency requirements. N997 sections9–10 and N1018 sections5–7 were actually read and used; their established accuracy/cost and guarded-local-transfer operations retain credit. The exact n-action obstruction has no supplied coefficient-height prior: known finite rational alphabets can use high-precision packing, with full bit costs. No universal bit lower bound is inferred.
+
+The next scientific turn examines an accessible-port acquisition interface, initialization, actuation, noise/precision and later nonlinear couplings. Its confirmed start is not an achieved physical interface or extension of this result. Source/task/warm-context/unknown-effort confounds remain; publication and demonstrations establish no optimal coordination or reduction policy. The N1683 proof/code/data payload remains unacquired under its hold.
