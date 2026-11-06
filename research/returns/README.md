@@ -19,6 +19,7 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| P1 capability-first: near-harmonic mechanical compiler | [Full mathematical evaluation algorithm, executed Fourier core, exact prediction obstructions and original package](2026-11-06-p1-near-harmonic-compiler/README.md) |
 | Sol bounded pilot: final preservation | [Full target not achieved; completed lead return, exact prompts, visible records and resource-only interruption](2026-11-06-sol-pilot-final-preservation/README.md) |
 | P3 coherent cloning/transposition compiler | [Complete visible construction, whole-isometry/copy-quality limits and unavailable new ZIP](2026-11-06-p3-coherent-cloning/README.md) |
 | P2 sharp degenerate elliptic regularity | [Finite-energy scalar div–curl theorem, exact logarithmic threshold, endpoint families and complete original](2026-11-06-p2-sharp-degenerate-elliptic/README.md) |
