@@ -1,6 +1,7 @@
 # Acquired interfaces for genuinely new passive interventions
 
-**Latest lifecycle, 7 November Brisbane:** P3's operational thermal-state return is completed and assessed. Its2912-character same-warm programme prompt was handed ONCE to the existing dispatcher; actual POST/START remains pending in the supplied receipt. The prepared one-role treatment gives the scientist endpoint/continuation ownership, while the coordinator retains full assessment and justified stop/reallocation; no scientific outcome or across-return effect is established. P1/P2's25f1c5fa/3fb4f347 work is undisturbed as reported. Earlier missing-next-assignment/all-three-started snapshots are historical. Expanded activity/native access remains separate from Dots' reported workspace recovery. Capital sends no prompt/recovery attempt; Sol closed/held, Dots protected and all source/resource limits remain.
+**Latest lifecycle receipts, 7 November Brisbane:** all three same-warm successors are POSTED ONCE/START CONFIRMED by dispatcher reports: P125f1c5fa, P23fb4f347 and P34fbb961e. P3's exact2912-character programme body matched with its terminal newline restored. Its visible start accepts persistent endpoint ownership and examines governing results; no final scientific question was supplied at that start. This is a started one-role treatment, not a scientific outcome or established across-return effect; one-turn closure would leave that contrast untested. Earlier pending snapshots are historical. P1/P2 work remains undisturbed, Capital sends no prompt/recovery attempt, Sol closed/held, Dots protected and all source/resource limits remain. Expanded activity/native access remains separate from Dots' reported workspace recovery.
+
 
 
 
