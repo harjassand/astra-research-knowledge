@@ -1,9 +1,13 @@
 # Supplied research returns
 
-**Dots operational outcome qualification, 7 November Brisbane:** [current provenance](2026-11-07-dots-running-and-policy-update/README.md) records a reported research-computer failed start, followed by a reported fresh workspace/earlier-package preservation. Latest scratch and the final gravitational-wave screen outcome remain unrecovered; no reliable recovered final physical conclusion, permanent-loss finding or lower verdict on prior science follows. Dots stays protected/unmessaged and the three Pro turns remain active. No new result, grade, repair, attachment acquisition or index build.
+**Latest lifecycle, 7 November Brisbane:** P1/P2 completed these port-experiment and compositional-transfer returns. Their same-warm successors were handed once to the existing dispatcher; actual POST/START remains pending in the supplied receipt. P3's f31bb645 turn has also completed; its new collective-thermodynamics return is a separate intake. No new P3 assignment is supplied here. Only opening explanations were staged; expanded activity remains in predecessor chats after native Mac unlock failed. Capital sends no scientific prompt or unlock/recollection attempt. Sol closed/held, Dots protected and all source/resource limits remain.
+
+**New supplied assessments, correctness assumed:** P1 finite port-experiment reuse70–80; P2 compositional intervention transfer65–75. Earlier science and cumulative family/programme frontier75–85 remain. Ordinal/nonadditive, no activity-availability penalty,90+/95+ or exceptional general platform.
 
 
-**Current lifecycle receipts, 7 November Brisbane:** all three same-warm successors are posted once with task-specific starts confirmed by dispatcher reports: P1dbbce65d, P28064a4de and P3f31bb645. Their preceding completed results remain separate; earlier live and pending handoff observations are historical. Starts establish no new scientific result or policy efficacy. The coordinator/dispatcher owns scientific work; Capital sends no prompt. Sol remains closed/held, Dots protected, N1683's payload hold and all source/resource limits remain.
+
+**Dots operational outcome qualification, 7 November Brisbane:** [current provenance](2026-11-07-dots-running-and-policy-update/README.md) records a reported research-computer failed start, followed by a reported fresh workspace/earlier-package preservation. Latest scratch and the final gravitational-wave screen outcome remain unrecovered; no reliable recovered final physical conclusion, permanent-loss finding or lower verdict on prior science follows. Dots stays protected/unmessaged; the three-Pro active status was the observation at that operational review. No new result, grade, repair, attachment acquisition or index build.
+
 
 **Supplied P1 assessment:** [certified causal reuse](2026-11-07-p1-certified-reuse/README.md) has NEW achieved consequence65–75, correctness assumed; constructed whole operation at its full-vector/refinable/dissipative/fixed-port/zero-state contract. Programme frontier75–85 remains, ordinal/nonadditive/no90+ or exceptional-platform/policy claim. Earlier primary model-reduction and N997/N1018 operations retain credit.
 
@@ -46,6 +50,8 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| P1 finite port experiments to reuse | [Paid finite I/O histories, certified causal models, nonlinear/network reuse and scoped structural limits; complete27-member ZIP](2026-11-07-p1-certified-port-experiment-reuse/README.md) |
+| P2 compositional intervention transfer | [Acquired complete static interfaces, exact contextual metric, assembly-stable relative uncertainty and new passive design; complete16-member ZIP](2026-11-07-p2-compositional-intervention-transfer/README.md) |
 | P1 certified causal reuse | [Acquired fixed-port memory, simultaneous later monotone interventions and exact-information boundary; complete17-member original ZIP](2026-11-07-p1-certified-reuse/README.md) |
 | P2 intervention response | [Reusable tensor predictor, paid-record polynomial global design and cross-actuator obstruction; complete19-member ZIP](2026-11-07-p2-intervention-response/README.md) |
 | P3 equilibrium response | [Whole-cell/all-TI-phase prediction, controlled refusal volume and sharp calibration law; complete response/activity, bundle held](2026-11-07-p3-equilibrium-response/README.md) |

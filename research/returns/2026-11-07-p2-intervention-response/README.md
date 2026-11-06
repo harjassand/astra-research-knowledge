@@ -1,6 +1,8 @@
 # Finite information for intervention response and global design
 
-**Current lifecycle receipts, 7 November Brisbane:** all three same-warm successors are posted once with task-specific starts confirmed by dispatcher reports: P1dbbce65d, P28064a4de and P3f31bb645. Their preceding completed results remain separate; earlier live and pending handoff observations are historical. Starts establish no new scientific result or policy efficacy. The coordinator/dispatcher owns scientific work; Capital sends no prompt. Sol remains closed/held, Dots protected, N1683's payload hold and all source/resource limits remain.
+**Latest lifecycle, 7 November Brisbane:** P1/P2 completed these port-experiment and compositional-transfer returns. Their same-warm successors were handed once to the existing dispatcher; actual POST/START remains pending in the supplied receipt. P3's f31bb645 turn has also completed; its new collective-thermodynamics return is a separate intake. No new P3 assignment is supplied here. Only opening explanations were staged; expanded activity remains in predecessor chats after native Mac unlock failed. Capital sends no scientific prompt or unlock/recollection attempt. Sol closed/held, Dots protected and all source/resource limits remain.
+
+
 
 
 The coordinator assigns **provisional NEW contribution70–80, assuming correctness**. The effective-law cumulative family/programme frontier remains **75–85**; scores are ordinal and nonadditive. The upper80 edge is provisional and does not assert an exceptional general platform. No review/missing-source penalty,90+/95+ consequence or optimal coordination/source-order winner is inferred.
@@ -67,3 +69,5 @@ N1150–N1152 already supply acquired response laws, global value-only task cert
 Visible activity develops conditional-gradient design before the stronger ellipsoid accuracy-digit bound and controls actuator precision. This is productive compounding under sustained question ownership, while warm task/source/Personal Context/unknown effort and74m13s displayed duration establish no compute attribution or causal policy winner. The declared affine relative class is material; it is not arbitrary-change prediction. Generic physical calibration and a uniformly cheap continuum reader remain unearned, and the exact alpha=tau upper sensitivity endpoint remains open.
 
 
+
+Later completed source: [complete-interface compositional transfer to new passive assemblies](../2026-11-07-p2-compositional-intervention-transfer/README.md). Source/structural/channel and cost contracts differ explicitly; preceding results and all holds remain.

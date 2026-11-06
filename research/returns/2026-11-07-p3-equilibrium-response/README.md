@@ -1,6 +1,8 @@
 # Finite equilibrium-response maps and calibration limits
 
-**Current lifecycle receipts, 7 November Brisbane:** all three same-warm successors are posted once with task-specific starts confirmed by dispatcher reports: P1dbbce65d, P28064a4de and P3f31bb645. Their preceding completed results remain separate; earlier live and pending handoff observations are historical. Starts establish no new scientific result or policy efficacy. The coordinator/dispatcher owns scientific work; Capital sends no prompt. Sol remains closed/held, Dots protected, N1683's payload hold and all source/resource limits remain.
+**Latest lifecycle, 7 November Brisbane:** P1/P2 completed these port-experiment and compositional-transfer returns. Their same-warm successors were handed once to the existing dispatcher; actual POST/START remains pending in the supplied receipt. P3's f31bb645 turn has also completed; its new collective-thermodynamics return is a separate intake. No new P3 assignment is supplied here. Only opening explanations were staged; expanded activity remains in predecessor chats after native Mac unlock failed. Capital sends no scientific prompt or unlock/recollection attempt. Sol closed/held, Dots protected and all source/resource limits remain.
+
+
 
 
 The coordinator assigns **provisional NEW contribution70–80, assuming correctness**. The effective-law cumulative family/programme frontier remains **75–85**; scores are ordinal and nonadditive. The upper80 edge is provisional and does not assert an exceptional general platform. No review/missing-source penalty,90+/95+ consequence or optimal coordination/source-order winner is inferred.

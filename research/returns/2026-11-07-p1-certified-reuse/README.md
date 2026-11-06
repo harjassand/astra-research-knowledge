@@ -1,9 +1,11 @@
 # Certified causal reuse before complete identification
 
+**Latest lifecycle, 7 November Brisbane:** P1/P2 completed these port-experiment and compositional-transfer returns. Their same-warm successors were handed once to the existing dispatcher; actual POST/START remains pending in the supplied receipt. P3's f31bb645 turn has also completed; its new collective-thermodynamics return is a separate intake. No new P3 assignment is supplied here. Only opening explanations were staged; expanded activity remains in predecessor chats after native Mac unlock failed. Capital sends no scientific prompt or unlock/recollection attempt. Sol closed/held, Dots protected and all source/resource limits remain.
+
+
+
 The coordinator assigns **NEW achieved consequence65–75, assuming correctness**. This is a constructed whole reuse operation, not a numeric regression or an exceptional general platform. Prior families/programme frontier **75–85** remain; scores are ordinal/nonadditive, no review/source penalty or90+/95+ or optimal-policy claim.
 
-
-**Current lifecycle receipts, 7 November Brisbane:** all three same-warm successors are posted once with task-specific starts confirmed by dispatcher reports: P1dbbce65d, P28064a4de and P3f31bb645. Their preceding completed results remain separate; earlier live and pending handoff observations are historical. Starts establish no new scientific result or policy efficacy. The coordinator/dispatcher owns scientific work; Capital sends no prompt. Sol remains closed/held, Dots protected, N1683's payload hold and all source/resource limits remain.
 
 
 P1's completed return acquires a finite causal port-memory model of an incompletely known strongly dissipative linear medium. One retained representation supports a declared family of later nonlinear loads, added dynamic components, inputs and component compositions, with deterministic source-ambiguity and numerical-error certificates. The source assumptions and access interface are substantive.
@@ -66,3 +68,5 @@ The all-horizon memory certificate covers later monotone loads, added damped sta
 Classical memory/series/Krylov/passivity reduction is credited, including Besselink's nonlinear/passivity reduction programme, [rational Krylov matrix-function methods](https://arxiv.org/abs/1908.02032), and [SOPRBT prior software](https://zenodo.org/records/4519721) with its matrix-equation/dependency requirements. N997 sections9–10 and N1018 sections5–7 were actually read and used; their established accuracy/cost and guarded-local-transfer operations retain credit. The exact n-action obstruction has no supplied coefficient-height prior: known finite rational alphabets can use high-precision packing, with full bit costs. No universal bit lower bound is inferred.
 
 The next scientific turn examines an accessible-port acquisition interface, initialization, actuation, noise/precision and later nonlinear couplings. Its confirmed start is not an achieved physical interface or extension of this result. Source/task/warm-context/unknown-effort confounds remain; publication and demonstrations establish no optimal coordination or reduction policy. The N1683 proof/code/data payload remains unacquired under its hold.
+
+Later completed source: [finite port-experiment acquisition to reuse](../2026-11-07-p1-certified-port-experiment-reuse/README.md). Source/structural/channel and cost contracts differ explicitly; preceding results and all holds remain.
