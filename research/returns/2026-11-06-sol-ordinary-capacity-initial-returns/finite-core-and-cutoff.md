@@ -1,5 +1,8 @@
 # Supplied finite core and the missing effective cutoff
 
+**Attribution correction:** N1687 already supplies the total evaluator/dimension-only cutoff equivalence. The overlapping initial reductions here are **rediscoveries/implementations, not a new pilot theorem**. The frozen brief named N1680 and omitted stronger N1687/N1690 successors; original reports/prompts remain historical. See [governing predecessors and exact remaining conditions](prior-results-and-attribution.md). The ordinary-capacity question remains unresolved.
+
+
 This guide maps the overlapping [four original reports](README.md). It does not add a scientific reproof. All use ordinary unassisted capacity with the normalised promised-valid Choi convention and explicitly varying dimensions; no shared helper, free wire, postselection or runtime promise is supplied.
 
 Let `q_n(N)=max_ρ I_c(ρ,N^⊗n)/n` and `F_m=max_(1≤n≤m)q_n`. Pure inputs ensure nonnegative maxima; superadditivity yields `Q=sup_n q_n=lim_m F_m`. Individual`q_n` need not increase; a running maximum, or the dyadic-block variant in r1, is used where monotonicity is needed.

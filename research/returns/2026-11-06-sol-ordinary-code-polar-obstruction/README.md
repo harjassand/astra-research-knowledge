@@ -1,5 +1,8 @@
 # r4 final own-depth turn: ordinary-code positive polars fail tensor closure
 
+**Prior-result attribution:** N1687 already refutes underlying ordinary fidelity tensorization using a half-erasure example. This packet independently refines that failure through an explicit interval theorem and rational Choi/positive-polar witness; it is **not its first discovery**. See [complete predecessor attribution and source conditions](../2026-11-06-sol-ordinary-capacity-initial-returns/prior-results-and-attribution.md).
+
+
 The completed reference continuation constructs a rational positive-polar witness for the **actual ordinary CPTP encoder/decoder sets**. It prevents importing tensor-polar closure into the tested convex-set AEP route. The full ordinary-capacity question remains **UNRESOLVED**; no peer outputs were intentionally supplied to this own-depth reference, and its two authorised turns are exhausted.
 
 Read the [complete proof](original/CONTINUATION.txt), [supplied exact checker](original/erasure_polar_counterexample.py), [recorded results](original/POLAR_RESULTS.json), [sparse witness](original/POLAR_WITNESS.json) and [source receipt](SOURCES.json). The [initial return](../2026-11-06-sol-ordinary-capacity-initial-returns/README.md) remains intact.

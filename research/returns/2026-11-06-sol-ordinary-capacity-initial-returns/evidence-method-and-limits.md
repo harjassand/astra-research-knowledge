@@ -1,5 +1,8 @@
 # Executed evidence, failed inference bridges and pilot interpretation
 
+**Attribution correction:** N1687 already supplies the total evaluator/dimension-only cutoff equivalence. The overlapping initial reductions here are **rediscoveries/implementations, not a new pilot theorem**. The frozen brief named N1680 and omitted stronger N1687/N1690 successors; original reports/prompts remain historical. See [governing predecessors and exact remaining conditions](prior-results-and-attribution.md). The ordinary-capacity question remains unresolved.
+
+
 The [original reports and records](README.md) distinguish finite implemented operations from the unresolved outer evaluator. Capital preserved the files and ran none of their code; the checks below are producer-reported, not a new root/Capital audit.
 
 | Role | Actually reported finite work | Explicit execution limit |
