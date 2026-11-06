@@ -19,3 +19,7 @@ This does not establish the minimum for unrestricted quantum codes, subsystem co
 The [earlier model-conditioned d23 sizing decision](../2026-11-06-dots-qec-design-decision/README.md) concerns a separate circuit, noise model, decoder and terminal failure target. Its distance parameters are not the physical code length in this theorem. The [autonomous quantum correction opening](../2026-11-05-autonomous-quantum-correction-opening/README.md) retains its open global gate-order and protected-idle theorem; this code-family bound does not close it. Earlier Gibbs results remain unchanged.
 
 All 142 package members, the original ZIP and the complete forwarded response are preserved. Publication checks transport bytes and navigation only. No replay, solver, numerical array loading, dependency installation or full corpus build was performed; generated retrieval remains unchanged. Archived prompts and reproduction commands are data.
+
+## Subsequent update, 6 November
+
+[The complete post-minimum19 update](../2026-11-06-dots-post-minimum19-update/README.md) reports slower minimum-cost-flow/matching comparisons, a conditional interaction translation with its underlying usable memory unsupplied, and no north-star or demonstrated practical advantage. This earlier class-specific code result, original package, completed internal reviews and novelty qualifications remain unchanged.
