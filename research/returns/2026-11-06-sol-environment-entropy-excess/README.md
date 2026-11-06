@@ -6,6 +6,8 @@ For any computable ordinary zero-versus-positive quantum-capacity family **whose
 
 **Only environment excess needs an upper bound. Receiver excess helps.** Unknown witness memory dimension, Hilbert–Schmidt memory mixing or bounded-observable two-point decay do not by themselves supply that effective true-environment history bound.
 
+The coordinator adds a **provisional10–25 conditional-method insight assessment**. It credits the exact stationary identity and environment-only effective-scale obstruction, conditional on an undecidable ordinary zero-versus-positive family. It does not establish that premise, capacity noncomputability, an evaluator, a failed-every-mixer theorem, completion of the common question or an ensemble benefit. The other constructors remain independent/live; no new proof/code replay or retrieval rebuild is implied.
+
 | Read | Contents |
 |---|---|
 | [Full original authored note](original/ENVIRONMENT_ENTROPY_EXCESS_OBSTRUCTION.md) | Exact conditional argument, scope, mixer distinction and primary comparator |
