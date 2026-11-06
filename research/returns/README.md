@@ -25,6 +25,9 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| P1 certified model-family inference | [Shared-potential sharp finite-horizon consequences, robust design and implemented cooperative-network operation; original23-member ZIP](2026-11-07-p1-certified-model-family-inference/README.md) |
+| P3 conditional quantum predictive process | [Joint Haar-prior inference, unknown-evidence execution and worst-case conditioning cost; full response, ZIP held](2026-11-07-p3-bayesian-process/README.md) |
+| Dots current running/policy update | [Four visible replies: comparison still running, no reliable new conclusion, reported coordination plan and acknowledgement](2026-11-07-dots-running-and-policy-update/README.md) |
 | P2 certified degenerate periodic response | [Existence/uniqueness, valid-input terminating certificate algorithm, effective tensor/macroscopic limit and original package](2026-11-06-p2-certified-degenerate-response/README.md) |
 | P1 capability-first: near-harmonic mechanical compiler | [Full mathematical evaluation algorithm, executed Fourier core, exact prediction obstructions and original package](2026-11-06-p1-near-harmonic-compiler/README.md) |
 | Sol bounded pilot: final preservation | [Full target not achieved; completed lead return, exact prompts, visible records and resource-only interruption](2026-11-06-sol-pilot-final-preservation/README.md) |
