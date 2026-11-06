@@ -1,11 +1,12 @@
 # Certified collective order from acquired port models
 
-**Latest lifecycle, 7 November Brisbane (21:17 UTC collection on 6 November):** P1's caa51c7e collective-order turn has completed; its next assignment is not supplied to Capital at this snapshot. P2/P3's latest supplied once-only starts remain3fb4f347/9dbe116b, with no new return in this intake. Earlier all-three-started observations are historical. Expanded activity remains unstaged in predecessor chats after native Mac unlock failed. Capital sends no scientific prompt or unlock/recollection attempt. Dots' reported workspace recovery is a separate operational receipt; Sol closed/held, Dots protected and all source/resource limits remain.
+**Latest lifecycle, 7 November Brisbane:** P1's collective-order return is completed and assessed. Its same-warm3497-character successor was handed ONCE to the existing dispatcher; actual POST/START remains pending in the supplied receipt. P2/P3's3fb4f347/9dbe116b work is undisturbed as the coordinator reports. Earlier “next assignment not supplied” and all-three-started snapshots are historical. Starts/assignments are not achieved results or policy efficacy. Expanded activity remains unstaged after native Mac unlock failed; no Capital recovery/prompt. Dots' reported workspace recovery is separate from native access. Sol closed/held, Dots protected and all source/resource limits remain.
+
 
 
 P1 uses its acquired component models to compute globally ordered states and design prescribed signed amplitudes in later reciprocal cubic networks. The result allows heterogeneous components and infinite hidden dimension under the retained source contract. The finite execution makes zero new source observations.
 
-No new coordinator assessment is supplied at this preparation; no grade is inferred. Earlier accepted results and the last supplied programme frontier75–85 retain their scope. Missing activity supplies no correctness-assumed impact penalty.
+The coordinator assigns **NEW achieved consequence70–80, assuming correctness**. Earlier accepted results and the programme frontier **75–85** remain unchanged. Scores are ordinal/nonadditive, with no review/activity-availability penalty or90+ claim. This is a conditional network capability, without a general nonconvex optimizer or physical state-selection theorem.
 
 [Verbatim response, actual prompt and opening explanation](P1_CERTIFIED_COLLECTIVE_ORDER_20261107_RETURN.txt) · [Original ZIP](original/Certified_collective_order_2026-11-07.zip) · [Full theorem and costs](package/THEOREM.txt) · [Execution report](package/EXECUTION_REPORT.txt) · [Provenance](SOURCES.json).
 
@@ -57,3 +58,11 @@ The source ledger credits classical Kron/Schur elimination, Hopfield Lyapunov ne
 N805's completed mixed-compliance gate is reported read for its local/global/convexity distinction; no material or implementation premise is imported. N1068–1070, N997/N1018 and the earlier memory/inference/mechanics/SAT chain retain credit. N1683's governing payload remains unacquired. The producer reports no new peer solution or worker; shared current navigation does not establish blind independence or a causal policy benefit.
 
 All18 original ZIP members, including the unchanged already-published predecessor, are preserved. Only the opening explanation was staged; expanded activity remains in the predecessor chat after native Mac unlock failed. Capital made no recovery/unlock attempt and reran no scientific program. This availability gap supplies no correctness-assumed impact penalty. Generated retrieval remains pending under the resource limit.
+
+## Supplied assessment and next scientific question
+
+The new credit is the uncertain-source equilibrium/dynamic/index/ordering/design composition and its direct certificates, rather than invention of Schur reduction, quartic positivity or Lyapunov energy. The primary [spherical M-matrix quartic problem](https://arxiv.org/html/2007.09630v3) has a different contract. N805's selected global sextic-gate path and local/global/convexity distinctions retain their established scope; they do not supply dynamic tracking or a compatible device.
+
+This static operation consumes **only S=Z(0)**. Zero NEW acquisition is valid reuse, but it does not establish that acquiring the entire expensive causal memory was necessary or economical for these static targets. An equally informed static-data comparator remains legitimate; no superiority over it is established. Full causal memory retains its distinct transient-task use.
+
+The coordinator's next complete question concerns intended ordered-state selection/retention with real preparation, time and control costs. Its once-handed prompt optionally supplies the [P2 complete-static-interface report](https://github.com/harjassand/astra-research-knowledge/blob/4eaf4372642b69be1d6b38e811d6a6c28a68085f/research/returns/2026-11-07-p2-compositional-intervention-transfer/package/RESEARCH_REPORT.txt). Scalar-energy access is not automatically a force/readout or dynamical controller interface. Actual prompt delivery, scientific reading/use, compatibility and benefit are unconfirmed here. The scientist owns the formulation and may reject that route. No controlled source-transfer, ownership or coordination-policy winner follows from the reported construction.

@@ -1,6 +1,7 @@
 # Acquired interfaces for genuinely new passive interventions
 
-**Latest lifecycle, 7 November Brisbane (21:17 UTC collection on 6 November):** P1's caa51c7e collective-order turn has completed; its next assignment is not supplied to Capital at this snapshot. P2/P3's latest supplied once-only starts remain3fb4f347/9dbe116b, with no new return in this intake. Earlier all-three-started observations are historical. Expanded activity remains unstaged in predecessor chats after native Mac unlock failed. Capital sends no scientific prompt or unlock/recollection attempt. Dots' reported workspace recovery is a separate operational receipt; Sol closed/held, Dots protected and all source/resource limits remain.
+**Latest lifecycle, 7 November Brisbane:** P1's collective-order return is completed and assessed. Its same-warm3497-character successor was handed ONCE to the existing dispatcher; actual POST/START remains pending in the supplied receipt. P2/P3's3fb4f347/9dbe116b work is undisturbed as the coordinator reports. Earlier “next assignment not supplied” and all-three-started snapshots are historical. Starts/assignments are not achieved results or policy efficacy. Expanded activity remains unstaged after native Mac unlock failed; no Capital recovery/prompt. Dots' reported workspace recovery is separate from native access. Sol closed/held, Dots protected and all source/resource limits remain.
+
 
 
 
