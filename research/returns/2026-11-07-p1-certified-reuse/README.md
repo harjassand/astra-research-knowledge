@@ -1,6 +1,7 @@
 # Certified causal reuse before complete identification
 
-**Latest lifecycle receipts, 7 November Brisbane:** all three same-warm successors are POSTED ONCE/START CONFIRMED by dispatcher reports: P1caa51c7e, P23fb4f347 and P39dbe116b. P3's exact3385-character collective-thermodynamics successor body matched with its sole terminal newline restored. Earlier pending handoffs and completed-turn/live snapshots are historical. Starts establish no new scientific result or policy efficacy. Expanded activity from the preceding returns remains unstaged in source chats; Capital sends no prompt or unlock/recollection attempt. Sol closed/held, Dots protected and all source/resource limits remain.
+**Latest lifecycle, 7 November Brisbane (21:17 UTC collection on 6 November):** P1's caa51c7e collective-order turn has completed; its next assignment is not supplied to Capital at this snapshot. P2/P3's latest supplied once-only starts remain3fb4f347/9dbe116b, with no new return in this intake. Earlier all-three-started observations are historical. Expanded activity remains unstaged in predecessor chats after native Mac unlock failed. Capital sends no scientific prompt or unlock/recollection attempt. Dots' reported workspace recovery is a separate operational receipt; Sol closed/held, Dots protected and all source/resource limits remain.
+
 
 
 
@@ -72,3 +73,5 @@ Classical memory/series/Krylov/passivity reduction is credited, including Bessel
 The next scientific turn examines an accessible-port acquisition interface, initialization, actuation, noise/precision and later nonlinear couplings. Its confirmed start is not an achieved physical interface or extension of this result. Source/task/warm-context/unknown-effort confounds remain; publication and demonstrations establish no optimal coordination or reduction policy. The N1683 proof/code/data payload remains unacquired under its hold.
 
 Later completed source: [finite port-experiment acquisition to reuse](../2026-11-07-p1-certified-port-experiment-reuse/README.md). Source/structural/channel and cost contracts differ explicitly; preceding results and all holds remain.
+
+Later completed source: [certified collective ordering and pattern design](../2026-11-07-p1-certified-collective-order/README.md), using the acquired statistic under a new reciprocal attractive/balanced cubic task contract. Earlier source/acquisition/theorem scopes and costs retain credit.

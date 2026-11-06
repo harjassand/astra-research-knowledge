@@ -1,0 +1,59 @@
+# Certified collective order from acquired port models
+
+**Latest lifecycle, 7 November Brisbane (21:17 UTC collection on 6 November):** P1's caa51c7e collective-order turn has completed; its next assignment is not supplied to Capital at this snapshot. P2/P3's latest supplied once-only starts remain3fb4f347/9dbe116b, with no new return in this intake. Earlier all-three-started observations are historical. Expanded activity remains unstaged in predecessor chats after native Mac unlock failed. Capital sends no scientific prompt or unlock/recollection attempt. Dots' reported workspace recovery is a separate operational receipt; Sol closed/held, Dots protected and all source/resource limits remain.
+
+
+P1 uses its acquired component models to compute globally ordered states and design prescribed signed amplitudes in later reciprocal cubic networks. The result allows heterogeneous components and infinite hidden dimension under the retained source contract. The finite execution makes zero new source observations.
+
+No new coordinator assessment is supplied at this preparation; no grade is inferred. Earlier accepted results and the last supplied programme frontier75–85 retain their scope. Missing activity supplies no correctness-assumed impact penalty.
+
+[Verbatim response, actual prompt and opening explanation](P1_CERTIFIED_COLLECTIVE_ORDER_20261107_RETURN.txt) · [Original ZIP](original/Certified_collective_order_2026-11-07.zip) · [Full theorem and costs](package/THEOREM.txt) · [Execution report](package/EXECUTION_REPORT.txt) · [Provenance](SOURCES.json).
+
+| Read next | Contents |
+|---|---|
+| [Package guide](package/README.txt), [manifest](package/MANIFEST.json), [source ledger](package/SOURCES.txt) | Full hypotheses, file identities and credited prior work |
+| [Phase scan](package/results/PHASE_SCAN.json), [inputs](package/results/INPUTS.json), [summary](package/results/SUMMARY.json) | Ordering tests, exact outer enclosures and paid uncertainty |
+| [Programmed pattern](package/results/PROGRAMMED_PATTERN.json), [controls](package/results/CONTROLS.json), [producer replay](package/results/REPLAY.json) | Coupling matrix,1% certificate, metastability and complexity controls |
+| [Component A](package/inputs/component_A_model.json), [component B](package/inputs/component_B_model.json) | Unchanged retained21-state models; no hidden native-source access |
+| [Certificate kernel](package/certify.py), [exact arithmetic](package/exact.py), [runner](package/run.py), [verifier](package/verify.py) | Preserved implementations, not executed by Capital |
+| [Unchanged predecessor ZIP](package/preserved/Certified_port_experiment_reuse_2026-11-07.zip) | Already-published [finite port acquisition](../2026-11-07-p1-certified-port-experiment-reuse/README.md), including the full earlier acquisition costs |
+
+## Source, controller and task contracts
+
+Each stationary passive component has self-adjoint `H>=aI>0`, fixed normalized collocated ports in the operator domain and supplied first/coupling-moment bounds. Its acquired all-frequency impedance model and error give the finite static statistic `S=Z(0)`, enclosed by the computed model at zero frequency. No new exact-transfer oracle, internal-state query or experiment is introduced. Fixed sensor bias and the predecessor's expensive acquisition remain charged.
+
+Later interactions have the autonomous instantaneous law `v=K y-beta*y^3+h`, with symmetric K and strictly positive onsite cubic saturation. Active feedback can overcome passive damping. In a supplied sign gauge, the effective matrix `T=Sigma(S-K)Sigma` must have nonpositive off-diagonals and a connected negative-edge graph, with nonnegative field. **Attraction concerns the effective interaction after eliminating the source interior**, and must hold for every realization in a robust guarantee.
+
+Controller errors are stationary reciprocal coefficient/calibration bounds. Delays, asymmetric couplings, time-varying errors, unmodeled controller state and continually re-entering measurement noise need separate extensions. A digital coupling specification does not establish that a physical controller implements this law.
+
+“Ground state” here means a global minimum of the defined gradient potential. It is not a finite-temperature Gibbs/free-energy claim about an active device.
+
+## Equilibrium reduction and global computation
+
+Completing the hidden quadratic form reduces every smooth conservative port potential to `W_U(y)=y^T S y/2+U(y)`. All critical points, global minima and Hessian negative indices/nullities correspond with their unique hidden lifts. Two sources with the same S have the same static landscape for these attachments; their trajectories and settling rates can differ. Arbitrary nonconvex U does not acquire an efficient optimizer from this equivalence.
+
+For the reciprocal cubic law, the theorem gives global existence and convergence to an equilibrium from every finite-norm initial state, including infinite hidden dimension under its stated port/domain/dissipation premises. It does not guarantee convergence to a global minimum. Degenerate equilibria do not acquire exponential stability merely from a zero Hessian eigenvalue.
+
+For the attractive/balanced class, squared nonnegative amplitudes turn the quartic potential into a strongly convex function involving geometric means. This is established hidden-convexity machinery, explicitly credited. At zero field a PSD T has only the zero global minimum; otherwise the global minima are one strictly positive branch and its global negative. A nonzero nonnegative field selects a unique positive global minimum. An exact polynomial identity certifies the global claim, beyond a local Hessian test.
+
+The complete conic algorithm includes explicit rational feasible-center and inner/outer-radius data. Digital bit time is polynomial in the complete rational input, network size and log inverse **numerical** amplitude tolerance. Source acquisition and uncertainty refinement retain their separate inverse-accuracy costs. The general finite-bit SOCP/SDP algorithm is proved/costed, **not executed** in this return. The small execution uses floating proposals followed by exact rational global-gap and branch checks; a failed proposal is an error, not a certified output.
+
+Source, coupling, cubic and field uncertainty enter the same global energy/amplitude certificate. Componentwise interval endpoints describe a declared outer uncertainty set and may not be compatible with the full raw frequency record. An unresolved phase interval does not prove both phases fit that record. The zero-field phase test requires the bias channel warranted exactly disabled.
+
+## Inverse design, execution and limits
+
+A direct weighted-Laplacian formula constructs the coupling for arbitrary prescribed nonzero amplitudes and balanced signs in O(n-squared) rational operations after static reduction. Exact finite inequalities certify robustness. Higher saturation/self-coupling can trade actuation size for a tighter amplitude tolerance; gains, calibration, output length and supply remain real costs. Gain limits can make the requested guarantee unavailable. This is neither arbitrary frustrated pattern storage nor a basin-selection protocol.
+
+The producer reuses two three-port models from sources with256 hidden coordinates each; the new solver reads only their retained21-state models. The six-port phase scan and later signed target use zero new source calls. Source plus stationary coupling radius is about0.008297234; cubic and field calibrations remain included. All six prescribed port amplitudes are certified within1%, with nominal coupling norm bounded by about10.98036 and maximum cubic coefficient12, plus calibration allowances.
+
+The producer reports27 rational global checks and26 branch enclosures, with a separate standard-library replay. This is a separate source-side implementation, not an independent researcher audit. Small subsecond function timings exclude imports and all earlier acquisition, and establish no asymptotic performance or hardware advantage. No physical assembly or waveform was executed.
+
+Attraction still permits stable nonglobal mixed-sign equilibria: the explicit two-port control has local energy-8 versus global-18. Critical flow `q'=-q^3` has algebraic settling, so polynomial digital precision is not a matching fast physical solver. Allowing arbitrary frustrated reciprocal couplings encodes weighted MAX-CUT at fixed additive accuracy; a uniform polynomial solver there would imply P=NP. The eight-node control enumerates256 assignments and is not a scalable optimizer or the proof of the general reduction.
+
+## Credit and preserved boundaries
+
+The source ledger credits classical Kron/Schur elimination, Hopfield Lyapunov networks, Fontan–Altafini cooperative multiequilibria, sign-structured hidden convexity, quartic optimization, finite-bit convex optimization and Ising/MAX-CUT complexity. Their distinct hypotheses are retained. The CIMOptimizer Zenodo record is a comparator, with no installed simulator or practical superiority claim.
+
+N805's completed mixed-compliance gate is reported read for its local/global/convexity distinction; no material or implementation premise is imported. N1068–1070, N997/N1018 and the earlier memory/inference/mechanics/SAT chain retain credit. N1683's governing payload remains unacquired. The producer reports no new peer solution or worker; shared current navigation does not establish blind independence or a causal policy benefit.
+
+All18 original ZIP members, including the unchanged already-published predecessor, are preserved. Only the opening explanation was staged; expanded activity remains in the predecessor chat after native Mac unlock failed. Capital made no recovery/unlock attempt and reran no scientific program. This availability gap supplies no correctness-assumed impact penalty. Generated retrieval remains pending under the resource limit.

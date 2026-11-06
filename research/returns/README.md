@@ -1,9 +1,10 @@
 # Supplied research returns
 
+**Latest lifecycle, 7 November Brisbane (21:17 UTC collection on 6 November):** P1's caa51c7e collective-order turn has completed; its next assignment is not supplied to Capital at this snapshot. P2/P3's latest supplied once-only starts remain3fb4f347/9dbe116b, with no new return in this intake. Earlier all-three-started observations are historical. Expanded activity remains unstaged in predecessor chats after native Mac unlock failed. Capital sends no scientific prompt or unlock/recollection attempt. Dots' reported workspace recovery is a separate operational receipt; Sol closed/held, Dots protected and all source/resource limits remain.
+
+
 **Dots current operational receipt, 7 November Brisbane (06:38):** [reported original-workspace recovery](2026-11-07-dots-running-and-policy-update/README.md) supersedes the earlier unrecovered-workspace notice. The surviving GW journal has no recorded final conclusion; the recovered gamma-spectrometry run failed its quality gate. Detailed outputs/reasons were not collected, and there is no new physical finding/grade or accepted-science downgrade. Failure history remains, Dots is protected/unmessaged, and native Mac/expanded-activity staging remains a separate pending issue.
 
-
-**Latest lifecycle receipts, 7 November Brisbane:** all three same-warm successors are POSTED ONCE/START CONFIRMED by dispatcher reports: P1caa51c7e, P23fb4f347 and P39dbe116b. P3's exact3385-character collective-thermodynamics successor body matched with its sole terminal newline restored. Earlier pending handoffs and completed-turn/live snapshots are historical. Starts establish no new scientific result or policy efficacy. Expanded activity from the preceding returns remains unstaged in source chats; Capital sends no prompt or unlock/recollection attempt. Sol closed/held, Dots protected and all source/resource limits remain.
 
 
 **P3 supplied new assessment:** acquired collective quantum thermodynamics70–80, correctness assumed. Earlier finite-range results and programme frontier75–85 unchanged, ordinal/nonadditive. Finite digital records and specialized certificates are executed producer evidence;~9.36e29-shot physical schedule is costed, unexecuted and not economical commissioning.
@@ -55,6 +56,7 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| P1 certified collective order | [Acquired static landscape, attractive cubic global computation, robust signed-amplitude inverse design and physical/complexity limits;18-member original](2026-11-07-p1-certified-collective-order/README.md) |
 | P3 acquired collective thermodynamics | [Tagged records, all-equilibrium response/decision certificates, finiteN64, symmetric-probe obstruction and full sampling costs;24-member original](2026-11-07-p3-collective-thermodynamics/README.md) |
 | P1 finite port experiments to reuse | [Paid finite I/O histories, certified causal models, nonlinear/network reuse and scoped structural limits; complete27-member ZIP](2026-11-07-p1-certified-port-experiment-reuse/README.md) |
 | P2 compositional intervention transfer | [Acquired complete static interfaces, exact contextual metric, assembly-stable relative uncertainty and new passive design; complete16-member ZIP](2026-11-07-p2-compositional-intervention-transfer/README.md) |
