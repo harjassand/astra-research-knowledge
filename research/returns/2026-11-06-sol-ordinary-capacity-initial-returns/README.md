@@ -1,5 +1,8 @@
 # Sol pilot initial returns — overlapping finite core, full question unresolved
 
+**Current credit correction:** the repeated N1687 evaluator/cutoff equivalence earns **0–9 incremental mathematical-discovery credit**, with tooling retained. The earlier20–35 **new-theorem credit is withdrawn**; this is attribution, not an incorrect theorem, verification penalty or loss of prior family capital. r4's independent interval/sparse-Choi positive-polar refinement is **20–35 additional**, replacing the earlier30–45 implication of first underlying failure. See [versioned correction](attribution-correction-20261106-v2.json) and [actual successor retrieval routes](successor-retrieval-routes.md).
+
+
 **Attribution correction:** N1687 already supplies the total evaluator/dimension-only cutoff equivalence. The overlapping initial reductions here are **rediscoveries/implementations, not a new pilot theorem**. The frozen brief named N1680 and omitted stronger N1687/N1690 successors; original reports/prompts remain historical. See [governing predecessors and exact remaining conditions](prior-results-and-attribution.md). The ordinary-capacity question remains unresolved.
 
 
