@@ -1,6 +1,9 @@
 # Finite information for intervention response and global design
 
-**Latest lifecycle receipts, 7 November Brisbane:** all three same-warm successors are POSTED ONCE/START CONFIRMED by dispatcher reports: P125f1c5fa, P23fb4f347 and P34fbb961e. P3's exact2912-character programme body matched with its terminal newline restored. Its visible start accepts persistent endpoint ownership and examines governing results; no final scientific question was supplied at that start. This is a started one-role treatment, not a scientific outcome or established across-return effect; one-turn closure would leave that contrast untested. Earlier pending snapshots are historical. P1/P2 work remains undisturbed, Capital sends no prompt/recovery attempt, Sol closed/held, Dots protected and all source/resource limits remain. Expanded activity/native access remains separate from Dots' reported workspace recovery.
+**Latest lifecycle receipts, 7 November Brisbane:** all three same-warm assignments are POSTED ONCE/START CONFIRMED by dispatcher reports: P125f1c5fa, P2c77d3c5e and P34fbb961e. P2's exact2797-character body matched with its terminal newline restored; no scientific handoff remains pending in the supplied receipt. Its visible start accepts persistent rare-transition endpoint ownership and considers candidate target/dynamics directions with full costs. Candidates/starts are not new results or observed policy effects. P2/P3's across-return hypothesis remains unestablished; P1/P3 work is undisturbed as reported. Earlier pending snapshots are historical. Expanded activity/native access gap, Dots workspace distinction, Sol closed/held and all source/resource limits remain; Capital sends no prompt/recovery attempt.
+
+
+
 
 
 
@@ -79,3 +82,5 @@ Visible activity develops conditional-gradient design before the stronger ellips
 
 
 Later completed source: [complete-interface compositional transfer to new passive assemblies](../2026-11-07-p2-compositional-intervention-transfer/README.md). Source/structural/channel and cost contracts differ explicitly; preceding results and all holds remain.
+
+Later completed source: [rare-event-chain first-passage construction](../2026-11-07-p2-rare-event-chain/README.md), for a changed explicitly supplied kinetic-model class. Earlier static-interface/acquisition claims and their costs/limits remain unchanged; a static law does not acquire dynamic clocks.

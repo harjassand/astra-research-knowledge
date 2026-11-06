@@ -1,6 +1,9 @@
 # Acquired interfaces for genuinely new passive interventions
 
-**Latest lifecycle receipts, 7 November Brisbane:** all three same-warm successors are POSTED ONCE/START CONFIRMED by dispatcher reports: P125f1c5fa, P23fb4f347 and P34fbb961e. P3's exact2912-character programme body matched with its terminal newline restored. Its visible start accepts persistent endpoint ownership and examines governing results; no final scientific question was supplied at that start. This is a started one-role treatment, not a scientific outcome or established across-return effect; one-turn closure would leave that contrast untested. Earlier pending snapshots are historical. P1/P2 work remains undisturbed, Capital sends no prompt/recovery attempt, Sol closed/held, Dots protected and all source/resource limits remain. Expanded activity/native access remains separate from Dots' reported workspace recovery.
+**Latest lifecycle receipts, 7 November Brisbane:** all three same-warm assignments are POSTED ONCE/START CONFIRMED by dispatcher reports: P125f1c5fa, P2c77d3c5e and P34fbb961e. P2's exact2797-character body matched with its terminal newline restored; no scientific handoff remains pending in the supplied receipt. Its visible start accepts persistent rare-transition endpoint ownership and considers candidate target/dynamics directions with full costs. Candidates/starts are not new results or observed policy effects. P2/P3's across-return hypothesis remains unestablished; P1/P3 work is undisturbed as reported. Earlier pending snapshots are historical. Expanded activity/native access gap, Dots workspace distinction, Sol closed/held and all source/resource limits remain; Capital sends no prompt/recovery attempt.
+
+
+
 
 
 
@@ -62,3 +65,5 @@ N1150–N1152's acquired-law/global-task certificates and N997's retained uncert
 Collected7November2026Brisbane. The complete16-member archive and capture are published with original bytes preserved. No historical priority, universal transfer beyond the warranted interface or civilisation-changing consequence follows from the construction alone. Generated retrieval was not rebuilt under the resource limit.
 
 Classical nonaccumulating approximate-Schur composition is already present in [Goranci–Henzinger–Peng, section3.2/Lemma3.8](https://arxiv.org/abs/1802.09111). New credit concerns the acquired interface, exact operational metric, scoped information bounds and compiler/design composition. The producer's tangent certificate is a separate implementation, not an independent researcher audit; its true-source regret bound is **below0.004740029**. The lower band for this new contribution does not downgrade earlier effective-law results.
+
+Later completed source: [rare-event-chain first-passage construction](../2026-11-07-p2-rare-event-chain/README.md), for a changed explicitly supplied kinetic-model class. Earlier static-interface/acquisition claims and their costs/limits remain unchanged; a static law does not acquire dynamic clocks.
