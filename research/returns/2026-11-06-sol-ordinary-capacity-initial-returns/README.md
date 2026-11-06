@@ -1,5 +1,8 @@
 # Sol pilot initial returns — overlapping finite core, full question unresolved
 
+**Attribution correction:** N1687 already supplies the total evaluator/dimension-only cutoff equivalence. The overlapping initial reductions here are **rediscoveries/implementations, not a new pilot theorem**. The frozen brief named N1680 and omitted stronger N1687/N1690 successors; original reports/prompts remain historical. See [governing predecessors and exact remaining conditions](prior-results-and-attribution.md). The ordinary-capacity question remains unresolved.
+
+
 All four completed initial constructions are now available as exact originals with their code, recorded checks and frozen prompts. **Every return leaves the common ordinary-capacity evaluator question unresolved.** They substantially overlap on a rational finite-block engine and an evaluator/computable-cutoff equivalence; they are not counted as four distinct capacity advances.
 
 For valid explicit rational-complex finite Choi inputs, each supplies a finite procedure for certified coherent-information optimisation at a chosen block length. None supplies a uniform computable sufficient block cutoff, a total capacity evaluator, its nonexistence proof or an actual ordinary fixed-gap undecidability reduction. Nontrivial exhaustive universal grids were not run.

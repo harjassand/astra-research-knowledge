@@ -1,0 +1,20 @@
+# Prior results and corrected Sol pilot attribution
+
+The pilot lead's final read-only successor search found and read the complete available N1687 and N1690 originals. **The four constructors' overlapping initial evaluator/cutoff reductions are rediscoveries and implementations of N1687, not a new pilot theorem.** Their original reports, code, recorded checks and frozen prompts remain exact historical records.
+
+The initial common question named N1680 and omitted these stronger successors. That omission is recorded here; the common question remains frozen. The lead reports passing the exact compatible N1687 original and its conditions to still-running r3 within its existing second/final turn, without a new activation. This is later intentional exposure, without a completed r3 result or demonstrated scientific benefit.
+
+| Existing capital | Governing original and credited scope |
+|---|---|
+| N1687 evaluator/cutoff equivalence | [Complete available response](../../2026-11-04-p1-exact-ordinary-source-operations/source/p1/COMPLETE_VISIBLE_RESPONSE.txt), section5. Total ordinary-capacity evaluation, computable dimension-only cutoff and all-block upper certification requirements were already related there. The pilot's overlapping first returns supply rediscovery/implementation, without new theorem priority |
+| N1687 ordinary fidelity tensorization failure | Same original, section5. Its half-erasure example already refutes underlying ordinary fidelity tensorization. [r4's final interval/Choi positive-polar witness](../2026-11-06-sol-ordinary-code-polar-obstruction/README.md) is an independently constructed refinement, rather than the first discovery of that failure |
+| N1687 exact ordinary-source entropy operation | Same original, sections1–4. Actual correlated Gram/Hadamard output admits an exact entropy conversion with a uniform finite-signal remainder and a relative-domination filter. This is stronger source capital than the frozen pilot brief supplied |
+| N1690 complete maximal/RLD evaluator and profile separation | [Complete available native response](../../2026-11-04-p1-complete-maximal-information/source/p1/COMPLETE_NATIVE_VISIBLE_RESPONSE.txt). Exact maximal/RLD order evaluation and all-reference/all-power same-channel profile equality with different ordinary capacities are predecessor results, not pilot discoveries |
+
+N1687 still requires a positive **actual conditioned BKM-density difference at the same precomputed physical signal r**, with the stated computable margin, boundary term and paid channel-use denominator. That sign is unproved. Zero-signal curvature, an unconditioned SLD margin, a dimension-dependent useful neighborhood or a different filter for every history does not discharge it. Analytical purification is not an extra communication wire; physical transport/purifier costs and the scope of purifier-traced rank bounds remain.
+
+N1690's exact maximal/RLD evaluator is at its own metric and reference scope, with a computable but astronomical general cutoff. Its profile separation passes both arguments through the same channel in the declared structured family. It does not furnish an ordinary-capacity evaluator or equate maximal/RLD with Umegaki/SLD, recovery or transmission. All physical compiler-use denominators and other accepted limits remain credited.
+
+The full ordinary quantum-capacity question remains **UNRESOLVED**. The prior provisional initial-family assessment is historical and preceded this attribution correction; this notice supplies no replacement score. The r4 refinement retains its supplied scope and is not promoted to first discovery. No ensemble advantage, causal transfer superiority or mission-frontier gain follows.
+
+The complete visible originals above were already available. Their separately held report/ZIP/code companions remain held: this correction recovers none and resolves no transfer hold. Capital updated navigation/attribution without scientific reproof, code replay, worker, source recovery, producer contact or corpus rebuild. A corrected lead RESULT.md was announced as being prepared; no final RESULT.md is claimed delivered in this notice.
