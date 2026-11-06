@@ -1,0 +1,13 @@
+# r4 final own-depth turn: ordinary-code positive polars fail tensor closure
+
+The completed reference continuation constructs a rational positive-polar witness for the **actual ordinary CPTP encoder/decoder sets**. It prevents importing tensor-polar closure into the tested convex-set AEP route. The full ordinary-capacity question remains **UNRESOLVED**; no peer outputs were intentionally supplied to this own-depth reference, and its two authorised turns are exhausted.
+
+Read the [complete proof](original/CONTINUATION.txt), [supplied exact checker](original/erasure_polar_counterexample.py), [recorded results](original/POLAR_RESULTS.json), [sparse witness](original/POLAR_WITNESS.json) and [source receipt](SOURCES.json). The [initial return](../2026-11-06-sol-ordinary-capacity-initial-returns/README.md) remains intact.
+
+For the rational qubit erasure channel, every two-use logical-qubit ordinary code has fidelity at most `U=1−p/2−p²/4`, using exact maximally entangled projector monogamy. The explicit fully decoded `[[4,2,2]]` code, counting all branches with at least two erasures as paid replacement failures, has fidelity `L=1−(45/8)p²+(15/2)p³−(45/16)p⁴`. The source proves `L−U²=p(1−p)(23p²−35p+8)/8>0` throughout `0<p≤1/4`.
+
+At `p=1/10`, a positive rational `X` is in the two-use code set's positive polar, while its tensor square pairs with the four-use ordinary code as `152155/143641>1`. The supplied sparse matrices include affine Choi constraints, canonical regrouping, complete recovery branches and an independently computed full Choi pairing. The largest dense matrix used by the producer has dimension16; the 20736-dimensional tensor expression is represented sparsely rather than as a dense square array.
+
+The fixed-block Berta–Borderi–Fawzi–Scholz symmetric-extension hierarchy remains valid: extension level and communication blocklength are different limits. A tensor-polar relaxation may upper bound the ordinary code set, but equality or a vanishing gap still needs proof. The erasure family's own capacity `1−2p` on this interval is computable, so this obstruction proves neither ordinary-capacity noncomputability nor failure of every representation. Unbounded helper ratios still lack an effective tail bound.
+
+The producer reports approximately 0.14 seconds for exact sparse and finite algebra checks. Capital archived bytes without rerunning them, executing a capacity optimizer or performing a new audit. This is a scoped operational obstruction, not completion of the common question or a claimed policy/ensemble win. No impact score is invented for this packet.

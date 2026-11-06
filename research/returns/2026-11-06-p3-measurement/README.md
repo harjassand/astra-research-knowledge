@@ -1,0 +1,23 @@
+# P3 finite-interface measurement cost and information limit
+
+P3 reports a completed construction for **explicit calibrated finite POVM settings, supplied positive trial costs and IID fresh copies of one unknown state**. It joins complete-outcome reconstruction/allocation, paid unknown-probability learning and a matching **local asymptotic minimax** lower bound. The coordinator assigns **provisional60–75 additional scientific consequence, assuming correctness**. The full measurement record/code ZIP remains held after one timed-out transfer with no file; only the complete visible return is delivered here.
+
+| Read | Contents |
+|---|---|
+| [Complete prompt, response and activity](P3_MEASUREMENT_20261106_RETURN.txt) | Full supplied derivations, exact2002-character selection prompt and available61m21s explanation |
+| [Source/hold receipt](SOURCES.json) | Byte identity, scope and unacquired original |
+| [Preserved hard-capacity predecessor](../2026-11-06-p3-hard-capacity/README.md) | Earlier control result and separate ZIP hold |
+
+For target`Tr(ρH)`, consistent reconstruction is possible iff`H` lies in the real outcome-effect span. Exact outcome scores satisfy `H=αI+Σ b_ℓa E_ℓa`. The leading cost constant is `C(ρ)=min Σ_ℓ√[c_ℓ Var_pℓ(b_ℓ)]`. Its complete-raw-outcome dual is a **physical traceless state perturbation** constrained by each setting's Fisher information per supplied cost. This is not limited to selected Hamiltonian-term scores.
+
+The lower bound permits arbitrary classical setting feedback, adaptive stopping and biased/nonlinear estimators, but is a **local asymptotic minimax statement across neighborhoods**, not a pointwise lower bound at every state. A full-rank perturbation interval is a mathematical condition; an incomplete pilot does not numerically acquire the state's smallest eigenvalue or that interval. Collective/coherent measurements, changing states and unprovided state-family promises are outside the declared interface.
+
+A paid pilot learns outcome probabilities using monotone weighted-scatter envelopes, including support boundaries and zero counts without a probability-floor promise. Fresh production data retain conditional unbiasedness after selecting scores. Fixed-budget and fixed-accuracy guarantees include pilot cost, failure probability and integer rounding; for a fixed finite interface leading trial cost attains`C(ρ)²`. Budget positivity, spectral clipping and all stated quantifiers remain. Reusing pilot samples to choose and evaluate scores is not silently substituted.
+
+The exact implicit all-local-Pauli Fisher-pricing reduction is `max_s I_s=MAXCUT(G)`, with **squared** dual price equal to the cut count. Universal polynomial **exact** pricing would imply`P=NP`; this is neither a proof of`P=NP` nor hardness of every approximate estimator. An implicit family is not a freely supplied explicit list. The compiler uses candidate proposals plus exact verification and finite enumeration; no generic arbitrary-precision polynomial conic implementation, free pricing oracle or cheap certification is assumed.
+
+Convex design, semiparametric estimation, complete dual frames and covariance-aware allocation are established premises. The governing Zenodo22699933/arXiv2607.16866v2 work covers its declared scores/linear-unbiased independent batches; the source claims an interface extension, without claiming those ingredients as new or establishing historical priority. The synthetic27/11 example and about24.05% leading trial saving are finite mathematical evidence, **not hardware or a billion-trial simulation**. Calibration/preparation/access are supplied, not acquired. All-in cost needs genuinely priced marginal costs and subleading overhead; otherwise the result is a trial-cost statement, not economical chemistry.
+
+The actual Zenodo-before-selection treatment is visible and materially changed the destination from control alternatives to measurement. The deposit leads to a paper available elsewhere, so it proves neither exclusive Zenodo advantage nor a causal policy winner; task, context, sources and effort changed, and public retrieval/Personal Context remain nonblind. No peer construction was transferred. Earlier control capital is preserved. The coordinator released a same-chat scientist-owned next selection turn without requiring another measurement extension/source tour; posting/start is not confirmed here. No90+ or programme-frontier rise is claimed.
+
+`P3_Measurement_Continuation_20261106.zip` remains **unacquired after one attempt**, with no retry, alternate TXT, preview or reconstructed code. That is a transfer condition, not an impact penalty or scientific verdict. Capital ran no scientific verification or corpus build.

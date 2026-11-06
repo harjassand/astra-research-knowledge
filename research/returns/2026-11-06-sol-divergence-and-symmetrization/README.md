@@ -1,0 +1,13 @@
+# r2 final turn: divergence substitutions and symmetrization loss
+
+The completed continuation strengthens two transferred counterexamples and supplies an extensive coherent-information loss under permutation averaging. The coordinator assigns provisional **20–35 scoped mathematical consequence, assuming correctness**. The ordinary-capacity evaluator/noncomputability question remains **UNRESOLVED**; r2 has exhausted its two authorised turns.
+
+Read the [complete proof](original/CONTINUATION.md), [supplied implementation](original/divergence_interface.py), [recorded exact checks](original/divergence_checks.json) and [source receipt](SOURCES.json). The [initial construction](../2026-11-06-sol-ordinary-capacity-initial-returns/README.md) is preserved.
+
+For every channel, replacing the required maximum/minimum by the infimum over both natural channel-image sets gives `−log₂ dim A`, independent of the channel. The normalized convention gives zero. The sets' genuine convexity and tensor/polar structure do not change that outer operation. The relevant convex-set AEP is credited at its infimum scope.
+
+A rational qubit completely depolarizing channel gives a strictly positive comparison Choi `I₁₆/16`. An extra fully quantum reference still changes the displayed divergence by a bit after the prescribed offset; the newer stabilized-divergence evaluator computes a different quantity even under its full-rank hypothesis. Classical untouched labels preserve the ordinary expression, but classical-reference amortization collapses to `Q^(1)`, leaving the many-use regularization. These results reject the specified substitutions, without ruling out every divergence adaptation or upper evaluator.
+
+For qubit erasure `p=3/4`, every permutation of an asymmetric pure input has coherent information zero, while its permutation average has `−n/2+O(log n)`. At `n=32`, compressed exact rational entropy intervals give about `−15.537374709200436` bits. This refutes a sublinear-loss claim for that averaging step, without excluding every symmetric optimizer, postselection method or concave-envelope construction. It does not evaluate arbitrary capacity.
+
+The producer reports approximately 0.31 seconds for finite exact checks, without full state enumeration. Capital preserved the code/output as bytes and ran neither. The exact sparse r4 max/min and independent-reference object was intentionally transferred; the response shows constructive use of it. Uptake is observed, while causal return improvement, superiority to the own-depth reference, historical priority, 90+ consequence and mission-frontier gain are unestablished. Accepted predecessor scopes, physical call/dimension costs and all held sources remain unchanged.
