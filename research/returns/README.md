@@ -1,5 +1,12 @@
 # Supplied research returns
 
+## Current coordination notice, 6 November2026
+
+The coordinator reports an explicitly released **bounded Sol pilot**, reviewed manifest prefix`89cedca5`: preserved lead active/question selected, four direct SolMax workers`r1–r4`, no helper. Budget baseline58/remaining57 is a snapshot from that notice, with units not supplied here. This is operational status, **not completed pilot science** or broad new authority. Three-Pro/Dots/source/resource protections remain; Capital does not spawn, contact or execute the pilot. Completed pilot science can enter the existing source-publication workflow when available. Earlier issued prompts and records saying Sol held/pilot unrun remain intact as historical evidence.
+
+[The completed one-way SAT→QUBO episode](2026-11-06-p2-first-failure-object-transfer/README.md) has a30–45 provisional added-impact assessment for its scoped mathematics, no demonstrated feedback benefit or frontier increase. Automatic renewal of that fixed pairing has ended; a same-chat scientist-owned full-question turn is released, without forcing a field/source or a partial stop. These notices do not change scientific claims, source holds or Capital's resource limits.
+
+
 Use these links to read complete source reports and packages directly. Use the [current retrieval interface](../../knowledge/README.md) for normalized cards, reusable units and their exact governing conditions. A source's availability does not confer scientific acceptance.
 
 | Material | Source route |
