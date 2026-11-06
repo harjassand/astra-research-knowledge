@@ -1,0 +1,71 @@
+# Operational thermal-state and outcome-window compiler
+
+**Latest lifecycle, 7 November Brisbane (22:37 UTC collection on 6 November):** P3's9dbe116b operational thermal-state turn completed; its next assignment is not supplied to Capital at this snapshot. P1/P2's latest supplied once-only starts remain25f1c5fa/3fb4f347, with no new return in this intake. Earlier all-three-started observations are historical. Expanded activity remains unstaged in predecessor chats after native Mac unlock failed; no Capital prompt/unlock/recollection. Dots' reported workspace recovery is separate from native access. Sol closed/held, Dots protected and all source/resource limits remain.
+
+
+P3 constructs a randomized logical-circuit compiler for the minimum-free-energy finite-system state inside a specified collective-magnetization window. Taking the full window gives the entire canonical Gibbs state, including all spin sectors, multiplicity entropy, coherences and possible entanglement. The positive result assumes an explicitly warranted **labelled active gate/reset/randomness interface**, stronger than the earlier tagged acquisition interface. No physical preparation or gate execution occurred.
+
+No new coordinator assessment is supplied at this preparation; no grade is inferred. Earlier accepted results and the last supplied programme frontier75–85 retain their scope. Missing activity supplies no correctness-assumed impact penalty.
+
+[Verbatim response, actual prompt and opening explanation](P3_OPERATIONAL_THERMAL_STATE_20261107_RETURN.txt) · [Original ZIP](original/P3_OPERATIONAL_THERMAL_STATE_20261107_PACKAGE.zip) · [Full research report and proofs](package/P3_OPERATIONAL_THERMAL_STATE_20261107_RETURN.txt) · [Provenance](SOURCES.json).
+
+**A saved example circuit is one mixture component. Each independent thermal preparation needs a fresh sector/multiplicity draw and fresh resets. Repeating a stored circuit does not prepare the full Gibbs mixture.**
+
+| Read next | Role |
+|---|---|
+| [Package guide](package/README.txt), [manifest](package/MANIFEST_SHA256.json), [construction summary](package/FINITE_SYSTEM_CONSTRUCTION.json) | Full28-member package, exact resource/error contracts and complete randomized operation |
+| [Canonical blocks](package/CANONICAL_N64_BLOCKS.json), [window blocks](package/WINDOW_N64_BLOCKS.json) | Rational finite-N matrix and sector probability certificates |
+| [Canonical example circuit](package/CANONICAL_N64_EXAMPLE_CIRCUIT.json), [window example circuit](package/WINDOW_N64_EXAMPLE_CIRCUIT.json) | Explicit finite-dyadic component gates, registers and routed counts |
+| [Structural results](package/STRUCTURAL_RESULTS.json), [observable certificates](package/OBSERVABLE_CERTIFICATES.json) | Tagged-sector obstruction, coexistence information bound, rarity/penalty and noncommuting distinctions |
+| [Small-system audit](package/SMALL_SYSTEM_AUDIT.json), [carry audit](package/RIPPLE_AUDIT.json), [run log](package/RUN_LOG.txt) | Producer-side binary64 diagnostics, separate from rational certificates and independent researcher review |
+| [Inputs](package/INPUT_MODEL.json), [example request](package/EXAMPLE_REQUEST.json), [generic blocks](package/GENERIC_EXAMPLE/blocks.json), [generic component](package/GENERIC_EXAMPLE/component.json) | Obtained predecessor inputs, uncertainty/acquisition provenance and executed complex-Y entry point |
+| [Block arithmetic](package/certified_blocks.py), [logical compiler](package/logical_circuit.py), [entry point](package/prepare.py), [construction runner](package/run_construction.py) | Preserved implementations, not run by Capital |
+| [Observable emitter](package/certify_observables.py), [carry audit code](package/audit_ripple.py), [figure](package/OPERATIONAL_THERMODYNAMICS.png) | Original ancillary artifacts; the figure depicts model calculations |
+
+## Target and source contract
+
+The input is the warranted fixed-degree permutation-invariant collective-spin family, with common coefficients/normalization across sizes and a paid coefficient description. A known bound supplies `||H_N||<=NC`. Acquired coefficient uncertainty gives `||H-Hhat||<=N nu` on its calibrated confidence event. Symmetry, axes, size scaling, temperature, control and energy units remain warranted/calibrated premises; finite fitting does not establish them against arbitrary departures.
+
+For a nonempty collective-Z window projector P, the target is the normalized exponential of **the compressed Hamiltonian PHP on ran P**, embedded back into the full system. It uniquely minimizes Helmholtz free energy among states supported in P. When H and P do not commute it generally differs from postselecting a full Gibbs state. Constraining this outcome can change other response means, including the earlier target mean X; simultaneous sharp noncommuting responses are not promised.
+
+The output contract is the N-spin marginal after discarding the purifier and classical sector/path record. Fresh labelled initialization/reset, calibrated Ry/Rz/CNOT gates, composable contextual errors, randomness, discard and connectivity/routing are supplied or paid. An always-on native Hamiltonian needs inclusion or compensation. A standard benchmark error number does not automatically supply the contextual channel-error bound. The emitter is a finite-dyadic logical program, not a native pulse or fault-tolerant device implementation.
+
+## Constructed preparation and costs
+
+All-sector Schur blocks retain exact representation multiplicities. Rational inertia supplies block spectral shifts without an eigenvector or gap oracle. Explicit rounded integer matrix products, exponential remainders and scalar bounds certify block purifications and sector weights; the normalization is bounded, rather than hidden in a rare physical success event. An integer branching sampler represents exponentially many multiplicity copies without enumerating them.
+
+Small block purifications, controlled rotations and an inverse Clebsch–Gordan chain decode into N labelled spins. Established Schur/CG and state-synthesis machinery retain credit. At fixed degree the mathematical classical bit cost is polynomial in N, input length, log(2+betaNC) and log inverse numerical error; it is not polynomial in log N. One preparation uses N+O(log N) qubits and O(N-squared+Nlog-squaredN+log-cubedN) logical gates, with paid finite-alphabet synthesis, routing and physical error overheads.
+
+The delivered finite arithmetic refuses an unmet error budget. Its fixed48-bit angles and finite scalar parameters differ from the arbitrary-precision mathematical construction. Every copy pays fresh randomness/reset/discard; logical gate counts do not specify physical time, work, fidelity or fault tolerance.
+
+## Whole-state accuracy versus an operational outcome
+
+The report derives the sharp Gibbs modulus `T(rho_beta(H),rho_beta(K))<=tanh(beta osc(H-K)/4)` using established divergence machinery. The inherited model term is at most `tanh(beta N nu/2)`. A commuting coexistence family shows that O(1/N) field ambiguity can leave order-one whole-state ambiguity at fixed temperature. This is an information requirement, without an exponential-time hardness claim.
+
+In contrast, every ideal compiled component is embedded in P even with imperfect model, rounded block arithmetic and approximate sector weights. Forbidden-outcome probability therefore needs angle/initialization/contextual physical-gate and measurement/axis errors, rather than the whole-state model term. Constrained free-energy-density regret from the model is at most2nu; finite implementation error adds the stated energy/entropy continuity budget. Apparatus calibration still has size-dependent costs.
+
+The constraint has a free-energy price at least `log(1/p)/beta`, where p is its canonical probability. Active compilation avoids rejection of rare thermal samples but does not supply free control/reset/coherence or a reversible, single-shot work-optimal process. Canonical closeness and a rare hard outcome may be incompatible specifications.
+
+The guarantee is at the **preparation endpoint**. Under resumed noncommuting H, leakage is bounded by `epsilon+t^2||(I-P)HP||^2`, capped at one. Indefinite holding, Zeno protection or a new protecting Hamiltonian needs another warranted operation and its costs.
+
+## Weaker-interface obstruction
+
+Collective operations plus one fixed tagged spin preserve the untagged bath's total-spin sector probabilities when every Kraus operator strongly preserves those sectors. Mere permutation covariance does not suffice. For the stated identical-product bath/mixture initialization, the loaded-sample singlet weight is bounded by b_N. The N=64, beta=64 antiferromagnetic thermal target gives a certified deterministic trace-error obstruction above0.984762, with a separate entanglement witness. Its temperature/size scope is explicit; the general active compiler covers that target, while the executed64-spin circuits below concern the quartic model.
+
+Heralding can change conditional weights. The actual bound is `Pr(success)*(p0-epsilon)<=b_N`, implying a paid expected fresh-preparation bound for independent restarts. It is not impossibility of postselection, bath replacement or optimal preparation with a broader reset interface. Independent local noise/resets that change sectors are outside the loaded-sample conservation premise.
+
+## Executed scope and precision budgets
+
+For the inherited quartic64-spin model at beta2, the producer constructs canonical and `|M_z|<=1/4` targets with all33 sectors. Largest blocks are65 and17; the saved component examples use83/81 qubits and88,047/57,418 logical gates. Explicit line routing raises those example counts to3,890,055/3,560,086. All-path logical bounds are separately recorded.
+
+The ideal-gate, supplied-model numerical bounds are below7.197e-10 and4.960e-10 for the randomized operation. **They exclude true-model and physical gate/reset errors.** Inherited nu≈0.000976343 contributes up to0.062404743 to whole-state error at N64/beta2 on the95% source event, or at most0.001952686 in constrained free-energy-density regret. The old approximately9.36e29-preparation commissioning schedule was not executed or improved; tighter whole-state accuracy needs tighter paid acquisition or a justified supplied model.
+
+Rational observable bounds certify a positive noncommuting constrained-versus-postselected separation, a total free-energy penalty near0.797339102 and the leakage coupling norm near37.10837 for this example. Finer floating diagnostic values are separately labelled. A dense six-spin complex-Y audit, coherent carry/borrow audit and an eight-spin generic entry-point execution are producer-side separate implementations, not an independent scientist audit. Approximately20.5seconds is a digital benchmark, not physical preparation time.
+
+## Sources and availability
+
+The report credits Manai–Warzel representation, Bacon–Chuang–Harrow Schur/CG circuits, Möttönen state synthesis, Sason divergence bounds and Anschuetz–Bauer–Kiani–Lloyd symmetric-system simulation. Unique-minimum spectral-gap results are not imported. Earlier N118/N128, N155/N742/N633 and N52/N652 retain their distinct input, reference, normalization and resource scopes. Failed adjacent originals, the PIQS hold and earlier P3 ZIP holds remain unacquired; this self-contained new package contains no recovered held original.
+
+The [acquired collective-thermodynamics predecessor](../2026-11-07-p3-collective-thermodynamics/README.md) and earlier accepted preparation/control/measurement/cloning/channel results remain intact. No new peer operation, worker, physical experiment or infrastructure was commissioned by this return.
+
+All28 original members and the original ZIP/capture are preserved byte-exact. Expanded activity remains in the predecessor chat after native Mac unlock failed; only its opening explanation is staged. This gap supplies no correctness-assumed impact penalty. Capital ran no scientific code or recovery attempt. Generated retrieval remains pending under the resource limit.

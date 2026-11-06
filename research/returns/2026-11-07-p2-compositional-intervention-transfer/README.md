@@ -1,6 +1,7 @@
 # Acquired interfaces for genuinely new passive interventions
 
-**Latest lifecycle, 7 November Brisbane:** P1's collective-order successor is now POSTED ONCE/START CONFIRMED by dispatcher report, native25f1c5fa; exact3497-character body matched with sole terminal newline restored. P2/P3's3fb4f347/9dbe116b work remains undisturbed as reported. All three successor starts are confirmed; earlier pending handoff/completed-turn snapshots are historical. Starts establish no new result or policy efficacy. Expanded activity remains unstaged after native Mac unlock failed; Capital sends no prompt/recovery attempt. Dots' reported workspace recovery is separate from native access. Sol closed/held, Dots protected and all source/resource limits remain.
+**Latest lifecycle, 7 November Brisbane (22:37 UTC collection on 6 November):** P3's9dbe116b operational thermal-state turn completed; its next assignment is not supplied to Capital at this snapshot. P1/P2's latest supplied once-only starts remain25f1c5fa/3fb4f347, with no new return in this intake. Earlier all-three-started observations are historical. Expanded activity remains unstaged in predecessor chats after native Mac unlock failed; no Capital prompt/unlock/recollection. Dots' reported workspace recovery is separate from native access. Sol closed/held, Dots protected and all source/resource limits remain.
+
 
 
 
