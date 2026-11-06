@@ -1,5 +1,8 @@
 # Supplied research returns
 
+**Dots current operational receipt, 7 November Brisbane (06:38):** [reported original-workspace recovery](2026-11-07-dots-running-and-policy-update/README.md) supersedes the earlier unrecovered-workspace notice. The surviving GW journal has no recorded final conclusion; the recovered gamma-spectrometry run failed its quality gate. Detailed outputs/reasons were not collected, and there is no new physical finding/grade or accepted-science downgrade. Failure history remains, Dots is protected/unmessaged, and native Mac/expanded-activity staging remains a separate pending issue.
+
+
 **Latest lifecycle receipts, 7 November Brisbane:** all three same-warm successors are POSTED ONCE/START CONFIRMED by dispatcher reports: P1caa51c7e, P23fb4f347 and P39dbe116b. P3's exact3385-character collective-thermodynamics successor body matched with its sole terminal newline restored. Earlier pending handoffs and completed-turn/live snapshots are historical. Starts establish no new scientific result or policy efficacy. Expanded activity from the preceding returns remains unstaged in source chats; Capital sends no prompt or unlock/recollection attempt. Sol closed/held, Dots protected and all source/resource limits remain.
 
 
@@ -9,8 +12,6 @@
 **New supplied assessments, correctness assumed:** P1 finite port-experiment reuse70–80; P2 compositional intervention transfer65–75. Earlier science and cumulative family/programme frontier75–85 remain. Ordinal/nonadditive, no activity-availability penalty,90+/95+ or exceptional general platform.
 
 
-
-**Dots operational outcome qualification, 7 November Brisbane:** [current provenance](2026-11-07-dots-running-and-policy-update/README.md) records a reported research-computer failed start, followed by a reported fresh workspace/earlier-package preservation. Latest scratch and the final gravitational-wave screen outcome remain unrecovered; no reliable recovered final physical conclusion, permanent-loss finding or lower verdict on prior science follows. Dots stays protected/unmessaged; the three-Pro active status was the observation at that operational review. No new result, grade, repair, attachment acquisition or index build.
 
 
 **Supplied P1 assessment:** [certified causal reuse](2026-11-07-p1-certified-reuse/README.md) has NEW achieved consequence65–75, correctness assumed; constructed whole operation at its full-vector/refinable/dissipative/fixed-port/zero-state contract. Programme frontier75–85 remains, ordinal/nonadditive/no90+ or exceptional-platform/policy claim. Earlier primary model-reduction and N997/N1018 operations retain credit.
