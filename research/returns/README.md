@@ -1,6 +1,10 @@
 # Supplied research returns
 
-**Latest lifecycle, 7 November Brisbane (21:17 UTC collection on 6 November):** P1's caa51c7e collective-order turn has completed; its next assignment is not supplied to Capital at this snapshot. P2/P3's latest supplied once-only starts remain3fb4f347/9dbe116b, with no new return in this intake. Earlier all-three-started observations are historical. Expanded activity remains unstaged in predecessor chats after native Mac unlock failed. Capital sends no scientific prompt or unlock/recollection attempt. Dots' reported workspace recovery is a separate operational receipt; Sol closed/held, Dots protected and all source/resource limits remain.
+**Latest lifecycle, 7 November Brisbane:** P1's collective-order successor is now POSTED ONCE/START CONFIRMED by dispatcher report, native25f1c5fa; exact3497-character body matched with sole terminal newline restored. P2/P3's3fb4f347/9dbe116b work remains undisturbed as reported. All three successor starts are confirmed; earlier pending handoff/completed-turn snapshots are historical. Starts establish no new result or policy efficacy. Expanded activity remains unstaged after native Mac unlock failed; Capital sends no prompt/recovery attempt. Dots' reported workspace recovery is separate from native access. Sol closed/held, Dots protected and all source/resource limits remain.
+
+
+**P1 supplied assessment:** [certified collective order](2026-11-07-p1-certified-collective-order/README.md) has NEW consequence70–80, correctness assumed. Programme frontier75–85 and earlier science unchanged, ordinal/nonadditive/no90+. The static task uses S=Z(0); zero new acquisition does not prove full causal-memory acquisition necessary/economical or superior to an equally informed static-data route.
+
 
 
 **Dots current operational receipt, 7 November Brisbane (06:38):** [reported original-workspace recovery](2026-11-07-dots-running-and-policy-update/README.md) supersedes the earlier unrecovered-workspace notice. The surviving GW journal has no recorded final conclusion; the recovered gamma-spectrometry run failed its quality gate. Detailed outputs/reasons were not collected, and there is no new physical finding/grade or accepted-science downgrade. Failure history remains, Dots is protected/unmessaged, and native Mac/expanded-activity staging remains a separate pending issue.
