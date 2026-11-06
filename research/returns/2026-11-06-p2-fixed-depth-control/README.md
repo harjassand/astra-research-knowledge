@@ -23,3 +23,7 @@ The source reports finite algebraic checks: all64 pairs of intermediate configur
 Dünnweber–Styliaris–Trivedi's continuous-time details remain future work as characterized by the return; Gács's classical time-consistency/marching/freezing/healing rules do not by themselves supply quantum side effects or protected frame transitions. The earlier completed classical processor and synchronous/source/timing results remain accepted capital at their stated scopes. The fixed-depth operation does not assume away the missing synchronizer, quantum interleaving or receiver.
 
 The return completed **6 November2026 at06:44:33.224UTC** (16:44:33.224Brisbane). Available activity labels do not give full internal reasoning, total compute or host CPU/RAM usage. The existing three-role/source/transfer/spending/hardware limits stand. Capital has not dispatched a peer request, changed an allocation, rerun science or built the corpus. Generated retrieval is unchanged.
+
+## Subsequent independent exact-QUBO first leg, 6 November
+
+[The complete unrestricted-QUBO return and original packet](../2026-11-06-p2-qubo-failure-transfer/README.md) retain representation-specific and low-order certificate failures, including easy-to-optimise examples. The unrestricted optimiser/lowerbound question remains unresolved; standard SATtranslations are prior and no physicalprimitive is supplied. The packet reports nopeertransmission. This earlier quantum-control component and its protectedinterwindow/fullprocessor gaps remain unchanged, without a claimed reduction between the two results.
