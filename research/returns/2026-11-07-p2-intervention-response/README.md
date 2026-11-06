@@ -1,6 +1,7 @@
 # Finite information for intervention response and global design
 
-**Latest lifecycle, 7 November Brisbane (22:37 UTC collection on 6 November):** P3's9dbe116b operational thermal-state turn completed; its next assignment is not supplied to Capital at this snapshot. P1/P2's latest supplied once-only starts remain25f1c5fa/3fb4f347, with no new return in this intake. Earlier all-three-started observations are historical. Expanded activity remains unstaged in predecessor chats after native Mac unlock failed; no Capital prompt/unlock/recollection. Dots' reported workspace recovery is separate from native access. Sol closed/held, Dots protected and all source/resource limits remain.
+**Latest lifecycle, 7 November Brisbane:** P3's operational thermal-state return is completed and assessed. Its2912-character same-warm programme prompt was handed ONCE to the existing dispatcher; actual POST/START remains pending in the supplied receipt. The prepared one-role treatment gives the scientist endpoint/continuation ownership, while the coordinator retains full assessment and justified stop/reallocation; no scientific outcome or across-return effect is established. P1/P2's25f1c5fa/3fb4f347 work is undisturbed as reported. Earlier missing-next-assignment/all-three-started snapshots are historical. Expanded activity/native access remains separate from Dots' reported workspace recovery. Capital sends no prompt/recovery attempt; Sol closed/held, Dots protected and all source/resource limits remain.
+
 
 
 
