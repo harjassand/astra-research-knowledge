@@ -4,6 +4,10 @@ P2 reports an exact way to couple mutable controller repair with noncommuting qu
 
 **The complete autonomous processor remains unconstructed.** Missing operations include a protected transition between reusable windows, scalable noisy controller progress/data-memory properties, unknown-input acquisition/encoding and an installed protected measurement/classical receiver. No overall processor resource bound, threshold, liveness theorem or civilisation-scale consequence follows.
 
+The coordinator read the complete response, original prompt and actual recovery, and assigns a **provisional30–45 correctness-assumed added-impact band**. It credits fixed-depth physical repair/recovery conjugation and actual shared-environment burst assignment with range/source/resource costs retained. It does not credit a complete processor, threshold, protected frame transition or missing base-memory/progress/input/receiver operations. The absent linked TXT/ZIP status carries no impact penalty.
+
+The coordinator's programme-frontier band remains **75–85**, unchanged; neither return establishes90+/95+ capability or a causal coordination-policy gain. No actual failure-object transfer has yet occurred. Publication is separate from a generated retrieval rebuild.
+
 | Read | Contents |
 |---|---|
 | [Complete received return and activity](P2_FIXED_DEPTH_CONTROL_20261106_RETURN.txt) | Exact original prompt, authorised “please continue.” recovery and complete response; available74m2s explanatory activity |
