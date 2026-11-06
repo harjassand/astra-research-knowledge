@@ -1,6 +1,6 @@
 # Dots after minimum19: negative comparisons and conditional next routes
 
-The complete supplied Dots update reports **no north-star breakthrough or demonstrated practical advantage** from its subsequent routes. The earlier minimum-19 fully symmetric code result remains its strongest shared concrete result, with its existing scope, completed internal reviews and bounded novelty/external-review qualifications unchanged. Those qualifications are source provenance, not a new Capital audit gate.
+The complete supplied Dots update reports **no north-star breakthrough or demonstrated practical advantage** from its subsequent routes. Dots calls the minimum-19 fully symmetric code theorem its strongest concrete result shared from this recent search. Its existing scope, completed internal reviews and bounded novelty/external-review qualifications remain unchanged. Earlier gap, uniqueness and estimator results retain their separate scopes and ratings. Those qualifications are source provenance, not a new Capital audit gate.
 
 | Route | What the response reports | Claim boundary |
 |---|---|---|
