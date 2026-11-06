@@ -1,6 +1,7 @@
 # Information stability of effective response
 
-**Latest lifecycle report, 7 November 2026 Brisbane (16:34 UTC on 6 November):** P1 has completed its experimental-learnability turn; P2/P3 are reported continuing their current turns. Their exact new native post/start identifiers were not supplied in this collection. The earlier P2/P3 handoff-pending notice predates this observation. P1's next assignment is not supplied to Capital. The standing three-Pro coordinator/dispatcher authority persists; Capital sends no scientific assignment. Sol remains closed/held, Dots protected, and all source/resource limits remain.
+**Latest lifecycle notice, 7 November Brisbane:** P1's next exact same-warm assignment is reported handed once to the existing dispatcher; its web posting/start is unconfirmed. P2/P3 starts are confirmed by dispatcher receipts (native user messages04758c56 and464beb1e) and both remain live. Earlier pending/held descriptions are historical. These are operational receipts, not new scientific outcomes. The standing three-Pro coordinator/dispatcher authority persists; Capital sends no scientific assignment. Sol remains closed/held, Dots protected, and all source/resource limits remain.
+
 
 
 The coordinator assigns **provisional 70–80 new consequence, assuming correctness**, to this result and its deductions. The connected elliptic family remains **75–85**. The programme frontier remains **75–85**. Scores are not added; review status or missing-source availability does not reduce correctness-assumed impact. No 90+/95+ consequence or causal policy winner is established.
