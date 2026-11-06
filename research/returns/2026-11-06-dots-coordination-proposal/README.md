@@ -15,3 +15,7 @@ No ZIP was supplied for this response. The file preserves the human prompt, avai
 ## Latest Dots update, 6 November
 
 [The subsequent complete update](../2026-11-06-dots-post-minimum19-update/README.md) says the easy comparison tied and the harder trial has not run. Available tools could not enforce or measure total agent model-compute budgets; equal agent counts alone do not make a fair comparison. No coordination winner, repaired enforcement, Capital/Pro host-resource incident or scientific policy efficacy is established. Source continued-search statements do not authorize Capital to restart Dots or launch a trial.
+
+## Dots coordination status, 6 November at 2:44 pm Brisbane
+
+[The later complete update](../2026-11-06-dots-grid-binary-stars-update/README.md) still reports no sound consistently winning approach. A fair comparison remains blocked by total model-compute measurement/caps and suitable hard tasks; the obstacles themselves are not a result. No new fair-trial completion, repaired enforcement, host-resource attribution or scientific policy-win is established.
