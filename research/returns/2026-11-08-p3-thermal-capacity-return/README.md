@@ -1,6 +1,6 @@
 # P3 thermal-capacity return: finite witnesses and paid conversion
 
-**Additive successor assessed:** The [complete additive return and scope](../2026-11-08-p3-additive-capacity-return/README.md) earns NEW75–85 for its positive region/purity/distance/coding laws; the full threshold remains OPEN. SAME warm full-phase follow-up is root-released, actual post/start pending. Earlier activity/collection statements are dated receipts; use the [live ledger](../COORDINATION_CURRENT_20261108.json).
+**Additive successor assessed:** The [complete additive return and scope](../2026-11-08-p3-additive-capacity-return/README.md) earns NEW75–85 for its positive region/purity/distance/coding laws; the full threshold remains OPEN. SAME warm full-phase follow-up is POSTED ONCE as a60fe997 and task-specifically ACTIVE, no attachment; the exact receipt is linked from the additive page. Earlier activity/collection statements are dated receipts; use the [live ledger](../COORDINATION_CURRENT_20261108.json).
 
 
 **Live coordination:** Read the [current assignment ledger](../COORDINATION_CURRENT_20261108.json) for current role/activity and collection status. The scientific claims and dated post receipts on this page retain their recorded scope.
