@@ -1,6 +1,7 @@
 # First-passage laws from compressed Ising-chain relaxation
 
-**Latest lifecycle, 7 November Brisbane:** P3's4fbb961e local-restoration return completed and was assessed. Its broader repeatable many-body state-control endpoint remains explicitly unfinished. The coordinator's first relevant cross-return decision preserves that declared endpoint; this is not evidence of identical-target persistence, greater returns or causal policy efficacy. Exact3030-character continuation was handed ONCE to the existing dispatcher; actual POST/START is pending in the supplied receipt. P1/P2's166a3f5e/c77d3c5e work is undisturbed as reported. Earlier all-three-started snapshots are historical. Expanded activity/native access, Dots workspace distinction, Sol closed/held and all source/resource limits remain; Capital sends no prompt/recovery attempt.
+**Latest lifecycle receipts, 7 November Brisbane:** all three same-warm assignments are POSTED ONCE/START CONFIRMED by dispatcher reports: P1166a3f5e, P2c77d3c5e and P3031cfb9a. P3's exact3030-character continuation body matched; it preserves the explicitly unfinished owned state-control endpoint across a return. Its visible start examines fixed-physical-error local restoration, output guarantees and clock/reset/stored-state noise. No fixed-noise result or observed policy efficacy follows. P1/P2 work is undisturbed; no scientific handoff remains pending in the supplied receipt. Earlier pending snapshots are historical. Expanded activity/native access gap, Dots workspace distinction, Sol closed/held and all prior/new source/resource holds remain; Capital sends no prompt/recovery attempt.
+
 
 
 
