@@ -1,6 +1,6 @@
 # P2 multimode Gaussian entanglement cost: new allocation
 
-**Completed and assessed:** The [formation return and assessment](../2026-11-08-p2-multimode-gaussian-cost-return/README.md) credits the imported full resolution and NEW45–55 finite LOCC assembly. A different full classical-capacity question is root-released; actual post/start pending. Earlier activity/assessment-pending statements are dated history. Source holds remain; use the [live ledger](../COORDINATION_CURRENT_20261108.json).
+**Completed and assessed:** The [formation return and assessment](../2026-11-08-p2-multimode-gaussian-cost-return/README.md) credits the imported full resolution and NEW45–55 finite LOCC assembly. A different full classical-capacity question is POSTED ONCE as e18cee09 and task-specifically ACTIVE; exact receipt is linked from the return page. Earlier activity/assessment-pending statements are dated history. Source holds remain; use the [live ledger](../COORDINATION_CURRENT_20261108.json).
 
 
 **Later live receipt:** P2 remains active, but its first fetch of2608.01909v3 failed; attempted URI and reason are unreported. This is held with no retry, alternate or root-source injection. Root reading is not recipient full-text exposure. P3additive7aa has completed; full available collection and assessment are pending, with no scientific verdict or successor body. Read the [exact live source record](ROOT_LIVE_EXPOSURE_AND_P3_COLLECTION_PENDING.txt).
