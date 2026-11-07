@@ -1,6 +1,7 @@
 # Certified causal reuse before complete identification
 
-**Latest lifecycle and availability, 7 November Brisbane:** P2's task-specific START is now confirmed for the same exact1967-character prompt/native24c10ee2, superseding the earlier initial-response/activity-pending receipt. Visible work examines worst-case prediction for noncommuting many-body evolution under local relaxation, prior strong-noise work and a finite-algorithm boundary. No final selected technical question, completed result, new grade or causal policy effect is established. All three current exact successors are POSTED ONCE/START CONFIRMED: P14be18304, P224c10ee2, P3ce8eed3e; no scientific handoff is pending. Thermal assessment65–75, earlier capital/frontier75–85, original/source/activity/Sol/Dots/N1683/team/resource limits remain. Capital sends no prompt or recovery attempt.
+**Latest lifecycle and availability, 7 November Brisbane:** P14be18304 completed the hidden-phase structural question, reported complete for the explicit families. No new coordinator assessment or successor-post/start receipt was supplied with this handoff. P224c10ee2 and P3ce8eed3e work remain undisturbed. Matching user-visible activity and the pre-recovery capture are staged. This new standalone six-member ZIP contains no predecessor archive and does not recover the earlier P1 collective-law ZIP, which remains held. All18 original-ZIP holds and scientific credit/source/N1683/Sol/Dots/team/resource limits remain. Earlier all-three-started snapshots are history; no new grade or causal policy winner is inferred. Capital sends no prompt or recovery.
+
 
 
 
@@ -108,3 +109,5 @@ Later completed source: [finite write/handover/state-selection and retention](..
 Later source return: [acquired causal descriptions for future temporal feedback protocols](../2026-11-07-p1-certified-future-protocols/README.md). This transient task pays new dynamic pulse acquisition and warranted source/instrument bounds. Earlier static/state-selection contracts and credit remain unchanged.
 
 Later available return: [collective laws without microscopic identification](../2026-11-07-p1-collective-laws-without-identification/README.md), at a different exact nonlinear-information premise; ZIP transfer remains held. Earlier finite acquisition/control credit is unchanged.
+
+Later standalone original: [hidden phase complexity and constrained selection](../2026-11-07-p1-hidden-phase-complexity/README.md), separating exact port nonidentification, robust hidden landscapes, supplied-address computation and fixed-mean selection complexity. The earlier P1 ZIP hold remains untouched.
