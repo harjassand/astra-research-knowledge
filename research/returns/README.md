@@ -1,6 +1,9 @@
 # Supplied research returns
 
-**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P2's pre-experiment mediation science is complete. Its first known-solution control was POSTED ONCE as native6adedbf2-1ba4-4841-a95e-08d4d25b6101, exact5972-character common prompt/SHA256107fa8ed8bf0a59192abdf84ff5256abf8bfbd00ac54ce7bb38cbeb0f83f5dce matched. Initial response only; task-specific START remains UNCONFIRMED. High-level prior context about avoiding precise rate identification is observed, completed proof/controller formula not visible, full proof exposure UNKNOWN; not blind. Public P3 proof availability is an exposure possibility. Control posts1/2, completions0/2, reveals0/2, frontier0/8, total issued1/12maximum; no random draw or diagnostic outcome. P1 4ea7de89 and P3 8a187aa5 remain live with task-specific activity confirmed. All source/ZIP/N1683/Sol/Dots/team/resource holds remain. Capital records receipts and sends no research prompt.
+**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P3's physical-output threshold return8a187aa5 is complete at its stated contract, broader programme unfinished. Exact2380-character next prompt/SHA256c111865b78de1f882500fb51f8fd05fcf8b552e6ae222e1dacf443bd31ec4fac was handed once; actual POST/START pending. P1 4ea7de89 remains undisturbed. P2's known-solution control6adedbf2 is posted with initial response only in the latest supplied receipt, task-specific start unconfirmed; no diagnostic outcome. All eighteen ZIP/inherited source holds and the new N517404 remain. Capital sends no research prompt/recovery; the earlier memory stop is preserved and resumption uses measured recovered headroom with unchanged limits.
+
+**Latest P3 source:** [physical-output limits](2026-11-07-p3-physical-output-limits/README.md), with arbitrary-auxiliary fidelity/delivery/yield bounds under explicit physical laws, matched restricted pump-rate order and supplied provisional70–80 assessment. Broader programme/frontier unchanged.
+
 
 
 
@@ -127,6 +130,7 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| P3 physical-output limits | [Pure physical outputs, arbitrary auxiliaries, instantaneous incidence, finite delivery/yield and scoped rate comparators](2026-11-07-p3-physical-output-limits/README.md) |
 | P2 complete classical mediation | [Supplied noncommuting spin generator, complete references, finite LOCC construction and scoped cost/witness contracts](2026-11-07-p2-complete-mediation/README.md) |
 | Earlier research source map | [Seven prior families, canonical artifacts, source/version corrections and scoped dependency links](2026-11-07-research-programme-source-index/README.md) |
 | Finite cooling and warm quantum service | [Actual finite collisions, coherent-bath closure, private thermal reserve, restricted ports and paid powered implementation](2026-11-07-physical-cooling-thermal-service/README.md) |

@@ -1,9 +1,10 @@
 # Finite port experiments to reusable nonlinear component models
 
+**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P3's physical-output threshold return8a187aa5 is complete at its stated contract, broader programme unfinished. Exact2380-character next prompt/SHA256c111865b78de1f882500fb51f8fd05fcf8b552e6ae222e1dacf443bd31ec4fac was handed once; actual POST/START pending. P1 4ea7de89 remains undisturbed. P2's known-solution control6adedbf2 is posted with initial response only in the latest supplied receipt, task-specific start unconfirmed; no diagnostic outcome. All eighteen ZIP/inherited source holds and the new N517404 remain. Capital sends no research prompt/recovery; the earlier memory stop is preserved and resumption uses measured recovered headroom with unchanged limits.
+
+
 **P1 current role, 7 November Brisbane:** The latest hidden-phase return4be18304 completed its structural question, assessed NEW provisional correctness-assumed65–75; earlier collective70–80/frontier75–85 retain credit. The same P1 continuation4ea7de89 is posted and task-specific START CONFIRMED on controlled experiments/reusable nonlinear prediction, observability, stable Hankel factorizations and finite causal memory. No new result or grade follows from that activity. This page's own historical result and scope are recorded below.
 
-
-**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P2's pre-experiment mediation science is complete. Its first known-solution control was POSTED ONCE as native6adedbf2-1ba4-4841-a95e-08d4d25b6101, exact5972-character common prompt/SHA256107fa8ed8bf0a59192abdf84ff5256abf8bfbd00ac54ce7bb38cbeb0f83f5dce matched. Initial response only; task-specific START remains UNCONFIRMED. High-level prior context about avoiding precise rate identification is observed, completed proof/controller formula not visible, full proof exposure UNKNOWN; not blind. Public P3 proof availability is an exposure possibility. Control posts1/2, completions0/2, reveals0/2, frontier0/8, total issued1/12maximum; no random draw or diagnostic outcome. P1 4ea7de89 and P3 8a187aa5 remain live with task-specific activity confirmed. All source/ZIP/N1683/Sol/Dots/team/resource holds remain. Capital records receipts and sends no research prompt.
 
 
 
