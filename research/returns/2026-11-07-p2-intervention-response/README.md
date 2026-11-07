@@ -1,6 +1,7 @@
 # Finite information for intervention response and global design
 
-**Latest lifecycle receipts, 7 November Brisbane:** all three same-warm assignments are POSTED ONCE/START CONFIRMED by dispatcher reports: P1166a3f5e, P2c77d3c5e and P3031cfb9a. P3's exact3030-character continuation body matched; it preserves the explicitly unfinished owned state-control endpoint across a return. Its visible start examines fixed-physical-error local restoration, output guarantees and clock/reset/stored-state noise. No fixed-noise result or observed policy efficacy follows. P1/P2 work is undisturbed; no scientific handoff remains pending in the supplied receipt. Earlier pending snapshots are historical. Expanded activity/native access gap, Dots workspace distinction, Sol closed/held and all prior/new source/resource holds remain; Capital sends no prompt/recovery attempt.
+**Latest lifecycle receipts, 7 November Brisbane:** P2's c77d3c5e turn completed with the full two-dimensional nucleation endpoint explicitly unresolved. This handoff supplies the complete response and original ZIP, with no new coordinator assessment or successor-post/start receipt. Earlier all-three-started notices are historical. P1's166a3f5e and P3's031cfb9a work remain undisturbed in the supplied handoff. Capital does not choose or dispatch a scientific continuation. The expanded-activity gap, Dots distinction, Sol closed/held and all existing source/resource limits remain.
+
 
 
 
@@ -87,3 +88,5 @@ Visible activity develops conditional-gradient design before the stronger ellips
 Later completed source: [complete-interface compositional transfer to new passive assemblies](../2026-11-07-p2-compositional-intervention-transfer/README.md). Source/structural/channel and cost contracts differ explicitly; preceding results and all holds remain.
 
 Later completed source: [rare-event-chain first-passage construction](../2026-11-07-p2-rare-event-chain/README.md), for a changed explicitly supplied kinetic-model class. Earlier static-interface/acquisition claims and their costs/limits remain unchanged; a static law does not acquire dynamic clocks.
+
+Later source return: [physical nucleation residence-to-law certificate and compression limits](../2026-11-07-p2-nucleation-law/README.md). The two-dimensional all-minus predictor is still unresolved; the conditional processor does not acquire global capacity/residence inputs. Earlier chain and response credit remains unchanged.
