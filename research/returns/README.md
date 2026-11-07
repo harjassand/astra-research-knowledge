@@ -1,6 +1,8 @@
 # Supplied research returns
 
-**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** Both known operations reconstructed: P1control51cba3fa uninterrupted, P2 in extra recovery6c7a6d3d after genuine interruption; positive composition evidence, no new grade/discovery/blindness or matched one-turn/policy-winner claim. SAME-P1 exact first-A launch8020chars/5c29e8bf POSTED ONCE as00b3dbb1-f9e7-48e1-9900-448bdf63c963; visible8019chars plus LF matched. Initial response only, task-specific derivation/source START pending. Unchanged A b1637bf8/common4633 e9e9b5aa retains fixed admissible temperature/volume/input promises/current law/block/chain originals; identical A reserved for P2 after B. P2Bfcfde411/P3f67c9f97 task-specifically ACTIVE/no completed frontier result. Actual scientist messages5/12 including recovery, initialfrontier posts2/4/results0/4/followups0, six planned frontier requests remain, no reveal currently justified/fair draw/new worker/allowance. Prior science/frontier75–85/no90+ and all18ZIP/12non-ZIP/Sol/Dots/resource holds unchanged. Only matched disposable P1 ZIP download trashed after durable copies. Capital sends no follow-up/source recovery/new embargo.
+**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P2 first-Bfcfde411 assessed FULL B UNRESOLVED; achieved uniform specified-input finite-arithmetic local-horizon predictor, fixed-accuracy polynomial/inverse-polynomial-accuracy quasipolynomial, supplied correctness-assumed scoped70–80/prior frontier75–85 unchanged/no90+. SAME-P2 first-A exact8020/5c29e8bf POSTED ONCE as5547ad1c-448e-492b-9de7-4924b0424a3a in actual preserved chat/predecessor verified; identical P1 body including LF. Initial response/Thinking only, task-specific START pending. Root administrative stale-URL envelope caught/corrected before delivery, historical issued envelope/correction preserved, no replay. Counterbalanced transition not B resolution/abandonment or peer stage; B second attempt after four-initial barrier. P1 A00b3dbb1 task-specific ACTIVE/P3 live. Actual messages6/12 incl recovery, initialposts3/4/returns1/4/fullendpointresolutions0/followups0, five planned frontier requests remain/no reveal/fair draw/new allowance. Only matched disposable B ZIP download trashed after durable copies. Existing hourly action readback reported ACTIVE/same cadence/target/protocol. All18ZIP/12non-ZIP/Sol/Dots/resource holds remain; Capital sends no research/source recovery/new embargo.
+
+
 
 
 
@@ -145,6 +147,7 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| P2 first frontier-B partial operation | [Local prediction horizon and exact finite predictor; full polynomial-accuracy case B unresolved](2026-11-07-p2-case-b-first-attempt/README.md) |
 | P1 known-control uninterrupted reconstruction | [Original report/controller, full diagnostic provenance and assessed scope](2026-11-07-p1-diagnostic-control/README.md) |
 | P2 known-control interruption recovery | [Reconstructed operation, full provenance, coordinator assessment and pending frontier-B handoff](2026-11-07-p2-diagnostic-control-interruption-recovery/README.md) |
 | P3 noisy thermal control | [Noncommuting1D thermal targets, complete mixing, positive noisy-actuator balance and full compilation/holding costs](2026-11-07-p3-noisy-thermal-control/README.md) |
