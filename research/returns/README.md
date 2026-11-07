@@ -168,6 +168,7 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| P1 nonunital insertion-compiler complete available return | [Uniform growing-K compiler60–70; finite-total-action predictor; full fixed-eta endpoint OPEN; warm full question posted/active](2026-11-08-p1-nonunital-insertion-compiler-return/README.md) |
 | P2 multimode Gaussian-cost complete available return | [Credited imported formation resolution; added finite LOCC assembly45–55; source holds explicit; new classical-capacity question posted/active](2026-11-08-p2-multimode-gaussian-cost-return/README.md) |
 | P3 additive-capacity complete available return | [Assessed75–85: finite-energy positive region beyond.413 and exact purity law; full threshold OPEN; ZIP held](2026-11-08-p3-additive-capacity-return/README.md) |
 | P2 multimode Gaussian entanglement-cost allocation | [Exact prompt and active receipt; universal identity is the question, not a new result](2026-11-08-p2-multimode-gaussian-entanglement-cost-allocation/README.md) |
