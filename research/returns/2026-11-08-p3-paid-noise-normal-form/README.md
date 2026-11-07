@@ -1,0 +1,33 @@
+# P3 paid-noise conversion: a conditional autonomous-computing bridge
+
+Root assigns provisional correctness-assumed **50–60** to an exact paid-noise conversion, complete physical-cell fault bounds and a shared-wait counterexample. **The full autonomous processor, near-linear programme-paid compiler and reference-safe encoded-channel threshold remain UNRESOLVED.** The actual logical threshold p_* is not supplied. Earned fullB/programme frontier90–94 stays unchanged; grades are nonadditive. This is neither a constructed general threshold, an autonomy no-go nor95result.
+
+Read the [full original prompt, human continuation, response and available activity](P3_PAID_AUTONOMY_20261108_RETURN.txt), [embedded activity section](P3_PAID_AUTONOMY_20261108_RETURN.txt#L203), [full root assessment](COORDINATOR_ASSESSMENT.txt) and [SOURCES.json](SOURCES.json). Root read the full31,500-byte capture and all available activity reported as9,083bytes/SHA25617d2732804f4052e1ffaf88698ca9ab79e3ff289876dceeb849276d0e3e45645. Activity remains embedded in the exact retained capture; Capital did not acquire a separate activity original or reconstruct missing content.
+
+The producer ZIP transfer remains **UNCONFIRMED/HELD** after one Library click; no retry, alternate export or preview recovery occurred. Original/code/SOURCE_ACCESS_NOTES were not read by root. Offered separateTXT was not downloaded. The Wang publisher anti-bot path has UNKNOWN exact URI and remains held, with every earlier hold preserved and no unique-total audit. The available inline proof receives its scoped credit without a missing-original impact penalty or verification gate.
+
+## Exact paid conversion and conditional threshold
+
+With a paid local depolarizing background, general bounded-range Hermiticity-preserving trace-annihilating perturbations K can be written
+
+`kappa(D-id)+K = kappa(Psi-id)`
+
+with arbitrary local CPTP fault map Psi and a constant Poisson attempt rate. Coherent/nonunital faults and weakened engineered resets/corrections are included. Trace-corrected local decomposition preserves supports with factor2 norm loss; foundational Choi positivity/local positive completion and predecessor machinery retain credit.
+
+For fixed local dimension d and neighbourhood/overlap nu, **a constructed full autonomous processor threshold p_*** against arbitrary local CPTP Poisson faults would imply `eta0=p_*/(8 nu d^2)`, choosing the paid background `kappa=p_*/(2nu)`. The condition is substantive: this return supplies no such processor or actual logical p_*. Physical-cell event/subchannel bounds take joint form `(nu*kappa*tau)^(|F|/chi)`, with complete-channel event norm equal to state-independent event mass. These bounds do not themselves establish a logical causal-cut threshold.
+
+## Why marginal-clock reasoning fails
+
+The shared exponential-wait example gives joint fault probability `Gamma(1+v/eta)Gamma(r+1)/Gamma(r+1+v/eta)`. Its tail is polynomial in r despite O(eta) marginals. Thus small marginal error cannot be promoted to an exponentially small joint logical fault bound by that argument. The example defeats an inference and does not rule out local autonomous quantum computation.
+
+Quantum gate order during clock repair, joint logical faults, reference-safe encoded correctness and completion/holding guarantees remain missing. Classical synchronisation/protected memory and discrete fault tolerance do not automatically supply them. The producer's small exact CP fixture and12 waiting checks are reported finite diagnostics, not root code/hardware execution or proof of the full phase.
+
+Expected/high-probability Poisson activity is charged: near-linear S and T can still give quadratic total activity O(V² polylog). Ancilla, reset, disposal and precision costs are paid; no universal joule price follows without bath specifications. The reviewed Gacs math/0003117v2 Theorem6.1/Corollary7.21 contract has h1(t)=exp(O(sqrt(logt)*loglogt)); it is classical asynchronous reliability with non-polylog delay, not a quantum/polylog threshold. Restricted quantum-source noise contracts retain their actual credit.
+
+## Current lifecycle and continuity
+
+Original803c05a0 and the newer human continuationbb6018c3 were **two actual requests outside the completed11-request diagnostic**, preserved as one completed human-continued return history. A user continuation alone did not independently verify an interruption banner/cause, and displayed duration was not compute. The context/effort/source difference precludes a clean single-turn compact-style comparison or guaranteed discovery-rate claim.
+
+Root released the exact [same-P3 full-phase followup1926/6778b46d](P3_AFTER_PAID_NOISE_NORMAL_FORM_20261108.txt) through the existing dispatcher. **Actual new post/start is pending** at this receipt. Full programme-paid/encoded-channel/generic-noise/cost promises remain; there is no fallback, proposal-only endpoint, forced architecture or new sent-Copy/native-key claim. The paid normal form removes a concrete compatibility obstacle, while the quantum processor remains a fundamental invention. Another conditional wrapper would not complete the phase; the root decision is not a two-turn-success rule, prescribed buffer reuse or a policy optimum.
+
+P1ce8869e1 and P27fa7fedf continue independently, without live cross-share or speculative concentration. The Pro release and standing root decision loop remain; Sol stays closed, Dots protected, exactly three Pro roles and every source/access/transfer/resource/spending limit remain. Capital sends no scientist message, acquires no original, performs no proof/code replay or unpacking, and starts no generated-index project. Publication is source integration, not new science or generated-retrieval completion.
