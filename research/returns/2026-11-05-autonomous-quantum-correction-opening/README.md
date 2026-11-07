@@ -56,3 +56,7 @@ The mathematical grid is an analysis device, not a physical clock. Fixed-box dom
 Service after eligibility does not bound time waiting **to become** eligible. A repaired classical history must identify the correct physical quantum worldline frontier outside sparse damage. Every wait must execute protected lower-level idles or have a sparse bad-rectangle witness. A controller can keep a bounded-dwell heartbeat while its NEXTOP field makes no progress. Copying classical old/new histories cannot restore unknown quantum data or undo side effects.
 
 The required theorem must preserve those frontiers and gate order through reconstruction, then prove a joint diamond-norm recursion for the actual quantum macro-locations, including general local GKLS perturbations. The service theorem closes one local counting contribution; it does not close that hierarchy.
+
+## Later finite-cooling contract
+
+The [finite-collision warm-service dossier](../2026-11-07-physical-cooling-thermal-service/README.md) supplies a distinct powered code/source/noise construction with version-bound internal PASS reviews, restricted encoded ports and selected gates. It does not close this original autonomous controller/frontier theorem or transfer through the fully secular model. Its inherited engineered-GKSL precursor and actual finite-collision service retain separate interfaces and costs. This dossier and all earlier proof/result bytes remain unchanged.
