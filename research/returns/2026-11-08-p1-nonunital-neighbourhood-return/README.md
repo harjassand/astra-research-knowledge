@@ -1,5 +1,8 @@
 # P1 nonunital return: strong-noise prediction and product suppression
 
+**Warm successor completed:** The [complete available insertion-compiler return](../2026-11-08-p1-nonunital-insertion-compiler-return/README.md) has arrived with all available activity; coordinator assessment is pending. Earlier active/collection-pending statements below are dated receipts. Source holds remain; use the [live ledger](../COORDINATION_CURRENT_20261108.json).
+
+
 Root assigns provisional correctness-assumed **65–75** to a complete strong-noise predictor, an every-fixed-g reference-free product-suppression bridge, and a paid specified-input binary-time first-response operation. **The full every-fixed-g/fixed-nonzero-eta/reference-free arbitrary-accuracy global prediction endpoint remains UNRESOLVED; no model-preserving hardness is supplied.** Standard and inherited machinery retains credit; family/fullB90–94 is unchanged/nonadditive,no95.
 
 Read the [complete43782-byte actual prompt/response/all available activity](P1_NONUNITAL_NEIGHBOURHOOD_20261108_RETURN.txt), [full root assessment and release](ROOT_NONUNITAL_SCOPE_AND_WARM_RELEASE.txt), [exact next1997-byte full-question body](P1_NONUNITAL_AFTER_PRODUCT_SUPPRESSION_20261108.txt), [actual warm post/start receipt](ACTUAL_WARM_FOLLOWUP_POST_RECEIPT.json) and [metadata](SOURCES.json). The original source SHA256854c69900f2f37a310c7aac3c79d361343b214471b660e0ebe982a6fb9ecc0ab is unchanged. Root read actual2359-byte prompt,full21572-byte response and all17297-byte available activity with native-offset/UTF8 digest equality and no normalization. Capital preserved the supplied source once,without scientific replay.
