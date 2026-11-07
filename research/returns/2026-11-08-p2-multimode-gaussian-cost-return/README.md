@@ -1,5 +1,8 @@
 # P2 Gaussian formation cost: credited resolution and finite LOCC assembly
 
+**Later P2 completion receipt:** The exact29,876-byte e18 return has been retained once (SHA2568953dee29f6d4c40fab8ca97b4dd9d3af2293a71abecd8ea316a7b86d92cdd5c); its source publication and coordinator assessment are pending. No outcome, priority credit or successor is inferred. Its reported2610.22308v1 retrieval failure is held without retry/alternate; Gao originals remain unopened. The natural completed boundary is reached, for coordinator assessment.
+
+
 **Later metadata-only prior claim:** A [Zenodo record claim potentially overlaps the active classical-capacity question](CLASSICAL_CAPACITY_PRIOR_CLAIM_METADATA_ONLY_20261108.md). Root read the record formula/scope; the original PDF failed first fetch and remains held/unread. Account at the natural completed boundary, with no live source injection. Earlier bounded absence screens are not priority proofs.
 
 

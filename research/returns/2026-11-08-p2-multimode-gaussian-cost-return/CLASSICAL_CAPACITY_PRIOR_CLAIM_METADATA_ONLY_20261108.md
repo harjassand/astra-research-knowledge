@@ -1,5 +1,8 @@
 # Classical-capacity prior claim: metadata only
 
+**Later P2 completion receipt:** The exact29,876-byte e18 return has been retained once (SHA2568953dee29f6d4c40fab8ca97b4dd9d3af2293a71abecd8ea316a7b86d92cdd5c); its source publication and coordinator assessment are pending. No outcome, priority credit or successor is inferred. Its reported2610.22308v1 retrieval failure is held without retry/alternate; Gao originals remain unopened. The natural completed boundary is reached, for coordinator assessment.
+
+
 The coordinator read the formula/model description on Zixuan He's [Zenodo23479869 record](https://zenodo.org/records/23479869), v1 dated19October2026. It claims the fixed finite-mode, coupled/all-encoding Gaussian energy and strict entanglement-assisted CLASSICAL-capacity frontier, including P=0 unassisted capacity. That is a potentially overlapping prior claim for the active P2e18 whole question, not a new mission discovery, root governing-paper reading or earned95.
 
 The FIRST original fetch of https://zenodo.org/records/23479869/files/Energy_and_entanglement_limits.pdf?download=1 failed400 with a Unicode decoding error. The PDF remains HELD/unread: no retry, query stripping, HTML/mirror, alternate or reconstruction. Reading record metadata/formula is distinct from reading the original theorem. The exact coordinator source record is linked from the [P3 assessment](../2026-11-08-p3-additive-chernoff-cutoff-return/README.md).
