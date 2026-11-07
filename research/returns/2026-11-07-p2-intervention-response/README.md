@@ -1,6 +1,7 @@
 # Finite information for intervention response and global design
 
-**Latest lifecycle receipts, 7 November Brisbane:** all three current same-warm assignments are POSTED ONCE/START CONFIRMED by dispatcher reports: P1e61f06c8, P2d3da0a7c and P3031cfb9a. P1's exact2030-character next-programme body matched. Initial activity selects its next question and reviews recent repository commits/current sources; no specific scientific question is visible yet. This is initial activity, not a scientific result or policy efficacy. Its previous selected robustness-gap question is complete and assessed70–80; completing it in one return leaves across-return persistence untested. No scientific handoff is pending in the supplied receipt. P2/P3 work is undisturbed. Earlier pending snapshots are historical; all source/N1683/activity/Sol/Dots/team/resource limits remain. Capital sends no prompt or recovery attempt.
+**Latest lifecycle and availability, 7 November Brisbane:** P2d3da0a7c completed its block-transport return; the full two-dimensional predictor remains unresolved. No new assessment or successor-post/start receipt was supplied with this source handoff. P1e61f06c8 and P3031cfb9a work remain undisturbed. Ten historical user-visible activity gaps are now closed, and this block return's matching activity was also recovered before publication. Capture versions and trace hashes are preserved; availability adds no scientific consequence, grade or causal policy winner. Earlier blanket activity-gap/all-three-started notices are historical. Stickies closure UNKNOWN is a cleanup exception only. Capital makes no native/researcher/dispatcher contact; source/N1683/Sol/Dots/team/resource holds remain.
+
 
 
 
@@ -95,3 +96,5 @@ Later completed source: [complete-interface compositional transfer to new passiv
 Later completed source: [rare-event-chain first-passage construction](../2026-11-07-p2-rare-event-chain/README.md), for a changed explicitly supplied kinetic-model class. Earlier static-interface/acquisition claims and their costs/limits remain unchanged; a static law does not acquire dynamic clocks.
 
 Later source return: [physical nucleation residence-to-law certificate and compression limits](../2026-11-07-p2-nucleation-law/README.md). The two-dimensional all-minus predictor is still unresolved; the conditional processor does not acquire global capacity/residence inputs. Earlier chain and response credit remains unchanged.
+
+Later supplied result: [conditional block transport and direct-simulation limits](../2026-11-07-p2-nucleation-block-transport/README.md). The full physical nucleation predictor stays unresolved; this is not a general algorithmic hardness result.
