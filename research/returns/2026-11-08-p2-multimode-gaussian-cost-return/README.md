@@ -1,5 +1,8 @@
 # P2 Gaussian formation cost: credited resolution and finite LOCC assembly
 
+**Later metadata-only prior claim:** A [Zenodo record claim potentially overlaps the active classical-capacity question](CLASSICAL_CAPACITY_PRIOR_CLAIM_METADATA_ONLY_20261108.md). Root read the record formula/scope; the original PDF failed first fetch and remains held/unread. Account at the natural completed boundary, with no live source injection. Earlier bounded absence screens are not priority proofs.
+
+
 **Coordinator assessed: the full E_C(rho_V)=E_F(rho_V)=F_G(V) endpoint is AFFIRMATIVELY RESOLVED at the explicitly credited producer-read imported theorem contract. This is not a new mission discovery.** P2's added explicit rational-input finite-resource LOCC assembly earns NEW provisional correctness-assumed45–55. The programme/fullB90–94 frontier is unchanged and nonadditive; no95 claim.
 
 Read the [unchanged complete29,029-byte return](P2_MULTIMODE_GAUSSIAN_COST_20261108_RETURN.txt), [full coordinator assessment and decision](ROOT_GAUSSIAN_COST_SCOPE_AND_CLASSICAL_CAPACITY_RELEASE.txt), [exact new capacity question](P2_GENERAL_GAUSSIAN_CLASSICAL_CAPACITY_20261108.txt) and [metadata](SOURCES.json). The exact prompt, entire response and all available activity were read and digest-matched by the coordinator as reported. Capital retained the source once and performed no scientific replay.
