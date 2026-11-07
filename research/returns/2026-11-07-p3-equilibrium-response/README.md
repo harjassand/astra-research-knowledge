@@ -1,6 +1,7 @@
 # Finite equilibrium-response maps and calibration limits
 
-**Latest lifecycle receipts, 7 November Brisbane:** all three same-warm assignments are POSTED ONCE/START CONFIRMED by dispatcher reports: P1166a3f5e, P2c77d3c5e and P34fbb961e. P1's exact2897-character programme body matched with its terminal newline restored. Its visible opening reviews current sources/candidate directions by full capability; no final scientific question was supplied at that start. There is no pending scientific handoff in the supplied receipt. Started endpoint-ownership treatments are not scientific results or observed across-return/policy effects; different tasks/history and no matched control remain. P2/P3 work is undisturbed as reported. Earlier pending snapshots are historical. Expanded activity/native access gap, Dots workspace distinction, Sol closed/held and all source/resource limits remain; Capital sends no prompt/recovery attempt.
+**Latest lifecycle, 7 November Brisbane:** P3's4fbb961e local-restoration return completed and was assessed. Its broader repeatable many-body state-control endpoint remains explicitly unfinished. The coordinator's first relevant cross-return decision preserves that declared endpoint; this is not evidence of identical-target persistence, greater returns or causal policy efficacy. Exact3030-character continuation was handed ONCE to the existing dispatcher; actual POST/START is pending in the supplied receipt. P1/P2's166a3f5e/c77d3c5e work is undisturbed as reported. Earlier all-three-started snapshots are historical. Expanded activity/native access, Dots workspace distinction, Sol closed/held and all source/resource limits remain; Capital sends no prompt/recovery attempt.
+
 
 
 
@@ -80,3 +81,5 @@ The scientist changed destination from channel geometry to equilibrium statistic
 Later completed source: [acquired collective quantum thermodynamics](../2026-11-07-p3-collective-thermodynamics/README.md), supplied NEW consequence70–80 assuming correctness. The collective class and information interface differ; this finite-range predecessor retains its result/credit and unavailable original hold.
 
 Later completed source: [operational thermal-state and outcome-window compiler](../2026-11-07-p3-operational-thermal-state/README.md), under a stronger labelled active gate/reset/randomness interface. Earlier acquired-model/finite-range results, precision costs and unavailable original holds remain unchanged.
+
+Later completed structural result: [local state restoration and precision separation](../2026-11-07-p3-local-state-stabilization/README.md), consuming a full supplied preparation procedure. Approximate history-state output does not inherit exact hard-window support or constant physical noise tolerance; earlier source/interface/cost guarantees remain unchanged.
