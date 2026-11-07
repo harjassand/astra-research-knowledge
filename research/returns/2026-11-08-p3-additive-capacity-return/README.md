@@ -1,5 +1,8 @@
 # P3 additive capacity: positive region and purity law
 
+**Warm successor completed:** The [complete available Chernoff/cutoff return](../2026-11-08-p3-additive-chernoff-cutoff-return/README.md) has arrived with all available activity; coordinator assessment is pending. Earlier active/collection-pending statements below are dated receipts. Source holds remain; use the [live ledger](../COORDINATION_CURRENT_20261108.json).
+
+
 **Coordinator assessed: NEW provisional correctness-assumed75–85. The full exact unassisted threshold remains OPEN:0.413<x_*<=1/2.** This is one connected scope; the programme/fullB90–94 frontier is unchanged and nonadditive, with no95 claim.
 
 Read the [unchanged complete51,315-byte return](P3_ADDITIVE_CAPACITY_20261108_RETURN.txt), [full coordinator assessment and decision](ROOT_ADDITIVE_SCOPE_AND_WARM_PHASE_RELEASE.txt), [exact warm follow-up](P3_ADDITIVE_PHASE_AFTER_FINITE_FOCK_20261108.txt) and [metadata](SOURCES.json). The exact prompt, full response and entire available activity were read and digest-matched by the coordinator as reported. Capital retained the available source once; it did not replay proofs, certificates, code or hardware.
