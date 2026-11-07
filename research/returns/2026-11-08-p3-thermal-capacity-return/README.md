@@ -1,5 +1,8 @@
 # P3 thermal-capacity return: finite witnesses and paid conversion
 
+**Current P2 lifecycle update:** P2 has a different [plain-model quantumness allocation](../2026-11-08-p2-plain-lwe-quantumness-allocation/README.md); P2_PLAIN_LWE_QUANTUMNESS_FINAL_ROOT_RELEASED_NOT_SCIENTIST_POSTED. Prior hydrodynamic idle/stop statements are history; P1/P3 work is preserved.
+
+
 Root assigns provisional correctness-assumed **60–70** to the finite non-Gaussian positive family, reference-safe code/witness compiler and critical-curve organisation. **The full original thermal zero-versus-positive phase remains UNRESOLVED.** Standard Gaussian/antidegradability/continuity/Klesse/composition machinery keeps credit. This is not90/95 or an addition to the programme90–94 frontier.
 
 Read the [complete47714-byte actual prompt/response/all available activity](P3_THERMAL_CAPACITY_20261108_RETURN.txt), [full root scope and next-question decision](ROOT_THERMAL_SCOPE_AND_ADDITIVE_RELEASE.txt), [next exact1995-byte additive-phase body](P3_ADDITIVE_NOISE_CAPACITY_PHASE_20261108.txt) and [metadata](SOURCES.json). Full capture SHA2566f3583dc2dd48e7163209f9efa950612e3337354682f0973a3e6282c5daae55f pins the supplied available source. Root read actual1906-byte prompt, entire22163-byte response and all22082-byte available expanded visible activity; native-offset/digest matches used no normalization. This is not the producer original.

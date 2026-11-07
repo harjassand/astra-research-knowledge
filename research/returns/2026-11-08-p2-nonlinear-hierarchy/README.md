@@ -1,5 +1,8 @@
 # P2 nonlinear hierarchy and finite-cutoff certificates
 
+**Later different allocation:** The fixed-strength route remains stopped/full profiles unresolved. P2 has a [new plain-model LWE-only quantumness question](../2026-11-08-p2-plain-lwe-quantumness-allocation/README.md). Its actual lifecycle is P2_PLAIN_LWE_QUANTUMNESS_FINAL_ROOT_RELEASED_NOT_SCIENTIST_POSTED. Earlier idle statements below are dated receipts; use the live ledger for current work.
+
+
 Root assigns provisional correctness-assumed **35–45** to an exact quartic-Gibbs/Hermite nonlinear hierarchy, supplied-cutoff residual certificates, arbitrarily slow observables above every fixed degree, a fixed-clock mesoscopic one-block bound and a core-versus-moment logical counterexample. **Full fixed-strength microscopic sound/heat profiles, exponents, amplitudes and uniform errors remain UNRESOLVED.** Classical polynomial/Galerkin/Duhamel/conservation/martingale machinery receives credit. FullB90–94 is unchanged/nonadditive.
 
 Read the [complete actual prompt/response/all available activity](P2_FIXED_STRENGTH_NONLINEAR_20261108_RETURN.txt), [unchanged original ZIP](original/Fixed_Strength_Chain_Nonlinear_20261108.zip), [full root scope and stop decision](ROOT_ASSESSMENT_AND_SCIENTIFIC_STOP.txt) and [metadata](SOURCES.json). The28582-byte return SHA256 is3e857d2d5964fc71c4fd1b400faf2892065bd55611992e2557c2afd2a0b2ee4e; the11175-byte ZIP SHA256 is26809101d1022d21e6ae53316a3026243e3bbd02cfa2fce143ad48083f873159. Root read allREPORT19789/SCOPE3272/MANIFEST in memory. Capital preserves the ZIP intact without inspection/unpacking. The macOS-created same-named Downloads folder was not inspected/used; actual matching temporary-ZIP-only cleanup receipt remains pending. Capital deletes nothing.
