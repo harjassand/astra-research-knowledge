@@ -1,6 +1,7 @@
 # Recovered user-visible activity: ten existing returns
 
-**Latest lifecycle and availability, 7 November Brisbane:** all three current same-warm successors are POSTED ONCE/START CONFIRMED by dispatcher reports: P1e61f06c8, P2e0144bad and P3031cfb9a. P2's exact1820-character next-question body matched. Its visible start reassesses the destination and considers dynamic-kernel inference; no final question or scientific outcome is reported yet. Automatic fixed2D renewal ended, while the previous physical predictor remains scientifically unresolved. Block-transport NEW provisional correctness-assumed55–65 and earlier capital/frontier stay unchanged. No scientific handoff is pending. Ten historical activity gaps and this source's activity are closed with prior versions/hashes preserved; Stickies closure UNKNOWN is cleanup only. Selection/start adds no scientific or causal-policy gain. Capital sends no prompt or recovery attempt; all source/N1683/Sol/Dots/team/resource limits remain.
+**Latest lifecycle and availability, 7 November Brisbane:** P1e61f06c8 and P3031cfb9a completed. P1 reports a completed restricted structural-inference question; its ZIP transfer is unconfirmed and held, with no retry. P3 supplies its noise-absorption original; the broader many-body state-control programme remains unfinished. Both matching expanded user-visible traces are now staged with prior captures preserved. No new assessment or successor-post/start receipt was supplied for these returns. P2e0144bad work is undisturbed. Earlier all-three-started snapshots are history. Stickies closure UNKNOWN is cleanup only. Capital does not select/dispatch science or recover held originals; Sol/Dots/N1683/team/resource limits remain.
+
 
 
 
