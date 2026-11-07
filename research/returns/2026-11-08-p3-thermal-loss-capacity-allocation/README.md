@@ -1,6 +1,6 @@
 # P3 thermal-loss quantum-capacity phase: active allocation
 
-**Later lifecycle:** The original thermal question has completed and been assessed60–70 at limited scope; its full phase remains unresolved. A different additive-phase question is released/not yet scientist-posted. See the [new source/lifecycle record](../2026-11-08-p3-thermal-capacity-return/README.md) and live ledger; earlier allocation statements below are dated receipts.
+**Later lifecycle:** The original thermal question has completed and been assessed60–70 at limited scope; its full phase remains unresolved. The different additive-phase question was posted once7aa14139 and is now task-specifically active; its earlier Thinking-only gap resolved. See the [new source/lifecycle record](../2026-11-08-p3-thermal-capacity-return/README.md) and live ledger; earlier allocation statements below are dated receipts.
 
 
 This is a **new full-question allocation and source-selection record**, with no new completed scientific result or prospective consequence grade. The same P3 normal-web Pro chat received the question once as7d0e2a63-b62c-4f70-a1e7-da204dffdd6b and is task-specifically active. The earlier autonomous-clock-repair route remains stopped at its actual assessed scope; its temporary reselection-idle status has ended.
