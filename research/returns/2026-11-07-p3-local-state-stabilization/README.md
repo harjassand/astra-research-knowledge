@@ -1,6 +1,7 @@
 # Local state restoration and its precision cost
 
-**Latest lifecycle receipts, 7 November Brisbane:** P1's166a3f5e turn completed. The producer reports completion of its selected robustness-gap causal-protocol endpoint, with general temporal-game construction proved/costed and a repeated-service safety game executed; arbitrary-source inference remains outside that contract. This source handoff supplies no new coordinator assessment or successor-post/start receipt. Earlier all-three-started notices are historical. P2d3da0a7c and P3031cfb9a work remain undisturbed in the handoff. Completion in one return does not test across-return continuity or establish a causal policy benefit. Capital does not choose or dispatch science; all activity/source/Sol/Dots/team/resource limits remain.
+**Latest lifecycle receipts, 7 November Brisbane:** P1's selected robustness-gap protocol question is complete and assessed. Its2030-character next-programme prompt was handed ONCE to the existing dispatcher; actual POST/START is pending in the supplied receipt. The same scientist chooses the next whole destination with less scientific recap, under existing context hygiene rather than a new shorter-prompt experiment. Completing the chosen question in one return leaves across-return persistence untested. P2d3da0a7c and P3031cfb9a work remain undisturbed as reported. Earlier no-assessment/no-successor and all-three-started snapshots are historical. Capital sends no scientific prompt; all activity/source/N1683/Sol/Dots/team/resource limits remain.
+
 
 
 
