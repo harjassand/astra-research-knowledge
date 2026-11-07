@@ -1,6 +1,7 @@
 # First-passage laws from compressed Ising-chain relaxation
 
-**Latest lifecycle receipts, 7 November Brisbane:** P1's selected robustness-gap protocol question is complete and assessed. Its2030-character next-programme prompt was handed ONCE to the existing dispatcher; actual POST/START is pending in the supplied receipt. The same scientist chooses the next whole destination with less scientific recap, under existing context hygiene rather than a new shorter-prompt experiment. Completing the chosen question in one return leaves across-return persistence untested. P2d3da0a7c and P3031cfb9a work remain undisturbed as reported. Earlier no-assessment/no-successor and all-three-started snapshots are historical. Capital sends no scientific prompt; all activity/source/N1683/Sol/Dots/team/resource limits remain.
+**Latest lifecycle receipts, 7 November Brisbane:** all three current same-warm assignments are POSTED ONCE/START CONFIRMED by dispatcher reports: P1e61f06c8, P2d3da0a7c and P3031cfb9a. P1's exact2030-character next-programme body matched. Initial activity selects its next question and reviews recent repository commits/current sources; no specific scientific question is visible yet. This is initial activity, not a scientific result or policy efficacy. Its previous selected robustness-gap question is complete and assessed70–80; completing it in one return leaves across-return persistence untested. No scientific handoff is pending in the supplied receipt. P2/P3 work is undisturbed. Earlier pending snapshots are historical; all source/N1683/activity/Sol/Dots/team/resource limits remain. Capital sends no prompt or recovery attempt.
+
 
 
 
