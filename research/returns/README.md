@@ -1,8 +1,9 @@
 # Supplied research returns
 
-**Latest lifecycle receipts, 7 November Brisbane:** P2's c77d3c5e turn completed with the full two-dimensional nucleation endpoint explicitly unresolved. This handoff supplies the complete response and original ZIP, with no new coordinator assessment or successor-post/start receipt. Earlier all-three-started notices are historical. P1's166a3f5e and P3's031cfb9a work remain undisturbed in the supplied handoff. Capital does not choose or dispatch a scientific continuation. The expanded-activity gap, Dots distinction, Sol closed/held and all existing source/resource limits remain.
+**Latest lifecycle receipts, 7 November Brisbane:** P2's nucleation-law return is assessed. Its2860-character same-endpoint continuation was handed ONCE to the existing dispatcher; actual POST/START remains pending in the supplied receipt. The full two-dimensional predictor stays explicitly unresolved, with route/representation ownership and justified obstruction/stronger-opening changes retained. P1's166a3f5e and P3's031cfb9a work remain undisturbed as reported. Earlier no-assessment/no-successor and all-three-started snapshots are historical. No scientific result or causal policy advantage follows from the handoff. Capital sends no prompt; all activity/source/Sol/Dots/team/resource limits remain.
 
-**Latest P2 source:** [physical nucleation](2026-11-07-p2-nucleation-law/README.md) supplies a conditional residence-to-waiting-time-law processor and explicit compression failure families. The growing two-dimensional predictor remains unresolved; no new assessment was supplied. Earlier scientific scores and credit are unchanged.
+
+**Latest P2 source:** [physical nucleation](2026-11-07-p2-nucleation-law/README.md) supplies a conditional residence-to-waiting-time-law processor and explicit compression failure families. Its supplied NEW provisional correctness-assumed consequence is55–65 for the specialized bridge/processor/scoped obstruction, with generic NBUE/Stein credit classical. The full two-dimensional predictor remains unresolved; earlier chain70–80, effective-law75–85 and programme frontier75–85 retain their scopes, ordinal/nonadditive/no90+ or loss of accepted science.
 
 
 
