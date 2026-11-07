@@ -1,6 +1,6 @@
 # P1 nonunital prediction neighbourhood: active allocation
 
-**Completed response available:** The [full nonunital-neighbourhood return](../2026-11-08-p1-nonunital-neighbourhood-return/README.md) has been supplied; the coordinator assessment is pending. Earlier task-active statements below are dated post/start receipts. The live ledger governs current status; no outcome or next assignment is inferred.
+**Completed return assessed:** The [full nonunital return](../2026-11-08-p1-nonunital-neighbourhood-return/README.md) is assessed65–75 at strong-noise/suppression/first-response scope; the full every-g endpoint remains unresolved. A SAME-P1 full-question successor28572936 is now task-specifically active. Earlier post/start statements below are dated receipts; use the live ledger for current work.
 
 
 **Current P2 lifecycle update:** P2 has a different [plain-model quantumness allocation](../2026-11-08-p2-plain-lwe-quantumness-allocation/README.md); POSTED ONCE1fbb5b53 / task-specific ACTIVE. Prior hydrodynamic idle/stop statements are history; P1/P3 work is preserved.

@@ -168,7 +168,7 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
-| P1 nonunital-neighbourhood completed text | [Complete available43782-byte return; coordinator assessment pending; no outcome inferred](2026-11-08-p1-nonunital-neighbourhood-return/README.md) |
+| P1 nonunital-neighbourhood completed text | [Strong-noise predictor/product suppression/paid response65–75; full every-g endpoint open; warm successor active](2026-11-08-p1-nonunital-neighbourhood-return/README.md) |
 | P2 current plainLWE quantumness allocation | [FINAL posted once1fbb/task active; protocol remains the question; recipient first-access holds recorded](2026-11-08-p2-plain-lwe-quantumness-allocation/README.md) |
 | P3 thermal return/paid additive conversion | [Finite witness and reference-safe coding60–70; full thermal phase unresolved; new additive question posted/task active](2026-11-08-p3-thermal-capacity-return/README.md) |
 | P1 current nonunital allocation | [Different arbitrary-accuracy global-prediction neighbourhood question; FINAL posted once/task active](2026-11-08-p1-nonunital-neighbourhood-allocation/README.md) |

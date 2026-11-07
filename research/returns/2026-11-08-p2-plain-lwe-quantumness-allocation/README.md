@@ -1,5 +1,8 @@
 # P2 plain-model single-round quantumness: new allocation
 
+**New completion notice:** P2turn1fbb5b53 has completed; full response/activity collection and coordinator assessment are pending as of the supplied notice. No scientific outcome,original-file detail or next assignment is inferred. The earlier active-post statements below are dated receipts; use the live ledger.
+
+
 **POSTED ONCE / task-specific ACTIVE**, SAME Pro/no attachment, as1fbb5b53-3d82-4102-94b3-d836317f0820. The final body remains2169/42ace111; actualCopy2168/22cdbf6304be6c2210e767e915ac8dfaebd1fde13e3d95a009cd3522a46cab3a omits only finalLF and matches the root expected digest. See the [actual post/start/exposure receipt](ACTUAL_POST_RECEIPT.json) and [local Copy representation](P2_PLAIN_LWE_SINGLE_ROUND_QUANTUMNESS_FINAL_20261108.sent-copy-representation.txt); Capital performed no new UI retrieval.
 
 Task-specific activity was confirmed20:30:21.096685UTC: checking protocol assumptions/LWE-only soundness, with three named receiving-chat activity entries visible. Child models,compute,private arguments and completions are not inferred. The earlier Thinking-only gap resolved without another scientist message,replay or interruption. Fresh previous924-completed/latest-human/empty-composer/Pro/once-only checks passed as reported.
