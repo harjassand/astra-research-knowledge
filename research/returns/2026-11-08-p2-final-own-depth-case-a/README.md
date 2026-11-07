@@ -1,0 +1,21 @@
+# P2 final own-depth A: explicit-history work obstruction
+
+**FULL A UNRESOLVED after both participants' two A turns.** Root assigns correctness-assumed **55–65** to a broader proper nonnegative explicit-full-history work lower bound. It is not a general computational-complexity obstruction or a complete predictor. Current programme frontier remains90–94 from the separate fullB construction; grades are nonadditive.
+
+Read the [latest full actual prompt/response](P2_CASE_A_OWN_DEPTH_STAGE2_20261107_RETURN.txt), [root-read scientific capture](P2_CASE_A_OWN_DEPTH_STAGE2_20261107_RETURN.pre-delivery.txt), [earlier capture](p2-case-a-own-depth-stage2.pre-activity.txt), [complete visible activity](activity/p2-case-a-own-depth-stage2.visible-activity.txt), [root assessment and final diagnostic](COORDINATOR_ASSESSMENT.txt), [intact original](original/Case_A_Second_Attempt_20261107.zip) and [SOURCES.json](SOURCES.json). Root read the full26,767-byte report and endpoint/failure/source records; Capital does not unpack the ZIP or replay proofs/code. The36,153-byte latest capture preserves35,848 science bytes plus305 durability-only bytes, all read by root. Earlier28,495 bytes remain preserved.
+
+## Exact work statement
+
+The theorem permits spatially informed, correlated and adaptive proposals, shared prefixes and exact holding-time integration. At the report's maximal-mean start with mean m and actual flip-rate floor lambda0=n*u^4*v/(1+u^4*v), P(N<=b)<=b/(lambda0*m). Accurate properly weighted nonnegative explicit-history mean/CDF constructions require W=Omega(lambda0*m) with constant probability under the stated hypotheses. The grant of an ideal zero-variance law and median-confidence amplification does not remove the explicit-history work requirement.
+
+On the accepted restricted capacity family, a rational one-sided certificate makes the bound exponential in the stated scale R, with source temperature/core/volume hypotheses and bit work paid. This does not exclude compressed resummation, macro/entrance kernels, flux/ratio, signed or control-variate methods, or deterministic certified algorithms. The birth-death example has exponential waiting but a polynomial exact mean; it is not an Ising embedding. Strong Markov/proper weighting/capacity/milestoning predecessors retain credit.
+
+Actual splitting/interface/SOS/flux/Schur/kinetic-kernel attempts are retained. No peer-A original/answer card or PC search was reported; earlier authorised P1-first-B exposure remains history, and public/PC availability was uncontrolled. New full-text gaps remain held:0802.4194v1 PDF and an institution-linked PDF403 with unreported exact attachment URI,2402.05414 HTML/PDF, and1609.02511 HTML. Only actual abstract/lead scopes are used; no alternate recovery or unique-total audit occurs.
+
+## Diagnostic conclusion and human hold
+
+The two known controls were reconstructed, with one genuine P2 operational recovery. Four initial frontier returns were full-unresolved. Followups were P1 A PEER unresolved45–55; P2 B PEER unresolved65–75; P1 B OWN full positive90–94; P2 A OWN unresolved55–65. One of two frontier questions was resolved over eight research turns;11requests include controls/recovery. This is not an independent1/8trial rate or an equal-compute comparison.
+
+Both peer arms achieved restricted reuse, with no full-endpoint rescue. One joint coin, peer-first/own-second ordering, carryover, source/effort/role differences and public/PC confounds preclude a causal own-depth winner, collaboration-failure theorem, general capability ceiling or95rate. A's intrinsic capability remains INCONCLUSIVE; B's full scoped capability was actually attained. P1's old8,146-character diagnostic success predates the new compact style. Sustained full-question pursuit and source invention supplied a real B bridge, not a proven optimal policy.
+
+All current turns are complete. The [direct human hold](../COORDINATION_HOLD_20261108.json) forbids new scientist prompts, assignments or contact pending root explanation and newer human direction. Preserve tabs/histories. No automatic A renewal, B extension, repair, reveal, retry, role or resource is authorised. Source integration continues within inherited holds; generated retrieval is not rebuilt.
