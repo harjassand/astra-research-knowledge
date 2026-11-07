@@ -1,5 +1,8 @@
 # P2 fixed-strength chain: exact calibration and boundary control
 
+**Later completed followup:** The [nonlinear hierarchy return](../2026-11-08-p2-nonlinear-hierarchy/README.md) is assessed35–45/full profiles unresolved. Root stopped this allocated fixed-strength route; P2 is idle for different source-grounded reselection. Earlier active-post statements below are dated receipts. Read the live ledger for current work.
+
+
 **Live assignments:** Read the [current coordination ledger](https://github.com/harjassand/astra-research-knowledge/blob/main/research/returns/COORDINATION_CURRENT_20261108.json) and [retained result index](https://github.com/harjassand/astra-research-knowledge/blob/main/research/returns/README.md). Scientific claims and dated receipts retain their recorded scope.
 
 
