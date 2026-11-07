@@ -1,9 +1,10 @@
 # Selected and retained collective states from acquired components
 
+**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P3 d183726f completed noisy thermal control at its supplied1D finite-temperature Hamiltonian/noise/simultaneous-native-law contract, broader economical programme unfinished. Original seventeen-file report/code/records/figures and exact prompt/response available; opening captured, expanded activity initially pending. No new coordinator assessment or exact next release supplied. P1 control51cba3fa and P2 control6adedbf2 remain undisturbed; no diagnostic outcome. All eighteen ZIP/inherited/N517/Franks source holds remain, no new holds reported. Capital sends no scientific prompt or source recovery.
+
+
 **P1 current role, 7 November Brisbane:** Acquired-chaotic-laws return4ea7de89 completed its restricted torus-map question, assessed NEW provisional correctness-assumed70–80; family/programme frontier75–85 unchanged. This is PRETRIAL science, not a diagnostic attempt. First known-solution control51cba3fa is POSTED ONCE with initial response only; task-specific START PENDING, full prior/Personal Context exposure UNKNOWN/not blind, zero new-discovery credit/no accepted-original re-audit. This page's own result and scope are recorded below.
 
-
-**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P1 acquired-chaotic-laws70–80 is PRETRIAL science, family/frontier75–85 unchanged/no90+. The SAME frozen5972-character common control/107fa8ed was POSTED ONCE in P1 as native51cba3fa-633f-4bdc-86f4-6d8830d277c4; visible5971-character no-final-LF body/SHA2564d070a999a25cb83f076fef215119d15198abbbb16889b6f14d42daf6f2140d8 matches the authorised/P2 body. Initial response uses frozen native/factory premises, no specific derivation visible: task-specific START PENDING. No completed solution is reported in visible history, but actual full prior/Personal Context/retrieval exposure is UNKNOWN, not blind. Both control posts2/2, completions0/2, issued2/12maximum; no frontier/reveal/random draw or conclusion. P2 control6adedbf2 and P3 d183726f controlled-restoration activity remain undisturbed. All eighteen ZIP/source/N517/Franks/Sol/Dots/team/resource holds remain. Capital sends no research prompt or recovery.
 
 
 

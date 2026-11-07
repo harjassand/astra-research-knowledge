@@ -1,0 +1,63 @@
+# Noisy thermal control with actuator-noise balance
+
+**P3 current role, 7 November Brisbane:** Noisy-thermal-control returnd183726f completed the selected structural question as reported; full economical programme remains unfinished. No new coordinator assessment or exact next release is supplied. Prior physical-output70–80/faithful mixed-state/family/frontier75–85 retain their scopes. This page's own result and scope are recorded below; no automatic follow-up is assigned.
+
+
+**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P3 d183726f completed noisy thermal control at its supplied1D finite-temperature Hamiltonian/noise/simultaneous-native-law contract, broader economical programme unfinished. Original seventeen-file report/code/records/figures and exact prompt/response available; opening captured, expanded activity initially pending. No new coordinator assessment or exact next release supplied. P1 control51cba3fa and P2 control6adedbf2 remain undisturbed; no diagnostic outcome. All eighteen ZIP/inherited/N517/Franks source holds remain, no new holds reported. Capital sends no scientific prompt or source recovery.
+
+
+The producer resolves a structural thermal-control question for supplied bounded finite-range **one-dimensional noncommuting chains and cycles at fixed positive temperature**. A positive repair construction combines established complete Gibbs-sampler contraction, local KMS/coherent correction and a finite positive actuator-noise balance. It retains complete physical output/reference decoupling and a continuing active-holding error bound. The broader programme of **economical repeatable physical-state control remains unfinished**. No new coordinator assessment was supplied with this initial source handoff.
+
+| Read | Source |
+|---|---|
+| Full theorem, locality/compiler derivation and resource contracts | [Producer report](package/P3_NOISY_THERMAL_CONTROL_20261107_RETURN.txt) |
+| Exact issued prompt and complete copied response | [Verbatim capture](P3_NOISY_THERMAL_CONTROL_20261107_RETURN.txt) |
+| Exact repair-loop operation and certificates | [gain_certificate.py](package/gain_certificate.py), [EXACT_GAIN_CERTIFICATES.json](package/EXACT_GAIN_CERTIFICATES.json) |
+| Delivered finite emitter and actual synthetic matrices | [thermal_controller.py](package/thermal_controller.py), [binary64 NPZ](package/FINITE_CONTROLLER_BINARY64.npz) |
+| Finite quantum/locality records and conservative costs | [Quantum diagnostic](package/FINITE_QUANTUM_DIAGNOSTIC.json), [locality diagnostic](package/LOCALITY_DIAGNOSTIC.json), [resource scenarios](package/RESOURCE_SCENARIOS.json), [run summary](package/RUN_SUMMARY.json) |
+| Figure and source/implementation guide | [PNG](package/NOISY_THERMAL_CONTROL.png), [SVG](package/NOISY_THERMAL_CONTROL.svg), [README](package/README.txt), [complete source/access notes](package/SOURCE_ACCESS_NOTES.txt) |
+| Complete unchanged seventeen-file original and byte identities | [Original ZIP](original/P3_NOISY_THERMAL_CONTROL_20261107_PACKAGE.zip), [producer manifest](package/MANIFEST_SHA256.json), [SOURCES.json](SOURCES.json) |
+
+The copied response's scratch links are historical; the public originals above provide the current routes. The producer report and copied chat response are separate records. Capital publishes their bytes without loading matrix arrays, executing the emitter/audits or rerunning the science.
+
+## Governing physical and information contract
+
+The target is `sigma=exp(-beta H)/Tr exp(-beta H)` for supplied finite-range local Hamiltonian terms on a chain or cycle. Local dimension, range, strength bound and positive temperature are fixed independently of size. Supplied bounded-support GKSL noise types and a warranted **simultaneous native law** describe ambient, sampler-induced and repair-induced noise. Separate isolated actuator calibrations do not establish that simultaneous law. Unknown apparatus commissioning is not supplied.
+
+Gao–Guo–Wang's current complete MLSI theorem for the normalized CKG sampler supplies the reference-complete contraction machinery. The size-independent mathematical constant alpha is model-dependent; a numerical operating schedule needs a justified lower bound in the actual native normalization. The examples' `alpha=.1` is illustrative supplied data, not an extracted theorem constant or measured rate. This complete mixing theorem is credited, not claimed as new work.
+
+Accepted KMS completion pairs each modeled noise generator `N_i` with a positive GKSL repair `C_i` so `P_i=N_i+C_i` fixes sigma. Adding finite nonnegative rates of these target-preserving generators to `u*S` keeps its complete relative-entropy contraction: each addition has nonnegative entropy production by data processing. They need not commute or have small modeled rates, while required controls and costs remain paid.
+
+## Actuator noise and the exact scope of the optimum
+
+The native law has noise coefficients `b(u)+E*x`, where `b(u)=b_background+u*e0` and `E>=0`. Balance requires `x=b(u)+E*x`. For noise types reachable from the support of b, finite nonnegative balancing rates exist exactly when `rho(E_R)<1`; the least solution is `(I-E_R)^-1*b_R`, zero outside R. Unreachable unstable components are not automatically relevant.
+
+For rational inputs, an exact positive `(I-E_R)^-1*1` certificate avoids numerical eigenvalue testing. The least solution decides supplied rate caps and minimizes all nonnegative linear prices **within this balancing construction**. Perron–Frobenius/positive-system small-gain theory is established machinery. A retained counterexample has opposing noise drifts already preserving the target while their separate repair loop is supercritical. Balance failure therefore does not imply failure of stationarity, all controllers or an optimal-control threshold.
+
+## Local positive compilation and severe costs
+
+One-dimensional imaginary-time locality bounds the local modular jump without a global inverse-Gibbs condition-number penalty. A decaying real-time coherent filter and locality give finite-window jump/Hermitian corrections. Truncating those objects yields a GKSL repair; arbitrary truncation of a signed generator is not assumed positive.
+
+The base CKG operation is also compiled as a local completely positive jump map. Its positive Gaussian Gram matrix retains **cross-frequency coherences**. Replacing it by a diagonal secular approximation changes the generator and can lose the governing theorem. No acquired Gibbs oracle or physical native primitive is silently supplied.
+
+The report proves/costs a finite positive approximation. The shipped finite-matrix emitter and locality/resource calculations use **binary64**; they are not a rigorous finite-bit/gate compiler. Logarithmic window radius at fixed parameters gives polynomial dense arithmetic in N and inverse error, with potentially extreme exponents/constants. The illustrative million-site/beta.2 scenario reaches a245-spin sufficient window and dense `D^6` scale about **10^442.5**. That is a conservative upper implementation bound, not a lower bound or practical commissioning.
+
+A CP map's maximal intensity does not by itself price its individual jump list: dense factorization can require `D^2` jumps and a dimension-dependent sum of jump norms. A cheaper whole-CP-map primitive needs its own warranted cost. Native realization, routing, resets, calibration, source supply and digital control remain substantive operations.
+
+## Complete output, residual error and continued holding
+
+The exact balanced evolution has half-diamond replacement error bounded by `min(1,A_N exp(-u*alpha*t))`. For a time-dependent half-diamond generator residual at most eta, the actual CPTP evolution satisfies a sufficient error bound `A_N exp(-u*alpha*t)+2*eta*H_N`, with `H_N=(1+log A_N)/(u*alpha)`.
+
+Active contraction bounds errors injected in the past, so this sufficient accuracy floor does not grow linearly with holding duration. **Resources continue throughout holding.** Detached output, another idle-storage law or added interventions need separate budgets. If local residual bounds sum globally, the sufficient per-local-term precision can scale as `epsilon/(N log N)`; this is not an optimal necessity or size-independent hardware threshold.
+
+Previous outputs/history can be retained as reference for subsequent preparations, giving telescoping joint replacement errors before additional holding. Stationary marginals alone do not imply independent repeated output; fresh/reset implementation resources and the warranted Markov law remain required. Hidden reservoir memory is not removed by coefficient balancing.
+
+Hamiltonian coefficients, noise types, b,E and a rate bound must be supplied/acquired at the needed precision. Errors in a fitted actuator law leave residual `(b-b_hat)+(E-E_hat)*x`, amplified near a small-gain boundary. The prior source-driven sampler does not supply noncommuting Hamiltonian matrices or a general cross-noise matrix. Price/rate tradeoffs are optimal only for the declared law and nonnegative prices; Lindblad rates alone are not joules, heat, gate count or reset work.
+
+## Evidence, credit and lifecycle
+
+Producer evidence includes six exact gain cases; a complex three-qubit noncommuting native-law/entangled-reference fixture; five six-site locality operator cases; four independent Gaussian-integral checks; and binary64 cost scenarios. The finite joint trace distance about `1.81e-9` at generator time30 is a diagnostic, not a diamond-norm supremum or calibrated physical mixing rate. All inputs are mathematical/synthetic; no physical experiment or economical hardware deployment is earned.
+
+CKG, complete MLSI, Ding–Li–Lin KMS/coherent correction, Rouze–Franca filtering, Araki locality, entropy data processing, positive-system analysis and GKSL/channel synthesis retain credit. No new held-original recovery or priority claim is made. The previous11915-byte access notes remain an exact suffix; N517/N236 and all inherited/global holds remain. The [pure physical-output obstruction](../2026-11-07-p3-physical-output-limits/README.md), accepted faithful mixed-state sampler and prior native contracts retain their distinct scopes. Lowering temperature with size requires redoing locality/rate/gain/cost parameters; no ground-state, hard-window, all-dimensional or rare-relative-error oracle follows.
+
+The selected mathematical question is reported resolved; the economical full programme is unfinished. At initial handoff the opening was captured and expanded visible activity awaited staging. The coordinator's assessment and exact next release remain separate. P1/P2's authorised diagnostic is undisturbed; this return is not its outcome. Capital sends no scientific prompt or automatic next assignment.

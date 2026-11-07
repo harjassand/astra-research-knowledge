@@ -1,10 +1,12 @@
 # Acquired collective quantum thermodynamics
 
-**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P1 acquired-chaotic-laws70–80 is PRETRIAL science, family/frontier75–85 unchanged/no90+. The SAME frozen5972-character common control/107fa8ed was POSTED ONCE in P1 as native51cba3fa-633f-4bdc-86f4-6d8830d277c4; visible5971-character no-final-LF body/SHA2564d070a999a25cb83f076fef215119d15198abbbb16889b6f14d42daf6f2140d8 matches the authorised/P2 body. Initial response uses frozen native/factory premises, no specific derivation visible: task-specific START PENDING. No completed solution is reported in visible history, but actual full prior/Personal Context/retrieval exposure is UNKNOWN, not blind. Both control posts2/2, completions0/2, issued2/12maximum; no frontier/reveal/random draw or conclusion. P2 control6adedbf2 and P3 d183726f controlled-restoration activity remain undisturbed. All eighteen ZIP/source/N517/Franks/Sol/Dots/team/resource holds remain. Capital sends no research prompt or recovery.
+**P3 current role, 7 November Brisbane:** Noisy-thermal-control returnd183726f completed the selected structural question as reported; full economical programme remains unfinished. No new coordinator assessment or exact next release is supplied. Prior physical-output70–80/faithful mixed-state/family/frontier75–85 retain their scopes. This page's own result and scope are recorded below; no automatic follow-up is assigned.
+
+
+**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P3 d183726f completed noisy thermal control at its supplied1D finite-temperature Hamiltonian/noise/simultaneous-native-law contract, broader economical programme unfinished. Original seventeen-file report/code/records/figures and exact prompt/response available; opening captured, expanded activity initially pending. No new coordinator assessment or exact next release supplied. P1 control51cba3fa and P2 control6adedbf2 remain undisturbed; no diagnostic outcome. All eighteen ZIP/inherited/N517/Franks source holds remain, no new holds reported. Capital sends no scientific prompt or source recovery.
 
 
 
-**P3 current role, 7 November Brisbane:** Physical-output-limits predecessor8a187aa5 remains assessed NEW provisional correctness-assumed70–80, broader programme unfinished/prior family/frontier75–85 unchanged. Continuationd183726f is posted and task-specific START CONFIRMED on controlled restoration using recent one-dimensional Gibbs-state preparation work. This is activity, not a new result/grade. This page's own result and scope are recorded below.
 
 
 
@@ -122,3 +124,5 @@ Later original: [local noise absorption and native-menu restoration](../2026-11-
 Later source: [sampling for complete state control](../2026-11-07-p3-sampling-state-control/README.md), with fresh observations, calibrated native/readout promises, complete reference/repeated-output contracts and paid source/randomness/holding costs. Earlier results and holds retain their scope.
 
 Later P3 source: [physical-output limits](../2026-11-07-p3-physical-output-limits/README.md) gives a pure physical-output/continuing-noise/instantaneous-strength obstruction with finite delivery/yield consequences. Faithful mixed targets and decoded protection retain different contracts. The former8a187aa5 start receipt is now historical: that return completed, and its next same-warm2380-character continuationd183726f has confirmed task-specific START on controlled restoration using recent one-dimensional Gibbs-state preparation work; no completed result or new grade is inferred.
+
+Later P3 source: [noisy thermal control](../2026-11-07-p3-noisy-thermal-control/README.md) supplies a positive1D noncommuting fixed-temperature modeled-noise/actuator-noise construction with full native-law/compilation/residual/holding costs. The d183726f activity receipt above is historical: that return completed; assessment and exact next release are pending. Earlier physical-output limits and faithful mixed-state results retain their different contracts.
