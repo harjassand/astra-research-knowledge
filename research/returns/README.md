@@ -168,6 +168,7 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| Current literature comparison correction | [Constructive positive1D whole-trajectory MPO with trace control credited; uniform fine-step2D gap retained; current theorem numbers](2026-11-08-noisy-2d-dynamics/LITERATURE_VERSION_CORRECTION_20261108.md) |
 | P1 native conditional/graph sampling return | [Typical native dependence with efficient latent sampler55–65; fullTV unresolved; route stopped; shared credit once](2026-11-08-p1-global-readout-sampling/README.md) |
 | P2 nonlinear hierarchy | [Supplied-cutoff certificates35–45/full fixed-strength profiles unresolved; route stopped](2026-11-08-p2-nonlinear-hierarchy/README.md) |
 | Completed noisy2D dynamics dossier | [Accepted global/faithful-reference operations80–89, family90–94 nonadditive; internal reviews retained; generic2DTV open](2026-11-08-noisy-2d-dynamics/README.md) |
