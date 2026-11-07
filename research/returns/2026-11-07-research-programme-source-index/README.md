@@ -1,5 +1,11 @@
 # Research programme: canonical sources and dependencies
 
+**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P2's pre-experiment mediation science is complete. Its first known-solution control was POSTED ONCE as native6adedbf2-1ba4-4841-a95e-08d4d25b6101, exact5972-character common prompt/SHA256107fa8ed8bf0a59192abdf84ff5256abf8bfbd00ac54ce7bb38cbeb0f83f5dce matched. Initial response only; task-specific START remains UNCONFIRMED. High-level prior context about avoiding precise rate identification is observed, completed proof/controller formula not visible, full proof exposure UNKNOWN; not blind. Public P3 proof availability is an exposure possibility. Control posts1/2, completions0/2, reveals0/2, frontier0/8, total issued1/12maximum; no random draw or diagnostic outcome. P1 4ea7de89 and P3 8a187aa5 remain live with task-specific activity confirmed. All source/ZIP/N1683/Sol/Dots/team/resource holds remain. Capital records receipts and sends no research prompt.
+
+
+
+
+
 Seven completed earlier research packages are retained below at their exact scopes. The newer [finite-collision warm-service composite](../2026-11-07-physical-cooling-thermal-service/README.md) has its own code/source/noise contract and exact-hash internal PASS reviews. Earlier results are not retroactively promoted by that later construction.
 
 Exact byte hashes were compared with verified prior publication manifests. The existing autonomous-correction dossier/archive/source index and the protected-processing dossier/ledger/archive already published with the cooling packet are linked at their canonical paths. Only missing files and navigation/correction/dependency links are added. The current top-level dossiers and older archive copies coexist; [SOURCES.json](SOURCES.json) records content identities, reused paths and version relationships. These source identities are not a claim that the full generated retrieval corpus was rebuilt.

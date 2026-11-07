@@ -1,6 +1,13 @@
 # Certified collective order from acquired port models
 
-**Latest lifecycle and availability, 7 November Brisbane:** P3's selected sampling-state operation is assessed at NEW provisional correctness-assumed **70–80**, prior family/frontier **75–85** unchanged, ordinal/nonadditive/no90+; the broader programme remains UNFINISHED. Exact2191-character P3_AFTER_SAMPLING_STATE_CONTROL_20261107.txt/SHA256d888490744a812f1d4bf861ed29624aa040102e81879be3325f840e70b5b7bcf was POSTED ONCE in the same normal-web Pro, native USER-MESSAGE8a187aa5-3a8c-46a9-9fa2-1a924d1d369a, full visible body matched. Initial response will assess operations enlarging controllable physical states with source/noise/holding costs. Specific research action/final question is not yet visible: task-specific START remains UNCONFIRMED. P1/P2 work remains undisturbed; diagnostic prompts were not sent and the design is unstarted/not queued. Full original/proofs/actual prompt-response/expanded visible activity/prior capture available. All eighteen ZIP/N236/inherited source/Sol/Dots/team/resource holds retained. Capital sends no scientific prompt or recovery.
+**P1 current role, 7 November Brisbane:** The latest hidden-phase return4be18304 completed its structural question, assessed NEW provisional correctness-assumed65–75; earlier collective70–80/frontier75–85 retain credit. The same P1 continuation4ea7de89 is posted and task-specific START CONFIRMED on controlled experiments/reusable nonlinear prediction, observability, stable Hankel factorizations and finite causal memory. No new result or grade follows from that activity. This page's own historical result and scope are recorded below.
+
+
+**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P2's pre-experiment mediation science is complete. Its first known-solution control was POSTED ONCE as native6adedbf2-1ba4-4841-a95e-08d4d25b6101, exact5972-character common prompt/SHA256107fa8ed8bf0a59192abdf84ff5256abf8bfbd00ac54ce7bb38cbeb0f83f5dce matched. Initial response only; task-specific START remains UNCONFIRMED. High-level prior context about avoiding precise rate identification is observed, completed proof/controller formula not visible, full proof exposure UNKNOWN; not blind. Public P3 proof availability is an exposure possibility. Control posts1/2, completions0/2, reveals0/2, frontier0/8, total issued1/12maximum; no random draw or diagnostic outcome. P1 4ea7de89 and P3 8a187aa5 remain live with task-specific activity confirmed. All source/ZIP/N1683/Sol/Dots/team/resource holds remain. Capital records receipts and sends no research prompt.
+
+
+
+
 
 
 

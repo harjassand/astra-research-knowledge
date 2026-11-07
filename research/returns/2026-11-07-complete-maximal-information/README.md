@@ -1,5 +1,11 @@
 # Complete maximal-information profiles and canonical channels
 
+**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P2's pre-experiment mediation science is complete. Its first known-solution control was POSTED ONCE as native6adedbf2-1ba4-4841-a95e-08d4d25b6101, exact5972-character common prompt/SHA256107fa8ed8bf0a59192abdf84ff5256abf8bfbd00ac54ce7bb38cbeb0f83f5dce matched. Initial response only; task-specific START remains UNCONFIRMED. High-level prior context about avoiding precise rate identification is observed, completed proof/controller formula not visible, full proof exposure UNKNOWN; not blind. Public P3 proof availability is an exposure possibility. Control posts1/2, completions0/2, reveals0/2, frontier0/8, total issued1/12maximum; no random draw or diagnostic outcome. P1 4ea7de89 and P3 8a187aa5 remain live with task-specific activity confirmed. All source/ZIP/N1683/Sol/Dots/team/resource holds remain. Capital records receipts and sends no research prompt.
+
+
+
+
+
 Finite witnesses, exact versus approximate infinite-output greatestness under faithful TRACIAL hypotheses, full-support instability/acquisition costs, paid offline PBT simulation and processing-order counterexamples. Atomic/exact versus injective/approximate structural split credits Okamura–Ozawa and earlier predecessors; claimed contribution is a specific complete-profile/postprocessing bridge. No first general amenability characterization, ordinary-capacity algorithm, generic noise-stable canonicalizer or practical quantum advantage.
 
 The current governing dossier has SHA256 `4f4a4374367956818ecd93df7df830201556cbb3572f6adc8e1216ce57393036`. Its original archive has SHA256 `2f2b8608db900dd4cc289dc15a6682c8ecf7253fb8471266e27bf0f87d6e413a`. Source identity is content-addressed; these links do not create another result or increase any capability score.

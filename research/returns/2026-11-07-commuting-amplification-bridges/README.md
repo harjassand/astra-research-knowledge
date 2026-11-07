@@ -1,5 +1,11 @@
 # Commuting amplification and reconstruction bridges
 
+**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P2's pre-experiment mediation science is complete. Its first known-solution control was POSTED ONCE as native6adedbf2-1ba4-4841-a95e-08d4d25b6101, exact5972-character common prompt/SHA256107fa8ed8bf0a59192abdf84ff5256abf8bfbd00ac54ce7bb38cbeb0f83f5dce matched. Initial response only; task-specific START remains UNCONFIRMED. High-level prior context about avoiding precise rate identification is observed, completed proof/controller formula not visible, full proof exposure UNKNOWN; not blind. Public P3 proof availability is an exposure possibility. Control posts1/2, completions0/2, reveals0/2, frontier0/8, total issued1/12maximum; no random draw or diagnostic outcome. P1 4ea7de89 and P3 8a187aa5 remain live with task-specific activity confirmed. All source/ZIP/N1683/Sol/Dots/team/resource holds remain. Capital records receipts and sends no research prompt.
+
+
+
+
+
 Charged coordinate reconstruction through one common target/two one-sided parents; quadratic repetition for DISJOINT-BLOCK/projection predicates; separate tensor result with its own gap; interactive noisy-channel amplification with every signal charged. Standalone operational sampler/Lin closure, arbitrary-commuting versus finite-dimensional communicating scopes and memoryless-channel restrictions retained. General quadratic arbitrary-predicate repetition, locality/Hamiltonian compilation and superior physical capability remain open.
 
 The current governing dossier has SHA256 `cd367eb1721226fd906efa8b56ea8f360cb16e523497996f95920ee17d4ea21f`. Its original archive has SHA256 `21149c65dca95b25d1fca89bd10bc5d2fd99dd8912f19c02d63c3d6793b6bb74`. Source identity is content-addressed; these links do not create another result or increase any capability score.
