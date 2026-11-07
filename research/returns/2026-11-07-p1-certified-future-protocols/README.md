@@ -1,9 +1,10 @@
 # Certified future feedback protocols from finite experiments
 
+**Latest lifecycle and availability, 7 November Brisbane:** P2's block-transport return is assessed at NEW provisional correctness-assumed55–65. The full physical two-dimensional predictor remains unresolved. The coordinator ends automatic renewal of that fixed target and hands ONCE the1820-character next-whole-question selection prompt to the same warm P2; actual POST/START is pending in the supplied receipt. Scientist-owned selection retains warm capital without forcing a field, representation or easier endpoint. P1e61f06c8/P3031cfb9a work is undisturbed. Ten historical activity gaps and this return's activity are closed with versions/hashes preserved; availability changes no grade or causal-policy claim. Stickies closure UNKNOWN is cleanup only. Capital sends no prompt or recovery attempt; all source/N1683/Sol/Dots/team/resource limits remain.
+
+
 **Availability correction:** matching expanded user-visible activity is now staged: [trace](activity/p1_certified_future_protocols_20261107_return.visible-activity.txt), [updated return](P1_CERTIFIED_FUTURE_PROTOCOLS_20261107_RETURN.txt) and [pre-recovery capture](P1_CERTIFIED_FUTURE_PROTOCOLS_20261107_RETURN.pre-recovery.txt). Earlier missing-activity/locked-access descriptions below refer to the original handoff. This correction does not revise scientific scope, assessment or credit. [Recovery index](../2026-11-07-visible-activity-recovery/README.md).
 
-
-**Latest lifecycle and availability, 7 November Brisbane:** P2d3da0a7c completed its block-transport return; the full two-dimensional predictor remains unresolved. No new assessment or successor-post/start receipt was supplied with this source handoff. P1e61f06c8 and P3031cfb9a work remain undisturbed. Ten historical user-visible activity gaps are now closed, and this block return's matching activity was also recovered before publication. Capture versions and trace hashes are preserved; availability adds no scientific consequence, grade or causal policy winner. Earlier blanket activity-gap/all-three-started notices are historical. Stickies closure UNKNOWN is a cleanup exception only. Capital makes no native/researcher/dispatcher contact; source/N1683/Sol/Dots/team/resource holds remain.
 
 
 
