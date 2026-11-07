@@ -168,7 +168,7 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
-| P2 general Gaussian classical-capacity complete available return | [Exact prompt, full response/activity; coordinator assessment pending; proof/source holds and metadata prior claim retained](2026-11-08-p2-general-gaussian-capacity-return/README.md) |
+| P2 general Gaussian classical-capacity complete available return | [Full positive capacity endpoint under accepted premises80–89; main-identity prior overlap; paid finite codes; P2 complete/idle](2026-11-08-p2-general-gaussian-capacity-return/README.md) |
 | P3 additive Chernoff/cutoff complete available return | [Chernoff/cutoff/private-family scope60–70; full phase OPEN/no new region; warm full question released; originals held](2026-11-08-p3-additive-chernoff-cutoff-return/README.md) |
 | P1 nonunital insertion-compiler complete available return | [Uniform growing-K compiler60–70; finite-total-action predictor; full fixed-eta endpoint OPEN; warm full question posted/active](2026-11-08-p1-nonunital-insertion-compiler-return/README.md) |
 | P2 multimode Gaussian-cost complete available return | [Credited imported formation resolution; added finite LOCC assembly45–55; source holds explicit; new classical-capacity question posted/active](2026-11-08-p2-multimode-gaussian-cost-return/README.md) |

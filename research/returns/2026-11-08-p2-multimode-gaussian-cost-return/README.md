@@ -1,6 +1,6 @@
 # P2 Gaussian formation cost: credited resolution and finite LOCC assembly
 
-**Complete return now available:** The [exact e18 classical-capacity return](../2026-11-08-p2-general-gaussian-capacity-return/README.md) is published with all available visible material; coordinator assessment is pending. No outcome, priority credit or successor is inferred. The reported2610.22308v1 hold and all earlier source/metadata-original gaps persist. Earlier publication-pending statements are dated history.
+**Completed capacity assessment:** The [full e18 return/assessment](../2026-11-08-p2-general-gaussian-capacity-return/README.md) attains the positive endpoint under accepted premises at80–89, with main-identity prior-claim overlap and unread-original resource/priority scope unassessed. That allocation ends; P2 is deliberately idle for a different source-screened question, no body queued. Earlier pending/activity statements are dated history; source holds persist.
 
 
 **Later metadata-only prior claim:** A [Zenodo record claim potentially overlaps the active classical-capacity question](CLASSICAL_CAPACITY_PRIOR_CLAIM_METADATA_ONLY_20261108.md). Root read the record formula/scope; the original PDF failed first fetch and remains held/unread. Account at the natural completed boundary, with no live source injection. Earlier bounded absence screens are not priority proofs.
