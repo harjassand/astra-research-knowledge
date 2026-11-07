@@ -1,6 +1,6 @@
 # Classical-capacity prior claim: metadata only
 
-**Complete return now available:** The [exact e18 classical-capacity return](../2026-11-08-p2-general-gaussian-capacity-return/README.md) is published with all available visible material; coordinator assessment is pending. No outcome, priority credit or successor is inferred. The reported2610.22308v1 hold and all earlier source/metadata-original gaps persist. Earlier publication-pending statements are dated history.
+**Completed capacity assessment:** The [full e18 return/assessment](../2026-11-08-p2-general-gaussian-capacity-return/README.md) attains the positive endpoint under accepted premises at80–89, with main-identity prior-claim overlap and unread-original resource/priority scope unassessed. That allocation ends; P2 is deliberately idle for a different source-screened question, no body queued. Earlier pending/activity statements are dated history; source holds persist.
 
 
 The coordinator read the formula/model description on Zixuan He's [Zenodo23479869 record](https://zenodo.org/records/23479869), v1 dated19October2026. It claims the fixed finite-mode, coupled/all-encoding Gaussian energy and strict entanglement-assisted CLASSICAL-capacity frontier, including P=0 unassisted capacity. That is a potentially overlapping prior claim for the active P2e18 whole question, not a new mission discovery, root governing-paper reading or earned95.

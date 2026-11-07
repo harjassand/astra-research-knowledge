@@ -1,6 +1,6 @@
 # P3 additive capacity: positive region and purity law
 
-**Warm successor assessed:** The [Chernoff/cutoff return](../2026-11-08-p3-additive-chernoff-cutoff-return/README.md) earns NEW60–70 at its actual conditional/processed/restricted scopes. Full phase remains OPEN/no new region. SAME warm full question is root-released, actual post/start pending; earlier activity/assessment statements are dated history. Use the [live ledger](../COORDINATION_CURRENT_20261108.json).
+**Warm successor assessed:** The [Chernoff/cutoff return](../2026-11-08-p3-additive-chernoff-cutoff-return/README.md) earns NEW60–70 at its actual conditional/processed/restricted scopes. Full phase remains OPEN/no new region. SAME warm full question is POSTED ONCE as98e8123d and task-specifically ACTIVE; earlier activity/assessment statements are dated history. Use the [live ledger](../COORDINATION_CURRENT_20261108.json).
 
 
 **Coordinator assessed: NEW provisional correctness-assumed75–85. The full exact unassisted threshold remains OPEN:0.413<x_*<=1/2.** This is one connected scope; the programme/fullB90–94 frontier is unchanged and nonadditive, with no95 claim.
