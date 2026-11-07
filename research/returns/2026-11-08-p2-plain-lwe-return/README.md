@@ -1,5 +1,8 @@
 # P2 plain-LWE quantumness return: diagnostics and scientific stop
 
+**Later different allocation:** The plain-LWE route below stays stopped and its full protocol unresolved. P2 is now [active on multimode Gaussian entanglement cost](../2026-11-08-p2-multimode-gaussian-entanglement-cost-allocation/README.md). Idle/reselection statements below are dated history; consult the [live ledger](../COORDINATION_CURRENT_20261108.json).
+
+
 Root assigns provisional correctness-assumed **25–35** to explicit composition counterfamilies,record-overlap/parity and FHE/rewinding/quantifier diagnostics,with a conditional paid finite-gate compiler. **The full plain-model one-challenge/one-reply LWE-only uniform-PPT soundness protocol and its parameter/reduction family remain UNCONSTRUCTED/UNRESOLVED. No general no-go is proved.** Standard machinery retains credit; programme/fullB90–94 remains unchanged/nonadditive,no90/95 or new family increase. A lower incremental grade retracts no prior capital.
 
 Read the [complete29713-byte actual prompt,response and all available activity](P2_PLAIN_LWE_QUANTUMNESS_20261108_RETURN.txt), [full root scope and stop decision](ROOT_PLAIN_LWE_SCOPE_AND_SCIENTIFIC_STOP.txt) and [metadata](SOURCES.json). Source SHA25686c4596afa11bbea68d848d9559ea8f2285c01bcd239d7333a63779b9762dbf8 is unchanged. Root read actual2168-byte prompt,entire18830-byte response and entire6216-byte available expanded activity; native literal-offset/UTF8 digest equality preserved trailing spaces without normalization. Capital retained the available return once without scientific replay.
