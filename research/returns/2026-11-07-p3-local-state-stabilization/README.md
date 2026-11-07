@@ -1,6 +1,9 @@
 # Local state restoration and its precision cost
 
-**Latest lifecycle and availability, 7 November Brisbane:** all three current same-warm successors are POSTED ONCE/START CONFIRMED by dispatcher reports: P1e61f06c8, P2e0144bad and P3031cfb9a. P2's exact1820-character next-question body matched. Its visible start reassesses the destination and considers dynamic-kernel inference; no final question or scientific outcome is reported yet. Automatic fixed2D renewal ended, while the previous physical predictor remains scientifically unresolved. Block-transport NEW provisional correctness-assumed55–65 and earlier capital/frontier stay unchanged. No scientific handoff is pending. Ten historical activity gaps and this source's activity are closed with prior versions/hashes preserved; Stickies closure UNKNOWN is cleanup only. Selection/start adds no scientific or causal-policy gain. Capital sends no prompt or recovery attempt; all source/N1683/Sol/Dots/team/resource limits remain.
+**Latest lifecycle and availability, 7 November Brisbane:** all three current same-warm successors are POSTED ONCE/START CONFIRMED by separate dispatcher receipts: P14be18304, P2e0144bad and P3ce8eed3e. Exact1967-character P1 and2524-character P3 visible bodies matched. P1 begins current-source review/endpoint selection with no final question visible; P3 begins lower-cost calibration acquisition/maintenance with physical output retained. Starts are not new science or policy gains. Both completed returns retain NEW provisional correctness-assumed70–80, earlier frontier75–85 unchanged. P1's ZIP remains transfer-unconfirmed/held, no retry; P3's broader control programme remains unfinished. No scientific handoff is pending. Both traces/prior captures are staged; Stickies uncertainty is cleanup only. Capital sends no prompt/recovery; all source/N1683/Sol/Dots/team/resource holds remain.
+
+
+
 
 
 
@@ -74,3 +77,5 @@ The producer declares an unfinished programme of repeatable many-body state cont
 The [source-access notes](package/SOURCE_ACCESS_NOTES.txt) list six new unavailable-original routes: Nature sign-in, Zenodo decoding failure, two arXiv originals and two repository404 paths. These remain held, with no mirror/PDF/raw/alternate recovery. The separately read Gamarnik original is a distinct work, not an alternate route to the held Rakovszky original. All previous P3 ZIP and other source holds remain unchanged.
 
 All18 original members and the ZIP/capture are preserved byte-exact. Expanded activity remains in the predecessor chat after native Mac unlock failed; only its opening explanation is staged, without an impact penalty. No Capital scientific replay, original recovery or new worker occurred. Generated retrieval remains pending under the resource limit.
+
+Later original: [local noise absorption and native-menu restoration](../2026-11-07-p3-noise-absorption/README.md), with modeled-noise/residual-error and target/interface restrictions. Earlier Gibbs/local-restoration guarantees and the unfinished broader programme retain scope.

@@ -1,6 +1,9 @@
 # Certified collective order from acquired port models
 
-**Latest lifecycle and availability, 7 November Brisbane:** all three current same-warm successors are POSTED ONCE/START CONFIRMED by dispatcher reports: P1e61f06c8, P2e0144bad and P3031cfb9a. P2's exact1820-character next-question body matched. Its visible start reassesses the destination and considers dynamic-kernel inference; no final question or scientific outcome is reported yet. Automatic fixed2D renewal ended, while the previous physical predictor remains scientifically unresolved. Block-transport NEW provisional correctness-assumed55–65 and earlier capital/frontier stay unchanged. No scientific handoff is pending. Ten historical activity gaps and this source's activity are closed with prior versions/hashes preserved; Stickies closure UNKNOWN is cleanup only. Selection/start adds no scientific or causal-policy gain. Capital sends no prompt or recovery attempt; all source/N1683/Sol/Dots/team/resource limits remain.
+**Latest lifecycle and availability, 7 November Brisbane:** all three current same-warm successors are POSTED ONCE/START CONFIRMED by separate dispatcher receipts: P14be18304, P2e0144bad and P3ce8eed3e. Exact1967-character P1 and2524-character P3 visible bodies matched. P1 begins current-source review/endpoint selection with no final question visible; P3 begins lower-cost calibration acquisition/maintenance with physical output retained. Starts are not new science or policy gains. Both completed returns retain NEW provisional correctness-assumed70–80, earlier frontier75–85 unchanged. P1's ZIP remains transfer-unconfirmed/held, no retry; P3's broader control programme remains unfinished. No scientific handoff is pending. Both traces/prior captures are staged; Stickies uncertainty is cleanup only. Capital sends no prompt/recovery; all source/N1683/Sol/Dots/team/resource holds remain.
+
+
+
 
 
 
@@ -94,3 +97,5 @@ The P2 common relative-factor theorem governs **passive assemblies**. Active sub
 Later completed source: [finite write/handover/state-selection and retention](../2026-11-07-p1-certified-state-selection/README.md), with programmable total-drive override, acquired static data plus dynamical/channel priors and actual cost bounds. Earlier static/global-order/transient scopes remain unchanged; the all-n register has its separate finer acquisition condition.
 
 Later source return: [acquired causal descriptions for future temporal feedback protocols](../2026-11-07-p1-certified-future-protocols/README.md). This transient task pays new dynamic pulse acquisition and warranted source/instrument bounds. Earlier static/state-selection contracts and credit remain unchanged.
+
+Later available return: [collective laws without microscopic identification](../2026-11-07-p1-collective-laws-without-identification/README.md), at a different exact nonlinear-information premise; ZIP transfer remains held. Earlier finite acquisition/control credit is unchanged.
