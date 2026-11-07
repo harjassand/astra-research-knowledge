@@ -22,3 +22,7 @@ These are the author's reported current-version checks, not a new independent Ca
 The central theorem has not expanded. Faithful-reference hypotheses, bounded-cut sampling/acquisition consequences, and exact relative/oracle obstructions retain their existing limits. General intermediate-time2D full-TV sampling remains open; practical advantage is not established and first priority is not asserted. No grade, live assignment, worker or model changes follow from this correction.
 
 Read the [retained research dossier guide](README.md) and [source metadata](SOURCES.json). This update releases no manuscript files, reruns no compilation/rendering/validation, inspects no ZIP and recovers no held original. Source correction is not completed canonical retrieval normalization.
+
+## Coordinator receipt of the existing correction
+
+Root subsequently read the entire supplied writing-stage review and source-version manifest. The current-version primary checks remain producer checks; this does not claim root independently read all three new primary originals. The constructive positive1D credit and uniform fine-step2D distinction above remain unchanged, as do the sealed research,80–89/connected90–94 assessment and unreleased manuscript status.
