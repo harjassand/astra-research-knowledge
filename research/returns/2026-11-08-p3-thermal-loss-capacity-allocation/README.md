@@ -1,5 +1,8 @@
 # P3 thermal-loss quantum-capacity phase: active allocation
 
+**Later lifecycle:** The original thermal question has completed and been assessed60–70 at limited scope; its full phase remains unresolved. The different additive-phase question was posted once7aa14139 and is now task-specifically active; its earlier Thinking-only gap resolved. See the [new source/lifecycle record](../2026-11-08-p3-thermal-capacity-return/README.md) and live ledger; earlier allocation statements below are dated receipts.
+
+
 This is a **new full-question allocation and source-selection record**, with no new completed scientific result or prospective consequence grade. The same P3 normal-web Pro chat received the question once as7d0e2a63-b62c-4f70-a1e7-da204dffdd6b and is task-specifically active. The earlier autonomous-clock-repair route remains stopped at its actual assessed scope; its temporary reselection-idle status has ended.
 
 Read the [exact staged1907-byte prompt](P3_THERMAL_LOSS_QUANTUM_CAPACITY_PHASE_20261108.txt), [local1906-byte sent-Copy representation](P3_THERMAL_LOSS_QUANTUM_CAPACITY_PHASE_20261108.sent-copy-representation.txt), [actual post/start receipt](ACTUAL_ALLOCATION_POST_RECEIPT.json), [full root source screen](ROOT_SOURCE_SCREEN_AND_REALLOCATION.txt), and [source metadata](SOURCES.json). Staged SHA25637469b164a88bee095a41e6f344790f1df33c0711354ee72f79b0c98d69014c8 and root-reported Copy SHA256f7dc06617f7d86aa50698d497a4ad05756c88a71560cd74d4b2af1e3beb06cd2 differ only terminalLF; Capital's representation matches without new UI retrieval. Fresh preflights, Pro, once-only delivery and no attachment are confirmed as reported.

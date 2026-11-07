@@ -1,5 +1,8 @@
 # P1 global-readout sampling: native conditional structure and graph transfer
 
+**Later lifecycle:** The old sampling route remains stopped; P1 has since started a different nonunital-neighbourhood question oncec5991cc9/task-specific active. See the [new source/lifecycle record](../2026-11-08-p1-nonunital-neighbourhood-allocation/README.md) and live ledger; earlier allocation statements below are dated receipts.
+
+
 Root assigns provisional correctness-assumed **55–65** to a native typical conditional-dependence construction with an efficient latent sampler, and a paid rational native noisy-graph transfer. **The full general static2D polynomial-TV sampling or model-preserving hardness question remains UNRESOLVED.** FullB/connected noisy-dynamics family90–94 stays unchanged and nonadditive; no95, general hardness or intrinsic ceiling follows.
 
 Read the [complete actual prompt/response/all available activity](P1_GLOBAL_READOUT_SAMPLING_20261108_RETURN.txt), [two complete root scope assessments and decisions](COORDINATOR_TWO_SCOPE_ASSESSMENTS.txt), and [source metadata](SOURCES.json). The exact32353-byte return SHA256 is7a3b1536fd2abd70ffa37d536e6a9501a30a93dbb0bf62942730e231a897cf80. Root reports exact component matches for actual1935-byte prompt,19543-byte response and all8764-byte available visible activity, including native offsets/trailing spaces without normalization. Capital preserves the supplied file without another collection.
