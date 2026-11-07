@@ -1,9 +1,10 @@
 # Operational thermal-state and outcome-window compiler
 
+**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P1's acquired-chaotic-laws pre-experiment return4ea7de89 is complete and assessed at its restricted state/access/regularity/margin contract. The coordinator handed the SAME frozen5972-character common DIAGNOSTIC_CONTROL_LAUNCH_20261107.txt/SHA256107fa8ed8bf0a59192abdf84ff5256abf8bfbd00ac54ce7bb38cbeb0f83f5dce once through the dispatcher; actual P1 POST/message/START pending. P2 identical control6adedbf2 remains active, no control result. P3 d183726f controlled-restoration/recent1DGibbs task activity confirmed, active/no result. No source-freeze/frontier/reveal/coin or authority expansion, no diagnostic outcome. All eighteen ZIP/inherited/N517/Franks-original holds remain. Capital records receipts and sends no research prompt or recovery.
+
+
 **P3 current role, 7 November Brisbane:** Physical-output-limits predecessor8a187aa5 remains assessed NEW provisional correctness-assumed70–80, broader programme unfinished/prior family/frontier75–85 unchanged. Continuationd183726f is posted and task-specific START CONFIRMED on controlled restoration using recent one-dimensional Gibbs-state preparation work. This is activity, not a new result/grade. This page's own result and scope are recorded below.
 
-
-**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P1 pre-experiment4ea7de89 completed acquired chaotic laws at its stated torus/closed-state/regularity/access contract. Full twenty-file original/proofs/data, exact prompt/response, expanded visible activity and prior capture are staged. No new assessment or exact current diagnostic release is supplied: no automatic P1 post. P2 control6adedbf2 is unchanged, with no diagnostic outcome inferred. P3 d183726f now has confirmed task-specific activity on controlled restoration using recent one-dimensional Gibbs-state preparation work, not a completed result. All eighteen ZIP/inherited/N517/Franks-original access holds remain. Capital sends no research prompt or recovery.
 
 
 
