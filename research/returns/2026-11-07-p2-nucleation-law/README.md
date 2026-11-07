@@ -1,6 +1,7 @@
 # Physical nucleation: residence certificates and a waiting-time law
 
-**Latest lifecycle and availability, 7 November Brisbane:** P2's exact1967-character next-question prompt is POSTED ONCE in the same Pro, native24c10ee2, with exact visible body matched and an INITIAL RESPONSE observed. It says it will select a constructible question and distinguish acquired data/supplied model/stronger measurement access; no specific research action or final question is visible yet. Task-specific START is NOT confirmed and further activity confirmation remains pending. The scientific handoff is delivered; no resend/replay or producer wait is needed. P14be18304/P3ce8eed3e remain undisturbed. Completed thermal result NEW provisional correctness-assumed65–75, inherited credits/frontier75–85 and all source/ZIP/N1683/Sol/Dots/team/resource holds remain. Posting/initial response is not a scientific result or policy gain. Capital does not dispatch or recover sources.
+**Latest lifecycle and availability, 7 November Brisbane:** P2's task-specific START is now confirmed for the same exact1967-character prompt/native24c10ee2, superseding the earlier initial-response/activity-pending receipt. Visible work examines worst-case prediction for noncommuting many-body evolution under local relaxation, prior strong-noise work and a finite-algorithm boundary. No final selected technical question, completed result, new grade or causal policy effect is established. All three current exact successors are POSTED ONCE/START CONFIRMED: P14be18304, P224c10ee2, P3ce8eed3e; no scientific handoff is pending. Thermal assessment65–75, earlier capital/frontier75–85, original/source/activity/Sol/Dots/N1683/team/resource limits remain. Capital sends no prompt or recovery attempt.
+
 
 
 
