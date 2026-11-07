@@ -1,0 +1,9 @@
+# Additional transport predecessors
+
+Primary full texts inspected; cache pins in sources/TRANSPORT_PREDECESSOR_PINS.json. No black-box theorem is imported from these comparators.
+
+Arita–Krapivsky–Mallick [1611.07719v2](https://arxiv.org/html/1611.07719v2), III.2/equations31–33, already gives increasing finite-subspace variational upper diffusivity bounds for nongradient generalized exclusion and tests new reservoir profiles. State/subspace enumeration need not be polynomial in cell volume; a lower finite-noise certificate is a distinct operation. Their [1711.10616v2](https://arxiv.org/html/1711.10616v2), sections3–4/8, equations11/17, applies related upper bounds to a kinetically constrained gas. Its zero rates/high-density slowing fall outside the uniform positive-rate hypothesis used here. No new ability to approximate nongradient diffusivity is claimed.
+
+Embacher–Dirr–Zimmer–Reina [1710.03680v3](https://arxiv.org/html/1710.03680v3), sections2–3/6 (Proc.R.Soc.A474(2018)20170694), extracts nonlinear diffusivity from nonequilibrium fluctuations under local-equilibrium/Gaussian premises, with preparation/storage/simulation costs. It leaves a general rigorous theory open; its Kawasaki-type outlook reports exploratory mobility measurements while the entropy and hydrodynamic limit remain unproved, so it does not determine the diffusivity there. A proof-based bracket differs from treating a formally inferred SPDE or successful fit as a finite-noise certificate, while this remains a competent matched numerical incumbent.
+
+Funaki–Gu–Wang2404.12234v3 supplies the decisive homogenization/duality machinery in the sampling construction. Green–Kubo, Poisson representations, fluctuation measurements, local variational approximation and nonlinear hydrodynamics are established. Priority of the particular self-certifying noisy compilation remains UNKNOWN. Practical advantage over the strongest equally informed implementation has not been measured.

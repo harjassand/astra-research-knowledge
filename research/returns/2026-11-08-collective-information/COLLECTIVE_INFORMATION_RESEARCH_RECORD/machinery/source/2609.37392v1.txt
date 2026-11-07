@@ -1,0 +1,1381 @@
+
+Learning Macroscopic Dynamics without Reconstructing Microscopic States
+Skip to main content
+Report GitHub Issue
+ ×
+ Title:
+Content selection saved. Describe the issue below:
+ Description:
+ Submit without GitHub
+ Submit in GitHub
+ Why HTML?
+ Report Issue
+ Back to Abstract
+ Download PDF
+ Contents
+ Reading mode
+ Colour theme
+ License: CC BY 4.0
+arXiv:2609.37392v1 [cs.LG] 29 Sep 2026
+Learning Macroscopic Dynamics without Reconstructing Microscopic States
+Zhichao Han
+Affiliation: National University of Singapore
+Yue Zhao
+Affiliation: National University of Singapore
+Qianxiao Li
+††thanks: Correspondence to: qianxiao@nus.edu.sg.
+Affiliation: National University of Singapore
+Abstract
+Modeling the temporal evolution of macroscopic properties of complex systems is an important scientific task. To predict this evolution without full microscopic simulation, a common approach encodes microstates into compact latent states, learns their evolution, and reads out macroscopic predictions from the latent trajectory. These latent states are often learned through microstate reconstruction. However, with limited latent capacity, reconstruction can favor high-variance microscopic details over information needed for macroscopic prediction. Yet jointly learning latent states and their transition without reconstruction often fails to obtain latent dynamics that support accurate macroscopic prediction. We show that this failure can arise from latent scale collapse: shrinking the latent state scale reduces training loss while macroscopic evolution error remains large. Here, we propose a reconstruction-free framework to learn latent states with their dynamics for prescribed macroscopic prediction.
+Training alternates between updating the latent representation with the transition and next-state latent targets fixed, and updating the transition with the latent representation fixed.
+At inference, the trained model predicts macroscopic states recursively from an initial microstate. Our theoretical analysis characterizes reconstruction misalignment and scale collapse under joint training, and gives a sufficient condition for local convergence to correct latent dynamics for our method. Experiments on epidemic spreading on a lattice, mixing of two particle species, and polymer stretching demonstrate that the proposed method achieves substantially better macroscopic prediction over baselines.
+1 Introduction
+Many physical systems evolve in high-dimensional microscopic states, while the quantities of interest are low-dimensional collective observables (Kevrekidis et al., 2003).
+Instead of tracking microstate details, we can summarize the high-dimensional microstates into compact latent embeddings that preserve the information relevant to the prescribed macroscopic dynamics, and learn a closed transition in the latent space. The macroscopic predictions are made from the resulting latent rollout (Champion et al., 2019; Lee and Carlberg, 2020; Fries et al., 2022; Chen and Li, 2024; Lusch et al., 2018; Mardt et al., 2018; Vlachas et al., 2022).
+Reconstruction-based representation learning trains the latent state to reconstruct the input microstate via some autoencoders (Champion et al., 2019; Zhu et al., 2025). Macroscopic prediction, however, requires latent states retaining only the information needed to predict macroscopic evolution. Reconstruction can therefore be misaligned with this task, devoting limited latent capacity to irrelevant microstate variation or stochastic details that are difficult to predict (Nair et al., 2020; Nguyen et al., 2021). We analyze this misalignment in Sec. 4.1. Reconstruction also couples the learned representation to the decoder’s design and capacity, adding architectural and tuning costs that do not directly serve macroscopic prediction (Shu et al., 2020; Han et al., 2026). Nevertheless, most existing approaches still use microstate reconstruction, and simply removing this objective can introduce difficulties in learning the latent dynamics (Champion et al., 2019; Lee and Carlberg, 2020; Fries et al., 2022; Chen and Li, 2024; Han et al., 2026).
+A key difficulty is latent collapse, in which the scale of the learned latent states tends to shrink toward zero.
+Reconstruction can help prevent this by requiring the representation to retain input information (Chen and Li, 2024; Han et al., 2026).
+We show in Sec. 4.2 that jointly optimizing the encoder and latent transition without reconstruction admits scale-collapse minimizing sequences. The encoder can reduce the training loss by shrinking the latent scale while macroscopic rollout predictions remain inaccurate, as discussed in Sec. 4.2.
+This creates a dilemma: reconstruction can be misaligned with macroscopic prediction, yet learning the representation and transition without it can lead to collapse. We therefore ask: can we learn a closed, predictive state for macroscopic dynamics without reconstructing microscopic details?
+To this end, we propose Target-Anchored Macro-Predictive Latents (TAMPL), a reconstruction-free framework for learning latent dynamics tailored to prescribed macroscopic observables (Fig. 1).
+TAMPL alternates between updating the latent representation and fitting the transition model, with each stage specifically designed to address latent collapse.
+During representation update, a frozen copy of the encoder anchors the next-state target, preventing the latent state and its next-state target from shrinking together.
+During transition fitting, the encoder is fixed, so the transition is fitted in the current latent coordinates.
+We make theoretical analyses on linear systems in Sec. 4 to discuss how this training strategy addresses the training dilemma. Experiments (Sec. 5) on epidemic spreading on a lattice, mixing of two particle species, and polymer stretching demonstrate the improved macroscopic prediction of TAMPL over baselines. For example, only TAMPL captures the distinct extension time scales across all test regimes in the polymer extension experiment.
+Figure 1: Overview of TAMPL. The encoder EθEE_{\theta_{E}} maps microstates 𝒙t{\bm{x}}_{t} to latent states 𝒛t{\bm{z}}_{t}, which the transition model TθTT_{\theta_{T}} propagates forward and the readout RθRR_{\theta_{R}} maps to macroscopic predictions 𝒚^t\hat{\bm{y}}_{t}. The target encoder E¯\bar{E} applied to 𝒙t+1{\bm{x}}_{t+1} is a copy of EθEE_{\theta_{E}} and the parameters in E¯\bar{E} are not trainable. Optimization alternates between representation learning (yellow) and transition learning (green), with and icons indicating trainable and frozen modules, respectively. E¯\bar{E} is only updated after one representation learning stage finishes. Crossed-out decoder branches emphasize that the latent representation is trained without microstate reconstruction.
+2 Related Work
+Modeling macroscopic dynamics from microstates.
+Many methods for learning macroscopic dynamics reconstruct microstates to encode microscopic information and regularize latent states, even when their closure variables need not support microscopic recovery (Champion et al., 2019; Chen et al., 2022; Chen and Li, 2024; Han et al., 2026). TAMPL shares their prediction objective but learns representations without reconstruction through a training procedure designed to stabilize learning. For observables depending locally on microscopic coordinates, equation-free approaches estimate and advance macroscopic evolution through short microscopic simulations in small spatial domains, without explicitly learning a macroscopic dynamics model (Kevrekidis et al., 2003; Chen and Li, 2024). TAMPL supports observables depending on the full microstate and explicitly learns a latent transition from trajectories, requiring no further microscopic simulation after encoding the initial microstate. In the closely related task of reduced-order modeling, autoencoder-based reduced-order models learn and evolve low-dimensional coordinates to approximate high-dimensional dynamics, then decode them for full-state recovery (Lusch et al., 2018; Lee and Carlberg, 2020; Fries et al., 2022; Champion et al., 2019; Park et al., 2024). TAMPL instead predicts prescribed macroscopic observables, so its latent states need not support microscopic recovery.
+Reconstruction-free latent dynamics modeling.
+For physical systems, unsupervised methods such as VAMPnets (Mardt et al., 2018) and the work by Hromadka et al. (2026) learn internal states and their evolution without reconstruction or prescribed macroscopic targets, using a linear Koopman model and a linear Gaussian latent prior, respectively. TAMPL likewise avoids reconstruction, but trains its representation for prescribed macroscopic prediction and allows nonlinear latent transitions.
+In control and reinforcement learning, reconstruction-free world models learn latent representations and dynamics for prediction and planning.
+Predictive coding methods combine contrastive learning with latent consistency (Shu et al., 2020; Nguyen et al., 2021), while LeWorldModel jointly trains its encoder and latent transition model using latent prediction with distributional regularization (Maes et al., 2026).
+DeepMDP learns representations through reward prediction and prediction of distributions over subsequent latent states (Gelada et al., 2019). TD-MPC jointly trains its encoder and dynamics using reward and value prediction together with latent consistency against an exponentially averaged target encoder (Hansen et al., 2022). In LQG control, Tian et al. (2023) first learn representations through cumulative-cost prediction, then fit latent transition and cost models.
+Like these methods, TAMPL combines task supervision with latent consistency, but stabilizes the training via its specifically designed training strategy.
+Training latent representations and dynamics without reconstruction.
+Learning latent embeddings by predicting future latent states admits trivial solutions, including learning constant representations (Schwarzer et al., 2021; Tang et al., 2023).
+One type of approach regularizes representation geometry. For example, VICReg penalizes low variance and cross-coordinate covariance (Bardes et al., 2022), while Sketched Isotropic Gaussian Regularization (SIGReg), introduced in LeJEPA, encourages an isotropic Gaussian embedding distribution (Balestriero and LeCun, 2025).
+Another line studies training strategies for stable latent dynamics learning.
+SPR predicts future latent representations using stop-gradient targets from an exponentially averaged encoder (Schwarzer et al., 2021).
+Tang et al. (2023) study latent dynamics by matching predicted next latent states to stop-gradient encodings of subsequent observations.
+They consider faster predictor optimization and slower representation learning, establishing noncollapse in an idealized setting where the predictor is optimal for the current representation. Ni et al. (2024) extend the analysis in Tang et al. (2023) to action-conditioned transitions, partial observability, and exponentially averaged encoded targets.
+TAMPL shares stop-gradient targets and the alternating update with Tang et al. (2023), but couples them with prescribed macroscopic supervision and takes finitely many gradient steps for each component.
+Our analysis establishes sufficient conditions considering the linear system for local convergence of this optimization procedure.
+3 Method
+3.1 Problem Setup and Learning Objective
+Let 𝒙t∈ℝn{\bm{x}}_{t}\in\mathbb{R}^{n} denote the high-dimensional microstate of a dynamical system at time tt, and 𝒚t=g⁡(𝒙t)∈ℝm{\bm{y}}_{t}=g({\bm{x}}_{t})\in\mathbb{R}^{m} denote the low-dimensional macroscopic observation defined by a prescribed map gg.
+For example, in a particle system, 𝒙t{\bm{x}}_{t} records particle positions and 𝒚t{\bm{y}}_{t} may be the density in a fixed region, computed by gg as the number of particles in that region divided by its volume.
+Given training trajectories 𝒟={(𝒙t(i),𝒚t(i))t=0Ti}i=1N\mathcal{D}=\{({\bm{x}}_{t}^{(i)},{\bm{y}}_{t}^{(i)})_{t=0}^{T_{i}}\}_{i=1}^{N}, where ii indexes trajectories, we seek a model that recursively predicts future macroscopic observations {𝒚t}t=1T\{{\bm{y}}_{t}\}_{t=1}^{T} from an initial observed microstate 𝒙0{\bm{x}}_{0}.
+The macroscopic process {𝒚t}t=1T\{{\bm{y}}_{t}\}_{t=1}^{T} is not necessarily Markovian, since gg may discard information relevant to its future evolution.
+We therefore evolve the dynamics in a learned latent space and read out macroscopic predictions at each step.
+We encode the microstate into a latent state 𝒛t=EθE​(𝒙t){\bm{z}}_{t}=E_{\theta_{E}}({\bm{x}}_{t}), where EθE:ℝn→ℝdzE_{\theta_{E}}:\mathbb{R}^{n}\rightarrow\mathbb{R}^{d_{z}} is a learned encoder and dz<nd_{z}<n is the latent dimension.
+The encoder architecture depends on the input type. For example, we can use a CNN (LeCun et al., 1998) for images and a DeepSet (Zaheer et al., 2017) for particle sets.
+We model the latent dynamics as Markovian, with transition TθTT_{\theta_{T}} conditioned only on the current latent state 𝒛t{\bm{z}}_{t}.
+For deterministic dynamics, TθT:ℝdz→ℝdzT_{\theta_{T}}:\mathbb{R}^{d_{z}}\rightarrow\mathbb{R}^{d_{z}} predicts the next latent state.
+For stochastic dynamics, TθT(⋅∣𝒛t)T_{\theta_{T}}(\cdot\mid{\bm{z}}_{t}) defines a conditional distribution over the next latent state.
+A current readout RθR:ℝdz→ℝmR_{\theta_{R}}:\mathbb{R}^{d_{z}}\rightarrow\mathbb{R}^{m} maps the latent state to the prescribed macroscopic observation and is implemented as an MLP (Rumelhart et al., 1986).
+We train the latent state to support current readout and next-state prediction:
+RθR​(EθE​(𝒙t))\displaystyle R_{\theta_{R}}\!\left(E_{\theta_{E}}({\bm{x}}_{t})\right)
+≈𝒚t,\displaystyle\approx{\bm{y}}_{t},
+(1)
+TθT​(EθE​(𝒙t))\displaystyle T_{\theta_{T}}\!\left(E_{\theta_{E}}({\bm{x}}_{t})\right)
+≈EθE​(𝒙t+1),\displaystyle\approx E_{\theta_{E}}({\bm{x}}_{t+1}),
+(2)
+For stochastic transitions, Eq. 2 denotes matching the conditional distribution of the next encoded state given the current one. Together, Eqs. 1 and 2 support recursive macroscopic prediction by evolving the latent state and applying the readout at each step.
+These two prediction requirements motivate the following learning objective:
+ℒ=λcur​𝔼​[‖RθR​(𝒛t)−𝒚t‖22]+λtr​𝔼​[ℓtr​(TθT,𝒛t,EθE​(𝒙t+1))].\mathcal{L}=\lambda_{\mathrm{cur}}\mathbb{E}\!\left[\left\|R_{\theta_{R}}({\bm{z}}_{t})-{\bm{y}}_{t}\right\|_{2}^{2}\right]+\lambda_{\mathrm{tr}}\mathbb{E}\!\left[\ell_{\mathrm{tr}}\!\left(T_{\theta_{T}};{\bm{z}}_{t},E_{\theta_{E}}({\bm{x}}_{t+1})\right)\right].
+(3)
+We denote the two terms before weighting by ℒcur\mathcal{L}_{\mathrm{cur}} and ℒtr\mathcal{L}_{\mathrm{tr}}, respectively.
+The transition loss form ℒtr\mathcal{L}_{\mathrm{tr}} depends on the transition model. Expectations average over sampled trajectories and valid source times, together with any auxiliary randomness in the transition loss.
+For stochastic latent transitions in the domain experiments, we use conditional flow matching (Tong et al., 2024), with the transition loss detailed in Appendix A.1.
+The weights satisfy λcur,λtr>0\lambda_{\mathrm{cur}},\lambda_{\mathrm{tr}}>0.
+In the objective, we omit microscopic reconstruction to avoid allocating latent capacity to encode input features irrelevant to macroscopic prediction. We supervise the transition to match the next latent state 𝒛t+1{\bm{z}}_{t+1} rather than the next macrostate 𝒚t+1{\bm{y}}_{t+1}, because the latter does not imply accurate long-term recursive prediction. Section 4.1 motivates both choices in a linear setting.
+At inference time, the encoder is applied only to the initial microstate to obtain 𝒛0=EθE​(𝒙0){\bm{z}}_{0}=E_{\theta_{E}}({\bm{x}}_{0}).
+For deterministic dynamics, the model recursively applies 𝒛t+1=TθT​(𝒛t){\bm{z}}_{t+1}=T_{\theta_{T}}({\bm{z}}_{t}) and 𝒚^t+1=RθR​(𝒛t+1)\widehat{{\bm{y}}}_{t+1}=R_{\theta_{R}}({\bm{z}}_{t+1}) for t=0,…,T−1t=0,\ldots,T-1.
+For stochastic dynamics, we instead sample 𝒛t+1∼TθT(⋅∣𝒛t){\bm{z}}_{t+1}\sim T_{\theta_{T}}(\,\cdot\mid{\bm{z}}_{t}) before applying the same readout.
+3.2 Training Strategy
+The encoder defines both the source and target in ℒtr\mathcal{L}_{\mathrm{tr}}. Directly minimizing Eq. 3 changes the latent coordinates in which the transition is fitted, which can further lead to the latent scale collapse problem (Sec. 4.2).
+We instead alternate representation and transition updates with detached latent prediction targets, as shown by the yellow and green stages in Fig. 1.
+We maintain an online encoder EθEE_{\theta_{E}} and a frozen target copy Eθ¯EE_{\bar{\theta}_{E}}, initialized with the same encoder parameters.
+The target encoder remains fixed throughout each representation block and is refreshed between blocks.
+For brevity, we suppress parameter subscripts and write E,R,T,E¯E,R,T,\bar{E} for EθE,RθR,TθT,Eθ¯EE_{\theta_{E}},R_{\theta_{R}},T_{\theta_{T}},E_{\bar{\theta}_{E}}, respectively.
+For representation updates, we use the same transition loss with E¯​(𝒙t+1)\bar{E}({\bm{x}}_{t+1}) replacing the online next-state target and have
+ℒtr​(E,E¯,T)=𝔼⁡[ℓtr​(T,E⁡(𝒙t),E¯​(𝒙t+1))].\mathcal{L}_{\mathrm{tr}}(E,\bar{E};T)=\mathbb{E}\!\left[\ell_{\mathrm{tr}}\!\left(T;E({\bm{x}}_{t}),\bar{E}({\bm{x}}_{t+1})\right)\right].
+In the representation stage (yellow), we update E,RE,R using the objective
+ℒenc​(E,R,T,E¯)=λcur​ℒcur+λtr​ℒtr​(E,E¯,T)\mathcal{L}_{\mathrm{enc}}(E,R;T,\bar{E})=\lambda_{\mathrm{cur}}\mathcal{L}_{\mathrm{cur}}+\lambda_{\mathrm{tr}}\mathcal{L}_{\mathrm{tr}}(E,\bar{E};T)
+Here TT and E¯\bar{E} remain fixed, and the transition gradient passes through TT to EE but not through the target E¯\bar{E}.
+After the representation block, we refresh the target encoder by copying the updated online encoder, E¯←E\bar{E}\leftarrow E.
+In the transition stage (green), we update only TT using ℒtr​(E¯,E¯,T)\mathcal{L}_{\mathrm{tr}}(\bar{E},\bar{E};T), fitting the transition in the updated latent coordinates.
+Each training epoch consists of one pass of representation updates, a target refresh, and one pass of transition updates.
+Section 4.3 analyzes these two roles in a linear setting.
+Appendix A.2 gives the training and inference pseudocode.
+4 Analysis
+We analyze the training mechanisms in Sec. 3 using a deterministic linear system with squared transition loss.
+We first justify the training objective (Eq. 3) and examine why directly minimizing it can fail to produce predictive latent dynamics. We then analyze how TAMPL’s frozen representation and detached target change the updates, and give a local convergence condition.
+Consider the linear system
+𝒙t+1=A​𝒙t,𝒚t=C⋆​𝒙t{\bm{x}}_{t+1}=A{\bm{x}}_{t},{\bm{y}}_{t}=C_{\star}{\bm{x}}_{t}, where 𝒙t∈ℝn{\bm{x}}_{t}\in\mathbb{R}^{n}, 𝒚t∈ℝm{\bm{y}}_{t}\in\mathbb{R}^{m}, and A∈ℝn×nA\in\mathbb{R}^{n\times n}, C⋆∈ℝm×nC_{\star}\in\mathbb{R}^{m\times n} are fixed.
+We learn the encoder E⁡(𝒙)=B​𝒙E({\bm{x}})=B{\bm{x}}, latent transition T⁡(𝒛)=K​𝒛T({\bm{z}})=K{\bm{z}}, and macroscopic readout R⁡(𝒛)=D​𝒛R({\bm{z}})=D{\bm{z}}, with B∈ℝd×nB\in\mathbb{R}^{d\times n}, K∈ℝd×dK\in\mathbb{R}^{d\times d}, D∈ℝm×dD\in\mathbb{R}^{m\times d} and d:=dz≤nd:=d_{z}\leq n.
+Let 𝒙0{\bm{x}}_{0} be random and sample the source time tt; expectations below average over these sampled pairs.
+Assume 𝔼⁡[𝒙t]=0\mathbb{E}[{\bm{x}}_{t}]=0 and Σx:=𝔼⁡[𝒙t​𝒙t⊤]≻0\Sigma_{\mathrm{x}}:=\mathbb{E}[{\bm{x}}_{t}{\bm{x}}_{t}^{\top}]\succ 0 over the sampled source states.
+Write ‖M‖Σx2:=tr⁡(M​Σx​M⊤)\|M\|_{\Sigma_{\mathrm{x}}}^{2}:=\operatorname{tr}(M\Sigma_{\mathrm{x}}M^{\top}) and ⟨M,N⟩Σx:=tr⁡(M​Σx​N⊤)\langle M,N\rangle_{\Sigma_{\mathrm{x}}}:=\operatorname{tr}(M\Sigma_{\mathrm{x}}N^{\top}) for compatible matrices.
+Matrix gradients and parameter tuples use the product Frobenius inner product, and ∥⋅∥2\|\cdot\|_{2} denotes the spectral norm.
+We use Eq. 3 with squared transition loss ℓtr​(T,𝒛t,𝒛t+1)=‖T⁡(𝒛t)−𝒛t+1‖22\ell_{\mathrm{tr}}(T;{\bm{z}}_{t},{\bm{z}}_{t+1})=\|T({\bm{z}}_{t})-{\bm{z}}_{t+1}\|_{2}^{2}.
+The current and transition losses from Eq. 3 become
+ℒcur​(B,D)=‖D​B−C⋆‖Σx2,ℒtr​(K,B)=‖K​B−B​A‖Σx2.\mathcal{L}_{\mathrm{cur}}(B,D)=\|DB-C_{\star}\|_{\Sigma_{\mathrm{x}}}^{2},\qquad\mathcal{L}_{\mathrm{tr}}(K;B)=\|KB-BA\|_{\Sigma_{\mathrm{x}}}^{2}.
+(4)
+For the convergence analysis, assume there are parameters (B⋆,D⋆,K⋆)(B_{\star},D_{\star},K_{\star}) satisfying D⋆​B⋆=C⋆D_{\star}B_{\star}=C_{\star} and K⋆​B⋆=B⋆​AK_{\star}B_{\star}=B_{\star}A, with rank⁡(B⋆)=d\operatorname{rank}(B_{\star})=d. These identities mean that the latent model reproduces both the prescribed macroscopic observation and the encoded dynamics. Appendix B.1 characterizes this capacity condition.
+4.1 Justification of the learning objective
+Why can reconstruction be harmful?
+We do not include a loss term to reconstruct microstates in the objective (Eq. 3). This is because the reconstruction loss can make the latent state encode microstate information irrelevant to macroscopic prediction.
+To see this, we express microscopic reconstruction through a decoder G∈ℝn×dG\in\mathbb{R}^{n\times d} and the loss
+ℒrec​(B,G):=𝔼​‖G​B​𝒙t−𝒙t‖22=‖G​B−In‖Σx2.\mathcal{L}_{\mathrm{rec}}(B,G):=\mathbb{E}\|GB{\bm{x}}_{t}-{\bm{x}}_{t}\|_{2}^{2}=\|GB-I_{n}\|_{\Sigma_{\mathrm{x}}}^{2}.
+(5)
+Prediction and reconstruction can compete for the available latent capacity.
+The following theorem isolates this competition without the transition term.
+Theorem 1
+Let λrec≥0\lambda_{\mathrm{rec}}\geq 0. A rank-dd encoder BB minimizes minD,G⁡{λcur​ℒcur​(B,D)+λrec​ℒrec​(B,G)}\min_{D,G}\{\lambda_{\mathrm{cur}}\mathcal{L}_{\mathrm{cur}}(B,D)+\lambda_{\mathrm{rec}}\mathcal{L}_{\mathrm{rec}}(B,G)\} over BB if and only if row⁡(B​Σx1/2)\operatorname{row}(B\Sigma_{\mathrm{x}}^{1/2}) is a top-dd eigenspace of Mcur+λrec​ΣxM_{\mathrm{cur}}+\lambda_{\mathrm{rec}}\Sigma_{\mathrm{x}},
+where Mcur:=λcur​Σx1/2​C⋆⊤​C⋆​Σx1/2M_{\mathrm{cur}}:=\lambda_{\mathrm{cur}}\Sigma_{\mathrm{x}}^{1/2}C_{\star}^{\top}C_{\star}\Sigma_{\mathrm{x}}^{1/2} and Σx1/2\Sigma_{\mathrm{x}}^{1/2} is the symmetric covariance square root.
+Theorem 1 identifies the competition: McurM_{\mathrm{cur}} rewards directions that predict the prescribed macroscopic observation, while λrec​Σx\lambda_{\mathrm{rec}}\Sigma_{\mathrm{x}} rewards high-variance microstate directions, as in linear PCA (Baldi and Hornik, 1989).
+Appendix B.2.1 proves the theorem.
+Two-dimensional illustration.
+Let 𝒙t=(ut,nt)⊤{\bm{x}}_{t}=(u_{t},n_{t})^{\top} have uncorrelated coordinates with positive variances σu2,σn2\sigma_{\mathrm{u}}^{2},\sigma_{\mathrm{n}}^{2}, dynamics diag⁡(a,b)\operatorname{diag}(a,b), and output yt=cu​uty_{t}=c_{\mathrm{u}}u_{t} with cu≠0c_{\mathrm{u}}\neq 0. With one latent coordinate, Theorem 1 uniquely selects the macrostate-irrelevant coordinate ntn_{t} when
+λrec​σn2>(λcur​cu2+λrec)​σu2.\lambda_{\mathrm{rec}}\sigma_{\mathrm{n}}^{2}>(\lambda_{\mathrm{cur}}c_{\mathrm{u}}^{2}+\lambda_{\mathrm{rec}})\sigma_{\mathrm{u}}^{2}.
+(6)
+Since ut+1=a​utu_{t+1}=au_{t} and nt+1=b​ntn_{t+1}=bn_{t}, either coordinate has zero transition loss with K=aK=a or K=bK=b. Thus optimizing the transition does not remove this failure.
+Why predict the next latent state instead of the next macrostate?
+An alternative to our loss (Eq. 4) retains ℒcur\mathcal{L}_{\mathrm{cur}} but replaces the ℒtr\mathcal{L}_{\mathrm{tr}} with next-macrostate prediction:
+ℒmacro​(B,D,K):=λcur​‖D​B−C⋆‖Σx2+λnext​‖D​K​B−C⋆​A‖Σx2\mathcal{L}_{\mathrm{macro}}(B,D,K):=\lambda_{\mathrm{cur}}\|DB-C_{\star}\|_{\Sigma_{\mathrm{x}}}^{2}+\lambda_{\mathrm{next}}\|DKB-C_{\star}A\|_{\Sigma_{\mathrm{x}}}^{2}.
+However, supervising the next macrostate constrains only the readout of the predicted latent state, leaving information needed for subsequent predictions potentially unconstrained. The following proposition makes this precise:
+Proposition 4.1 (One-step macrostate supervision)
+Let λcur≥0\lambda_{\mathrm{cur}}\geq 0, λnext≥0\lambda_{\mathrm{next}}\geq 0. ℒmacro=0\mathcal{L}_{\mathrm{macro}}=0 does not imply D​Kh​B=C⋆​AhDK^{h}B=C_{\star}A^{h} for h≥2h\geq 2, even when an exact realization exists at the chosen latent dimension.
+In contrast, ℒcur=ℒtr=0\mathcal{L}_{\mathrm{cur}}=\mathcal{L}_{\mathrm{tr}}=0 implies D​Kh​B=C⋆​AhDK^{h}B=C_{\star}A^{h} for every h≥0h\geq 0.
+The following example illustrates Proposition 4.1.
+Let A=diag⁡(a,b,c)A=\operatorname{diag}(a,b,c) and C⋆=(1,1,0)C_{\star}=(1,1,0), with 0<a,b,c<10<a,b,c<1 and a≠ba\neq b. We use two latent coordinates for three microstate coordinates.
+An exact realization exists with B⋆=[I2∣02×1]B_{\star}=[I_{2}\mid 0_{2\times 1}], K⋆=diag⁡(a,b)K_{\star}=\operatorname{diag}(a,b), and D⋆=(1,1)D_{\star}=(1,1).
+However, the choice
+B=(110ab0),K=(0100),D=(10)B=\begin{pmatrix}1&1&0\\
+a&b&0\end{pmatrix},\qquad K=\begin{pmatrix}0&1\\
+0&0\end{pmatrix},\qquad D=\begin{pmatrix}1&0\end{pmatrix}
+satisfies D​B=C⋆DB=C_{\star} and D​K​B=C⋆​ADKB=C_{\star}A, but D​K2​B≠C⋆​A2DK^{2}B\neq C_{\star}A^{2}.
+Here BB and B​ABA have rank two, whereas K​BKB has rank one: the transition discards information needed for future prediction.
+Supervising macroscopic predictions over several rollout steps adds more constraints, but fitting a finite horizon need not ensure accurate predictions beyond it.
+Appendix B.3 proves Proposition 4.1, and explains the general distinction between macrostate prediction supervision and latent consistency.
+4.2 Why directly minimizing the objective can fail
+In this linear setting, directly minimizing the objective (Eq. 3) amounts to jointly optimizing
+B,D,KB,D,K in Eq. 4. A change of latent coordinates can reduce its transition loss without changing the macroscopic predictions. Write
+ℒjoint\displaystyle\mathcal{L}_{\mathrm{joint}}
+=λcur​‖D​B−C⋆‖Σx2+λtr​‖K​B−B​A‖Σx2,\displaystyle=\lambda_{\mathrm{cur}}\|DB-C_{\star}\|_{\Sigma_{\mathrm{x}}}^{2}+\lambda_{\mathrm{tr}}\|KB-BA\|_{\Sigma_{\mathrm{x}}}^{2}~,
+(7)
+(BS,DS,KS)\displaystyle(B_{S},D_{S},K_{S})
+=(S​B,D​S−1,S​K​S−1),S∈GL⁡(d).\displaystyle=(SB,DS^{-1},SKS^{-1}),\qquad S\in\mathrm{GL}(d)~.
+(8)
+This transformation preserves D​BDB and every D​Kh​BDK^{h}B, but changes the transition loss to ‖S⁡(K​B−B​A)‖Σx2\|S(KB-BA)\|_{\Sigma_{\mathrm{x}}}^{2}. It implies ℒjoint\mathcal{L}_{\mathrm{joint}} can be reduced via the shortcut SS, as stated by the following proposition.
+Proposition 4.2 (Scale non-coercivity)
+Let D​B=C⋆DB=C_{\star} and Δ:=K​B−B​A≠0\Delta:=KB-BA\neq 0. For α>0\alpha>0, set (Bα,Dα,Kα)=(α​B,α−1​D,K)(B_{\alpha},D_{\alpha},K_{\alpha})=(\alpha B,\alpha^{-1}D,K). Then ℒjoint​(Bα,Dα,Kα)=λtr​α2​‖Δ‖Σx2→0\mathcal{L}_{\mathrm{joint}}(B_{\alpha},D_{\alpha},K_{\alpha})=\lambda_{\mathrm{tr}}\alpha^{2}\|\Delta\|_{\Sigma_{\mathrm{x}}}^{2}\to 0, while Dα​Kαh​Bα=D​Kh​BD_{\alpha}K_{\alpha}^{h}B_{\alpha}=DK^{h}B for every h≥0h\geq 0.
+Proposition 4.2 implies that, if D​Kh​B≠C⋆​AhDK^{h}B\neq C_{\star}A^{h} for some hh, ℒjoint→0\mathcal{L}_{\mathrm{joint}}\to 0 as α↓0\alpha\downarrow 0 while that rollout error stays fixed (Appendix B.4.1). Directly minimizing ℒjoint\mathcal{L}_{\mathrm{joint}} can also converge to an incorrect closed solution: Appendix B.4.3 gives conditions under which a full-row-rank (B0,0,K0)(B_{0},0,K_{0}) with K0​B0=B0​AK_{0}B_{0}=B_{0}A, C⋆​Σx​B0⊤=0C_{\star}\Sigma_{\mathrm{x}}B_{0}^{\top}=0, and C⋆≠0C_{\star}\neq 0 is locally attracting, although its current macrostate prediction is wrong.
+4.3 How TAMPL changes the optimization
+The two training blocks in TAMPL address the preceding failures in different ways. Freezing the representation prevents latent coordinates rescaling during transition fitting with ℒtr\mathcal{L}_{\mathrm{tr}}, whereas detaching the next-state target makes the incorrect solution whose transition loss is zero despite its incorrect macroscopic predictions locally unstable under suitable conditions.
+Freeze the representation while fitting the transition.
+For fixed full-row-rank BB, ℒtr\mathcal{L}_{\mathrm{tr}} is strictly convex in KK, with
+K⋆​(B)=B​A​Σx​B⊤​(B​Σx​B⊤)−1.K^{\star}(B)=BA\Sigma_{\mathrm{x}}B^{\top}(B\Sigma_{\mathrm{x}}B^{\top})^{-1}.
+(9)
+Freezing BB therefore gives a unique optimal transition in the current latent coordinates and prevents transition fitting from lowering its loss through representation rescaling (Appendix B.5.1).
+Detach the target while updating the representation.
+The representation update block fixes KK and a target copy B¯\bar{B}:
+ℒenc​(B,D,K,B¯)=λcur​ℒcur​(B,D)+λtr​‖K​B−B¯​A‖Σx2,\mathcal{L}_{\mathrm{enc}}(B,D;K,\bar{B})=\lambda_{\mathrm{cur}}\mathcal{L}_{\mathrm{cur}}(B,D)+\lambda_{\mathrm{tr}}\|KB-\bar{B}A\|_{\Sigma_{\mathrm{x}}}^{2},
+(10)
+To isolate the effect of the fixed target, first consider an optimally fitted transition K=K⋆​(B¯)K=K^{\star}(\bar{B}) with K​B¯≠0K\bar{B}\neq 0. Along B=α​B¯B=\alpha\bar{B}, the normal equation gives
+‖α​K​B¯−B¯​A‖Σx2=‖K​B¯−B¯​A‖Σx2+(α−1)2​‖K​B¯‖Σx2.\|\alpha K\bar{B}-\bar{B}A\|_{\Sigma_{\mathrm{x}}}^{2}=\|K\bar{B}-\bar{B}A\|_{\Sigma_{\mathrm{x}}}^{2}+(\alpha-1)^{2}\|K\bar{B}\|_{\Sigma_{\mathrm{x}}}^{2}.
+(11)
+The fixed target therefore penalizes uniform rescaling away from α=1\alpha=1 (Appendix B.5.2).
+To analyze repeated TAMPL updates, consider a training round with one gradient step per block, starting from B¯=B\bar{B}=B: take one simultaneous (B,D)(B,D) gradient step on ℒenc\mathcal{L}_{\mathrm{enc}} with K,B¯K,\bar{B} fixed, refresh B¯←B\bar{B}\leftarrow B, and take one KK gradient step on λtr​ℒtr\lambda_{\mathrm{tr}}\mathcal{L}_{\mathrm{tr}} with the updated BB fixed. We use this training round throughout the remainder of this subsection.
+Under suitable conditions, these training rounds destabilize the incorrect solution in Sec. 4.2; see Appendix B.5.3 for details.
+We next study local convergence of the combined updates.
+Write θ=(B,D,K)\theta=(B,D,K) and collect the weighted current and transition residuals as
+ℛ⁡(θ):=(λcur​(D​B−C⋆)​Σx1/2λtr​(K​B−B​A)​Σx1/2).\mathcal{R}(\theta):=\begin{pmatrix}\sqrt{\lambda_{\mathrm{cur}}}(DB-C_{\star})\Sigma_{\mathrm{x}}^{1/2}\\
+\sqrt{\lambda_{\mathrm{tr}}}(KB-BA)\Sigma_{\mathrm{x}}^{1/2}\end{pmatrix}.
+At θ⋆=(B⋆,D⋆,K⋆)\theta_{\star}=(B_{\star},D_{\star},K_{\star}) defined at the beginning of Sec. 4, let s⋆s_{\star} be the smallest singular value of the residual Jacobian D​ℛ​(θ⋆)\mathrm{D}\mathcal{R}(\theta_{\star}) restricted to parameter directions orthogonal to infinitesimal changes of latent coordinates. It measures the weakest first-order residual response to a unit perturbation in these directions. The condition below makes this sensitivity dominate the target-refresh contribution, yielding local contraction for sufficiently small steps.
+Theorem 2 (Local convergence of TAMPL, informal)
+If s⋆>λtr​‖A​Σx1/2‖2s_{\star}>\sqrt{\lambda_{\mathrm{tr}}}\|A\Sigma_{\mathrm{x}}^{1/2}\|_{2}, then with a sufficiently small common step size, the training rounds converge from every initialization sufficiently close to θ⋆\theta_{\star} to parameters related to θ⋆\theta_{\star} by an invertible change of latent coordinates.
+Let (Bj,Dj,Kj)(B_{j},D_{j},K_{j}) denote the parameters after jj completed training rounds, with j=0j=0 denoting initialization. There exist C>0C>0 and a per-round geometric convergence factor ρ∈(0,1)\rho\in(0,1) such that, for every j≥0j\geq 0,
+‖ℛ⁡(Bj,Dj,Kj)‖F≤C​ρj.\|\mathcal{R}(B_{j},D_{j},K_{j})\|_{F}\leq C\rho^{j}.
+Consequently, for every fixed integer rollout horizon H≥1H\geq 1, there exists CH>0C_{H}>0 such that
+∑h=1H‖Dj​Kjh​Bj−C⋆​Ah‖Σx2≤CH​ρ2​j.\sum_{h=1}^{H}\|D_{j}K_{j}^{h}B_{j}-C_{\star}A^{h}\|_{\Sigma_{\mathrm{x}}}^{2}\leq C_{H}\rho^{2j}.
+Appendix B.5.5 defines s⋆s_{\star} precisely and proves the theorem with an explicit step-size bound. Appendix B.5.4 discusses training rounds that allow multiple gradient steps in the representation and transition stages. Appendix C verifies these analyses in controlled linear experiments.
+5 Experiments
+Table 1: Experiment summary. nn and mm are the microscopic and macroscopic dimensions, respectively.
+Experiment
+Microstate
+nn
+mm
+Lattice SIRS
+Discrete lattice
+10,00010{,}000
+33
+Binary mixing
+Particle set
+1,5361{,}536
+22
+Polymer extension
+Grayscale image
+50,00050{,}000
+11
+We compare TAMPL with baselines with and without reconstructing microstates.
+Among reconstruction-free methods, JLD (joint latent dynamics) jointly trains the same encoder, macrostate readout, and latent transition as TAMPL, testing whether ordinary joint training suffices.
+Its variants JLD–SIG and JLD–VIC regularize the latent embedding using Sketched Isotropic Gaussian Regularization (Balestriero and LeCun, 2025) and VICReg variance and covariance penalties (Bardes et al., 2022), respectively, testing whether latent geometry control suffices to stabilize training.
+VAMP learns a latent embedding whose expected evolution is approximated by a linear transition (Mardt et al., 2018), and we then fit a macrostate readout to the learned embedding.
+Among reconstruction-based methods, JLD–Recon adds a microscopic reconstruction loss to JLD and trains all modules jointly (Champion et al., 2019; He et al., 2023).
+TwoStage–Recon first trains an autoencoder, then learns the transition with the latent representation frozen. This is adopted in some recent works (Chen and Li, 2024; Zhu et al., 2025).
+We test all methods on three challenging stochastic dynamical systems, summarized in Table 1.
+For a fair comparison within each system, all methods use the same encoder and macroscopic readout architectures and latent dimension dzd_{z}.
+The stochastic latent models also use the same transition architecture, trained using conditional flow matching (Tong et al., 2024).
+VAMP uses its deterministic linear transition.
+All models are trained for the same number of epochs within each system.
+Our primary metric, mean macrostate RMSE (RMSE), compares predicted and ground-truth ensemble means of the macrostates for each initial microstate.
+We additionally report marginal MMD (MMD) to compare the predicted and ground-truth distributions of individual macroscopic features at each evaluation time. The score averages these squared discrepancies over initial microstates, evaluation times, and features.
+Since VAMP assumes a deterministic linear transition, it is evaluated only on mean macrostate prediction.
+Metric definitions and evaluation details, including the training seeds used for quantitative results and prediction figures, are provided in Appendix D.1.
+5.1 Lattice SIRS
+We consider a susceptible–infected–recovered–susceptible (SIRS) process on a periodic square lattice, which is a model for infectious disease spread (de Souza and Tomé, 2010).
+The microscopic state 𝒙t{\bm{x}}_{t} specifies the state of every lattice site, and the prescribed macroscopic observation 𝒚t=(St,It,Rt){\bm{y}}_{t}=(S_{t},I_{t},R_{t}) is the susceptible, infected, and recovered population fractions.
+Because infection depends on local neighborhoods, microscopic configurations with identical population fractions can exhibit different macroscopic evolution.
+All methods use a CNN encoder with circular padding to respect the periodic boundary conditions (Bulusu et al., 2021) and a latent dimension of dz=16d_{z}=16.
+Data-generation details and an example microscopic trajectory are provided in Appendix D.2.
+Figure 2: SIRS macroscopic prediction by TAMPL. The left column shows the initial lattice, with infected sites in red and susceptible sites in gray. The right three columns show the predicted and ground-truth macroscopic observations.
+We compare TAMPL with two conventional SIRS modeling approaches: a mean-field approximation that neglects spatial correlations and a pair approximation that additionally evolves nearest-neighbor pair densities (Joo and Lebowitz, 2004). See Appendix D.2 for details.
+Figure 2 shows predictions for two initial microscopic configurations.
+In both examples, TAMPL closely follows the reference mean trajectories, including the timing and magnitude of the infection and recovery peaks.
+The mean-field and pair approximations predict earlier and larger initial infection peaks and deviate from the reference population fractions later.
+Table 2 reports quantitative comparisons with the learned baselines.
+TAMPL achieves the lowest mean macrostate RMSE and MMD among the evaluated methods.
+JLD exhibits large macroscopic prediction errors, consistent with our analysis in Sec. 4.2.
+Varying its transition-loss weight does not close the performance gap (Appendix Table 3).
+Additional trajectory comparisons are provided in Appendix Fig. 9.
+Table 2: Quantitative evaluation on the SIRS, binary mixing, and polymer extension experiments. Macroscopic features are standardized using the mean and population standard deviation of training data. We set dz=16d_{z}=16 for SIRS, dz=8d_{z}=8 for mixing, and dz=4d_{z}=4 for polymer. Values are the mean ±\pm standard deviation over three independent runs. Lower is better. The methods are summarized at the beginning of Sec. 5
+Lattice SIRS
+Binary Mixing
+Polymer Extension
+Method
+RMSE
+MMD
+RMSE
+MMD
+RMSE
+MMD
+JLD
+0.62540.6254 
+±0.2400\pm 0.2400
+0.22630.2263 
+±0.1200\pm 0.1200
+0.77310.7731 
+±0.0016\pm 0.0016
+0.34150.3415 
+±0.0021\pm 0.0021
+0.64330.6433 
+±0.0019\pm 0.0019
+0.18170.1817 
+±0.0029\pm 0.0029
+JLD–SIG
+0.22340.2234 
+±0.0668\pm 0.0668
+0.04120.0412 
+±0.0235\pm 0.0235
+0.77410.7741 
+±0.0019\pm 0.0019
+0.34270.3427 
+±0.0024\pm 0.0024
+0.45620.4562 
+±0.1464\pm 0.1464
+0.09800.0980 
+±0.0558\pm 0.0558
+JLD–VIC
+0.13240.1324 
+±0.0180\pm 0.0180
+0.01580.0158 
+±0.0040\pm 0.0040
+0.60430.6043 
+±0.0209\pm 0.0209
+0.24380.2438 
+±0.0105\pm 0.0105
+0.62360.6236 
+±0.0218\pm 0.0218
+0.16960.1696 
+±0.0089\pm 0.0089
+VAMP
+0.19550.1955 
+±0.0312\pm 0.0312
+N/A\mathrm{N/A}
+0.66070.6607 
+±0.0074\pm 0.0074
+N/A\mathrm{N/A}
+0.44310.4431 
+±0.0644\pm 0.0644
+N/A\mathrm{N/A}
+JLD–Recon
+0.44060.4406 
+±0.1848\pm 0.1848
+0.08760.0876 
+±0.0194\pm 0.0194
+0.67720.6772 
+±0.0862\pm 0.0862
+0.26390.2639 
+±0.0698\pm 0.0698
+0.65170.6517 
+±0.0097\pm 0.0097
+0.19580.1958 
+±0.0137\pm 0.0137
+TwoStage–Recon
+0.56090.5609 
+±0.0279\pm 0.0279
+0.19670.1967 
+±0.0133\pm 0.0133
+0.30390.3039 
+±0.0201\pm 0.0201
+0.11500.1150 
+±0.0032\pm 0.0032
+0.58630.5863 
+±0.0554\pm 0.0554
+0.14460.1446 
+±0.0257\pm 0.0257
+TAMPL
+0.1056\mathbf{0.1056} 
+±0.0201\pm\mathbf{0.0201}
+0.0105\mathbf{0.0105} 
+±0.0043\pm\mathbf{0.0043}
+0.2613\mathbf{0.2613} 
+±0.0389\pm\mathbf{0.0389}
+0.1092\mathbf{0.1092} 
+±0.0162\pm\mathbf{0.0162}
+0.1131\mathbf{0.1131} 
+±0.0350\pm\mathbf{0.0350}
+0.0069\mathbf{0.0069} 
+±0.0033\pm\mathbf{0.0033}
+5.2 Binary Mixing
+Next, we consider binary mixing of two particle types in a two-dimensional square domain with reflecting boundaries.
+Particles interact through type-dependent Lennard–Jones potentials (Das et al., 2003).
+The observed microstate 𝒙t{\bm{x}}_{t} is an unordered set of particle positions and particle type labels. Appendix Fig. 10 shows one example microstate trajectory.
+Following prior work (Munao et al., 2022; Li et al., 2024), the macroscopic observation 𝒚t=(St,Kt){\bm{y}}_{t}=(S_{t},K_{t}) comprises the sum of the largest cluster sizes for the two particle types StS_{t} and the total cluster count KtK_{t}, both normalized by the total number of particles.
+All methods use a DeepSet encoder (Zaheer et al., 2017) with latent dimension dz=8d_{z}=8.
+Definitions of the macroscopic observables and experimental details are provided in Appendix D.3.
+As reported in Table 2,
+TAMPL achieves the lowest mean macrostate RMSE and MMD among the evaluated methods. Compared to the SIRS experiment (Sec. 5.1), the best baseline is TwoStage–Recon here rather than the JLD–VIC. This indicates different baselines may suit different physical systems, whereas TAMPL consistently performs best.
+Figure 3 shows predictions from two initial particle configurations.
+In these examples, TAMPL closely follows the reference ensemble means, although it underestimates trajectory variability.
+Additional comparisons in Appendix Fig. 11 show that baselines do not predict the macroscopic dynamics accurately.
+Figure 3: Binary mixing macroscopic prediction by TAMPL. Particle colors indicate the two types at initial microstates. Curves show means, with shades indicating one standard deviation.
+5.3 Polymer extension
+Last, we use the released polymer image dataset of Han et al. (2026) to predict the extension of the polymer chain undergoing Brownian dynamics in a planar elongational flow.
+The observed microstate 𝒙t{\bm{x}}_{t} is a grayscale image, and the macroscopic observation 𝒚t{\bm{y}}_{t} is the polymer extension length.
+All methods use a ResNet-34 encoder initialized with pretrained weights and a latent dimension of dz=4d_{z}=4.
+Experiment details are provided in Appendix D.4.
+Learning the stretch dynamics is quite difficult because the image representation removes the order information and smooths out position information of polymer beads. To test the learning algorithm, this dataset provides three testing cases named Fast, Medium, and Slow, which correspond to three different stretch dynamics due to the initial configuration of microstates. We find that only TAMPL captures the distinct extension time scales, including the delayed extension in the Slow regime (Fig. 4).
+In contrast, the baselines generally predict incorrect extension in the Slow regime (Appendix Fig. 12).
+Figure 4: Microstates illustration and TAMPL predictions of polymer extension for the Fast, Medium, and Slow test cases.
+6 Discussion
+In this work, we introduced TAMPL, a reconstruction-free framework for learning latent states and dynamics for prescribed macroscopic prediction.
+The training alternates between representation and transition updates, using a frozen target encoder to define next-state targets during representation learning.
+Our analysis of linear systems characterizes the misalignment with the reconstruction objective and latent scale collapse, and establishes sufficient conditions for local convergence to nondegenerate exact latent dynamics.
+Numerical experiments on lattice SIRS, binary mixing, and polymer extension demonstrate improved macroscopic prediction over the evaluated baselines.
+The proposed framework flexibly accommodates different input modalities, such as images and particles, by selecting appropriate encoders that respect their structure. The latent transition can also be linear or nonlinear, and deterministic or stochastic. We use conditional flow matching because it is convenient to implement and powerful for learning stochastic dynamics. Future work includes extending the theoretical analysis beyond linear systems, exploring history-dependent latent transitions (Vlachas et al., 2022), and applying the framework to laboratory data.
+AI use statement
+In this work, we used generative AI tools to generate synthetic datasets, formulate mathematical claims, provide critical ingredients for proving mathematical claims, assist in writing proofs, implement methods, and interpret results.
+We have not used generative AI tools to help develop theoretical models or conceptual frameworks, propose or refine hypotheses, or design or provide feedback on research methodology or experiments.
+Translation assistance, dataset cleaning and reformatting, and qualitative and thematic data analysis are not applicable to this work.
+Additionally, we used generative AI tools to create scientific figures or images, draft parts of the paper such as the pseudocode description, summarize or analyze existing literature, discover research topics or identify gaps, source or search for information, identify relevant literature, and format references.
+We have reviewed all AI-assisted work.
+For example, we checked that LLM-polished text preserved its original meaning and verified that LLM-generated code ran as intended.
+We take responsibility for the final content of this work, including text, claims or artifacts produced with the aid of generative AI.
+Reproducibility statement
+We provide anonymous source code for the Lattice SIRS experiment in the supplementary materials along with this submission. We will clean and release the full source code once the paper is accepted.
+References
+Baldi and Hornik (1989)
+P. Baldi and K. Hornik
+Neural networks and principal component analysis: learning from examples without local minima.
+Neural Networks 2 (1), pp. 53–58.
+External Links: Document
+Cited by: §4.1.
+Balestriero and LeCun (2025)
+R. Balestriero and Y. LeCun
+Lejepa: provable and scalable self-supervised learning without the heuristics.
+arXiv preprint arXiv:2511.08544.
+Cited by: §2,
+§5.
+Bardes et al. (2022)
+A. Bardes, J. Ponce, and Y. LeCun
+VICReg: variance-invariance-covariance regularization for self-supervised learning.
+In International Conference on Learning Representations,
+External Links: Link
+Cited by: §2,
+§5.
+Bulusu et al. (2021)
+S. Bulusu, M. Favoni, A. Ipp, D. I. Müller, and D. Schuh
+Generalization capabilities of translationally equivariant neural networks.
+Physical Review D 104, pp. 074504.
+External Links: Document
+Cited by: §5.1.
+Champion et al. (2019)
+K. Champion, B. Lusch, J. N. Kutz, and S. L. Brunton
+Data-driven discovery of coordinates and governing equations.
+Proceedings of the National Academy of Sciences 116 (45), pp. 22445–22451.
+External Links: Document
+Cited by: §1,
+§1,
+§2,
+§5.
+Chen et al. (2022)
+B. Chen, K. Huang, S. Raghupathi, I. Chandratreya, Q. Du, and H. Lipson
+Automated discovery of fundamental variables hidden in experimental data.
+Nature Computational Science 2 (7), pp. 433–442.
+Cited by: §2.
+Chen and Li (2024)
+M. Chen and Q. Li
+Learning macroscopic dynamics from partial microscopic observations.
+Advances in Neural Information Processing Systems 37, pp. 48996–49021.
+Cited by: §1,
+§1,
+§1,
+§2,
+§5.
+Chen et al. (2024)
+X. Chen, B. W. Soh, Z. Ooi, E. Vissol-Gaudin, H. Yu, K. S. Novoselov, K. Hippalgaonkar, and Q. Li
+Constructing custom thermodynamics using deep learning.
+Nature Computational Science 4 (1), pp. 66–85.
+External Links: Document
+Cited by: §D.4.
+Das et al. (2003)
+S. K. Das, J. Horbach, and K. Binder
+Transport phenomena and microscopic structure in partially miscible binary fluids: a simulation study of the symmetrical lennard-jones mixture.
+The Journal of chemical physics 119 (3), pp. 1547–1558.
+Cited by: §5.2.
+de Souza and Tomé (2010)
+D. R. de Souza and T. Tomé
+Stochastic lattice gas model describing the dynamics of the SIRS epidemic process.
+Physica A: Statistical Mechanics and its Applications 389 (5), pp. 1142–1150.
+External Links: Document
+Cited by: §5.1.
+Fan (1951)
+K. Fan
+Maximum properties and inequalities for the eigenvalues of completely continuous operators.
+Proceedings of the National Academy of Sciences 37 (11), pp. 760–766.
+External Links: Document
+Cited by: §B.2.1.
+Fries et al. (2022)
+W. D. Fries, X. He, and Y. Choi
+LaSDI: parametric latent space dynamics identification.
+Computer Methods in Applied Mechanics and Engineering 399, pp. 115436.
+External Links: Document
+Cited by: §1,
+§1,
+§2.
+Gelada et al. (2019)
+C. Gelada, S. Kumar, J. Buckman, O. Nachum, and M. G. Bellemare
+DeepMDP: learning continuous latent space models for representation learning.
+In Proceedings of the 36th International Conference on Machine Learning,
+Proceedings of Machine Learning Research, Vol. 97, pp. 2170–2179.
+External Links: Link
+Cited by: §2.
+Han et al. (2026)
+Z. Han, M. Chen, and Q. Li
+Learning permutation-invariant macroscopic dynamics.
+In Forty-third International Conference on Machine Learning,
+External Links: Link
+Cited by: §D.3,
+§D.3,
+§D.4,
+§1,
+§1,
+§2,
+§5.3.
+Hansen et al. (2022)
+N. A. Hansen, H. Su, and X. Wang
+Temporal difference learning for model predictive control.
+In Proceedings of the 39th International Conference on Machine Learning,
+Proceedings of Machine Learning Research, Vol. 162, pp. 8387–8406.
+External Links: Link
+Cited by: §2.
+He et al. (2023)
+X. He, Y. Choi, W. D. Fries, J. L. Belof, and J. Chen
+GLaSDI: parametric physics-informed greedy latent space dynamics identification.
+Journal of Computational Physics 489, pp. 112267.
+Cited by: §5.
+Hirsch et al. (1977)
+M. W. Hirsch, C. C. Pugh, and M. Shub
+Invariant manifolds.
+Lecture Notes in Mathematics, Vol. 583, Springer Berlin, Heidelberg.
+External Links: Document
+Cited by: §B.5.4.
+Hromadka et al. (2026)
+S. Hromadka, K. Biegun, L. Fox, J. Heald, and M. Sahani
+Maximum-likelihood learning of latent dynamics without reconstruction.
+In Proceedings of the 43rd International Conference on Machine Learning,
+Proceedings of Machine Learning Research.
+Cited by: §2.
+Joo and Lebowitz (2004)
+J. Joo and J. L. Lebowitz
+Pair approximation of the stochastic susceptible-infected-recovered-susceptible epidemic model on the hypercubic lattice.
+Physical Review E 70 (3), pp. 036114.
+External Links: Document
+Cited by: §D.2,
+§D.2,
+§5.1.
+Kevrekidis et al. (2003)
+I. G. Kevrekidis, C. W. Gear, J. M. Hyman, P. G. Kevrekidis, O. Runborg, and C. Theodoropoulos
+Equation-free, coarse-grained multiscale computation: enabling microscopic simulators to perform system-level analysis.
+Communications in Mathematical Sciences 1 (4), pp. 715–762.
+External Links: Document
+Cited by: §1,
+§2.
+LeCun et al. (1998)
+Y. LeCun, L. Bottou, Y. Bengio, and P. Haffner
+Gradient-based learning applied to document recognition.
+Proceedings of the IEEE 86 (11), pp. 2278–2324.
+Cited by: §3.1.
+Lee and Carlberg (2020)
+K. Lee and K. T. Carlberg
+Model reduction of dynamical systems on nonlinear manifolds using deep convolutional autoencoders.
+Journal of Computational Physics 404, pp. 108973.
+External Links: Document
+Cited by: §1,
+§1,
+§2.
+Li et al. (2024)
+J. Li, R. Guo, and B. Ai
+Spontaneous separation of attractive chiral mixtures.
+Physical Review E 110 (2), pp. 024608.
+Cited by: §D.3,
+§5.2.
+Lusch et al. (2018)
+B. Lusch, J. N. Kutz, and S. L. Brunton
+Deep learning for universal linear embeddings of nonlinear dynamics.
+Nature Communications 9, pp. 4950.
+External Links: Document
+Cited by: §1,
+§2.
+Maes et al. (2026)
+L. Maes, Q. Le Lidec, D. Scieur, Y. LeCun, and R. Balestriero
+LeWorldModel: stable end-to-end joint-embedding predictive architecture from pixels.
+arXiv preprint arXiv:2603.19312.
+External Links: Link
+Cited by: §2.
+Mardt et al. (2018)
+A. Mardt, L. Pasquali, H. Wu, and F. Noe
+VAMPnets for deep learning of molecular kinetics.
+Nature Communications 9, pp. 5.
+External Links: Document
+Cited by: §1,
+§2,
+§5.
+Munao et al. (2022)
+G. Munao, D. Costa, G. Malescio, J. Bomont, and S. Prestipino
+Competition between clustering and phase separation in binary mixtures containing salr particles.
+Soft Matter 18 (34), pp. 6453–6464.
+Cited by: §D.3,
+§5.2.
+Nair et al. (2020)
+S. Nair, S. Savarese, and C. Finn
+Goal-aware prediction: learning to model what matters.
+In Proceedings of the 37th International Conference on Machine Learning,
+Proceedings of Machine Learning Research, Vol. 119, pp. 7207–7219.
+Cited by: §1.
+Nguyen et al. (2021)
+T. D. Nguyen, R. Shu, T. Pham, H. Bui, and S. Ermon
+Temporal predictive coding for model-based planning in latent space.
+In Proceedings of the 38th International Conference on Machine Learning,
+Proceedings of Machine Learning Research, Vol. 139, pp. 8130–8139.
+Cited by: §1,
+§2.
+Ni et al. (2024)
+T. Ni, B. Eysenbach, E. Seyedsalehi, M. Ma, C. Gehring, A. Mahajan, and P. Bacon
+Bridging state and history representations: understanding self-predictive RL.
+In International Conference on Learning Representations,
+pp. 23555–23569.
+External Links: Link
+Cited by: §2.
+Park et al. (2024)
+J. S. R. Park, S. W. Cheung, Y. Choi, and Y. Shin
+TLaSDI: thermodynamics-informed latent space dynamics identification.
+Computer Methods in Applied Mechanics and Engineering 429, pp. 117144.
+Cited by: §2.
+Rumelhart et al. (1986)
+D. E. Rumelhart, G. E. Hinton, and R. J. Williams
+Learning representations by back-propagating errors.
+nature 323 (6088), pp. 533–536.
+Cited by: §3.1.
+Schwarzer et al. (2021)
+M. Schwarzer, A. Anand, R. Goel, R. D. Hjelm, A. Courville, and P. Bachman
+Data-efficient reinforcement learning with self-predictive representations.
+In International Conference on Learning Representations,
+Cited by: §2.
+Shu et al. (2020)
+R. Shu, T. Nguyen, Y. Chow, T. Pham, K. Than, M. Ghavamzadeh, S. Ermon, and H. Bui
+Predictive coding for locally-linear control.
+In International Conference on Machine Learning,
+pp. 8862–8871.
+Cited by: §1,
+§2.
+Tang et al. (2023)
+Y. Tang, Z. D. Guo, P. H. Richemond, B. A. Pires, Y. Chandak, R. Munos, M. Rowland, M. G. Azar, C. Le Lan, C. Lyle, A. György, S. Thakoor, W. Dabney, B. Piot, D. Calandriello, and M. Valko
+Understanding self-predictive learning for reinforcement learning.
+In Proceedings of the 40th International Conference on Machine Learning,
+Proceedings of Machine Learning Research, Vol. 202, pp. 33632–33656.
+Cited by: §2.
+Tian et al. (2023)
+Y. Tian, K. Zhang, R. Tedrake, and S. Sra
+Can direct latent model learning solve linear quadratic gaussian control?.
+In Proceedings of the 5th Annual Learning for Dynamics and Control Conference,
+Proceedings of Machine Learning Research, Vol. 211, pp. 51–63.
+Cited by: §2.
+Tong et al. (2024)
+A. Tong, K. Fatras, N. Malkin, G. Huguet, Y. Zhang, J. Rector-Brooks, G. Wolf, and Y. Bengio
+Improving and generalizing flow-based generative models with minibatch optimal transport.
+Transactions on Machine Learning Research.
+Cited by: §A.1,
+§3.1,
+§5.
+Vlachas et al. (2022)
+P. R. Vlachas, G. Arampatzis, C. Uhler, and P. Koumoutsakos
+Multiscale simulations of complex systems by learning their effective dynamics.
+Nature Machine Intelligence 4, pp. 359–366.
+External Links: Document
+Cited by: §1,
+§6.
+Zaheer et al. (2017)
+M. Zaheer, S. Kottur, S. Ravanbakhsh, B. Póczos, R. Salakhutdinov, and A. J. Smola
+Deep sets.
+In Proceedings of the 31st International Conference on Neural Information Processing Systems,
+NIPS’17, Red Hook, NY, USA, pp. 3394–3404.
+Cited by: §D.3,
+§3.1,
+§5.2.
+Zhu et al. (2025)
+A. Zhu, Y. Pan, and Q. Li
+Continuity-preserving convolutional autoencoders for learning continuous latent dynamical models from images.
+In The Thirteenth International Conference on Learning Representations,
+Cited by: §1,
+§5.
+Appendix A Training and Inference Details
+A.1 Conditional Flow Matching for Latent Transitions
+In the domain experiments, the stochastic latent transition TθT(⋅∣𝒛t)T_{\theta_{T}}(\cdot\mid{\bm{z}}_{t}) is represented by a conditional flow trained using conditional flow matching (Tong et al., 2024).
+Given a current latent state 𝒛t{\bm{z}}_{t} and a next-state target 𝒛t+1{\bm{z}}_{t+1}, we independently sample s∼𝒰⁡(0,1)s\sim\mathcal{U}(0,1) and ϵ∼𝒩⁡(𝟎,Idz)\bm{\epsilon}\sim\mathcal{N}(\mathbf{0},I_{d_{z}}) and construct the interpolated state
+𝐮s=(1−s)​ϵ+s​𝒛t+1.\mathbf{u}_{s}=(1-s)\bm{\epsilon}+s{\bm{z}}_{t+1}.
+(12)
+Here ss is an auxiliary flow time, distinct from the physical time index tt.
+A velocity field 𝐯θT​(𝐮s,s,𝒛t)\mathbf{v}_{\theta_{T}}(\mathbf{u}_{s},s;{\bm{z}}_{t}), conditioned on 𝒛t{\bm{z}}_{t}, is trained to predict the interpolation velocity 𝒛t+1−ϵ{\bm{z}}_{t+1}-\bm{\epsilon} using
+ℓtr​(TθT,𝒛t,𝒛t+1)=𝔼s,ϵ​[1dz​‖𝐯θT​(𝐮s,s,𝒛t)−(𝒛t+1−ϵ)‖22].\ell_{\mathrm{tr}}(T_{\theta_{T}};{\bm{z}}_{t},{\bm{z}}_{t+1})=\mathbb{E}_{s,\bm{\epsilon}}\!\left[\frac{1}{d_{z}}\left\|\mathbf{v}_{\theta_{T}}(\mathbf{u}_{s},s;{\bm{z}}_{t})-({\bm{z}}_{t+1}-\bm{\epsilon})\right\|_{2}^{2}\right].
+(13)
+In the stage to update latent representation, we set 𝒛t=EθE​(𝒙t){\bm{z}}_{t}=E_{\theta_{E}}({\bm{x}}_{t}) and 𝒛t+1=Eθ¯E​(𝒙t+1){\bm{z}}_{t+1}=E_{\bar{\theta}_{E}}({\bm{x}}_{t+1}).
+The target encoder and velocity-field parameters remain fixed, while gradients pass through the conditioning state 𝒛t{\bm{z}}_{t} to the online encoder.
+Thus freezing the transition does not block the encoder gradient: ∇θEℓtr=JEθE​(𝒙t)⊤​∇𝒛tℓtr\nabla_{\theta_{E}}\ell_{\mathrm{tr}}=J_{E_{\theta_{E}}({\bm{x}}_{t})}^{\top}\nabla_{{\bm{z}}_{t}}\ell_{\mathrm{tr}}. Its direction depends on the learned conditional velocity field; the fixed-target radial calculation in Sec. 4.3 applies to the squared-loss linear specialization.
+In the stage to update transition, both latent states are computed with the refreshed, frozen target encoder, and only the velocity-field parameters are updated.
+At inference, we sample an independent Gaussian initial state for each latent transition and numerically integrate
+d​𝐰sd​s=𝐯θT​(𝐰s,s,𝒛t),𝐰0∼𝒩⁡(𝟎,Idz),s∈[0,1],\frac{\mathrm{d}\mathbf{w}_{s}}{\mathrm{d}s}=\mathbf{v}_{\theta_{T}}(\mathbf{w}_{s},s;{\bm{z}}_{t}),\qquad\mathbf{w}_{0}\sim\mathcal{N}(\mathbf{0},I_{d_{z}}),\qquad s\in[0,1],
+(14)
+with the conditioning state 𝒛t{\bm{z}}_{t} held fixed.
+The sampled next latent state is 𝒛t+1=𝐰1{\bm{z}}_{t+1}=\mathbf{w}_{1}.
+A.2 Training and Inference Algorithms
+Each training epoch consists of Stage I (encoder and readout updates) followed by Stage II (latent transition updates), with one pass over the training minibatches in each stage.
+The target encoder remains fixed throughout the entire Stage I pass. Theorem 4 gives an explicit sufficient condition for one exact-gradient step per block, whereas Proposition B.1 gives a local spectral criterion for fixed finite block lengths.
+TAMPL uses λcur=1\lambda_{\mathrm{cur}}=1 and λtr=0.1\lambda_{\mathrm{tr}}=0.1 in all domain experiments in Sec. 5.
+The controlled linear experiments specify their weights in Appendix C.1.
+The transition stage below uses the unweighted loss. For ordinary gradient descent, its step size absorbs the factor λtr\lambda_{\mathrm{tr}} used in Theorem 4.
+Algorithm 1 Alternating training strategy.
+ 1:
+ Observed training trajectories 𝒟\mathcal{D}; initialized modules EθEE_{\theta_{E}}, RθRR_{\theta_{R}}, and TθTT_{\theta_{T}}
+ 2:
+ Initialize Eθ¯E←EθEE_{\bar{\theta}_{E}}\leftarrow E_{\theta_{E}} by a hard copy
+ 3:
+ while the stopping criterion is not met do ⊳\triangleright One training epoch
+ 4:
+ Stage I: Update the encoder and readout
+ 5:
+   Trainable: EθE,RθR{E_{\theta_{E}},R_{\theta_{R}}}
+ 6:
+   Fixed: Eθ¯E,TθTE_{\bar{\theta}_{E}},T_{\theta_{T}}
+ 7:
+   for each minibatch ℬ\mathcal{B} of (𝒙t,𝒚t,𝒙t+1)({\bm{x}}_{t},{\bm{y}}_{t},{\bm{x}}_{t+1}) do
+ 8:
+    𝒛t←EθE​(𝒙t){\bm{z}}_{t}\leftarrow{E_{\theta_{E}}}({\bm{x}}_{t})
+ 9:
+    𝒛~t+1←Eθ¯E​(𝒙t+1)\widetilde{{\bm{z}}}_{t+1}\leftarrow E_{\bar{\theta}_{E}}({\bm{x}}_{t+1})
+ 10:
+    Evaluate ℒcur\mathcal{L}_{\mathrm{cur}} and ℒtr​(EθE,Eθ¯E,TθT)\mathcal{L}_{\mathrm{tr}}(E_{\theta_{E}},E_{\bar{\theta}_{E}};T_{\theta_{T}})
+ 11:
+    Update EθE,RθR{E_{\theta_{E}},R_{\theta_{R}}} using ∇ℒenc\nabla\mathcal{L}_{\mathrm{enc}}
+ 12:
+   Eθ¯E←EθEE_{\bar{\theta}_{E}}\leftarrow E_{\theta_{E}} by a hard copy
+ 13:
+ Stage II: Update the latent transition
+ 14:
+   Trainable: TθT{T_{\theta_{T}}}
+ 15:
+   Fixed: EθE,Eθ¯E,RθRE_{\theta_{E}},E_{\bar{\theta}_{E}},R_{\theta_{R}}
+ 16:
+   for each minibatch ℬ\mathcal{B} of (𝒙t,𝒙t+1)({\bm{x}}_{t},{\bm{x}}_{t+1}) do
+ 17:
+    𝒛t←Eθ¯E​(𝒙t){\bm{z}}_{t}\leftarrow E_{\bar{\theta}_{E}}({\bm{x}}_{t})
+ 18:
+    𝒛~t+1←Eθ¯E​(𝒙t+1)\widetilde{{\bm{z}}}_{t+1}\leftarrow E_{\bar{\theta}_{E}}({\bm{x}}_{t+1})
+ 19:
+    Evaluate ℒtr​(Eθ¯E,Eθ¯E,TθT)\mathcal{L}_{\mathrm{tr}}(E_{\bar{\theta}_{E}},E_{\bar{\theta}_{E}};T_{\theta_{T}})
+ 20:
+    Update TθT{T_{\theta_{T}}} using ∇ℒtr\nabla\mathcal{L}_{\mathrm{tr}}
+ 21:
+ Trained EθEE_{\theta_{E}}, RθRR_{\theta_{R}}, and TθTT_{\theta_{T}}
+Algorithm 2 Latent-only inference.
+ 1:
+ Initial microscopic state 𝒙0{\bm{x}}_{0}; trained modules EθEE_{\theta_{E}}, TθTT_{\theta_{T}}, and RθRR_{\theta_{R}}; rollout length HH
+ 2:
+ Predicted macroscopic trajectory {𝒚^t}t=0H\{\widehat{{\bm{y}}}_{t}\}_{t=0}^{H}
+ 3:
+ Fixed: EθE,TθT,RθRE_{\theta_{E}},T_{\theta_{T}},R_{\theta_{R}}
+ 4:
+ 𝒛0←EθE​(𝒙0){\bm{z}}_{0}\leftarrow E_{\theta_{E}}({\bm{x}}_{0})
+ 5:
+ 𝒚^0←RθR​(𝒛0)\widehat{{\bm{y}}}_{0}\leftarrow R_{\theta_{R}}({\bm{z}}_{0})
+ 6:
+ for t=0t=0 to H−1H-1 do
+ 7:
+   Generate 𝒛t+1{\bm{z}}_{t+1} from TθTT_{\theta_{T}} given 𝒛t{\bm{z}}_{t} (sample for stochastic transitions)
+ 8:
+   𝒚^t+1←RθR​(𝒛t+1)\widehat{{\bm{y}}}_{t+1}\leftarrow R_{\theta_{R}}({\bm{z}}_{t+1})
+ 9:
+ return {𝒚^t}t=0H\{\widehat{{\bm{y}}}_{t}\}_{t=0}^{H}
+Appendix B Proofs and Supporting Results
+After introducing the linear setting and exact-realizability condition, we organize the supporting results around the three parts of Sec. 4: reconstruction, joint-training failures, and TAMPL.
+B.1 Exact realizability
+We use the linear system, source-state distribution, and weighted norms defined in Sec. 4.
+The observation model y=C⋆​xy=C_{\star}x assumes that the sampled microstate determines the current observable. Positive definite Σx\Sigma_{\mathrm{x}} ensures that zero population squared loss identifies the corresponding matrix map on every source direction.
+For a fixed encoder BB, a readout satisfying D​B=C⋆DB=C_{\star} exists exactly when row⁡(C⋆)⊆row⁡(B)\operatorname{row}(C_{\star})\subseteq\operatorname{row}(B), equivalently ker⁡B⊆ker⁡C⋆\ker B\subseteq\ker C_{\star}. A latent transition satisfying K​B=B​AKB=BA exists exactly when row⁡(B​A)⊆row⁡(B)\operatorname{row}(BA)\subseteq\operatorname{row}(B). Consequently, a full-row-rank exact realization of dimension dd exists exactly when there is a dd-dimensional right-AA-invariant row space containing row⁡(C⋆)\operatorname{row}(C_{\star}). This is an assumption about capacity, not about the row spaces visited during training.
+Let rr be the rank of the stacked matrix [C⋆⊤,(C⋆​A)⊤,…,(C⋆​An−1)⊤]⊤[C_{\star}^{\top},(C_{\star}A)^{\top},\ldots,(C_{\star}A^{n-1})^{\top}]^{\top}. Its row space is the smallest such invariant space: invariance follows from Cayley–Hamilton, and any invariant space containing row⁡(C⋆)\operatorname{row}(C_{\star}) contains all the displayed rows. Choosing a row basis gives an exact realization of dimension rr. For a prescribed d>rd>r, a full-rank realization additionally requires a dd-dimensional invariant extension. Merely requiring d≥rank⁡(C⋆)d\geq\operatorname{rank}(C_{\star}) ensures a current readout can exist but is not sufficient for closed latent dynamics.
+B.2 When reconstruction harms macroscopic prediction
+This part provides the spectral-selection proof and two-dimensional illustration supporting the discussion of reconstruction loss in Sec. 4.1.
+B.2.1 Proof of Theorem 1
+Use the macro-prediction and reconstruction losses defined in Eqs. 4 and 5.
+Define the current-prediction matrix and whitened encoder row space by
+Mcur:=λcur​Σx1/2​C⋆⊤​C⋆​Σx1/2,𝒮B:=row⁡(B​Σx1/2),M_{\mathrm{cur}}:=\lambda_{\mathrm{cur}}\Sigma_{\mathrm{x}}^{1/2}C_{\star}^{\top}C_{\star}\Sigma_{\mathrm{x}}^{1/2},\qquad\mathcal{S}_{B}:=\operatorname{row}(B\Sigma_{\mathrm{x}}^{1/2}),
+(15)
+and let PBP_{B} be the orthogonal projector onto 𝒮B\mathcal{S}_{B}.
+The optimization in Theorem 1 is
+minrank⁡(B)=d,G,D⁡λcur​ℒcur​(B,D)+λrec​ℒrec\min_{\operatorname{rank}(B)=d,G,D}\lambda_{\mathrm{cur}}\mathcal{L}_{\mathrm{cur}}(B,D)+\lambda_{\mathrm{rec}}\mathcal{L}_{\mathrm{rec}}
+(16)
+For fixed BB, least squares projects each row of Σx1/2\Sigma_{\mathrm{x}}^{1/2} and of
+C⋆​Σx1/2C_{\star}\Sigma_{\mathrm{x}}^{1/2} onto
+𝒮B=row⁡(B​Σx1/2)\mathcal{S}_{B}=\operatorname{row}(B\Sigma_{\mathrm{x}}^{1/2}).
+The minimized reconstruction loss and weighted current-prediction loss are
+‖Σx1/2​(In−PB)‖F2\displaystyle\|\Sigma_{\mathrm{x}}^{1/2}(I_{n}-P_{B})\|_{F}^{2}
+=tr⁡(Σx)−tr⁡(PB​Σx),\displaystyle=\operatorname{tr}(\Sigma_{\mathrm{x}})-\operatorname{tr}(P_{B}\Sigma_{\mathrm{x}}),
+(17)
+λcur​‖C⋆​Σx1/2​(In−PB)‖F2\displaystyle\lambda_{\mathrm{cur}}\|C_{\star}\Sigma_{\mathrm{x}}^{1/2}(I_{n}-P_{B})\|_{F}^{2}
+=tr⁡(Mcur)−tr⁡(PB​Mcur).\displaystyle=\operatorname{tr}(M_{\mathrm{cur}})-\operatorname{tr}(P_{B}M_{\mathrm{cur}}).
+(18)
+After dropping constants, the profiled objective is therefore equivalent to
+maxP=P⊤=P2tr⁡(P)=d⁡tr⁡[P⁡(Mcur+λrec​Σx)].\max_{\begin{subarray}{c}P=P^{\top}=P^{2}\\
+\operatorname{tr}(P)=d\end{subarray}}\operatorname{tr}\!\left[P(M_{\mathrm{cur}}+\lambda_{\mathrm{rec}}\Sigma_{\mathrm{x}})\right].
+(19)
+Every rank-dd orthogonal projector is realizable as PBP_{B} because
+Σx\Sigma_{\mathrm{x}} is invertible.
+The Ky Fan variational principle (Fan, 1951) then selects a top-dd eigenspace of
+Mcur+λrec​ΣxM_{\mathrm{cur}}+\lambda_{\mathrm{rec}}\Sigma_{\mathrm{x}}.
+ □\square
+Two-dimensional illustration.
+In the example of Sec. 4.1, the two eigenvalues are (λcur​cu2+λrec)​σu2(\lambda_{\mathrm{cur}}c_{\mathrm{u}}^{2}+\lambda_{\mathrm{rec}})\sigma_{\mathrm{u}}^{2} and λrec​σn2\lambda_{\mathrm{rec}}\sigma_{\mathrm{n}}^{2}, giving Eq. 6. Adding the nonnegative term λtr​minK​‖K​B−B​A‖Σx2\lambda_{\mathrm{tr}}\min_{K}\|KB-BA\|_{\Sigma_{\mathrm{x}}}^{2} preserves the selected coordinate because that encoder already achieves zero transition loss.
+B.3 Macroscopic supervision and latent consistency
+This part supports the discussion of macrostate prediction loss in Sec. 4.1.
+We first prove Proposition 4.1, and then explain
+which latent errors output supervision can leave unconstrained.
+B.3.1 Proof of Proposition 4.1
+For the construction in the main text, which uses two latent coordinates and three microstate coordinates,
+D​B=C⋆,D​K​B=C⋆​A,K2=0.DB=C_{\star},\qquad DKB=C_{\star}A,\qquad K^{2}=0.
+Consequently, ℒmacro=0\mathcal{L}_{\mathrm{macro}}=0 for any nonnegative
+loss weights, but
+D​Kh​B=0≠(ah,bh,0)=C⋆​Ahfor every ​h≥2.DK^{h}B=0\neq(a^{h},b^{h},0)=C_{\star}A^{h}\qquad\text{for every }h\geq 2.
+An exact realization exists at the same latent dimension:
+B⋆=[I2∣02×1]B_{\star}=[I_{2}\mid 0_{2\times 1}], D⋆=(1,1)D_{\star}=(1,1), and K⋆=diag⁡(a,b)K_{\star}=\operatorname{diag}(a,b).
+Thus the failure occurs despite sufficient model capacity.
+For the second claim, positive definiteness of Σx\Sigma_{\mathrm{x}}
+implies that
+ℒcur=ℒtr=0\mathcal{L}_{\mathrm{cur}}=\mathcal{L}_{\mathrm{tr}}=0
+is equivalent to
+D​B=C⋆,K​B=B​A.DB=C_{\star},\qquad KB=BA.
+Induction gives Kh​B=B​AhK^{h}B=BA^{h} for every h≥0h\geq 0.
+Hence
+D​Kh​B=D​B​Ah=C⋆​Ahfor every ​h≥0.DK^{h}B=DBA^{h}=C_{\star}A^{h}\qquad\text{for every }h\geq 0.
+□\square
+B.3.2 What macroscopic supervision constrains
+Assume exact current readout, D​B=C⋆DB=C_{\star}, and write
+Δ:=K​B−B​A\Delta:=KB-BA for the latent-transition residual.
+Then
+D​K​B−C⋆​A=D⁡(K​B−B​A)=D​Δ.DKB-C_{\star}A=D(KB-BA)=D\Delta.
+Thus next-macrostate supervision penalizes
+‖D​Δ‖Σx2\|D\Delta\|_{\Sigma_{\mathrm{x}}}^{2}, whereas latent-transition
+supervision penalizes ‖Δ‖Σx2\|\Delta\|_{\Sigma_{\mathrm{x}}}^{2}.
+If DD has a nontrivial kernel, the columns of a nonzero Δ\Delta
+can lie in that kernel and remain invisible to the one-step output.
+When the one-step output is also exact,
+D​K2​B−C⋆​A2=D​K​Δ+(D​K​B−C⋆​A)​A=D​K​Δ.DK^{2}B-C_{\star}A^{2}=DK\Delta+(DKB-C_{\star}A)A=DK\Delta.
+An error invisible to DD can therefore become visible after another
+application of KK.
+If DD has full column rank, however, D​Δ=0D\Delta=0 implies
+Δ=0\Delta=0.
+The failure of one-step supervision is consequently a possibility,
+rather than an inevitable outcome.
+The rank mechanism in the main-text example can also be expressed
+without choosing particular coordinates.
+Every future prediction factors through the predicted next latent
+state:
+D​Kh​B=D​Kh−1​(K​B),row⁡(D​Kh​B)⊆row⁡(K​B),h≥1.DK^{h}B=DK^{h-1}(KB),\qquad\operatorname{row}(DK^{h}B)\subseteq\operatorname{row}(KB),\qquad h\geq 1.
+Exact predictions through horizon HH therefore require
+row⁡(C⋆​AC⋆​A2C⋆​AH)⊆row⁡(K​B),\operatorname{row}\begin{pmatrix}C_{\star}A\\
+C_{\star}A^{2}\\
+\vdots\\
+C_{\star}A^{H}\end{pmatrix}\subseteq\operatorname{row}(KB),
+and, in particular,
+rank⁡(C⋆​AC⋆​A2C⋆​AH)≤rank⁡(K​B).\operatorname{rank}\begin{pmatrix}C_{\star}A\\
+C_{\star}A^{2}\\
+\vdots\\
+C_{\star}A^{H}\end{pmatrix}\leq\operatorname{rank}(KB).
+One-step fitting need not enforce the information requirements of later outputs.
+In the main-text example, row⁡(K​B)\operatorname{row}(KB) is spanned by (a,b,0)(a,b,0), whereas (a2,b2,0)(a^{2},b^{2},0) lies outside this space because a​b​(b−a)≠0ab(b-a)\neq 0. The encoder has full rank, but the predicted next latent state has already lost a direction required for two-step prediction. These row-space and rank conditions identify an information obstruction; satisfying them alone does not ensure that the learned transition propagates the retained information correctly.
+Finite-horizon macroscopic supervision.
+Adding ∑h=1H‖D​Kh​B−C⋆​Ah‖Σx2\sum_{h=1}^{H}\|DK^{h}B-C_{\star}A^{h}\|_{\Sigma_{\mathrm{x}}}^{2} to the current-readout loss constrains additional future outputs, but need not ensure accurate predictions beyond the supervised horizon. For example, extending the main-text construction to encode (yt,yt+1,…,yt+H)⊤(y_{t},y_{t+1},\ldots,y_{t+H})^{\top}, with a transition that shifts these coordinates and inserts zero, gives exact current and future outputs through horizon HH but predicts zero at horizon H+1H+1, which can differ from the true output.
+Thus a model can store and emit the supervised outputs without learning the latent update needed to continue their evolution.
+B.4 Why joint training can fail
+This part supports Sec. 4.2.
+We establish the coordinate-rescaling identities, analyze simultaneous gradients and slow optimization, and then derive conditions for an incorrect attracting manifold.
+B.4.1 Coordinate transformations and scale non-coercivity
+Let GL⁡(d)\mathrm{GL}(d) be the invertible d×dd\times d matrices and define
+BS=S​B,KS=S​K​S−1,DS=D​S−1.B_{S}=SB,\quad K_{S}=SKS^{-1},\quad D_{S}=DS^{-1}.
+(20)
+DS​BS\displaystyle D_{S}B_{S}
+=D​B,\displaystyle=DB,
+DS​KS​BS\displaystyle D_{S}K_{S}B_{S}
+=D​K​B,\displaystyle=DKB,
+(21)
+KS​BS−BS​A\displaystyle K_{S}B_{S}-B_{S}A
+=S⁡(K​B−B​A).\displaystyle=S(KB-BA).
+(22)
+These transformations preserve the model maps, not the numerical transition loss or Euclidean gradient dynamics.
+Choosing GS=G​S−1G_{S}=GS^{-1} also preserves the reconstruction map G​BGB.
+Thus the same rescaling is possible when reconstruction is included.
+For every fixed integer h≥0h\geq 0, DS​KSh​BS=D​Kh​BD_{S}K_{S}^{h}B_{S}=DK^{h}B.
+For S=α​IdS=\alpha I_{d}, the squared transition norm is exactly
+α2​‖K​B−B​A‖Σx2\alpha^{2}\|KB-BA\|_{\Sigma_{\mathrm{x}}}^{2}, whereas the current and one-step macro maps remain fixed.
+For D≠0D\neq 0, the readout D/αD/\alpha diverges as α↓0\alpha\downarrow 0, although the macro prediction maps stay unchanged.
+With D​B=C⋆DB=C_{\star}, these identities imply the scaling relation in Proposition 4.2.
+B.4.2 Joint gradients and latent scaling
+We relate the scaling identity in Proposition 4.2 to simultaneous gradient updates.
+Write E:=D​B−C⋆E:=DB-C_{\star} and Δ:=K​B−B​A\Delta:=KB-BA.
+With all gradients evaluated at the current (B,D,K)(B,D,K), one joint step of size η\eta is
+D+\displaystyle D^{+}
+=D−2​η​λcur​E​Σx​B⊤,\displaystyle=D-2\eta\lambda_{\mathrm{cur}}E\Sigma_{\mathrm{x}}B^{\top},
+(23)
+K+\displaystyle K^{+}
+=K−2​η​λtr​Δ​Σx​B⊤,\displaystyle=K-2\eta\lambda_{\mathrm{tr}}\Delta\Sigma_{\mathrm{x}}B^{\top},
+(24)
+B+\displaystyle B^{+}
+=B−2​η​λcur​D⊤​E​Σx−2​η​λtr​(K⊤​Δ​Σx−Δ​Σx​A⊤).\displaystyle=B-2\eta\lambda_{\mathrm{cur}}D^{\top}E\Sigma_{\mathrm{x}}-2\eta\lambda_{\mathrm{tr}}\left(K^{\top}\Delta\Sigma_{\mathrm{x}}-\Delta\Sigma_{\mathrm{x}}A^{\top}\right).
+(25)
+Let GB:=∇BℒjointG_{B}:=\nabla_{B}\mathcal{L}_{\mathrm{joint}} and GD:=∇DℒjointG_{D}:=\nabla_{D}\mathcal{L}_{\mathrm{joint}}.
+Taking Frobenius inner products of these gradients with B,DB,D gives
+⟨B,GB⟩F=2​λcur​⟨D​B,E⟩Σx+2​λtr​‖Δ‖Σx2,⟨D,GD⟩F=2​λcur​⟨D​B,E⟩Σx.\langle B,G_{B}\rangle_{F}=2\lambda_{\mathrm{cur}}\langle DB,E\rangle_{\Sigma_{\mathrm{x}}}+2\lambda_{\mathrm{tr}}\|\Delta\|_{\Sigma_{\mathrm{x}}}^{2},\qquad\langle D,G_{D}\rangle_{F}=2\lambda_{\mathrm{cur}}\langle DB,E\rangle_{\Sigma_{\mathrm{x}}}.
+(26)
+The transition term follows from
+⟨K​B,Δ⟩Σx−⟨B​A,Δ⟩Σx=‖Δ‖Σx2\langle KB,\Delta\rangle_{\Sigma_{\mathrm{x}}}-\langle BA,\Delta\rangle_{\Sigma_{\mathrm{x}}}=\|\Delta\|_{\Sigma_{\mathrm{x}}}^{2}.
+Since
+‖B+‖F2−‖B‖F2=−2​η​⟨B,GB⟩F+η2​‖GB‖F2,\|B^{+}\|_{F}^{2}-\|B\|_{F}^{2}=-2\eta\langle B,G_{B}\rangle_{F}+\eta^{2}\|G_{B}\|_{F}^{2},
+(27)
+the encoder norm decreases whenever ⟨B,GB⟩F>0\langle B,G_{B}\rangle_{F}>0 and
+0<η<2​⟨B,GB⟩F/‖GB‖F20<\eta<2\langle B,G_{B}\rangle_{F}/\|G_{B}\|_{F}^{2}.
+In particular, accurate current prediction (E=0E=0) and nonzero Δ\Delta imply such a contraction for a sufficiently small step.
+This controls the total encoder norm; individual latent directions can evolve differently.
+For B=α​B^B=\alpha\widehat{B} with fixed K,B^K,\widehat{B}, put
+Δ^=K​B^−B^​A\widehat{\Delta}=K\widehat{B}-\widehat{B}A.
+Then
+∇Kℒjoint=2​λtr​α2​Δ^​Σx​B^⊤.\nabla_{K}\mathcal{L}_{\mathrm{joint}}=2\lambda_{\mathrm{tr}}\alpha^{2}\widehat{\Delta}\Sigma_{\mathrm{x}}\widehat{B}^{\top}.
+(28)
+Thus the transition-learning gradient weakens quadratically along the scaling ray.
+The same issue can affect a single latent direction.
+For a unit eigenvector uu of B​Σx​B⊤B\Sigma_{\mathrm{x}}B^{\top} with eigenvalue s2s^{2}, Cauchy–Schwarz gives
+‖(∇Kℒjoint)​u‖2≤2​λtr​s​ℒtr.\|(\nabla_{K}\mathcal{L}_{\mathrm{joint}})u\|_{2}\leq 2\lambda_{\mathrm{tr}}s\sqrt{\mathcal{L}_{\mathrm{tr}}}.
+(29)
+Here (∇Kℒjoint)​u=2​λtr​𝔼​[(Δ​𝒙t)​(u⊤​B​𝒙t)](\nabla_{K}\mathcal{L}_{\mathrm{joint}})u=2\lambda_{\mathrm{tr}}\mathbb{E}[(\Delta{\bm{x}}_{t})(u^{\top}B{\bm{x}}_{t})].
+For bounded transition loss, shrinking this latent variance forces the corresponding transition gradient to zero.
+This explains the scale diagnostic in Appendix C.
+Finally, Eq. 26 implies
+⟨B,GB⟩F−⟨D,GD⟩F=2​λtr​ℒtr\langle B,G_{B}\rangle_{F}-\langle D,G_{D}\rangle_{F}=2\lambda_{\mathrm{tr}}\mathcal{L}_{\mathrm{tr}}.
+Every finite stationary point consequently has ℒtr=0\mathcal{L}_{\mathrm{tr}}=0.
+The incorrect attracting solution analyzed next fails through its macroscopic readout, whereas the scale mechanism above can slow transition learning before stationarity.
+B.4.3 An incorrect attracting manifold
+We now turn from slow optimization to attraction to an incorrect finite-scale solution.
+The following theorem gives sufficient conditions for an incorrect attracting manifold.
+Theorem 3 (An incorrect attracting manifold)
+Let C⋆≠0C_{\star}\neq 0 and let full-row-rank B0B_{0} satisfy K0​B0=B0​AK_{0}B_{0}=B_{0}A and C⋆​Σx​B0⊤=0C_{\star}\Sigma_{\mathrm{x}}B_{0}^{\top}=0. Put S0=B0​Σx​B0⊤S_{0}=B_{0}\Sigma_{\mathrm{x}}B_{0}^{\top}, let P0P_{0} be the orthogonal projector onto row⁡(B0​Σx1/2)\operatorname{row}(B_{0}\Sigma_{\mathrm{x}}^{1/2}), and define
+τ0:=minU∈ℝd×n,U​Σx​B0⊤=0‖U‖Σx=1⁡‖(K0​U−U​A)​Σx1/2​(I−P0)‖F.\tau_{0}:=\min_{\begin{subarray}{c}U\in\mathbb{R}^{d\times n},\ U\Sigma_{\mathrm{x}}B_{0}^{\top}=0\\
+\|U\|_{\Sigma_{\mathrm{x}}}=1\end{subarray}}\|(K_{0}U-UA)\Sigma_{\mathrm{x}}^{1/2}(I-P_{0})\|_{F}.
+(30)
+If
+λtr​τ02​λmin​(S0)>λcur​‖C⋆​Σx1/2‖22\lambda_{\mathrm{tr}}\tau_{0}^{2}\lambda_{\min}(S_{0})>\lambda_{\mathrm{cur}}\|C_{\star}\Sigma_{\mathrm{x}}^{1/2}\|_{2}^{2}, then a neighborhood of (B0,0,K0)(B_{0},0,K_{0}) within
+𝒩0:={(S​B0,0,S​K0​S−1):S∈GL⁡(d)}\mathcal{N}_{0}:=\{(SB_{0},0,SK_{0}S^{-1}):S\in\mathrm{GL}(d)\} is a manifold of local minima. For some neighborhood 𝒰\mathcal{U} of (B0,0,K0)(B_{0},0,K_{0}) and η0>0\eta_{0}>0, simultaneous gradient descent with any fixed 0<η<η00<\eta<\eta_{0} converges from 𝒰\mathcal{U} to a point in 𝒩0\mathcal{N}_{0}, where ℒtr=0\mathcal{L}_{\mathrm{tr}}=0 but ℒcur=‖C⋆‖Σx2>0\mathcal{L}_{\mathrm{cur}}=\|C_{\star}\|_{\Sigma_{\mathrm{x}}}^{2}>0.
+Proof of Theorem 3.
+Let θ0=(B0,0,K0)\theta_{0}=(B_{0},0,K_{0}) satisfy the conditions of the theorem and set
+B~0=B0​Σx1/2,S0=B~0​B~0⊤,P0=B~0⊤​S0−1​B~0.\widetilde{B}_{0}=B_{0}\Sigma_{\mathrm{x}}^{1/2},\quad S_{0}=\widetilde{B}_{0}\widetilde{B}_{0}^{\top},\quad P_{0}=\widetilde{B}_{0}^{\top}S_{0}^{-1}\widetilde{B}_{0}.
+(31)
+The condition C⋆​Σx​B0⊤=0C_{\star}\Sigma_{\mathrm{x}}B_{0}^{\top}=0 says that the task is orthogonal to every retained feature under the source distribution. It is stronger than merely being an inaccurate readout. Every point in
+𝒩0={(S​B0,0,S​K0​S−1):S∈GL⁡(d)}\mathcal{N}_{0}=\{(SB_{0},0,SK_{0}S^{-1}):S\in\mathrm{GL}(d)\}
+(32)
+is stationary and has the stated nonzero current loss and zero transition loss.
+For unrestricted perturbations (U,V,W)(U,V,W) of (B,D,K)(B,D,K), half the joint Hessian quadratic form at θ0\theta_{0} is
+q⁡(U,V,W)=λcur​‖V​B0‖Σx2−2​λcur​⟨C⋆,V​U⟩Σx+λtr​‖K0​U+W​B0−U​A‖Σx2.q(U,V,W)=\lambda_{\mathrm{cur}}\|VB_{0}\|_{\Sigma_{\mathrm{x}}}^{2}-2\lambda_{\mathrm{cur}}\langle C_{\star},VU\rangle_{\Sigma_{\mathrm{x}}}+\lambda_{\mathrm{tr}}\|K_{0}U+WB_{0}-UA\|_{\Sigma_{\mathrm{x}}}^{2}.
+(33)
+Completing squares in V,WV,W gives
+minV,W⁡q⁡(U,V,W)\displaystyle\min_{V,W}q(U,V,W)
+=λtr∥𝒮0U∥F2−λcur∥S0−1/2UΣxC⋆⊤∥F2,\displaystyle=\lambda_{\mathrm{tr}}\|\mathcal{S}_{0}U\|_{F}^{2}-\lambda_{\mathrm{cur}}\|S_{0}^{-1/2}U\Sigma_{\mathrm{x}}C_{\star}^{\top}\|_{F}^{2},
+(34)
+𝒮0​U\displaystyle\mathcal{S}_{0}U
+:=(K0​U−U​A)​Σx1/2​(I−P0),\displaystyle:=(K_{0}U-UA)\Sigma_{\mathrm{x}}^{1/2}(I-P_{0}),
+Vmin\displaystyle V_{\min}
+=C⋆​Σx​U⊤​S0−1,Wmin=−(K0​U−U​A)​Σx​B0⊤​S0−1.\displaystyle=C_{\star}\Sigma_{\mathrm{x}}U^{\top}S_{0}^{-1},\qquad W_{\min}=-(K_{0}U-UA)\Sigma_{\mathrm{x}}B_{0}^{\top}S_{0}^{-1}.
+Every UU decomposes uniquely as U=H​B0+U⟂U=HB_{0}+U_{\perp}, where U⟂​Σx​B0⊤=0U_{\perp}\Sigma_{\mathrm{x}}B_{0}^{\top}=0. The right-hand side of Eq. 34 depends only on U⟂U_{\perp}. Define
+τ0:=infU​Σx​B0⊤=0‖U‖Σx=1‖𝒮0​U‖F.\tau_{0}:=\inf_{\begin{subarray}{c}U\Sigma_{\mathrm{x}}B_{0}^{\top}=0\\
+\|U\|_{\Sigma_{\mathrm{x}}}=1\end{subarray}}\|\mathcal{S}_{0}U\|_{F}.
+(35)
+Using
+∥S0−1/2UΣxC⋆⊤∥F≤λmin(S0)−1/2∥C⋆Σx1/2∥2∥U∥Σx\|S_{0}^{-1/2}U\Sigma_{\mathrm{x}}C_{\star}^{\top}\|_{F}\leq\lambda_{\min}(S_{0})^{-1/2}\|C_{\star}\Sigma_{\mathrm{x}}^{1/2}\|_{2}\|U\|_{\Sigma_{\mathrm{x}}}
+shows that the sufficient inequality in Theorem 3 makes this reduced Hessian positive definite on all nonzero U⟂U_{\perp}. The completed-square terms are positive definite in V−VminV-V_{\min} and W−WminW-W_{\min}. Thus the only Hessian null directions are
+(U,V,W)=(H​B0,0,H​K0−K0​H),(U,V,W)=(HB_{0},0,HK_{0}-K_{0}H),
+(36)
+exactly the tangent space of 𝒩0\mathcal{N}_{0}. The Hessian is positive definite normal to the manifold at θ0\theta_{0} and on a sufficiently small surrounding portion. In a tubular chart around that portion, the loss equals its value on 𝒩0\mathcal{N}_{0} plus a positive quadratic normal term and higher-order terms. For sufficiently small positive gradient steps, the normal derivative I−η​∇2ℒjointI-\eta\nabla^{2}\mathcal{L}_{\mathrm{joint}} contracts, tangential drift is summable, and every sufficiently close initialization converges to a member of 𝒩0\mathcal{N}_{0}.
+Equation 34 is also a less conservative test than the theorem’s sufficient norm bound. A negative value for some U⟂U_{\perp} proves that the point is a saddle. Failure of the sufficient norm bound alone proves neither success nor failure.
+ □\square
+Why the condition measures a directional barrier.
+The second term of Eq. 34 is the best second-order gain available to the macro readout when a missing source direction is added. The first is the transition cost that remains even after the best accompanying change of KK. If the transition term dominates, joint training suppresses the perturbations needed to acquire task information.
+B.5 How TAMPL changes the optimization
+Following Sec. 4.3, we first analyze fixed-coordinate transition fitting and fixed-target representation updates, then study instability of the incorrect fixed point and local convergence near an exact realization.
+The general convergence criterion for finite alternating blocks precedes the explicit one-step sufficient condition that uses it.
+B.5.1 Fixed-coordinate transition regression
+For full-row-rank BB, the latent covariance and conditional transition optimum are
+CB:=B​Σx​B⊤,K⋆​(B):=B​A​Σx​B⊤​CB−1.C_{B}:=B\Sigma_{\mathrm{x}}B^{\top},\qquad K^{\star}(B):=BA\Sigma_{\mathrm{x}}B^{\top}C_{B}^{-1}.
+(37)
+Fixed-coordinate contraction lemma.
+For fixed BB, let 0<β≤Λ0<\beta\leq\Lambda satisfy β​Id⪯CB⪯Λ​Id\beta I_{d}\preceq C_{B}\preceq\Lambda I_{d}, where ⪯\preceq is the Loewner order on symmetric matrices.
+The transition loss decomposes exactly as
+‖K​B−B​A‖Σx2=minK~⁡‖K~​B−B​A‖Σx2+tr⁡[(K−K⋆)​CB​(K−K⋆)⊤].\|KB-BA\|_{\Sigma_{\mathrm{x}}}^{2}=\min_{\widetilde{K}}\|\widetilde{K}B-BA\|_{\Sigma_{\mathrm{x}}}^{2}+\operatorname{tr}\!\left[(K-K^{\star})C_{B}(K-K^{\star})^{\top}\right].
+(38)
+Consequently, its excess above its minimum lies between β​‖K−K⋆​(B)‖F2\beta\|K-K^{\star}(B)\|_{F}^{2} and Λ​‖K−K⋆​(B)‖F2\Lambda\|K-K^{\star}(B)\|_{F}^{2}.
+One gradient step of size 0<μT≤1/(2​λtr​Λ)0<\mu_{T}\leq 1/(2\lambda_{\mathrm{tr}}\Lambda) on the weighted transition loss satisfies
+K+−K⋆​(B)=(K−K⋆​(B))​(Id−2​λtr​μT​CB),K^{+}-K^{\star}(B)=(K-K^{\star}(B))(I_{d}-2\lambda_{\mathrm{tr}}\mu_{T}C_{B}),
+and contracts ‖K−K⋆​(B)‖F\|K-K^{\star}(B)\|_{F} by a factor at most 1−2​λtr​μT​β<11-2\lambda_{\mathrm{tr}}\mu_{T}\beta<1.
+Proof.
+Positive-definite CBC_{B} makes the normal equation K​CB=B​A​Σx​B⊤KC_{B}=BA\Sigma_{\mathrm{x}}B^{\top} uniquely solvable.
+For E⋆:=K⋆​(B)​B−B​AE^{\star}:=K^{\star}(B)B-BA and Δ​K:=K−K⋆​(B)\Delta K:=K-K^{\star}(B), this equation gives E⋆​Σx​B⊤=0E^{\star}\Sigma_{\mathrm{x}}B^{\top}=0.
+The cross term therefore vanishes:
+‖K​B−B​A‖Σx2\displaystyle\|KB-BA\|_{\Sigma_{\mathrm{x}}}^{2}
+=‖E⋆+Δ​K​B‖Σx2\displaystyle=\|E^{\star}+\Delta KB\|_{\Sigma_{\mathrm{x}}}^{2}
+(39)
+=‖E⋆‖Σx2+tr⁡(Δ​K​CB​Δ​K⊤).\displaystyle=\|E^{\star}\|_{\Sigma_{\mathrm{x}}}^{2}+\operatorname{tr}(\Delta KC_{B}\Delta K^{\top}).
+This proves the decomposition and the two-sided excess bound.
+Differentiating the weighted transition loss and using K⋆​CB=B​A​Σx​B⊤K^{\star}C_{B}=BA\Sigma_{\mathrm{x}}B^{\top} gives the stated update identity.
+Under the step condition, every eigenvalue of Id−2​λtr​μT​CBI_{d}-2\lambda_{\mathrm{tr}}\mu_{T}C_{B} lies in [0,1−2​λtr​μT​β][0,1-2\lambda_{\mathrm{tr}}\mu_{T}\beta], which proves contraction.
+ □\square
+B.5.2 Fixed-target scale anchoring
+Freezing BB during the transition step prevents the feature covariance from contracting while KK is being updated.
+During the representation step, fixing K,B¯K,\bar{B} gives the transition-term encoder derivative 2​K⊤​(K​B−B¯​A)​Σx2K^{\top}(KB-\bar{B}A)\Sigma_{\mathrm{x}}.
+At B=B¯B=\bar{B}, its radial component is 2​⟨K​B,K​B−B​A⟩Σx2\langle KB,KB-BA\rangle_{\Sigma_{\mathrm{x}}}, rather than 2​‖K​B−B​A‖Σx22\|KB-BA\|_{\Sigma_{\mathrm{x}}}^{2} as in joint training.
+Along B=α​B¯B=\alpha\bar{B}, the transition term becomes
+‖α​K​B¯−B¯​A‖Σx2,\|\alpha K\bar{B}-\bar{B}A\|_{\Sigma_{\mathrm{x}}}^{2},
+(40)
+If B¯​A≠0\bar{B}A\neq 0, its limit as α→0\alpha\to 0 is ‖B¯​A‖Σx2>0\|\bar{B}A\|_{\Sigma_{\mathrm{x}}}^{2}>0, so uniform contraction of the online encoder toward zero cannot make the transition loss vanish.
+If K=K⋆​(B¯)K=K^{\star}(\bar{B}) from Eq. 9 and K​B¯≠0K\bar{B}\neq 0, the normal equation gives
+‖α​K​B¯−B¯​A‖Σx2=‖K​B¯−B¯​A‖Σx2+(α−1)2​‖K​B¯‖Σx2.\|\alpha K\bar{B}-\bar{B}A\|_{\Sigma_{\mathrm{x}}}^{2}=\|K\bar{B}-\bar{B}A\|_{\Sigma_{\mathrm{x}}}^{2}+(\alpha-1)^{2}\|K\bar{B}\|_{\Sigma_{\mathrm{x}}}^{2}.
+(41)
+Under these conditions, the transition term is uniquely minimized along the scaling ray at α=1\alpha=1.
+These conclusions concern one fixed-target block; local convergence to a nondegenerate exact realization across repeated target refreshes is established under the conditions of Theorem 4.
+B.5.3 Detached instability of the incorrect fixed point
+We return to the incorrect attracting manifold in Appendix B.4.3 and examine its stability under detached updates.
+In addition to the assumptions of Theorem 3, assume Σx=In\Sigma_{\mathrm{x}}=I_{n}, A=A⊤A=A^{\top}, B0​B0⊤=s2​IdB_{0}B_{0}^{\top}=s^{2}I_{d} with s>0s>0, K0≻0K_{0}\succ 0, and λmax​(K0)<λmin​(A|ker⁡B0)\lambda_{\max}(K_{0})<\lambda_{\min}(A|_{\ker B_{0}}).
+Here A|ker⁡B0A|_{\ker B_{0}} is the restriction of AA to the discarded subspace ker⁡B0={𝒙:B0​𝒙=0}\ker B_{0}=\{{\bm{x}}:B_{0}{\bm{x}}=0\}. This subspace is invariant because K0​B0=B0​AK_{0}B_{0}=B_{0}A; symmetry of AA makes its orthogonal complement invariant as well. On the subspace represented by the encoder, AA is represented by K0K_{0} in the orthonormal basis below. Thus the spectral inequality requires every eigenvalue on the discarded subspace to exceed every eigenvalue on the subspace represented by the encoder.
+Write V0=B0⊤/sV_{0}=B_{0}^{\top}/s and choose an orthonormal complement Q0Q_{0} to its columns. Since A=A⊤A=A^{\top} and K0​B0=B0​AK_{0}B_{0}=B_{0}A,
+A​V0=V0​K0,A​Q0=Q0​A⟂,K0=K0⊤,A⟂=A⟂⊤.AV_{0}=V_{0}K_{0},\qquad AQ_{0}=Q_{0}A_{\perp},\qquad K_{0}=K_{0}^{\top},\quad A_{\perp}=A_{\perp}^{\top}.
+(42)
+Put C⟂=C⋆​Q0C_{\perp}=C_{\star}Q_{0}. For the normal encoder component X=U​Q0X=UQ_{0} and readout perturbation ZZ, the refreshed-detached linearization is the closed matrix system
+X˙\displaystyle\dot{X}
+=2​λtr​(K0​X​A⟂−K02​X)+2​λcur​Z⊤​C⟂,\displaystyle=2\lambda_{\mathrm{tr}}(K_{0}XA_{\perp}-K_{0}^{2}X)+2\lambda_{\mathrm{cur}}Z^{\top}C_{\perp},
+(43)
+Z˙\displaystyle\dot{Z}
+=2​λcur​C⟂​X⊤−2​λcur​s2​Z.\displaystyle=2\lambda_{\mathrm{cur}}C_{\perp}X^{\top}-2\lambda_{\mathrm{cur}}s^{2}Z.
+(44)
+The cross operators are adjoints in the product Frobenius inner product. The entire displayed block is self-adjoint, and
+⟨X,K0​X​A⟂−K02​X⟩F≥λmin​(K0)​[λmin​(A⟂)−λmax​(K0)]​‖X‖F2>0\langle X,K_{0}XA_{\perp}-K_{0}^{2}X\rangle_{F}\geq\lambda_{\min}(K_{0})[\lambda_{\min}(A_{\perp})-\lambda_{\max}(K_{0})]\|X\|_{F}^{2}>0
+(45)
+for X≠0X\neq 0. Its quadratic form is positive on (X,0)(X,0), hence it has a positive eigenvalue. For one representation step followed by one transition step, this same closed (X,Z)(X,Z) block of the round Jacobian is I+η​𝒜I+\eta\mathcal{A}, where 𝒜\mathcal{A} is the operator in Eq. 44. The subsequent transition step changes neither XX nor ZZ and its perturbation does not feed back into this block at first order. Therefore an eigenvalue exceeds one for every η>0\eta>0. The bad point remains fixed, but loses local attraction. This proves the detached statement for the actual finite-step round.
+ □\square
+The spectral ordering is specific to this instability result; the bad-minimum theorem allows arbitrary AA and Σx≻0\Sigma_{\mathrm{x}}\succ 0. Convergence to an exact realization is established separately in a neighborhood of such a realization.
+B.5.4 Local convergence for finite alternating blocks
+We first define the equivalent-coordinate manifold and residual differential, then state and prove a convergence criterion for repeated TAMPL updates.
+Define the weighted residual map
+ℛ⁡(B,D,K)=(λcur​(D​B−C⋆)​Σx1/2λtr​(K​B−B​A)​Σx1/2).\mathcal{R}(B,D,K)=\begin{pmatrix}\sqrt{\lambda_{\mathrm{cur}}}(DB-C_{\star})\Sigma_{\mathrm{x}}^{1/2}\\
+\sqrt{\lambda_{\mathrm{tr}}}(KB-BA)\Sigma_{\mathrm{x}}^{1/2}\end{pmatrix}.
+(46)
+Its squared Frobenius norm equals
+λcur​ℒcur+λtr​ℒtr\lambda_{\mathrm{cur}}\mathcal{L}_{\mathrm{cur}}+\lambda_{\mathrm{tr}}\mathcal{L}_{\mathrm{tr}}.
+Write θ=(B,D,K)\theta=(B,D,K) and equip parameter tuples with the product Frobenius inner product.
+For an exact full-row-rank realization
+θ⋆=(B⋆,D⋆,K⋆)\theta_{\star}=(B_{\star},D_{\star},K_{\star}), define the equivalent-coordinate manifold
+ℳ⋆:={(S​B⋆,D⋆​S−1,S​K⋆​S−1):S∈GL⁡(d)}.\mathcal{M}_{\star}:=\{(SB_{\star},D_{\star}S^{-1},SK_{\star}S^{-1}):S\in\mathrm{GL}(d)\}.
+(47)
+For a perturbation (U,V,W)(U,V,W) of (B⋆,D⋆,K⋆)(B_{\star},D_{\star},K_{\star}), define the linearized current and transition residuals
+P:=D⋆​U+V​B⋆,Q:=K⋆​U+W​B⋆−U​A.P:=D_{\star}U+VB_{\star},\qquad Q:=K_{\star}U+WB_{\star}-UA.
+(48)
+Thus PP and QQ are the first-order changes in D​B−C⋆DB-C_{\star} and K​B−B​AKB-BA.
+The differential of the weighted residual map is then
+ℛ⋆′​(U,V,W)=(λcur​P​Σx1/2λtr​Q​Σx1/2).\mathcal{R}^{\prime}_{\star}(U,V,W)=\begin{pmatrix}\sqrt{\lambda_{\mathrm{cur}}}P\Sigma_{\mathrm{x}}^{1/2}\\
+\sqrt{\lambda_{\mathrm{tr}}}Q\Sigma_{\mathrm{x}}^{1/2}\end{pmatrix}.
+(49)
+The tangent space of the similarity orbit is
+Tθ⋆​ℳ⋆={(Ω​B⋆,−D⋆​Ω,Ω​K⋆−K⋆​Ω):Ω∈ℝd×d}.T_{\theta_{\star}}\mathcal{M}_{\star}=\{(\Omega B_{\star},-D_{\star}\Omega,\Omega K_{\star}-K_{\star}\Omega):\Omega\in\mathbb{R}^{d\times d}\}.
+(50)
+Because ℛ\mathcal{R} vanishes on ℳ⋆\mathcal{M}_{\star}, its differential is zero along this tangent space. Restricting to the orthogonal complement measures residual sensitivity to departures from the set of equivalent exact realizations.
+Let the columns of N⟂N_{\perp} form an orthonormal basis for the orthogonal complement of this tangent space in vectorized parameter space.
+Proposition B.1 (Local convergence of alternating updates)
+Let θ⋆=(B⋆,D⋆,K⋆)\theta_{\star}=(B_{\star},D_{\star},K_{\star}) be an exact realization with B⋆B_{\star} of full row rank.
+Let Ψ\Psi be one round of the linear specialization of Algorithm 1: NE≥1N_{E}\geq 1 simultaneous gradient steps on (B,D)(B,D) in Eq. 10, target refresh, then NT≥1N_{T}\geq 1 steps on λtr​ℒtr\lambda_{\mathrm{tr}}\mathcal{L}_{\mathrm{tr}} with BB fixed. Each step differentiates its population objective, with expectation over the fixed (𝐱0,t)({\bm{x}}_{0},t) sampling protocol; no minibatch estimate is used. The weighted objectives have fixed positive step sizes μE,μT\mu_{E},\mu_{T}. Let JerrJ_{\mathrm{err}} be the map induced by D​Ψ​(θ⋆)\mathrm{D}\Psi(\theta_{\star}) on parameter perturbations modulo the coordinate-change tangent space in Eq. 50. If ρ⁡(Jerr)<1\rho(J_{\mathrm{err}})<1, where ρ\rho is spectral radius, then there is a δ>0\delta>0 such that every initialization with ‖θ0−θ⋆‖<δ\|\theta_{0}-\theta_{\star}\|<\delta and B¯0=B0\bar{B}_{0}=B_{0} converges at block boundaries to an exact realization equivalent to θ⋆\theta_{\star}.
+For θj=(Bj,Dj,Kj)=Ψj​(θ0)\theta_{j}=(B_{j},D_{j},K_{j})=\Psi^{j}(\theta_{0}), some C<∞C<\infty, q∈(0,1)q\in(0,1) and β>0\beta>0 satisfy
+‖Dj​Bj−C⋆‖Σx+‖Kj​Bj−Bj​A‖Σx≤C​qj,Bj​Σx​Bj⊤⪰β​Id.\begin{split}\|D_{j}B_{j}-C_{\star}\|_{\Sigma_{\mathrm{x}}}+\|K_{j}B_{j}-B_{j}A\|_{\Sigma_{\mathrm{x}}}&\leq Cq^{j},\\
+B_{j}\Sigma_{\mathrm{x}}B_{j}^{\top}&\succeq\beta I_{d}.\end{split}
+(51)
+The transition step size μT\mu_{T} on λtr​ℒtr\lambda_{\mathrm{tr}}\mathcal{L}_{\mathrm{tr}} corresponds to λtr​μT\lambda_{\mathrm{tr}}\mu_{T} on Method’s unweighted transition loss.
+Every point in ℳ⋆\mathcal{M}_{\star} is a fixed point of Ψ\Psi and gives the same macroscopic dynamics.
+Let U0:=UU_{0}:=U be the perturbation of the copied target at the start of a round.
+For s=0,…,NE−1s=0,\ldots,N_{E}-1, define one linearized representation step by
+Ps\displaystyle P_{s}
+:=D⋆​Us+Vs​B⋆,\displaystyle:=D_{\star}U_{s}+V_{s}B_{\star},
+(52)
+Qs\displaystyle Q_{s}
+:=K⋆​Us+W​B⋆−U0​A,\displaystyle:=K_{\star}U_{s}+WB_{\star}-U_{0}A,
+(53)
+Us+1\displaystyle U_{s+1}
+:=Us−2​μE​(λcur​D⋆⊤​Ps+λtr​K⋆⊤​Qs)​Σx,\displaystyle:=U_{s}-2\mu_{E}\bigl(\lambda_{\mathrm{cur}}D_{\star}^{\top}P_{s}+\lambda_{\mathrm{tr}}K_{\star}^{\top}Q_{s}\bigr)\Sigma_{\mathrm{x}},
+(54)
+Vs+1\displaystyle V_{s+1}
+:=Vs−2​μE​λcur​Ps​Σx​B⋆⊤.\displaystyle:=V_{s}-2\mu_{E}\lambda_{\mathrm{cur}}P_{s}\Sigma_{\mathrm{x}}B_{\star}^{\top}.
+(55)
+Starting from (U0,V0)=(U,V)(U_{0},V_{0})=(U,V) and applying these equations NEN_{E} times gives (UE,VE)(U_{E},V_{E}).
+The transition block leaves these two perturbations fixed and applies NTN_{T} iterations of
+Wr+1:=Wr−2​λtr​μT​(Wr​B⋆+K⋆​UE−UE​A)​Σx​B⋆⊤,W0=W.W_{r+1}:=W_{r}-2\lambda_{\mathrm{tr}}\mu_{T}\bigl(W_{r}B_{\star}+K_{\star}U_{E}-U_{E}A\bigr)\Sigma_{\mathrm{x}}B_{\star}^{\top},\qquad W_{0}=W.
+(56)
+The Jacobian of one round is
+Jcyc:=D​Ψ​(θ⋆),(U,V,W)↦(UE,VE,WNT).J_{\mathrm{cyc}}:=\mathrm{D}\Psi(\theta_{\star}),\qquad(U,V,W)\mapsto(U_{E},V_{E},W_{N_{T}}).
+(57)
+These formulas follow by differentiating the two gradient blocks at an exact realization, where both residuals vanish.
+If ℛ⋆′​(U,V,W)=0\mathcal{R}^{\prime}_{\star}(U,V,W)=0, every linearized substep leaves (U,V,W)(U,V,W) unchanged: both initial residuals are zero, so the representation and transition increments remain zero.
+Thus JcycJ_{\mathrm{cyc}} is the identity on ker⁡ℛ⋆′\ker\mathcal{R}^{\prime}_{\star}.
+The tangent space in Eq. 50 is contained in this kernel.
+Any additional kernel direction would give a nonzero fixed vector of the quotient map, contradicting ρ⁡(Jerr)<1\rho(J_{\mathrm{err}})<1.
+The spectral condition in Proposition B.1 therefore implies
+ker⁡ℛ⋆′=Tθ⋆​ℳ⋆.\ker\mathcal{R}^{\prime}_{\star}=T_{\theta_{\star}}\mathcal{M}_{\star}.
+(58)
+For a direct numerical check, vectorize (U,V,W)(U,V,W) and form the matrix JcycJ_{\mathrm{cyc}} from Eqs. 54–56.
+Then Jerr=N⟂⊤​Jcyc​N⟂J_{\mathrm{err}}=N_{\perp}^{\top}J_{\mathrm{cyc}}N_{\perp} represents the induced quotient map.
+Proof of Proposition B.1.
+The update map Ψ\Psi is continuously differentiable in a neighborhood of θ⋆\theta_{\star} and fixes every point of ℳ⋆\mathcal{M}_{\star}.
+As shown above, ρ⁡(Jerr)<1\rho(J_{\mathrm{err}})<1 implies Eq. 58: the residual differential has kernel equal to the d2d^{2}-dimensional similarity tangent space.
+Select a maximal independent set of residual coordinates and apply the implicit function theorem to their common zero set.
+This set is a smooth manifold of dimension d2d^{2} containing ℳ⋆\mathcal{M}_{\star}.
+The similarity orbit is locally embedded because B⋆B_{\star} has full row rank, so its inclusion into this zero set is a local diffeomorphism.
+After restricting to a neighborhood, the two manifolds coincide; all remaining residual coordinates vanish there because they vanish on the orbit.
+Choose smooth local coordinates (ξ,e)(\xi,e) in which ξ\xi parameterizes ℳ⋆\mathcal{M}_{\star} and e=0e=0 is that manifold (Hirsch et al., 1977).
+Because Ψ⁡(ξ,0)=(ξ,0)\Psi(\xi,0)=(\xi,0), the map has the local form
+ξ+=ξ+gξ​(ξ,e),e+=ge​(ξ,e),gξ​(ξ,0)=0,ge​(ξ,0)=0.\xi^{+}=\xi+g_{\xi}(\xi,e),\qquad e^{+}=g_{e}(\xi,e),\qquad g_{\xi}(\xi,0)=0,\quad g_{e}(\xi,0)=0.
+(59)
+The derivative ∂ege\partial_{e}g_{e} at (ξ⋆,0)(\xi_{\star},0) represents JerrJ_{\mathrm{err}}.
+The assumption ρ⁡(Jerr)<1\rho(J_{\mathrm{err}})<1 permits an equivalent norm and constants 0<q<10<q<1, r>0r>0 such that, after shrinking the chart if necessary,
+‖ge​(ξ,e)‖≤q​‖e‖,‖gξ​(ξ,e)‖≤L​‖e‖\|g_{e}(\xi,e)\|\leq q\|e\|,\qquad\|g_{\xi}(\xi,e)\|\leq L\|e\|
+(60)
+whenever ‖(ξ,e)−(ξ⋆,0)‖<r\|(\xi,e)-(\xi_{\star},0)\|<r.
+The constants q,L,rq,L,r are chosen for the fixed update map Ψ\Psi.
+A sufficient initialization condition in these local coordinates is
+‖ξ0−ξ⋆‖+(1+L1−q)​‖e0‖<r.\|\xi_{0}-\xi_{\star}\|+\left(1+\frac{L}{1-q}\right)\|e_{0}\|<r.
+(61)
+Indeed, the left-hand side bounds ‖ξj−ξ⋆‖+‖ej‖\|\xi_{j}-\xi_{\star}\|+\|e_{j}\| for every jj, so all iterates stay in the chart where Eq. 60 holds. For NE=NT=1N_{E}=N_{T}=1 and μE=μT=μ\mu_{E}=\mu_{T}=\mu, the inverse image of this strict inequality under the chart gives the neighborhood 𝒰μ\mathcal{U}_{\mu} in Theorem 4.
+Then ‖ej‖≤qj​‖e0‖\|e_{j}\|\leq q^{j}\|e_{0}\|, while
+∑j=0∞‖ξj+1−ξj‖≤L​‖e0‖1−q<∞.\sum_{j=0}^{\infty}\|\xi_{j+1}-\xi_{j}\|\leq\frac{L\|e_{0}\|}{1-q}<\infty.
+(62)
+Thus ξj\xi_{j} converges and (ξj,ej)(\xi_{j},e_{j}) converges to (ξ∞,0)∈ℳ⋆(\xi_{\infty},0)\in\mathcal{M}_{\star}.
+Full row rank of B⋆B_{\star} and positive definiteness of Σx\Sigma_{\mathrm{x}} imply B⋆​Σx​B⋆⊤≻0B_{\star}\Sigma_{\mathrm{x}}B_{\star}^{\top}\succ 0.
+Continuity and invariance of a sufficiently small neighborhood give a uniform positive lower bound on the encoder covariance after every round.
+This bound rules out collapse in any latent direction within this neighborhood.
+The same bound, decreased if necessary, holds at intermediate updates because there are finitely many smooth substep maps and each fixes the exact realization.
+The current and transition residual maps are continuously differentiable and vanish on ℳ⋆\mathcal{M}_{\star}, so they are O⁡(‖ej‖)O(\|e_{j}\|).
+For every h≥1h\geq 1,
+Dj​Kjh​Bj−C⋆​Ah=Dj​∑r=0h−1Kjh−1−r​(Kj​Bj−Bj​A)​Ar+(Dj​Bj−C⋆)​Ah.D_{j}K_{j}^{h}B_{j}-C_{\star}A^{h}=D_{j}\sum_{r=0}^{h-1}K_{j}^{h-1-r}(K_{j}B_{j}-B_{j}A)A^{r}+(D_{j}B_{j}-C_{\star})A^{h}.
+(63)
+All parameter matrices remain bounded in the local neighborhood. Hence, for fixed HH, summing the squared covariance-weighted norms of this identity for h≤Hh\leq H gives the rollout rate in Theorem 4. This proves the stated conclusions.
+ □\square
+B.5.5 Precise statement and proof of Theorem 2
+This subsection gives the precise version of
+Theorem 2.
+We use the residual differential
+ℛ⋆′=D​ℛ​(θ⋆)\mathcal{R}^{\prime}_{\star}=\mathrm{D}\mathcal{R}(\theta_{\star})
+from Eq. 49 and the orthonormal
+basis N⟂N_{\perp} defined above.
+At an exact realization θ⋆\theta_{\star}, define
+s⋆:=minv⟂Tθ⋆​ℳ⋆‖v‖=1⁡‖ℛ⋆′​v‖F=σmin​(ℛ⋆′​N⟂).s_{\star}:=\min_{\begin{subarray}{c}v\perp T_{\theta_{\star}}\mathcal{M}_{\star}\\
+\|v\|=1\end{subarray}}\|\mathcal{R}^{\prime}_{\star}v\|_{F}=\sigma_{\min}(\mathcal{R}^{\prime}_{\star}N_{\perp}).
+Thus s⋆s_{\star} measures the minimum first-order residual
+sensitivity outside changes of latent coordinates.
+Orthogonality and parameter norms use the product Frobenius
+inner product, and operator norms are induced by these norms.
+The target copy is fixed when computing the representation
+gradient, but varies with the initial encoder when differentiating the full update map. We retain this dependence below.
+The result does not require symmetry of AA or an alignment constraint on the initialization.
+In terms of the linearized residuals P,QP,Q, define the two linear operators
+𝒢E​(U,V,W)\displaystyle\mathcal{G}_{E}(U,V,W)
+=(2​(λcur​D⋆⊤​P+λtr​K⋆⊤​Q)​Σx,2​λcur​P​Σx​B⋆⊤,0),\displaystyle=\left(2(\lambda_{\mathrm{cur}}D_{\star}^{\top}P+\lambda_{\mathrm{tr}}K_{\star}^{\top}Q)\Sigma_{\mathrm{x}},2\lambda_{\mathrm{cur}}P\Sigma_{\mathrm{x}}B_{\star}^{\top},0\right),
+(64)
+𝒢T​(U,V,W)\displaystyle\mathcal{G}_{T}(U,V,W)
+=(0,0,2​λtr​Q​Σx​B⋆⊤).\displaystyle=\left(0,0,2\lambda_{\mathrm{tr}}Q\Sigma_{\mathrm{x}}B_{\star}^{\top}\right).
+(65)
+These operators are the differentials of the representation and transition update directions.
+In 𝒢E\mathcal{G}_{E}, the term −U​A-UA in QQ accounts for the copied target changing between rounds. The encoder gradient itself does not differentiate through that target.
+Let
+ε⋆:=λtr​‖A​Σx1/2‖2,γ:=2​s⋆​(s⋆−ε⋆),ℓ:=‖𝒢E‖2+‖𝒢T‖2.\varepsilon_{\star}:=\sqrt{\lambda_{\mathrm{tr}}}\|A\Sigma_{\mathrm{x}}^{1/2}\|_{2},\qquad\gamma:=2s_{\star}(s_{\star}-\varepsilon_{\star}),\qquad\ell:=\|\mathcal{G}_{E}\|_{2}+\|\mathcal{G}_{T}\|_{2}.
+(66)
+An explicit common step-size bound for Theorem 4 is
+μmax:=γ/ℓ2,0<μE=μT=μ≤μmax.\mu_{\max}:=\gamma/\ell^{2},\qquad 0<\mu_{E}=\mu_{T}=\mu\leq\mu_{\max}.
+(67)
+These step sizes apply to the weighted objectives.
+To evaluate the condition, form the matrices of ℛ⋆′,𝒢E,𝒢T\mathcal{R}^{\prime}_{\star},\mathcal{G}_{E},\mathcal{G}_{T} by applying their displayed formulas to a parameter basis.
+A singular-value decomposition of ℛ⋆′​N⟂\mathcal{R}^{\prime}_{\star}N_{\perp} gives s⋆s_{\star}.
+Theorem 4 (Local convergence of TAMPL (precise))
+Let θ⋆=(B⋆,D⋆,K⋆)\theta_{\star}=(B_{\star},D_{\star},K_{\star}) be an exact
+realization with B⋆B_{\star} having full row rank.
+Suppose
+s⋆>ε⋆=λtr​‖A​Σx1/2‖2.s_{\star}>\varepsilon_{\star}=\sqrt{\lambda_{\mathrm{tr}}}\|A\Sigma_{\mathrm{x}}^{1/2}\|_{2}.
+For every common step size 0<μ≤μmax0<\mu\leq\mu_{\max}, with
+μmax\mu_{\max} defined in Eq. 67,
+there is an open neighborhood 𝒰μ\mathcal{U}_{\mu} of
+θ⋆\theta_{\star} such that every initialization
+θ0∈𝒰μ\theta_{0}\in\mathcal{U}_{\mu} with B¯0=B0\bar{B}_{0}=B_{0} converges under
+the population update rounds defined in
+Proposition B.1, with
+NE=NT=1N_{E}=N_{T}=1 and μE=μT=μ\mu_{E}=\mu_{T}=\mu, to an exact realization
+equivalent to θ⋆\theta_{\star}.
+Writing jj for the number of completed training rounds,
+there are constants C,β>0C,\beta>0 and
+ρ∈(0,1)\rho\in(0,1) such that
+‖ℛ⁡(Bj,Dj,Kj)‖F≤C​ρj,Bj​Σx​Bj⊤⪰β​Id\|\mathcal{R}(B_{j},D_{j},K_{j})\|_{F}\leq C\rho^{j},\qquad B_{j}\Sigma_{\mathrm{x}}B_{j}^{\top}\succeq\beta I_{d}
+(68)
+for every j≥0j\geq 0.
+Consequently, for every fixed integer rollout horizon H≥1H\geq 1, there exists CH>0C_{H}>0 such that
+∑h=1H‖Dj​Kjh​Bj−C⋆​Ah‖Σx2≤CH​ρ2​jfor every ​j≥0.\sum_{h=1}^{H}\|D_{j}K_{j}^{h}B_{j}-C_{\star}A^{h}\|_{\Sigma_{\mathrm{x}}}^{2}\leq C_{H}\rho^{2j}\qquad\text{for every }j\geq 0.
+Proof of
+Theorem 4.
+Write v=(U,V,W)v=(U,V,W) and 𝒢=𝒢E+𝒢T\mathcal{G}=\mathcal{G}_{E}+\mathcal{G}_{T}.
+Expanding the two residual squares gives the identity
+⟨v,𝒢​v⟩=2​‖ℛ⋆′​v‖F2+2​λtr​⟨U,Q​Σx​A⊤⟩F.\langle v,\mathcal{G}v\rangle=2\|\mathcal{R}^{\prime}_{\star}v\|_{F}^{2}+2\lambda_{\mathrm{tr}}\langle U,Q\Sigma_{\mathrm{x}}A^{\top}\rangle_{F}.
+(69)
+The second term is the effect of using a refreshed detached target instead of differentiating the online objective through both endpoints.
+Its absolute value is at most
+2​ε⋆​‖v‖​‖ℛ⋆′​v‖F2\varepsilon_{\star}\|v\|\,\|\mathcal{R}^{\prime}_{\star}v\|_{F}.
+For vv perpendicular to the coordinate-change directions, ‖ℛ⋆′​v‖F≥s⋆​‖v‖\|\mathcal{R}^{\prime}_{\star}v\|_{F}\geq s_{\star}\|v\|.
+Since s⋆>ε⋆s_{\star}>\varepsilon_{\star}, Eq. 69 implies
+⟨v,𝒢​v⟩≥γ​‖v‖2.\langle v,\mathcal{G}v\rangle\geq\gamma\|v\|^{2}.
+(70)
+Both 𝒢E\mathcal{G}_{E} and 𝒢T\mathcal{G}_{T} annihilate coordinate-change directions because P=Q=0P=Q=0 there.
+One round of the actual alternating updates therefore has differential
+J=(I−μ​𝒢T)​(I−μ​𝒢E)=I−μ​𝒢+μ2​𝒢T​𝒢E.J=(I-\mu\mathcal{G}_{T})(I-\mu\mathcal{G}_{E})=I-\mu\mathcal{G}+\mu^{2}\mathcal{G}_{T}\mathcal{G}_{E}.
+(71)
+This product uses the updated encoder in the transition step.
+For its quotient Jerr=N⟂⊤​J​N⟂J_{\mathrm{err}}=N_{\perp}^{\top}JN_{\perp}, Eq. 70 gives
+‖Jerr‖2\displaystyle\|J_{\mathrm{err}}\|_{2}
+≤1−2​μ​γ+μ2​ℓ2+μ2​‖𝒢T‖2​‖𝒢E‖2\displaystyle\leq\sqrt{1-2\mu\gamma+\mu^{2}\ell^{2}}+\mu^{2}\|\mathcal{G}_{T}\|_{2}\|\mathcal{G}_{E}\|_{2}
+(72)
+≤1−μ​γ+12​μ2​ℓ2+14​μ2​ℓ2\displaystyle\leq 1-\mu\gamma+\tfrac{1}{2}\mu^{2}\ell^{2}+\tfrac{1}{4}\mu^{2}\ell^{2}
+≤1−14​μ​γ<1.\displaystyle\leq 1-\tfrac{1}{4}\mu\gamma<1.
+(73)
+Here γ≤ℓ\gamma\leq\ell and μ​ℓ2≤γ\mu\ell^{2}\leq\gamma. Setting z=2​μ​γ−μ2​ℓ2z=2\mu\gamma-\mu^{2}\ell^{2} gives 0<z≤γ2/ℓ2≤10<z\leq\gamma^{2}/\ell^{2}\leq 1, so the second line follows directly from 1−z≤1−z/2\sqrt{1-z}\leq 1-z/2 and ‖𝒢T‖2​‖𝒢E‖2≤ℓ2/4\|\mathcal{G}_{T}\|_{2}\|\mathcal{G}_{E}\|_{2}\leq\ell^{2}/4. The last line uses μ2​ℓ2≤μ​γ\mu^{2}\ell^{2}\leq\mu\gamma.
+The explicit feedback inequality and step-size bound therefore make the quotient update contractive.
+Choose a scalar ρ\rho with ‖Jerr‖2<ρ<1\|J_{\mathrm{err}}\|_{2}<\rho<1. By continuity, a sufficiently small local chart has transverse contraction factor at most ρ\rho, so the preceding proof applies with q=ρq=\rho. This gives the per-round geometric factor in the theorem; it depends on the reference realization, loss weights, and step size.
+Proposition B.1, with one step in each block, now proves convergence to an equivalent exact realization, geometric residual decay, and a uniform positive lower bound on latent covariance.
+ □\square
+Coordinate scale and nonempty conditions.
+The condition is sufficient and is evaluated in the coordinates and Euclidean gradient metric used for training. Its scale dependence can be seen in the unit perturbation v0=(0,0,Id/d)v_{0}=(0,0,I_{d}/\sqrt{d}). For every coordinate-change direction, its inner product with v0v_{0} is tr⁡(Ω​K⋆−K⋆​Ω)/d=0\operatorname{tr}(\Omega K_{\star}-K_{\star}\Omega)/\sqrt{d}=0. Hence
+s⋆≤‖ℛ⋆′​v0‖F=λtrd​‖B⋆​Σx1/2‖F.s_{\star}\leq\|\mathcal{R}^{\prime}_{\star}v_{0}\|_{F}=\sqrt{\frac{\lambda_{\mathrm{tr}}}{d}}\|B_{\star}\Sigma_{\mathrm{x}}^{1/2}\|_{F}.
+(74)
+The theorem’s sufficient inequality therefore requires
+‖B⋆​Σx1/2‖Fd>‖A​Σx1/2‖2.\frac{\|B_{\star}\Sigma_{\mathrm{x}}^{1/2}\|_{F}}{\sqrt{d}}>\|A\Sigma_{\mathrm{x}}^{1/2}\|_{2}.
+(75)
+This is a necessary consequence of the bound, not a sufficient convergence test on its own. In particular, decreasing λtr\lambda_{\mathrm{tr}} alone cannot overcome a violation of Eq. 75. If B⋆​Σx​B⋆⊤=IdB_{\star}\Sigma_{\mathrm{x}}B_{\star}^{\top}=I_{d}, it requires ‖A​Σx1/2‖2<1\|A\Sigma_{\mathrm{x}}^{1/2}\|_{2}<1.
+For example, with unit loss weights, A=K⋆=0A=K_{\star}=0, Σx=In\Sigma_{\mathrm{x}}=I_{n}, B⋆=C⋆=[Id​ 0]B_{\star}=C_{\star}=[I_{d}\ 0] and D⋆=IdD_{\star}=I_{d}, one has s⋆=1s_{\star}=1 and ε⋆=0\varepsilon_{\star}=0.
+The strict inequality persists under small changes of these matrices that preserve an exact realization, including nonsymmetric dynamics and nonisotropic covariance.
+The condition is sufficient and local; it does not compare joint and detached convergence near the exact realization.
+Appendix C Controlled Numerical Experiment Details
+C.1 Shared protocol and diagnostics
+All experiments use n=7,d=3,m=1n=7,d=3,m=1, float64 arithmetic, exact population gradients, and λcur=λtr=1\lambda_{\mathrm{cur}}=\lambda_{\mathrm{tr}}=1. The two mechanism cases use Σx=I7\Sigma_{\mathrm{x}}=I_{7}, learning rate 0.0030.003, and 15,00015{,}000 updates. For each of five seeds, Joint and TAMPL start from identical initial parameters. Joint updates (B,D,K)(B,D,K) simultaneously. TAMPL takes one (B,D)(B,D) step with K,B¯K,\bar{B} fixed, refreshes the target, then takes one KK step with the new BB fixed. No head is refitted after initialization. There is no weight decay, parameter mask, or minibatch noise.
+Figure 5 reports
+ℒcur,ℒtr,smin​(B):=σmin​(B​Σx1/2),ℰroll(10):=∑h=110‖D​Kh​B−C⋆​Ah‖Σx2.\mathcal{L}_{\mathrm{cur}},\quad\mathcal{L}_{\mathrm{tr}},\quad s_{\min}(B):=\sigma_{\min}(B\Sigma_{\mathrm{x}}^{1/2}),\quad\mathcal{E}_{\mathrm{roll}}^{(10)}:=\sum_{h=1}^{10}\|DK^{h}B-C_{\star}A^{h}\|_{\Sigma_{\mathrm{x}}}^{2}.
+(76)
+The third quantity detects contraction in any latent direction; the fourth directly evaluates the deployed macro predictor and is invariant to invertible latent coordinate changes. Losses below 10−1610^{-16} are displayed at 10−1610^{-16} on log axes; the latent-scale panels begin at 10−310^{-3}. Orthogonal source and latent rotations make the trained matrices dense without changing the canonical constructions below.
+C.2 Controlled test
+To test the analysis in Sec. 4.2 and Sec. 4.3, we consider the two failure cases of directly optimizing the objective and check whether TAMPL addresses these failures.
+Case I: scale-induced optimization bottleneck
+In canonical coordinates, set
+A\displaystyle A
+=diag(0.3,Av,Ar),C⋆=[0∣1 0∣0 0 0 0],\displaystyle=\operatorname{diag}(0.3,A_{\mathrm{v}},A_{\mathrm{r}}),\qquad C_{\star}=[0\mid 1\ 0\mid 0\ 0\ 0\ 0],
+(77)
+Av\displaystyle A_{\mathrm{v}}
+=[0.820.07−0.040.72],Ar=diag(0.18,−0.20,0.38,−0.31).\displaystyle=\begin{bmatrix}0.82&0.07\\
+-0.04&0.72\end{bmatrix},\qquad A_{\mathrm{r}}=\operatorname{diag}(0.18,-0.20,0.38,-0.31).
+Take H0=0.50​I2+0.012​GH_{0}=0.50I_{2}+0.012G, M0=0.01​I2+0.003​G′M_{0}=0.01I_{2}+0.003G^{\prime} with independent Gaussian entries, and initialize
+B0=diag⁡(1.5,H0)​[I3​ 0]B_{0}=\operatorname{diag}(1.5,H_{0})[I_{3}\ 0], D0=[0∣e1⊤​H0−1]D_{0}=[0\mid e_{1}^{\top}H_{0}^{-1}], and K0=diag⁡(0.3,M0)K_{0}=\operatorname{diag}(0.3,M_{0}). Hence D0​B0=C⋆D_{0}B_{0}=C_{\star}, but the transition on the two-dimensional block is inaccurate. Because (Av)12=0.07(A_{\mathrm{v}})_{12}=0.07, its second coordinate affects future macro outputs although it is absent from the current readout. Under joint training, the mean minimum latent scale falls from 0.490.49 to 5.75×10−35.75\times 10^{-3} before reaching 7.51×10−37.51\times 10^{-3} at the shared budget; the rollout error remains 0.1050.105. TAMPL retains finite latent scale and fits the rollout. This case (Fig. 5) illustrates scale contraction and slow rollout fitting, consistent with the scale sensitivity in Sec. 4.2 and the gradient calculations in Appendix B.4.2.
+Figure 5: Numerical evidence of the failure mode of joint training and the optimization behavior of TAMPL. Curves and bands are the mean and standard deviation of five independent runs.
+Case II: noncollapsed task failure
+For Case II (Fig. 6), in canonical source coordinates, set
+A=diag⁡(Au,An,0.65),C⋆=[1 0 0​∣0 0 0∣​0],Σx=I7,A=\operatorname{diag}(A_{\mathrm{u}},A_{\mathrm{n}},0.65),\qquad C_{\star}=[1\ 0\ 0\mid 0\ 0\ 0\mid 0],\qquad\Sigma_{\mathrm{x}}=I_{7},
+(78)
+where AuA_{\mathrm{u}} and AnA_{\mathrm{n}} are independently rotated symmetric matrices with spectra (0.65,0.75,0.85)(0.65,0.75,0.85) and (0.10,0.15,0.20)(0.10,0.15,0.20). The reference is B⋆=[I3​ 0 0]B_{\star}=[I_{3}\ 0\ 0], D⋆=[1 0 0]D_{\star}=[1\ 0\ 0], K⋆=AuK_{\star}=A_{\mathrm{u}}. The exact wrong-subspace reference Bb=4​[0​I3​ 0]B_{\mathrm{b}}=4[0\ I_{3}\ 0], Db=0D_{\mathrm{b}}=0, Kb=AnK_{\mathrm{b}}=A_{\mathrm{n}} satisfies Theorem 3: τ0=0.45\tau_{0}=0.45 and the margin in its sufficient inequality is 2.242.24. It also satisfies the spectral ordering used by the detached-instability calculation on the omitted four-dimensional subspace.
+Initialize B0=4​[P​Q​ 0]B_{0}=4[P\ Q\ 0], where P=0.30​I3+0.025​GP=0.30I_{3}+0.025G, Q=I3+0.015​G′Q=I_{3}+0.015G^{\prime} and G,G′G,G^{\prime} have independent standard Gaussian entries. Set D0=C⋆​B0⊤​(B0​B0⊤)−1D_{0}=C_{\star}B_{0}^{\top}(B_{0}B_{0}^{\top})^{-1} and K0=B0​A​B0⊤​(B0​B0⊤)−1K_{0}=B_{0}AB_{0}^{\top}(B_{0}B_{0}^{\top})^{-1} once, then train all matrices by gradients with η=0.003\eta=0.003. The representation initially contains task information and is not closed. Projecting each joint endpoint to the exact wrong-subspace orbit gives a positive certificate margin of at least 1.901.90.
+Figure 6: Numerical evidence of Case II. Curves and bands are the mean and standard deviation of five independent runs.
+Additional local-convergence test
+Moreover, we test the local convergence prediction of Theorem 2 in the numerical setting as illustrated by the following example.
+Let Acan=diag⁡(0.7,0.8,0.9,−0.8,−0.7,−0.6,−0.5)A_{\mathrm{can}}=\operatorname{diag}(0.7,0.8,0.9,-0.8,-0.7,-0.6,-0.5) and Ccan=[1,0.5,−0.3,0,0,0,0]C_{\mathrm{can}}=[1,0.5,-0.3,0,0,0,0]. Draw orthogonal matrices Q,OQ,O and set T=Q⁡(I7+0.012​G)T=Q(I_{7}+0.012G). Define
+A\displaystyle A
+=TAcanT−1,C⋆=CcanT−1,Σx=TT⊤,\displaystyle=TA_{\mathrm{can}}T^{-1},\quad C_{\star}=C_{\mathrm{can}}T^{-1},\quad\Sigma_{\mathrm{x}}=TT^{\top},
+(79)
+B⋆\displaystyle B_{\star}
+=2O[I3 0]T−1,D⋆=12[1,0.5,−0.3]O⊤,K⋆=Odiag(0.7,0.8,0.9)O⊤.\displaystyle=2O[I_{3}\ 0]T^{-1},\quad D_{\star}=\tfrac{1}{2}[1,0.5,-0.3]O^{\top},\quad K_{\star}=O\operatorname{diag}(0.7,0.8,0.9)O^{\top}.
+This gives nonsymmetric dynamics, nondiagonal positive-definite covariance, and an exact realization. Add independent 0.0060.006-scale Gaussian perturbations to every entry of B⋆,D⋆,K⋆B_{\star},D_{\star},K_{\star}, and use η=0.001\eta=0.001. Form the full residual differential and quotient update Jacobian as in Appendix B.5.4, and evaluate the sufficient step bound from Appendix B.5.5. Across seeds, s⋆−ε⋆>0.315s_{\star}-\varepsilon_{\star}>0.315, the sufficient step bound exceeds 0.002750.00275, and the quotient spectral radius is below 0.998160.99816.
+The joint and TAMPL residual norms both decrease while the minimum latent variance stays positive (Fig. 7).
+Figure 7: Independent local test of Theorem 2. The complete weighted residual norm contracts and latent covariance remains positive. Both algorithms start from the same full-matrix perturbations.
+Appendix D Experiment details
+D.1 Metric Definitions and Evaluation Details
+We evaluate mean macrostate prediction using root mean square error (RMSE) and marginal distributional accuracy using squared maximum mean discrepancy (MMD).
+For each of GG initial microstates in the test set, we compare ground-truth and predicted ensembles of NN independent trajectories at TT evaluation times over DD macroscopic features.
+To account for differences in feature scales, we standardize both ensembles using featurewise training means and nonzero population standard deviations computed over all training trajectories and observation times.
+These statistics are shared across all methods within each system.
+Let y¯~g,t,j(n)\widetilde{\bar{y}}_{g,t,j}^{(n)} and y~g,t,j(n)\widetilde{y}_{g,t,j}^{(n)} denote the standardized ground-truth and predicted values, respectively, where gg indexes the initial microstate, tt the evaluation time, jj the macroscopic feature, and nn the trajectory.
+The mean macrostate RMSE compares the predicted and ground-truth ensemble means for each initial microstate:
+RMSE=[1G​T​D​∑g=1G∑t=1T∑j=1D(⟨y~⟩g,t,j−⟨y¯~⟩g,t,j)2]1/2,\mathrm{RMSE}=\left[\frac{1}{GTD}\sum_{g=1}^{G}\sum_{t=1}^{T}\sum_{j=1}^{D}\left(\left\langle\widetilde{y}\right\rangle_{g,t,j}-\left\langle\widetilde{\bar{y}}\right\rangle_{g,t,j}\right)^{2}\right]^{1/2},
+(80)
+where ⟨⋅⟩\langle\cdot\rangle denotes the average over the NN trajectories in an ensemble initialized from the same microstate.
+To assess distributional accuracy, we compute MMD2 separately for each initial microstate, time, and feature using the Gaussian kernel k(a,b)=exp(−(a−b)2/(2σ2))k(a,b)=\exp(-(a-b)^{2}/(2\sigma^{2})) with σ=1\sigma=1 (note we already standardized the predicted and ground-truth macrostate).
+We use the biased empirical estimator, including diagonal terms in the within-ensemble sums:
+MMD^g,t,j 2=1N2​∑n=1N∑m=1Nk⁡(y¯~g,t,j(n),y¯~g,t,j(m))+1N2​∑n=1N∑m=1Nk⁡(y~g,t,j(n),y~g,t,j(m))−2N2​∑n=1N∑m=1Nk⁡(y¯~g,t,j(n),y~g,t,j(m)).\displaystyle\widehat{\mathrm{MMD}}_{g,t,j}^{\,2}=\frac{1}{N^{2}}\sum_{n=1}^{N}\sum_{m=1}^{N}k\left(\widetilde{\bar{y}}_{g,t,j}^{(n)},\widetilde{\bar{y}}_{g,t,j}^{(m)}\right)+\frac{1}{N^{2}}\sum_{n=1}^{N}\sum_{m=1}^{N}k\left(\widetilde{y}_{g,t,j}^{(n)},\widetilde{y}_{g,t,j}^{(m)}\right)-\frac{2}{N^{2}}\sum_{n=1}^{N}\sum_{m=1}^{N}k\left(\widetilde{\bar{y}}_{g,t,j}^{(n)},\widetilde{y}_{g,t,j}^{(m)}\right).
+The reported score averages these squared discrepancies without taking a square root:
+MMDmarginal2=1G​T​D​∑g=1G∑t=1T∑j=1DMMD^g,t,j 2.\mathrm{MMD}_{\mathrm{marginal}}^{2}=\frac{1}{GTD}\sum_{g=1}^{G}\sum_{t=1}^{T}\sum_{j=1}^{D}\widehat{\mathrm{MMD}}_{g,t,j}^{\,2}.
+(81)
+This metric compares scalar marginal distributions at each evaluation time and does not assess dependence between features or across times.
+For Table 2, all methods use the same training seeds 4242, 4343, and 4444.
+We compute each reported metric separately for each seed and report its mean and sample standard deviation across seeds, without pooling trajectories across seeds.
+The prediction figures for the domain experiments use models trained with seed 4242.
+D.2 SIRS Experiment
+The SIRS model describes a stochastic process of epidemic propagation. It can be seen as a continuous-time Markov chain with each site in a susceptible, infected, or recovered state.
+A susceptible site with nIn_{I} infected neighbors becomes infected at instantaneous rate β​nI/4\beta n_{I}/4, where each site has four nearest neighbors. An infected site recovers at the instantaneous rate γ\gamma, and a recovered site becomes susceptible again at rate μ\mu. Each transition occurs after a random exponentially distributed waiting time. For a transition with constant rate λ\lambda, the probability that the transition has not yet occurred after time tt is e−λ​te^{-\lambda t}. The reciprocal of the constant rate λ\lambda is the mean exponential waiting time of the transition. In our case, λ=β​nI/4\lambda=\beta n_{I}/4 for infection, λ=γ\lambda=\gamma for recovery, and λ=μ\lambda=\mu for loss of immunity. Figure 8 illustrates a microscopic trajectory.
+Figure 8: One SIRS microstate trajectory.
+To generate data, we simulate the SIRS process on a 100×100100\times 100 lattice and record 101101 frames at intervals of 0.50.5. We set β=8\beta=8, γ=1\gamma=1, and μ=0.15\mu=0.15.
+Each initial microstate contains no recovered sites and a randomly sampled spatial infection pattern covering approximately 5%5\% of the lattice.
+We generate 1,600/200/2001{,}600/200/200 distinct initial microstates for training, validation, and testing. For training and validation, we run one trajectory per initial microstate, yielding 1,6001{,}600 and 200200 trajectories, respectively.
+For each test microstate, we simulate 6464 independent reference trajectories and generate 6464 independent predictions from each stochastic learned model. We evaluate mean macrostate RMSE and MMD as described in Appendix D.1.
+All methods use a CNN encoder with circular padding. Each lattice site is represented by a three-dimensional one-hot vector indicating whether it is susceptible, infected, or recovered. The resulting three-channel lattice representation is processed by the CNN encoder.
+Figure 9: Comparison of different methods on SIRS prediction. The top row shows one reference trajectory given the initial microstate. The other rows compare the predicted and ground-truth macrostates. The reference simulations and all methods except VAMP use ensembles of 6464 independent trajectories initialized from the same microstate. All models were trained with seed 4242.
+The spatially homogeneous mean-field approximation (Joo and Lebowitz, 2004) neglects correlations between neighboring sites at the microscopic scale, replacing the susceptible–infected pair probability by St​ItS_{t}I_{t}.
+With the per-neighbor infection rate β/4\beta/4 used here, the approximate population fractions satisfy
+S˙t=μ​Rt−β​St​It,I˙t=β​St​It−γ​It,R˙t=γ​It−μ​Rt.\dot{S}_{t}=\mu R_{t}-\beta S_{t}I_{t},\qquad\dot{I}_{t}=\beta S_{t}I_{t}-\gamma I_{t},\qquad\dot{R}_{t}=\gamma I_{t}-\mu R_{t}.
+The pair approximation evolves the same population fractions St,It,RtS_{t},I_{t},R_{t} together with joint probabilities pt​(A,B)p_{t}(A,B) for ordered nearest-neighbor pairs, where A,B∈{S,I,R}A,B\in\{S,I,R\}.
+These probabilities represent the expected fractions of neighboring pairs in the specified states.
+Under spatial homogeneity, the population equations are
+S˙t=μ​Rt−β​pt​(S,I),I˙t=β​pt​(S,I)−γ​It,R˙t=γ​It−μ​Rt.\dot{S}_{t}=\mu R_{t}-\beta p_{t}(S,I),\qquad\dot{I}_{t}=\beta p_{t}(S,I)-\gamma I_{t},\qquad\dot{R}_{t}=\gamma I_{t}-\mu R_{t}.
+The pair approximation closes the evolution equations by treating the states of two distinct neighbors of a central site as conditionally independent given that site’s state (Joo and Lebowitz, 2004).
+On the square lattice, the resulting pair evolution equations, expressed in our rate convention, are (Joo and Lebowitz, 2004):
+d​pt​(S,I)d​t\displaystyle\frac{dp_{t}(S,I)}{dt}
+=μ​pt​(R,I)−(γ+β4)​pt​(S,I)+3​β4​pt​(S,I)St​(St−2​pt​(S,I)−pt​(S,R)),\displaystyle=\mu p_{t}(R,I)-\left(\gamma+\frac{\beta}{4}\right)p_{t}(S,I)+\frac{3\beta}{4}\frac{p_{t}(S,I)}{S_{t}}\left(S_{t}-2p_{t}(S,I)-p_{t}(S,R)\right),
+d​pt​(S,R)d​t\displaystyle\frac{dp_{t}(S,R)}{dt}
+=γ​pt​(S,I)+μ⁡(Rt−pt​(R,I)−2​pt​(S,R))−3​β4​pt​(S,I)​pt​(S,R)St,\displaystyle=\gamma p_{t}(S,I)+\mu\left(R_{t}-p_{t}(R,I)-2p_{t}(S,R)\right)-\frac{3\beta}{4}\frac{p_{t}(S,I)p_{t}(S,R)}{S_{t}},
+d​pt​(R,I)d​t\displaystyle\frac{dp_{t}(R,I)}{dt}
+=γ⁡(It−pt​(S,I))−(2​γ+μ)​pt​(R,I)+3​β4​pt​(S,I)​pt​(S,R)St,St>0.\displaystyle=\gamma\left(I_{t}-p_{t}(S,I)\right)-(2\gamma+\mu)p_{t}(R,I)+\frac{3\beta}{4}\frac{p_{t}(S,I)p_{t}(S,R)}{S_{t}},\qquad S_{t}>0.
+The coefficient 3​β/43\beta/4 accounts for the three neighbors other than the partner in the tracked pair.
+Since St+It+Rt=1S_{t}+I_{t}+R_{t}=1, the pair approximation has five independent evolving variables.
+Both the mean-field and pair approximations are deterministic. Each produces a single macroscopic trajectory (St,It,Rt)(S_{t},I_{t},R_{t}) from a fixed initial microstate.
+This is because the initial microstate determines the site fractions for both methods and the additional ordered nearest-neighbor pair fractions for the pair approximation.
+To assess sensitivity to the relative weighting of JLD’s two loss terms, we fix λcur=1\lambda_{\mathrm{cur}}=1 and vary λtr∈{0.1,0.5,1.0,2.0}\lambda_{\mathrm{tr}}\in\{0.1,0.5,1.0,2.0\}, keeping all other training settings unchanged.
+Table 3 shows that some weights improve average prediction accuracy, but all yield higher mean macrostate RMSE and MMD than TAMPL.
+Table 3: Sensitivity of JLD to the transition-loss weight on SIRS, with λcur=1\lambda_{\mathrm{cur}}=1.
+Values are the mean ±\pm sample standard deviation over training seeds 4242, 4343, and 4444.
+Transition weight λtr\lambda_{\mathrm{tr}}
+Mean macrostate RMSE
+MMD
+0.10.1
+2.4854±3.33092.4854\pm 3.3309
+0.3339±0.28980.3339\pm 0.2898
+0.50.5
+0.5779±0.10320.5779\pm 0.1032
+0.1883±0.07440.1883\pm 0.0744
+1.01.0
+0.6254±0.24000.6254\pm 0.2400
+0.2263±0.12000.2263\pm 0.1200
+2.02.0
+0.5323±0.20710.5323\pm 0.2071
+0.2029±0.07110.2029\pm 0.0711
+D.3 Binary Mixing Experiment
+We simulate the binary mixing at the atomistic level with 512512 particles, with 256256 particles of each type, in a square domain [0,32]2[0,32]^{2} with reflecting boundaries.
+All particles have unit mass and interact through type-dependent Lennard–Jones potentials, truncated and shifted to zero at distance 2.52.5.
+In reduced Lennard–Jones units, the interaction strengths are (ϵ11,ϵ22,ϵ12)=(0.5,0.6,0.7)(\epsilon_{11},\epsilon_{22},\epsilon_{12})=(0.5,0.6,0.7) and the length scales are (σ11,σ22,σ12)=(1.0,0.9,0.9)(\sigma_{11},\sigma_{22},\sigma_{12})=(1.0,0.9,0.9).
+We characterize macroscopic clustering structures using connectivity-based observables (Munao et al., 2022; Li et al., 2024).
+For each particle type, we connect particles whose Euclidean separation is at most 2.52.5 and define clusters as the connected components, including isolated particles.
+Let Lt(a)L_{t}^{(a)} and Ct(a)C_{t}^{(a)} denote the largest cluster size and the number of clusters for particle type a∈{1,2}a\in\{1,2\}.
+The macroscopic observables are
+St=Lt(1)+Lt(2)512,Kt=Ct(1)+Ct(2)512.S_{t}=\frac{L_{t}^{(1)}+L_{t}^{(2)}}{512},\qquad K_{t}=\frac{C_{t}^{(1)}+C_{t}^{(2)}}{512}.
+Figure 10 illustrates an example microstate trajectory. Evaluation follows Appendix D.1.
+Figure 10: One example of the microstate trajectory in binary mixing.
+To generate the data, we sample initial arrangements of the two particle types from six pattern families: a half-plane, a centered slab, four bands, a checkerboard, a central disk, and a wavy interface.
+For each sampled geometry, we prepare an initial configuration by random placement, energy minimization, and NVT equilibration at temperature 11 under spatial constraints that preserve the prescribed pattern. We then remove these constraints, independently sample initial velocities for each run, and simulate NVE dynamics with time step 0.0020.002. Each trajectory contains 501501 frames recorded at intervals of 0.40.4.
+The observed microstate contains positions and particle type labels. Independently sampled initial velocities therefore produce an ensemble of trajectories from the same initial microstate and this is where the stochasticity comes from.
+The training, validation, and test splits contain 480480, 9696, and 4848 distinct initial microstates, respectively.
+We perform 44, 44, and 3232 independent simulation runs per initial configuration, yielding 1,9201{,}920, 384384, and 1,5361{,}536 trajectories.
+Figure 11: Comparison of methods for binary mixing prediction from two initial configurations. The top row shows snapshots from one reference trajectory for each configuration. Subsequent rows compare predicted and reference evolution of SS and KK. Curves show ensemble means, with shaded bands indicating one standard deviation. VAMP provides a deterministic prediction.
+We use a two-dimensional one-hot encoding to represent particle types. For the DeepSet encoder (Zaheer et al., 2017), we concatenate each particle’s normalized two-dimensional position with this two-dimensional one-hot encoding as the input feature.
+A shared particle MLP processes these four-dimensional inputs, followed by mean pooling over all particles and an output MLP to obtain the eight-dimensional latent state.
+For the reconstruction-based baselines, we adapt the conditional normalizing-flow decoder of Han et al. (2026) to model the joint distribution of particle positions and types:
+q⁡(𝐫,c∣𝒛t)=qpos​(𝐫∣𝒛t)​qtype​(c∣𝐫,𝒛t),q(\mathbf{r},c\mid{\bm{z}}_{t})=q_{\mathrm{pos}}(\mathbf{r}\mid{\bm{z}}_{t})\,q_{\mathrm{type}}(c\mid\mathbf{r},{\bm{z}}_{t}),
+where 𝐫∈ℝ2\mathbf{r}\in\mathbb{R}^{2} is the normalized particle position and c∈{1,2}c\in\{1,2\} is its type.
+We parameterize qposq_{\mathrm{pos}} with a conditional autoregressive rational-quadratic spline flow and qtypeq_{\mathrm{type}} with an MLP with a two-class softmax output, conditioned on both position and latent state.
+The reconstruction objective combines position negative log-likelihood and type cross-entropy, evaluated on sampled particles with Gaussian-perturbed positions.
+Note that the setting here is different from the original dataset in Han et al. (2026), where they split the domain by a vertical boundary and predict local mixing ratios. The position of a vertical interface largely determines both the initial mixing ratio and its subsequent evolution, making the task relatively easy without microscopic information. Instead, we initialize microstates using different spatial patterns with fixed numbers of particles of each type. This design tests whether learned latent representations capture microscopic spatial information beyond particle composition.
+D.4 Polymer Extension Experiment
+We use the polymer image dataset released by Han et al. (2026), based on the Brownian-dynamics simulations of Chen et al. (2024).
+Each polymer chain consists of 300300 beads moving in three dimensions under a planar elongational flow.
+The dataset represents each configuration as a 100×500100\times 500 grayscale image by placing a Gaussian blob at each bead’s (x,y)(x,y) position, with its width determined by the magnitude of the bead’s displacement from the mean zz coordinate.
+The blobs are summed, normalized by the maximum frame intensity, and quantized to 8-bit grayscale.
+This representation does not explicitly encode bead ordering or chain connectivity, making it challenging to learn the latent embedding to capture the underlying physical processes.
+The macroscopic observation is the polymer extension length, defined as the difference between the maximum and minimum bead xx-coordinates.
+We use the released training, validation, and test splits.
+The training and validation sets contain 610610 and 110110 trajectories, respectively, each comprising 1,0011{,}001 frames.
+The three test regimes, Fast, Medium, and Slow, correspond to three different initial configurations and exhibit different extension rates.
+Each regime contains 500500 reference trajectories initialized from its fixed configuration, with variability arising from Brownian dynamics.
+Predictions are initialized from the corresponding initial image, and ensemble means and standard deviations are compared with the reference simulations.
+Comparisons with the baselines are shown in Fig. 12.
+Figure 12: Comparison of methods for polymer extension prediction.
+ Experimental support, please
+ view the build logs
+ for errors. Generated by
+ L
+ A
+ T
+ E
+ xml
+ .
+Instructions for reporting errors
+We are continuing to improve HTML versions of papers, and your feedback helps enhance accessibility and mobile
+ support. To report errors in the HTML that will help us improve conversion and rendering, choose any of the
+ methods listed below:
+Click the "Report Issue" (
+ ) button, located in the page header.
+Tip: You can select the relevant text first, to include it in your report.
+Our team has already identified the following issues. We appreciate your time reviewing and reporting rendering errors we
+ may not have found yet. Your efforts will help us improve the HTML versions for all readers, because disability
+ should not be a barrier to accessing research. Thank you for your continued support in championing open access for
+ all.
+Have a free development cycle? Help support accessibility at arXiv! Our collaborators at LaTeXML maintain a list of packages that need conversion, and welcome developer contributions.
+ We gratefully acknowledge support from our major funders,
+ member institutions, ,
+ and all contributors.

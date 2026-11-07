@@ -1,0 +1,1130 @@
+PAGE 1
+Mori–Zwanzig Perspective on Neural Representation
+Dynamics: Coarse-Graining via Short-Memory
+Closure
+Kosuke Watanabe
+International Research Institute, Reitaku University
+Kashiwa, Chiba, Japan
+kwatanab@reitaku-u.ac.jp
+Abstract
+We study layerwise neural representation dynamics through a coarse-grained
+reduced-dynamics lens. From a Mori–Zwanzig perspective, we treat selected
+representation summaries as resolved variables and the remaining degrees of free-
+dom as unresolved variables whose elimination induces memory terms. This yields
+an operational criterion for coarse-state quality: a useful coarse state should support
+an accurate short-memory closure of the depth-wise dynamics.
+We derive a local resolved–unresolved surrogate showing that short-memory clo-
+sure is promoted by unresolved contraction, weak cross-subspace coupling, and
+stable transport on task-relevant resolved directions. This connects coarse-state
+closure to task-relevant geometry preservation without requiring global dynamical
+isometry. Empirically, we fit reduced models to candidate coarse states extracted
+from trained networks across synthetic tasks and architectures. We find that closure
+quality is related to, but not determined by, predictive accuracy, and that the best
+coarse state depends strongly on task structure and architectural bias. These results
+suggest that coarse-state selection is a reduced-modeling problem rather than a
+purely heuristic choice of representation summary.
+1 Introduction
+Deep neural networks generate highly structured internal representations, yet these representations
+remain difficult to describe at the full state-space level. Existing analyses often summarize repre-
+sentations through geometric statistics, similarity measures, class separation, or task-specific probes
+[Raghu et al., 2017, Kornblith et al., 2019, Papyan et al., 2020]. While these approaches reveal
+what representations look like, they leave open a complementary question: whether representation
+evolution across depth admits a principled reduced dynamical description.
+In applied mathematics and nonequilibrium statistical physics, high-dimensional systems are often
+studied through coarse-graining: a small set of resolved variables is retained, while unresolved degrees
+of freedom appear as memory and fluctuation terms in an effective reduced dynamics [Mori, 1965,
+Zwanzig, 1961]. Motivated by this viewpoint, we study layerwise neural representation dynamics
+as a coarse-grained dynamical system. Rather than treating coarse variables as ad hoc summaries,
+we view them as candidate reduced states whose quality is determined by how well they close the
+depth-wise dynamics.
+This leads to our central question: for a given task and architecture, which coarse state yields an
+effective short-memory reduced model? Framed this way, coarse-state selection becomes a reduced-
+modeling problem rather than merely a choice of representation statistic. A useful coarse state
+should summarize the representation and support a predictive evolution law across layers with limited
+memory.
+Preprint.
+
+PAGE 2
+We develop a resolved–unresolved formulation of layerwise representation dynamics. Eliminating
+unresolved variables induces memory terms in the effective dynamics of the resolved coarse state,
+and we derive conditions under which this memory is short: unresolved directions should contract,
+cross-subspace couplings should be weak, and task-relevant resolved directions should be stably
+transported. This connects short-memory closure to geometry-preserving ideas such as edge-of-chaos
+propagation and dynamical isometry, but in a resolved and task-relevant rather than global sense
+[Schoenholz et al., 2017, Pennington et al., 2017].
+Motivated by this theory, we evaluate coarse-state closure empirically in trained neural networks. We
+construct a bank of low-dimensional coarse variables from layerwise representations and fit reduced
+models to their depth-wise evolution. Across synthetic tasks and architectures, we find that the best
+coarse state is not universal. Instead, closure quality depends strongly on both task structure and
+architectural bias. This variability is a central finding: it suggests that coarse-grained dynamics
+provides a principled lens for identifying which aspects of neural representations are dynamically
+relevant, and why different architectures favor different effective descriptions.
+Our contributions are as follows.
+• We introduce a Mori–Zwanzig perspective for analyzing layerwise neural representation
+dynamics through coarse-grained reduced states with explicit memory structure.
+• We derive conditions under which short-memory closure is justified, and connect this regime
+to task-relevant geometry preservation and structured regularization implications.
+• We empirically show that the best coarse state is strongly task- and architecture-dependent,
+demonstrating that coarse-state selection should be understood as a reduced-dynamics
+problem rather than as a purely heuristic choice of representation summary.
+2 Related Work: Representation Analysis and Reduced Dynamics
+2.1 Geometric Structure of Learned Representations
+A large body of work analyzes neural representations through geometric or statistical summaries.
+Representation similarity methods such as SVCCA and CKA compare hidden representations across
+layers, models, or training runs, and have become standard tools for studying how internal repre-
+sentations evolve during training [Raghu et al., 2017, Kornblith et al., 2019]. Other lines of work
+characterize the geometry of learned features, including class separation, margin structure, and neural
+collapse in the terminal phase of training [Papyan et al., 2020].
+These approaches provide powerful descriptions of what representations encode or how similar two
+representations are. However, they usually treat each layer or representation snapshot as an object to
+be summarized, rather than asking whether a chosen set of variables forms a closed reduced state
+for the depth-wise dynamics. Our work is complementary: instead of evaluating a representation
+summary only as a diagnostic statistic, we ask whether it supports a predictive reduced dynamics
+across layers.
+2.2 Neural Networks as Dynamical Systems
+Another line of work views neural networks as dynamical systems. Residual networks have been
+interpreted as discretizations of differential equations, motivating analyses of stability, reversibility,
+and continuous-depth models [Haber and Ruthotto, 2017, Chang et al., 2018, Chen et al., 2018].
+Related theoretical work studies signal propagation through depth, including edge-of-chaos conditions
+and dynamical isometry, which characterize when signals and gradients can propagate without rapid
+explosion or decay [Schoenholz et al., 2017, Pennington et al., 2017].
+These perspectives emphasize the dynamical nature of deep networks, but they typically focus on
+the full hidden state, global Jacobian spectra, or stability of the network map. In contrast, our
+focus is on the reduced dynamics of selected coarse variables. Rather than asking only whether the
+full representation map is stable or geometry-preserving, we ask whether a low-dimensional state
+extracted from representations can close the observed layerwise dynamics, and how this closure
+depends on task structure and architectural bias.
+2
+
+PAGE 3
+2.3 Coarse-Graining, Memory, and Mori–Zwanzig Formalism
+Coarse-graining provides a classical framework for reducing high-dimensional dynamical systems to
+a smaller set of resolved variables. The Mori–Zwanzig formalism shows that eliminating unresolved
+degrees of freedom generally produces effective dynamics with memory and fluctuation terms [Mori,
+1965, Zwanzig, 1961, 2001]. This idea has been widely used in nonequilibrium statistical physics
+and reduced modeling to understand how unresolved variables influence the evolution of observed
+macroscopic quantities.
+Recent work has also developed data-driven reduced models with memory, using observed trajectories
+to learn effective dynamics that account for unresolved degrees of freedom [Lin et al., 2021, Ma
+et al., 2019]. Closest to our theoretical motivation, Venturi and Li [2023] formulated deep learning
+through the Mori–Zwanzig formalism. Our focus is different: we do not aim to provide a full
+operator-theoretic formulation of learning, but instead adopt a resolved–unresolved view, motivated
+by the Mori–Zwanzig perspective, as an operational criterion for evaluating coarse states in trained
+neural representation dynamics.
+In this sense, we use the Mori–Zwanzig formalism not as a detailed physical model of neural networks,
+but as a reduced-dynamics principle: unresolved representation degrees of freedom should manifest
+as memory effects in the evolution of selected coarse variables. This viewpoint motivates our criterion
+for neural coarse states: a useful coarse state should admit an accurate short-memory closure of its
+depth-wise dynamics.
+2.4 Our Position
+Existing representation analyses provide powerful geometric and statistical summaries of neural
+representations, but they typically do not evaluate whether a chosen set of variables forms a closed
+reduced state for the layerwise dynamics. Conversely, Mori–Zwanzig theory and data-driven reduced
+modeling provide a principled language for memory and closure, but have not generally been used as
+a practical criterion for selecting neural coarse states across tasks and architectures.
+Our work connects these directions by treating coarse-state selection as a reduced-modeling problem.
+A good coarse state is not merely one that summarizes a representation at a single layer, but one
+whose evolution supports an accurate short-memory closure across depth. This allows us to compare
+coarse states across tasks and architectures through the quality of their induced reduced dynamics.
+3 A Mori–Zwanzig View of Layerwise Neural Representation Dynamics
+Our goal is not to identify a unique set of coarse variables for neural representations. Instead, we
+ask when a low-dimensional coarse state can support an effective reduced dynamics across depth.
+We view layerwise representation evolution through a resolved–unresolved decomposition. This
+decomposition naturally induces memory terms after unresolved degrees of freedom are eliminated,
+leading to a criterion for coarse-state quality: a useful coarse state should support an accurate
+short-memory closure while preserving task-relevant geometry on resolved directions.
+Although this viewpoint is motivated by the Mori–Zwanzig formalism, our derivation below is
+carried out for a local layerwise surrogate of neural representation dynamics. We introduce a
+resolved–unresolved linearization, eliminate the unresolved variables, and obtain an explicit discrete
+memory kernel. This derivation identifies the structural quantities that control short-memory closure:
+contraction of unresolved dynamics, weak resolved–unresolved coupling, and stable transport on
+task-relevant resolved directions.
+3.1 Coarse States and Local Resolved–Unresolved Dynamics
+Lethℓ(x)denote the representation of inputxat layerℓ. A coarse state is a low-dimensional map
+aℓ =ϕ(h ℓ)∈R da,(1)
+whereϕ may encode representation statistics, sample-wise coordinates, or task-relevant geometric
+quantities. The remaining degrees of freedom are collected into an unresolved variableξℓ∈R dξ.
+3
+
+PAGE 4
+Around a given operating regime of a trained network, we model the joint evolution of resolved and
+unresolved variables by the local linear surrogate
+aℓ+1 =Ma ℓ +Nξ ℓ, ξ ℓ+1 =Pa ℓ +Qξℓ.(2)
+Here,M describes the instantaneous resolved evolution,Q describes unresolved evolution, andN,P
+describe cross-subspace couplings. Thus, (2) is the neural-network analogue of a local resolved–
+unresolved decomposition:M transports the retained coarse state,Q propagates the discarded degrees
+of freedom, andN,Pmediate exchange between the two.
+LetU⊂R da denote a task-relevant resolved subspace. We writeM|U for the restriction ofM toU
+and define the resolved gain
+m0 :=σ min(M|U).(3)
+Assumption 1(Unresolved contraction).There existsγ∈(0,1]such that
+∥Q∥≤1−γ.(4)
+Assumption 2(Weak cross-subspace coupling).There existδ N,δP >0such that
+∥N∥≤δ N,∥P∥≤δ P.(5)
+These assumptions formalize a regime in which unresolved degrees of freedom decay rapidly and
+interact only weakly with the resolved state. As shown in the next subsection, this regime leads to
+rapidly decaying memory terms after the unresolved variables are eliminated.
+Illustration: a one-dimensional coarse coordinate in a ReLU MLP.Consider a two-dimensional
+local linearization of an MLP with ReLU activations, δhℓ+1≈Jδh ℓ, where J=DW andD=
+diag(r1,r 2) contains the ReLU gates. Let the first coordinate be resolved and the second unresolved,
+δhℓ = (aℓ,ξℓ)⊤, and write
+W=
+(︃
+w11 w12
+w21 w22
+)︃
+.
+Then
+aℓ+1≈r 1w11aℓ +r 1w12ξℓ, ξ ℓ+1≈r 2w21aℓ +r 2w22ξℓ.
+Thus
+M=r 1w11, N=r 1w12, P=r 2w21, Q=r 2w22.
+This identifies the abstract blocks in (2) with concrete weights and activation gates:M transports the
+resolved coordinate,Qcontrols unresolved persistence, andN,Pmediate cross-subspace coupling.
+3.2 Exact Memory Representation
+The resolved–unresolved surrogate in (2) induces an exact discrete memory representation for the
+resolved dynamics.
+Proposition 1(Exact discrete memory representation).Under (2), the resolved dynamics admits the
+representation
+aℓ+1 =Ma ℓ +
+ℓ∑︂
+τ=1
+Kτaℓ−τ +ηℓ,(6)
+where
+Kτ =NQ τ−1P, η ℓ =NQ ℓξ0.(7)
+The proof is given in Appendix A.1.
+Equation (6) shows that memory arises from three factors: leakage from resolved to unresolved
+directions throughP , persistence within the unresolved subspace throughQ, and return flow to the
+resolved state throughN.
+Illustration: memory kernel in an MLP with ReLU activations.For the example introduced in
+Section 3.1, the abstract kernel takes the explicit form
+Kτ =NQ τ−1P= (r 1w12)(r2w22)τ−1(r2w21).(8)
+so the size of the memory kernel is controlled explicitly by the cross-couplings w12,w 21 and the
+unresolved gainr 2w22.
+4
+
+PAGE 5
+3.3 Short-Memory Closure and Lag Truncation
+We next quantify when the memory term in (6) is small enough to justify a short-memory closure.
+Define the total memory mass, the lag-Lm tail mass, and the short-memory ratio by
+M:=
+∑︂
+τ≥1
+∥Kτ∥,T(L m) :=
+∑︂
+τ>Lm
+∥Kτ∥,SMR := M
+m0
+.(9)
+We say that a short-memory closure holds onUwhenSMR≪1.
+Proposition 2(Short-memory bound).Under Assumptions 1–2,
+∥Kτ∥≤δ NδP (1−γ) τ−1,(10)
+and therefore
+M≤ δNδP
+γ ,T(L m)≤ δNδP
+γ (1−γ) Lm,SMR≤ δNδP
+γm0
+.(11)
+The proof is given in Appendix A.2. The bound shows that short-memory closure is promoted by
+unresolved contraction (γ large), weak resolved–unresolved coupling (δN,δP small), and sufficiently
+strong instantaneous transport on task-relevant resolved directions (m0 large). The tail bound also
+justifies lag truncation: retaining only a finite number of past coarse states incurs an error that decays
+geometrically with the retained lag.
+Illustration: short memory in an MLP with ReLU activations.For the example introduced in
+Section 3.1, the memory kernel satisfies
+|Kτ|=|r 1w12||r 2w22|τ−1|r2w21|.(12)
+Thus, memory decays geometrically whenever the unresolved gain satisfies
+|r2w22|<1.(13)
+Moreover, the total memory mass is
+∑︂
+τ≥1
+|Kτ|= |r1w12||r 2w21|
+1−|r 2w22| ,(14)
+provided|r2w22|<1 . Therefore, short-memory closure is promoted by a contractive unresolved
+coordinate, small cross-couplingsw12,w 21, and sufficiently strong resolved transport throughr1w11.
+3.4 Geometry-Preserving Short-Memory Dynamics
+The short-memory condition controls the size of non-Markovian corrections, but it does not by
+itself ensure that the resolved state preserves task-relevant information. We therefore combine short-
+memory closure with an additional geometry-preservation condition on the task-relevant resolved
+subspace.
+LetU⊂R da denote the task-relevant resolved subspace. We assume that the instantaneous resolved
+map is approximately isometric onU:
+(1−ϵ)I U⪯(M| U)⊤(M|U)⪯(1 +ϵ)I U.(15)
+Equivalently, for anyu,v∈U,
+(1−ϵ)∥u−v∥ 2≤∥M(u−v)∥ 2≤(1 +ϵ)∥u−v∥ 2.(16)
+Combining this condition with the short-memory bound yields a resolved-isometric short-memory
+regime. In this regime, task-relevant resolved directions are transported with limited distortion,
+while unresolved directions contribute only rapidly decaying memory corrections. More explicitly,
+subtracting the instantaneous resolved update from the exact memory representation gives
+∥aℓ+1−Ma ℓ∥≤
+ℓ∑︂
+τ=1
+∥Kτ∥∥aℓ−τ∥+∥η ℓ∥.(17)
+5
+
+PAGE 6
+Using the total memory massM= ∑︁
+τ≥1∥Kτ∥andη ℓ =NQ ℓξ0, we obtain
+∥aℓ+1−Ma ℓ∥≤Mmax
+0≤s≤ℓ−1
+∥as∥+∥N∥∥Q ℓξ0∥.(18)
+Thus, a useful coarse state is one for which unresolved variables contract, resolved–unresolved
+couplings are weak, and the resolved map transports task-relevant directions without excessive
+distortion. This condition should not be interpreted as requiring global dynamical isometry of the
+full representation map. Rather, the relevant notion is resolved and task-dependent: the directions
+retained in the coarse state should preserve task-relevant geometry, while unresolved directions may
+contract and only weakly feed back into the resolved dynamics. This connects short-memory closure
+to EoC- and dynamical-isometry-like ideas, but in a structured, coarse-grained form.
+3.5 Regularization Implications of Short-Memory Closure
+The short-memory bound also suggests a structured regularization bias. Since
+SMR≲ δNδP
+γm 0
+,(19)
+short-memory closure is favored by three factors: contraction of unresolved dynamics, weak resolved–
+unresolved coupling, and preservation of instantaneous transport on task-relevant resolved directions.
+Using the Jacobian-block interpretation of the local surrogate, these factors suggest a structured
+penalty of the form
+ΩSM =
+∑︂
+ℓ
+[︂
+λQ ΩQ(Qℓ) +λC
+(︁
+∥Nℓ∥2
+F +∥Pℓ∥2
+F
+)︁
++λG ΩG(Mℓ|U)
+]︂
+,(20)
+whereQℓ denotes the unresolved block, Nℓ andPℓ the cross-subspace couplings, and Mℓ|U the
+instantaneous resolved map on the task-relevant subspace. Here, ΩQ encourages contraction of
+unresolved directions, the coupling penalty suppresses memory transfer between resolved and
+unresolved variables, and ΩG preserves task-relevant resolved geometry, for example by encouraging
+(Mℓ|U)⊤(Mℓ|U)≈I U.(21)
+This perspective differs from indiscriminate contraction. Uniform shrinkage may reduce unresolved
+amplification, but it may also decrease the resolved gainm0 and thereby harm task-relevant transport.
+The reduced-dynamics view instead suggests a structured bias: contract unresolved directions and
+suppress cross-subspace feedback while preserving the resolved directions that carry task-relevant
+information.
+We do not introduce this structured penalty as a fully validated training objective in this paper. Rather,
+it is a theoretical implication of the short-memory bound, illustrating how coarse-grained reduced
+dynamics can suggest regularization principles aligned with closure.
+4 Numerical Evaluation
+4.1 Experimental Questions
+The theoretical framework in Section 3 suggests that a useful coarse state should support a short-
+memory closure of the layerwise representation dynamics. Our numerical evaluation asks whether
+this principle holds in trained neural networks, and whether the resulting closure behavior depends
+on the interaction between task structure and architectural bias.
+We focus on three experimental questions.
+Q1: Do low-dimensional coarse states support short-memory closure?We first test whether
+the evolution of selected coarse variables across depth can be approximated by a reduced model
+with a small number of lag terms. This evaluates whether the memory structure motivated by the
+Mori–Zwanzig perspective and derived in Section 3 is empirically useful for neural representations.
+6
+
+PAGE 7
+Q2: Is the best coarse state task- and architecture-dependent?We next ask whether the coarse
+variables that yield strong closure are universal, or whether they depend on the task and architecture.
+This directly tests our central claim that coarse-state selection should be treated as a reduced-dynamics
+problem rather than as a fixed choice of representation summary.
+Q3: Is closure quality distinct from predictive accuracy?Finally, we examine the relation
+between task accuracy and reduced-model closure quality. If closure were merely a proxy for task
+performance, then high-accuracy models would always exhibit high closure scores. Instead, we ask
+whether models with comparable accuracy can exhibit different closure behavior, indicating that
+closure captures dynamical regularity of the coarse state rather than predictive performance alone.
+4.2 Benchmarks and Evaluation Setup
+Synthetic 1D tasks.We evaluate three binary 1D tasks with distinct structural demands: Presence,
+Motif Parity, and Weighted Spectrum. Letx= (x 1,...,x T )denote an input sequence.
+Presence.A fixed motifmof lengthLis embedded in the sequence. With
+Cm(x) =
+T−L+1∑︂
+t=1
+1[xt:t+L−1 =m],
+the label isy=1[C m(x)≥1] . This task probes local motif detection. We use the stricter exact-motif
+variant and refer to it as Presence.
+Motif Parity.Using the same occurrence countC m(x), the label is
+y=C m(x) mod 2.
+This task requires aggregating multiple local events rather than detecting a single occurrence.
+Weighted Spectrum.Each sequence induces a scalar signal st∈{−1,+1} , and the label is defined by
+y=1
+[︄ T∑︂
+t=1
+wtst >0
+]︄
+,
+wherewt is a fixed position-dependent weight profile. This task probes distributed aggregation across
+the sequence.
+Architectures and stage probes.We evaluate MLP, 1D CNN, and GRU models, representing
+feedforward global mixing, local convolutional processing, and sequential recurrence. For each
+trained model, we extract dense post-activation stage representations and fit reduced models to the
+resulting coarse-state trajectories. We exclude pre-activation linear or convolutional outputs and
+logits to keep the stage comparison consistent. Full architecture and stage-probe definitions are given
+in Appendix B.2.
+Some candidate variables are class-aware, such as class-centroid projections, centroid margins, and
+local label purity. We use these variables as diagnostic coarse states for evaluating whether task-
+aligned representation summaries close the layerwise dynamics, rather than as fully unsupervised
+representation summaries.
+Empirical closure evaluation.The exact operators M,N,P,Q and memory kernelsKτ in Sec-
+tion 3 are latent quantities and are not directly observed in trained networks. We therefore evaluate
+a candidate coarse state by fitting empirical reduced models to its observed stage-wise trajectory.
+A Markovian model predictsaℓ+1 fromaℓ, whereas a delay-augmented model uses a short history
+(aℓ,aℓ−1,...,a ℓ−m). If a Markovian model or a model with only a few delays achieves high held-
+out prediction accuracy, we interpret the coarse state as supporting effective short-memory closure.
+Conversely,R 2 <0indicates closure failure.
+Coarse states and reduced-model fitting.For each trained model, we extract post-activation
+stage representations and construct a candidate bank of low-dimensional coarse variables. The bank
+includes sample-wise coordinates such as principal-component coordinates, representation norms,
+7
+
+PAGE 8
+Table 1: Aggregate test accuracy and closure outcomes for the main 1D tasks at T∈{64,144,256} .
+Each cell reports test accuracy followed by either the nontrivial closure scoreR2 or a closure outcome.
+FAILdenotes closure failure with R2 <0 , and TRIVdenotes a trivial closure. Detailed selected lags,
+subset sizes, and seed-level statistics are reported in Appendix C.
+Architecture TaskT= 64T= 144T= 256
+CNN
+Presence 0.997 / 1.00 0.988 / 1.00 0.962 / 1.00
+Motif Parity 1.000 / 0.76 1.000 / 0.74 1.000 / 0.72
+Weighted Spectrum 0.939 / 1.00 0.871 / 1.00 0.822 / 1.00
+GRU
+Presence 1.000 / FAIL0.519 / FAIL0.492 / 0.20
+Motif Parity 1.000 / TRIV1.000 / TRIV0.919 / TRIV
+Weighted Spectrum 0.976 / FAIL0.517 / FAIL0.499 / FAIL
+MLP
+Presence 0.580 / FAIL0.521 / 0.16 0.508 / 0.37
+Motif Parity 0.535 / TRIV0.503 / TRIV0.511 / TRIV
+Weighted Spectrum 0.963 / 0.11 0.907 / FAIL0.861 / FAIL
+class-centroid projections, and margin-like quantities, as well as stage-level geometric summaries
+such as separation ratios, local label purity, and graph-connectivity statistics. Each candidate subset
+defines a coarse stateaℓ =ϕ(h ℓ). We fit linear reduced models to its stage-wise evolution, comparing
+Markovian models that predictaℓ+1 fromaℓ with delay-augmented models that use a short history
+(aℓ,aℓ−1,...,a ℓ−m). We select the coarse-state subset and lag length that achieve the best held-out
+closure score. Full definitions of all coarse variables are provided in Appendix B.3.
+Metrics.We report test accuracy and the held-out closure score R2, which measures next-stage
+prediction accuracy for the fitted reduced dynamics (Appendix B.4). Runs withR2 <0 are treated as
+closure failures because they perform worse than a mean predictor. We also report the selected lag
+and subset size, which summarize the memory length and dimensionality required for closure.
+Runs classified as trivial closures are marked as TRIVand reported separately, because they typically
+correspond to degenerate low-dimensional closures rather than meaningful short-memory reduced
+descriptions.
+4.3 Short-Memory Closure Across Tasks and Architectures
+We first examine whether short-memory closure is governed by a single universal reduced description
+across tasks and architectures. Table 1 summarizes test accuracy and closure diagnostics for the main
+1D tasks at sequence lengthsT∈{64,144,256}.
+The results show that closure quality varies substantially across both task families and model classes.
+The same architecture can exhibit different closure behavior depending on the task, and different
+architectures can yield distinct closure quality on the same task. For example, CNN achieves strong
+closure on the Presence and Weighted Spectrum tasks across sequence lengths, whereas GRU and
+MLP show more task-dependent behavior. Motif Parity also exposes an important caveat: some
+high-R2 closures are trivial and should not be interpreted as meaningful reduced-state descriptions.
+These results support our central claim that coarse-state selection should be treated as a reduced-
+dynamics problem. A useful coarse variable is not merely a descriptive statistic, but one whose
+evolution closes well under the induced depth-wise dynamics. The table also shows that predictive
+accuracy and closure quality are related but distinct: high accuracy does not necessarily imply strong
+nontrivial closure, and closure failures can occur even in high-accuracy regimes.
+4.4 Closure Quality Is Related to, but Not Determined by, Accuracy
+Figure 1 visualizes the joint distribution of predictive accuracy and closure quality for closure-success
+cases. The scatter shows a one-sided relationship: very high closure ( R2 >0.9 ) appears only
+8
+
+PAGE 9
+0.5 0.6 0.7 0.8 0.9 1.0
+T est accuracy
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0Closure score (R2)
+T = 64
+0.5 0.6 0.7 0.8 0.9 1.0
+T est accuracy
+T = 144
+0.5 0.6 0.7 0.8 0.9 1.0
+T est accuracy
+T = 256
+Closure distribution by sequence length (success region: 0 ≤ R² ≤ 1; dashed line at R2 = 0.9)
+Color = model, marker = task family
+CNN GRU MLP presence motif parity weighted
+Figure 1: Accuracy–closure scatter across sequence lengths, task families, and architectures. Each
+point is one trained model instance. The x-axis shows test accuracy and the y-axis shows closure
+R2 for the selected coarse state. We show closure-success cases with 0≤R 2≤1 ; colors indicate
+architectures, markers indicate task families, and the dashed line marksR 2 = 0.9.
+above moderate accuracy, but high accuracy does not guarantee high closure. Runs with comparable
+accuracy can exhibit substantially different closure scores.
+The figure also reveals architecture- and task-dependent structure that is difficult to read from
+aggregate tables alone. CNN and GRU runs form relatively concentrated regions, whereas MLP
+shows broader task-dependent dispersion. Thus, closure quality is not a trivial proxy for accuracy, but
+reflects effective representation dynamics induced by the task, architecture, and selected coarse state.
+5 Conclusion
+We introduced a coarse-grained Mori–Zwanzig perspective on layerwise neural representation dy-
+namics. Rather than treating representation summaries as standalone diagnostics, we proposed to
+view coarse variables as candidate reduced states whose quality is determined by how well they close
+the depth-wise dynamics. Through a resolved–unresolved decomposition, this perspective naturally
+yields effective memory terms and motivates short-memory closure as a criterion for evaluating
+coarse states.
+Our analysis shows that short-memory closure is favored when unresolved directions contract,
+resolved–unresolved couplings are weak, and task-relevant resolved directions are transported with
+limited distortion. This provides a reduced-dynamics interpretation of geometry-preserving condi-
+tions: the relevant requirement is not global dynamical isometry of the full representation map, but
+approximate preservation of task-relevant resolved directions together with contraction of unresolved
+degrees of freedom. Empirically, we found that the best coarse state is not universal. Across synthetic
+tasks and architectures, closure quality depends on both task structure and architectural bias, and
+cannot be reduced to predictive accuracy alone.
+Together, these results suggest that coarse-grained reduced dynamics offers a principled lens for
+comparing neural representations and diagnosing architecture–task matching. Several directions
+remain open. A more rigorous mathematical foundation is needed for nonlinear, layer-dependent
+neural networks beyond the local surrogate considered here. It is also important to test whether the
+observed task–architecture dependence extends to larger datasets and modern architectures, and to
+directly evaluate the proposed links to geometry-preserving conditions and structured regularization.
+Finally, future work should move beyond hand-designed candidate banks toward automatic discovery
+of coarse variables that optimize closure.
+References
+Bo Chang, Lili Meng, Eldad Haber, Lars Ruthotto, David Begert, and Elliot Holtham. Reversible
+architectures for arbitrarily deep residual neural networks. InProceedings of the Thirty-Second
+AAAI Conference on Artificial Intelligence, pages 2811–2818, 2018.
+9
+
+PAGE 10
+Ricky T. Q. Chen, Yulia Rubanova, Jesse Bettencourt, and David K. Duvenaud. Neural ordinary
+differential equations. InAdvances in Neural Information Processing Systems, volume 31, 2018.
+Eldad Haber and Lars Ruthotto. Stable architectures for deep neural networks.Inverse Problems, 34
+(1):014004, 2017. doi: 10.1088/1361-6420/aa9a90.
+Simon Kornblith, Mohammad Norouzi, Honglak Lee, and Geoffrey Hinton. Similarity of neural
+network representations revisited. InProceedings of the 36th International Conference on Machine
+Learning, volume 97 ofProceedings of Machine Learning Research, pages 3519–3529, 2019.
+Yen Ting Lin, Yifeng Tian, Daniel Livescu, and Marian Anghel. Data-driven learning for the mori–
+zwanzig formalism: A generalization of the koopman learning framework.SIAM Journal on
+Applied Dynamical Systems, 20(4):2558–2601, 2021. doi: 10.1137/21M1401759.
+Chao Ma, Jianchun Wang, and Weinan E. Model reduction with memory and the machine learning
+of dynamical systems.Communications in Computational Physics, 25(4):947–962, 2019. doi:
+10.4208/CICP.OA-2018-0269.
+Hazime Mori. Transport, collective motion, and brownian motion.Progress of Theoretical Physics,
+33(3):423–455, 1965. doi: 10.1143/PTP.33.423.
+Vardan Papyan, X. Y . Han, and David L. Donoho. Prevalence of neural collapse during the terminal
+phase of deep learning training.Proceedings of the National Academy of Sciences, 117(40):
+24652–24663, 2020. doi: 10.1073/pnas.2015509117.
+Jeffrey Pennington, Samuel S. Schoenholz, and Surya Ganguli. Resurrecting the sigmoid in deep
+learning through dynamical isometry: Theory and practice. InAdvances in Neural Information
+Processing Systems, volume 30, 2017.
+Maithra Raghu, Justin Gilmer, Jason Yosinski, and Jascha Sohl-Dickstein. SVCCA: Singular vector
+canonical correlation analysis for deep learning dynamics and interpretability. InAdvances in
+Neural Information Processing Systems, volume 30, pages 6076–6085, 2017.
+Samuel S. Schoenholz, Justin Gilmer, Surya Ganguli, and Jascha Sohl-Dickstein. Deep information
+propagation. InInternational Conference on Learning Representations, 2017.
+Daniele Venturi and Xiantao Li. The mori–zwanzig formulation of deep learning.Research in the
+Mathematical Sciences, 10(23), 2023. doi: 10.1007/s40687-023-00390-2.
+Robert Zwanzig. Memory effects in irreversible thermodynamics.Physical Review, 124(4):983–992,
+1961. doi: 10.1103/PhysRev.124.983.
+Robert Zwanzig.Nonequilibrium Statistical Mechanics. Oxford University Press, New York, 2001.
+ISBN 9780195140187.
+10
+
+PAGE 11
+A Additional Derivations
+A.1 Proof of the Exact Memory Representation
+We prove Proposition 1. Iterating the unresolved dynamics in (2) gives
+ξℓ =Q ℓξ0 +
+ℓ−1∑︂
+s=0
+Qℓ−1−sPas.(22)
+Substituting (22) into the resolved equationaℓ+1 =Ma ℓ +Nξ ℓ yields
+aℓ+1 =Ma ℓ +NQ ℓξ0 +
+ℓ−1∑︂
+s=0
+NQℓ−1−sPas.(23)
+Changing variables fromstoτ=ℓ−sgives
+aℓ+1 =Ma ℓ +
+ℓ∑︂
+τ=1
+NQτ−1Paℓ−τ +NQ ℓξ0.(24)
+Therefore,
+Kτ =NQ τ−1P, η ℓ =NQ ℓξ0,(25)
+which proves (6)–(7).
+A.2 Short-Memory and Lag-Truncation Bounds
+We first record the proof of the short-memory bound used in the main text. By the definition of the
+memory kernel,
+Kτ =NQ τ−1P.(26)
+Using submultiplicativity of the operator norm,
+∥Kτ∥=∥NQ τ−1P∥≤∥N∥∥Q∥ τ−1∥P∥.(27)
+Under Assumptions 1 and 2,
+∥N∥≤δ N,∥P∥≤δ P,∥Q∥≤1−γ.(28)
+Thus,
+∥Kτ∥≤δ NδP (1−γ) τ−1.(29)
+Summing the geometric series gives
+M=
+∑︂
+τ≥1
+∥Kτ∥≤ δNδP
+γ .(30)
+Similarly, the lag-Lm tail mass satisfies
+T(Lm) =
+∑︂
+τ>Lm
+∥Kτ∥≤ δNδP
+γ (1−γ) Lm.(31)
+Dividing (30) bym 0 =σ min(M|U)gives
+SMR =M
+m0
+≤ δNδP
+γm0
+.(32)
+Effective memory length.For a tolerance εtail >0 , define the effective memory lengthLeff(εtail)
+as the smallest integerLm such that
+T(Lm)≤ε tailm0.(33)
+Using (31), a sufficient condition is
+δNδP
+γ (1−γ) Lm≤ε tailm0.(34)
+Equivalently,
+Lm≥
+⎡
+⎢⎢⎢
+log
+(︂
+δNδP
+εtailm0γ
+)︂
+−log(1−γ)
+⎤
+⎥⎥⎥
+.(35)
+This shows explicitly that the required lag decreases when the unresolved subspace contracts more
+strongly, and increases when cross-subspace coupling becomes larger.
+11
+
+PAGE 12
+A.3 Error of the Markov Approximation
+Consider the Markovian approximation obtained by dropping all memory terms, aℓ+1 ≈Ma ℓ.
+Assume that∥as∥≤A max for0≤s≤ℓ. From (6),
+aℓ+1−Ma ℓ =
+ℓ∑︂
+τ=1
+Kτaℓ−τ +ηℓ.(36)
+Applying the triangle inequality gives
+∥aℓ+1−Ma ℓ∥≤
+ℓ∑︂
+τ=1
+∥Kτ∥∥aℓ−τ∥+∥η ℓ∥.(37)
+Using∥aℓ−τ∥≤A max andηℓ =NQ ℓξ0, we obtain
+∥aℓ+1−Ma ℓ∥≤A max
+ℓ∑︂
+τ=1
+∥Kτ∥+∥N∥∥Q∥ ℓ∥ξ0∥.(38)
+Under Assumptions 1 and 2,
+∥aℓ+1−Ma ℓ∥≤A max
+δNδP
+γ +δN(1−γ) ℓ∥ξ0∥.(39)
+Thus, the Markovian approximation is accurate when the total memory mass is small and the initial
+unresolved contribution has decayed.
+A.4 Informal Link to Resolved Near-Isometry
+We give an informal argument connecting short-memory closure to geometry-preserving transport
+on task-relevant resolved directions. This argument is intended as a structural implication of the
+resolved–unresolved view, rather than as a complete theorem for arbitrary nonlinear networks.
+LetJ denote the local Jacobian of the layer map, and let Π and Π⊥ be projections onto resolved and
+unresolved subspaces, respectively. Define the Jacobian blocks
+A:= ΠJΠ, B:= ΠJΠ ⊥, C:= Π ⊥JΠ, D:= Π ⊥JΠ⊥.(40)
+LetUbe a task-relevant subspace of the resolved space, and define
+m0 :=σ min(A|U).(41)
+Assume that the induced memory kernel
+Kτ =BD τ−1C(42)
+has small total mass relative to the resolved gain:
+∑︂
+τ≥1
+∥Kτ∥≤ε memm0, ε mem≪1.(43)
+Also assume that over a depth horizonT , the effective coarse propagatorGT preserves task-relevant
+resolved directions up to constantsc−,c + >0:
+c−∥u∥≤∥G Tu∥≤c +∥u∥,∀u∈U.(44)
+Under the small-memory condition, the full coarse propagator is close to the propagator generated by
+the resolved blockA|U . Therefore, task-preserving transport over depth suggests that the singular
+values ofA|U should remain near one. Informally,
+σmin(A|U)≳c 1/T
+− −O(ε mem),∥A| U∥≲c 1/T
++ +O(ε mem).(45)
+Whenc− andc + areO(1)over depth, this yields
+σi(A|U) = 1 +O(1/T) +O(ε mem).(46)
+12
+
+PAGE 13
+Thus, a short-memory regime that preserves task-relevant geometry is expected to exhibit approximate
+near-isometry on the resolved task-relevant subspace.
+Equivalently, the resolved average gain
+χres := 1
+dimU Tr
+(︁
+(A|U)⊤(A|U)
+)︁
+(47)
+satisfies the informal scaling
+χres = 1 +O(1/T) +O(ε mem),(48)
+which can be interpreted as an EoC-like condition restricted to the task-relevant resolved subspace.
+A.5 Geometry-Preserving Short-Memory Dynamics
+We now relate the short-memory regime above to geometry-preserving transport on the task-relevant
+resolved subspace. The key point is that a good coarse reduced description does not require global
+dynamical isometry of the full representation map; rather, it is sufficient that the task-relevant resolved
+subspace is approximately geometry-preserving, while the unresolved subspace remains contractive
+and weakly coupled to the resolved one.
+Jacobian interpretation.Let Jℓ be the local Jacobian of the layer map at layerℓ, and let Π,Π⊥
+denote the projections onto the resolved and unresolved subspaces, respectively. Then, at the local
+linear level, the blocks in (2) admit the interpretation
+M≈ΠJ ℓΠ, N≈ΠJ ℓΠ⊥, P≈Π ⊥JℓΠ, Q≈Π ⊥JℓΠ⊥.(49)
+Accordingly, short memory is promoted when the unresolved block is contractive and the cross-block
+couplings are weak, since the memory kernel
+Kτ =NQ τ−1P(50)
+then decays rapidly withτ.
+Assumption 3(Resolved near-isometry).For someε∈[0,1),
+(1−ε)I U⪯(M| U)⊤(M|U)⪯(1 +ε)I U.(51)
+Resolved near-isometry.Assumption 3 states that the task-relevant resolved dynamics is near-
+isometric onU. Equivalently,
+⃦⃦(M|U)⊤(M|U)−I U
+⃦⃦
+op≤ε.(52)
+Under (51), for anyu,v∈U,
+(1−ε)∥u−v∥ 2≤∥M(u−v)∥ 2≤(1 +ε)∥u−v∥ 2.(53)
+Thus, geometry preservation is required only on the task-relevant resolved subspace, not on the full
+state space.
+Corollary 1(Resolved-isometric short-memory regime).Under Assumptions 1, 2, and 3, the resolved
+dynamics is both approximately Markovian and approximately geometry-preserving on U. More
+precisely, for anyu,v∈U,(53)holds, and moreover
+∥aℓ+1−Ma ℓ∥≤
+ℓ∑︂
+τ=1
+∥Kτ∥∥aℓ−τ∥+∥η ℓ∥,(54)
+so that
+∥aℓ+1−Ma ℓ∥≤Mmax
+0≤s≤ℓ−1
+∥as∥+∥N∥
+⃦⃦Qℓξ0
+⃦⃦.(55)
+Therefore, ifSMR≪1 andε≪1 , then the resolved evolution is simultaneously close to a Markovian
+update and close to an isometric transport on the task-relevant subspace.
+Proof. The distance-preservation bound (53) follows directly from (51). For (54), subtractMaℓ from
+the exact memory representation (6) and apply the triangle inequality. Then (55) follows from the
+definition ofMandη ℓ =NQ ℓξ0.
+13
+
+PAGE 14
+Connection to EoC-like conditions.To summarize the average gain on the resolved subspace,
+define
+χres := 1
+dim(U) Tr
+(︁
+(M|U)⊤(M|U)
+)︁
+,(56)
+and, for the unresolved subspace,
+χunres := 1
+dim(U⊥) Tr(Q⊤Q).(57)
+Hereχres measures the mean squared gain on the task-relevant resolved directions, while χunres
+measures the average gain in the unresolved block.
+We emphasize that χres≈1 alone is not sufficient for resolved near-isometry, since it does not
+control spectral spread. A sufficient condition is instead (52), which ensures that all singular values of
+M|U remain close to1. Hence the regime compatible with a good coarse reduced description is not
+global dynamical isometry, but astructured EoC-like regimein which (i) the task-relevant resolved
+subspace is near-isometric, (ii) the unresolved subspace is contractive (e.g., χunres <1 ), and (iii)
+the cross-block couplingsN,P are sufficiently weak that the induced memory kernel (50) decays
+rapidly.
+This viewpoint suggests that geometry preservation relevant to coarse reduced dynamics should be un-
+derstood as aresolved, task-relevantnotion, rather than as a global property of the full representation
+map.
+A.6 Short-Memory Closure and Regularization
+The short-memory bound in Section 3.3 suggests a corresponding bias for training dynamics. In
+particular, since
+SMR≲ δNδP
+γm 0
+,(58)
+a regime favorable to short-memory closure is promoted by (i) stronger contraction in the unresolved
+block, (ii) weaker resolved–unresolved coupling, and (iii) sufficiently strong instantaneous transport
+on the task-relevant resolved subspace.
+An idealized regularization target.Motivated by (58), an idealized objective would reduce the
+quantity
+BSM := δNδP
+γm 0
+,(59)
+or, equivalently, penalize large cross-subspace couplings and weak unresolved contraction while
+preserving resolved transport. Since
+∥Q∥≤1−γ,∥N∥≤δ N,∥P∥≤δ P, m 0 =σ min(M|U),
+this ideal target suggests three corresponding regularization directions:
+contract unresolved dynamics,reduce cross-block coupling,preserve resolved transport.
+(60)
+Jacobian-block surrogates.Using the Jacobian-block interpretation in (49), these directions can
+be translated into local penalties on the layer Jacobian. Let
+Mℓ := ΠJℓΠ, N ℓ := ΠJℓΠ⊥, P ℓ := Π⊥JℓΠ, Q ℓ := Π⊥JℓΠ⊥.(61)
+A natural structured regularizer is then
+ΩSM :=
+∑︂
+ℓ
+[︂
+λQ ΩQ(Qℓ) +λC
+(︁
+∥Nℓ∥2
+F +∥Pℓ∥2
+F
+)︁
++λG ΩG(Mℓ|U)
+]︂
+,(62)
+where ΩQ encourages contraction of the unresolved block and ΩG preserves task-relevant resolved
+geometry.
+One ideal but expensive choice is
+ΩQ(Qℓ) :=
+[︁
+∥Qℓ∥op−κ
+]︁2
++,0≤κ<1,(63)
+14
+
+PAGE 15
+which penalizes unresolved expansion beyond a contractive threshold. For geometry preservation on
+the resolved subspace, a natural choice is
+ΩG(Mℓ|U) :=
+⃦⃦(Mℓ|U)⊤(Mℓ|U)−I U
+⃦⃦2
+F,(64)
+which encourages near-isometry on the task-relevant resolved directions. Together with the coupling
+penalty on Nℓ andPℓ, this yields a regularization bias aligned with the structured short-memory
+regime discussed above.
+A simpler surrogate.In practice, operator-norm penalties and explicit resolved/unresolved projec-
+tions may be expensive or unavailable during training. A simpler surrogate is therefore
+˜︁ΩSM :=
+∑︂
+ℓ
+[︂
+˜λQ∥Qℓ∥2
+F + ˜λC
+(︁
+∥Nℓ∥2
+F +∥Pℓ∥2
+F
+)︁
++ ˜λG
+⃦⃦(Mℓ|U)⊤(Mℓ|U)−I U
+⃦⃦2
+F
+]︂
+,(65)
+or, when the resolved subspace is represented by the selected coarse state, the analogous penalty
+defined directly on the coarse-state Jacobian. This surrogate does not guarantee the bound (58) but is
+consistent with its structural dependence on contraction, coupling, and resolved transport.
+Relation to standard regularization.This viewpoint helps reinterpret familiar regularization
+biases. Contractive or Jacobian-based penalties can be viewed as reducing unresolved amplification,
+while penalties that suppress off-subspace interactions are consistent with reducing effective memory
+transfer between resolved and unresolved variables. Conversely, excessive uniform shrinkage may
+also reducem0, thereby harming task-relevant resolved transport. From the present perspective, the
+goal is not indiscriminate contraction, but astructuredbias that contracts unresolved directions while
+preserving the task-relevant resolved ones.
+Scope.We do not introduce (62) or (65) as a fully validated training objective in the present
+paper. Rather, these expressions serve as theory-guided implications of the short-memory bound:
+they illustrate how reduced-dynamics analysis can suggest regularization principles aligned with
+coarse-state closure. A full empirical evaluation of such regularizers is left for future work.
+B Experimental and Implementation Details
+This appendix describes the architecture and stage-probe definitions used in the post-activation
+analysis. These details are provided for reproducibility; the architectural choices themselves are not
+intended as a contribution of the paper. We consider three backbone architectures: an MLP, a 1D
+CNN, and a GRU. For each architecture, we distinguish between the computational layers of the
+network and the stage points used in the coarse-grained analysis. Throughout, the clean analysis uses
+post-activation stage points and excludes pre-activation tensors such as raw affine or convolutional
+outputs and logits.
+Notation.Let x∈{1,...,V} T be an input token sequence of lengthT , and letE(·) denote the
+embedding map. We writepfor the output probability vector andz out for the logits.
+B.1 Architectures
+MLP.The MLP embeds the token sequence, flattens the embedding, and applies two hidden affine
+blocks:
+e=E(x)∈R T×d emb,(66)
+u= vec(e),(67)
+a(1) =ϕ(W (1)u+b (1)),(68)
+d(1) = Dropout(a(1)),(69)
+a(2) =ϕ(W (2)d(1) +b (2)),(70)
+d(2) = Dropout(a(2)),(71)
+zout =W (out)d(2) +b (out),(72)
+p= softmax(z out),(73)
+15
+
+PAGE 16
+whereϕ is the ReLU nonlinearity. For the stage analysis, we use probes from the embedding e,
+hidden activationsa(1),a (2), dropout outputsd(1),d (2), and output probabilitiesp. We exclude raw
+affine outputs and logits.
+1D CNN.The 1D CNN embeds the token sequence and applies a stack of convolutional blocks:
+e=E(x)∈R T×d emb,(74)
+h(0) = transpose(e)∈R demb×T,(75)
+a(ℓ) =ϕ(Conv1D (ℓ)(h(ℓ−1))),(76)
+h(ℓ) = Dropout(a(ℓ)), ℓ= 1,...,L,(77)
+g= GAP(h (L)),(78)
+zout =W (out)g+b (out),(79)
+p= softmax(z out),(80)
+where GAP denotes global average pooling over the temporal dimension. We use probes from the
+embeddinge, ReLU outputsa(ℓ), dropout outputsh(ℓ), pooled featureg, and probabilitiesp. Raw
+convolution outputs and logits are excluded.
+GRU.The GRU embeds the input sequence and propagates it through a recurrent stack:
+e=E(x)∈R T×d emb,(81)
+o1:T, h(1:L)
+final = GRU(e),(82)
+g= Dropout(h (L)
+final),(83)
+zout =W (out)g+b (out),(84)
+p= softmax(z out).(85)
+Hereot denotes the top-layer hidden state at time step t, and h(ℓ)
+final denotes the final hidden state
+of GRU layerℓ. We use probes from the embeddinge, temporal hidden states{ot}T
+t=1, layer-final
+hidden states{h (ℓ)
+final}L
+ℓ=1, final dropout outputg, and probabilitiesp. Logits are excluded.
+B.2 Dense Post-Activation Stage Construction
+The stage sequence used for reduced-model fitting is not identical to the list of architectural layers.
+Instead, for each eligible post-activation tensor, we apply deterministic probe maps that produce
+ordered stage points for the coarse-grained dynamics. These probes include pooled summaries and
+architecture-specific summaries such as temporal positions or hidden-state aggregates. As a result,
+the number of stage points can differ across architectures even when the model depth is matched.
+The model depth is matched at the architectural level, whereas the number of analysis stage points is
+induced by the post-activation probe construction. Therefore, our comparisons match architectures
+by model design rather than by forcing the same number of stage points.
+B.3 Candidate Coarse Variables
+Table 3 summarizes the candidate coarse variables used in the reduced-model analysis. Some
+variables are class-aware and are used as diagnostic coarse states rather than as label-free unsupervised
+summaries.
+B.4 Closure Score and Outcome Categories
+For each trained network and selected coarse-state subset, we fit the reduced dynamics on training-
+stage transitions and evaluate it on held-out transitions. In our implementation, the reduced model
+predicts the next-stage increment ∆aℓ =a ℓ+1−aℓ, from which we obtain the predicted next-stage
+coarse state ˆaℓ+1. Let yi denote the held-out target next-stage coarse state and let ˆyi denote the
+16
+
+PAGE 17
+Table 2: Architecture and stage-probe definitions used for the post-activation analysis. This table is
+provided for reproducibility. Model depth is matched across architectures, while the number of stage
+points differs because dense probes are extracted from architecture-specific post-activation tensors.
+Architecture Network structure Stage families used in analysis Notes
+MLP Embedding→ Linear→ ReLU→
+Dropout → Linear → ReLU →
+Dropout→Head→Probabilities
+Embedding probes, hidden-activation probes,
+dropout probes, probability probes
+Post-activation only;
+affine outputs and
+logits excluded
+1D CNN Embedding→ Conv1D→ ReLU→
+Dropout→···→ Conv1D→ ReLU
+→ Dropout→ Global average pooling
+→Head→Probabilities
+Embedding probes, ReLU-output probes,
+dropout-output probes, pooled-feature probes,
+probability probes
+Post-activation only;
+convolution outputs
+and logits excluded
+GRU Embedding→ stacked GRU→ final
+hidden states→ Dropout→ Head→
+Probabilities
+Embedding probes, temporal hidden-state
+probes, layer-final hidden-state probes, final-
+dropout probes, probability probes
+Post-activation only;
+logits excluded
+Table 3: Candidate coarse variables used in the reduced-model analysis.
+Variable Type Description
+PC coordinates Sample-wise Projection onto leading principal components of the representation.
+Norm Sample-wise Feature norm∥h ℓ(xi)∥.
+Class-centroid
+projection
+Sample-wise,
+class-aware
+Projection onto the class-separation direction.
+Centroid margin Sample-wise,
+class-aware
+Difference between the distance to the true-class centroid and the nearest
+alternative centroid.
+Local purity Sample-wise/stage-
+level, class-aware
+Label agreement among nearest neighbors in representation space.
+Separation ratio Stage-level,
+class-aware
+Ratio of between-class to within-class variation.
+Graphλ 2 Stage-level Connectivity statistic computed from the representation graph.
+corresponding predicted next-stage coarse state, where the indexi ranges over held-out samples and
+stage transitions. We define the held-out closure score as
+R2 = 1−
+∑︁
+i∥yi−ˆyi∥2
+2∑︁
+i∥yi−¯y∥2
+2
+,¯y= 1
+N
+∑︂
+i
+yi.
+Thus,R2 = 1 indicates perfect held-out next-stage prediction,R2 = 0 matches the performance of
+a mean predictor, andR2 <0 indicates that the fitted closure performs worse than predicting the
+held-out mean. We therefore mark runs withR 2 <0as FAIL.
+We mark a run as TRIVwhen the selected closure is classified as a trivial closure by our filtering
+criterion. In our experiments, these cases typically correspond to degenerate closures with zero
+selected lag and a one-dimensional selected subset, and are reported separately from nontrivial
+successful closures. We do not interpret TRIVcases as evidence for meaningful short-memory
+closure.
+B.5 Software Dependencies and Compute Resources
+All reported experiments were designed to be workstation-scale. No distributed training, cloud cluster,
+or specialized large-scale infrastructure was used. The reported 1D experiments consist of 3 tasks×
+3 architectures×3 sequence lengths×5 random seeds, giving 135 benchmark training runs in total.
+The subsequent closure analysis was run once for each trained model.
+We estimated wall-clock runtime from the timestamps of generated output files. The interval
+between successive benchmark summary.json files was approximately 1–1.5 minutes, and the
+closure-analysis outputs were generated at a rate of approximately 10–13 files per minute. These
+estimates correspond to roughly 2.3–3.4 workstation-hours for benchmark training and 0.17–0.23
+workstation-hours for closure analysis, excluding small overheads such as job startup, file I/O, and
+plotting.
+17
+
+PAGE 18
+Table 4: Approximate compute resources for the reported 1D experiments. Runtime is reported as
+wall-clock time on a single workstation and estimated from output file timestamps. The estimates
+exclude minor overheads such as job startup, file I/O, and plotting.
+Component Runs Time per run Total time
+Benchmark training 135 1–1.5 min 2.3–3.4 h
+Closure analysis 135 0.08–0.10 min 0.17–0.23 h
+Total reported 1D experiments 135 – 2.5–3.7 h
+C Additional Closure Diagnostics
+This appendix reports additional 1D closure diagnostics that were omitted from the main text for
+space. These tables expand Table 1 by reporting run-to-run variability for test accuracy and closure
+quality, together with the selected lag and selected coarse-state subset size.
+Statistical reporting.Unless otherwise stated, reported values are aggregated over five independent
+random seeds. Each run uses an independently initialized model and independently generated
+synthetic data under the same task specification. We report mean± one standard deviation across
+runs for test accuracy, held-out closureR2, selected lag, and selected coarse-state dimensionality.
+The reported variability therefore reflects run-to-run variation due to random initialization, stochastic
+optimization, and synthetic data generation.
+For categorical closure outcomes, FAILdenotes a held-out closure score with R2 <0 , and TRIV
+denotes a trivial closure according to the criterion described in Appendix B. For these categorical
+outcomes, we report the number of runs with the corresponding outcome out of the five random
+seeds. Motif Parity accuracy is taken from the corresponding training sweep summary file, while
+its closure diagnostics are taken from the motif-count/parity MZ summary file; both are matched by
+task, architecture, sequence length, and random seed.
+Table 5: Detailed closure diagnostics with run-to-run variability forCNN. Each cell reports test
+accuracy, held-out closureR 2, selected lag, and selected coarse-state dimensionality.
+TaskT= 64T= 144T= 256
+Presence
+Acc:0.997±0.002
+R2:1.00±0.00
+lag:4.0±0.0
+dim:1.8±0.8
+Acc:0.988±0.009
+R2:1.00±0.00
+lag:3.6±0.5
+dim:1.8±0.8
+Acc:0.962±0.006
+R2:1.00±0.00
+lag:4.0±0.0
+dim:1.2±0.4
+Motif Parity
+Acc:1.000±0.000
+R2:0.76±0.05
+lag:2.6±2.1
+dim:1.4±0.5
+Acc:1.000±0.000
+R2:0.74±0.05
+lag:4.4±0.9
+dim:1.4±0.5
+Acc:1.000±0.000
+R2:0.72±0.06
+lag:3.6±1.5
+dim:1.4±0.5
+Weighted Spectrum
+Acc:0.939±0.005
+R2:1.00±0.00
+lag:4.0±0.0
+dim:2.2±0.8
+Acc:0.871±0.009
+R2:1.00±0.00
+lag:4.0±0.0
+dim:2.2±0.4
+Acc:0.822±0.018
+R2:1.00±0.00
+lag:4.0±0.0
+dim:2.0±0.7
+18
+
+PAGE 19
+Table 6: Detailed closure diagnostics with run-to-run variability forGRU. Each cell reports test
+accuracy, held-out closureR 2, selected lag, and selected coarse-state dimensionality.
+TaskT= 64T= 144T= 256
+Presence
+Acc:1.000±0.001
+R2: FAIL(5/5)
+lag:1.4±1.5
+dim:2.0±1.0
+Acc:0.519±0.019
+R2:−0.54±1.08[F:3/5]
+lag:2.4±2.5
+dim:1.0±0.0
+Acc:0.492±0.009
+R2:0.20±0.18
+lag:3.8±1.3
+dim:1.2±0.4
+Motif Parity
+Acc:1.000±0.000
+R2: TRIV(5/5)
+lag:0.0±0.0
+dim:1.0±0.0
+Acc:1.000±0.001
+R2: TRIV(5/5)
+lag:0.0±0.0
+dim:1.0±0.0
+Acc:0.919±0.180
+R2: TRIV(5/5)
+lag:0.0±0.0
+dim:1.0±0.0
+Weighted Spectrum
+Acc:0.976±0.007
+R2:−0.51±0.75[F:4/5]
+lag:1.4±1.7
+dim:1.2±0.4
+Acc:0.517±0.009
+R2: FAIL(5/5)
+lag:2.8±2.6
+dim:1.0±0.0
+Acc:0.499±0.017
+R2:−67.92±144.09[F:4/5]
+lag:2.4±2.3
+dim:1.6±0.9
+Table 7: Detailed closure diagnostics with run-to-run variability forMLP. Each cell reports test
+accuracy, held-out closureR 2, selected lag, and selected coarse-state dimensionality.
+TaskT= 64T= 144T= 256
+Presence
+Acc:0.580±0.010
+R2:−0.01±0.64[F:2/5]
+lag:2.8±1.5
+dim:1.4±0.5
+Acc:0.521±0.006
+R2:0.16±0.32[F:2/5]
+lag:1.4±2.1
+dim:1.8±0.8
+Acc:0.508±0.016
+R2:0.37±0.44[F:2/5]
+lag:3.0±2.1
+dim:1.8±0.4
+Motif Parity
+Acc:0.535±0.014
+R2: TRIV(5/5)
+lag:0.0±0.0
+dim:1.0±0.0
+Acc:0.503±0.008
+R2: TRIV(5/5)
+lag:0.0±0.0
+dim:1.0±0.0
+Acc:0.511±0.013
+R2: TRIV(5/5)
+lag:0.0±0.0
+dim:1.0±0.0
+Weighted Spectrum
+Acc:0.963±0.007
+R2:0.11±0.05
+lag:0.0±0.0
+dim:1.4±0.5
+Acc:0.907±0.006
+R2:−14.12±24.69[F:4/5]
+lag:1.4±0.5
+dim:1.0±0.0
+Acc:0.861±0.016
+R2:−0.01±0.30[F:1/5]
+lag:0.0±0.0
+dim:1.4±0.9
+19
