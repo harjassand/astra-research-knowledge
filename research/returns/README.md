@@ -1,6 +1,10 @@
 # Supplied research returns
 
-**Latest lifecycle receipts, 7 November Brisbane:** all three same-warm assignments are POSTED ONCE/START CONFIRMED by dispatcher reports: P1166a3f5e, P2c77d3c5e and P34fbb961e. P1's exact2897-character programme body matched with its terminal newline restored. Its visible opening reviews current sources/candidate directions by full capability; no final scientific question was supplied at that start. There is no pending scientific handoff in the supplied receipt. Started endpoint-ownership treatments are not scientific results or observed across-return/policy effects; different tasks/history and no matched control remain. P2/P3 work is undisturbed as reported. Earlier pending snapshots are historical. Expanded activity/native access gap, Dots workspace distinction, Sol closed/held and all source/resource limits remain; Capital sends no prompt/recovery attempt.
+**Latest lifecycle receipts, 7 November Brisbane:** all three same-warm assignments are POSTED ONCE/START CONFIRMED by dispatcher reports: P1166a3f5e, P2c77d3c5e and P3031cfb9a. P3's exact3030-character continuation body matched; it preserves the explicitly unfinished owned state-control endpoint across a return. Its visible start examines fixed-physical-error local restoration, output guarantees and clock/reset/stored-state noise. No fixed-noise result or observed policy efficacy follows. P1/P2 work is undisturbed; no scientific handoff remains pending in the supplied receipt. Earlier pending snapshots are historical. Expanded activity/native access gap, Dots workspace distinction, Sol closed/held and all prior/new source/resource holds remain; Capital sends no prompt/recovery attempt.
+
+
+**P3 supplied assessment:** [local state restoration](2026-11-07-p3-local-state-stabilization/README.md) has NEW provisional consequence75–85, correctness assumed. Programme frontier75–85 and earlier science unchanged, ordinal/nonadditive/no90+ or economical fixed-noise device. The full structural question is resolved within a still-unfinished producer-chosen state-control programme; six new non-ZIP original-access holds remain binding.
+
 
 **P1 supplied assessment:** [state selection and retention](2026-11-07-p1-certified-state-selection/README.md) has NEW consequence70–80, correctness assumed. Connected acquired-component/programme frontier75–85 unchanged, ordinal/nonadditive/no90+ or commissioned-device claim. Six-port software/source-family guarantee differs from the finer-acquisition all-n addressed n-bit register.
 
@@ -74,6 +78,7 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| P3 local state restoration | [Every-supplied-circuit restoring process, complete initialization, precision/noise costs and auxiliary-robust bottleneck limits;18-member original](2026-11-07-p3-local-state-stabilization/README.md) |
 | P1 selected and retained collective states | [Write/handover/retention, complete33MB control record, source/hardware costs and conditional addressed-register family;26-member original](2026-11-07-p1-certified-state-selection/README.md) |
 | P2 rare-event chain | [Explicit kinetic Ising-model first-passage CDF/relative mean/entrance certificates, finite target renewal and full costs;14-member original](2026-11-07-p2-rare-event-chain/README.md) |
 | P3 operational thermal state | [Full Gibbs/hard-window randomized logical compiler, active-vs-tagged interface and model/hardware error separation;28-member original](2026-11-07-p3-operational-thermal-state/README.md) |

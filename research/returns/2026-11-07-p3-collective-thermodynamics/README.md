@@ -1,6 +1,8 @@
 # Acquired collective quantum thermodynamics
 
-**Latest lifecycle receipts, 7 November Brisbane:** all three same-warm assignments are POSTED ONCE/START CONFIRMED by dispatcher reports: P1166a3f5e, P2c77d3c5e and P34fbb961e. P1's exact2897-character programme body matched with its terminal newline restored. Its visible opening reviews current sources/candidate directions by full capability; no final scientific question was supplied at that start. There is no pending scientific handoff in the supplied receipt. Started endpoint-ownership treatments are not scientific results or observed across-return/policy effects; different tasks/history and no matched control remain. P2/P3 work is undisturbed as reported. Earlier pending snapshots are historical. Expanded activity/native access gap, Dots workspace distinction, Sol closed/held and all source/resource limits remain; Capital sends no prompt/recovery attempt.
+**Latest lifecycle receipts, 7 November Brisbane:** all three same-warm assignments are POSTED ONCE/START CONFIRMED by dispatcher reports: P1166a3f5e, P2c77d3c5e and P3031cfb9a. P3's exact3030-character continuation body matched; it preserves the explicitly unfinished owned state-control endpoint across a return. Its visible start examines fixed-physical-error local restoration, output guarantees and clock/reset/stored-state noise. No fixed-noise result or observed policy efficacy follows. P1/P2 work is undisturbed; no scientific handoff remains pending in the supplied receipt. Earlier pending snapshots are historical. Expanded activity/native access gap, Dots workspace distinction, Sol closed/held and all prior/new source/resource holds remain; Capital sends no prompt/recovery attempt.
+
+
 
 
 
@@ -71,3 +73,5 @@ The [finite-range equilibrium predecessor](../2026-11-07-p3-equilibrium-response
 Only the opening visible explanation was staged. Expanded activity remains in the predecessor chat after native Mac unlock failed; Capital made no unlock/recollection attempt. This availability gap is not a correctness-assumed impact penalty. All24 supplied original members and the original ZIP/capture are preserved byte-exact. Generated retrieval was not rebuilt under the resource limit.
 
 Later completed source: [operational thermal-state and outcome-window compiler](../2026-11-07-p3-operational-thermal-state/README.md), under a stronger labelled active gate/reset/randomness interface. Earlier acquired-model/finite-range results, precision costs and unavailable original holds remain unchanged.
+
+Later completed structural result: [local state restoration and precision separation](../2026-11-07-p3-local-state-stabilization/README.md), consuming a full supplied preparation procedure. Approximate history-state output does not inherit exact hard-window support or constant physical noise tolerance; earlier source/interface/cost guarantees remain unchanged.
