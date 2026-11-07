@@ -1,0 +1,37 @@
+# Version-bound hostile review of the consolidated thermal service theorem
+
+7 November 2026. Reviewed `../principal/THERMAL_SERVICE_THEOREM.md` through Section 14. Initial full review hash was ed10f5b769618dbb49c437844903f9835e3d51294ada3f894431c85bfce9080b; the final selected-port qualification was checked in actual bytes at SHA-256 **bb4e12ae7cc82ed68f94d4b162f6c9a85e08671fd88b805a510ee47058666b40**. No initial independent report was rewritten.
+
+## Verdict
+
+**PASS at the stated accepted DATA/code, exact finite-body Hamiltonian, Davies-form reservoir, full joint physicality/noise and quantum gateway premises.** No unresolved blocking mathematical error remains in thermal warm protection, correlated-state handoff, positive pulse repair or repeated gate/cooling induction. This is a substantive mathematical check, not an experiment, priority judgment or microscopic-bath validation.
+
+The separate stable-duality/non-Clifford specialization passes its actual compatible-cosheaf, primal/dual expansion and original code-gate imports. The final source correctly retains Li's selected-port premise: literal addressed CCZ products act on selected binary 1-components with other binary components/complementary logical coordinates initialized to computational zero. The physical U_xiS preserves the full code; generic full-code service concerns that actual logical unitary, not an unrestricted product-CCZ assertion on arbitrary complementary logical inputs.
+
+## Load-bearing checks
+
+1. **Hamiltonian/rates:** local integer-distance energy is realized from its actual local syndrome table and Walsh expansion, not replaced by check count or the native proof potential. Exact local Bohr components pair with adjoints; fixed downward and Boltzmann upward rates are compatible. Active density, full catalog multiplicities and diagonal Lamb shift are accounted for.
+2. **Physical P:** fixed minimum SAME-SYNDROME sector representatives define an actual projector independent of hidden logical/error history. They are stabilizer-minimal. Source confinement plus bounded support prevents radius-only exits; retained source/target corrections plus every full local system leg, including complete loss, remain below distance.
+3. **Joint perturbations:** affected-factor control with N_Z^*I=0 proves the relative V_s bound with C_s=exp(sD_Eq)-1. Complete norms retain bath and outside-system references. No bath-dimensional Kraus norm sum is substituted for cb norm.
+4. **Killing and moment:** compression is of the FULL physical generator, and it deletes positive outgoing gains from an observable commuting P. Actual interval-CPTP and CP/TNI/domain assumptions remain. Spectral scalar Jensen works for coherent subnormalized states. Generic coherent boundary/Duhamel comparison correctly costs a square root of boundary mass.
+5. **Arbitrary correlations:** canonical neutrality is a full-module identity. The killed map is id_L tensor K_GB; its LR deficit is a positive square-root sandwich with I-K^*I. Hence correlated initial L/G/B/R states are protected at the same moment margin. A uniform actual writer promise gives a composite channel theorem without KSW, joint product approximation or logical-independent bath.
+6. **Writing:** all-subset operator intensity, not marginal fault rates, proves sparse-support tails and moment bounds. Discarded writer branches remain CP and cost actual mass. A polynomial bare encoder is not granted bounded output cones. Actual noisy gateway validity and bare endpoint floors stay explicit.
+7. **Pulse:** all always-on thermal/Hamiltonian/Lamb-shift and bath terms enter the joint expansion. Partial/suffix cones and endpoint canonical support are bounded. Calibration errors proportional to pulse strength are correctly not suppressed just by shortening duration.
+8. **Repaired control-fault hypothesis:** the final formula uses independent Bernoulli flags, independent of input/bath/history, with arbitrary conditional local-patch/common-bath faulty channels. Correlated alternatives require reference-uniform all-subset expansion/intensity bounds. Merely specifying a per-location p would permit all O(N) gates failing together; that invalid inference was identified and repaired.
+9. **Positive pulse map:** low-order factorization holds on the entire promised logical/gauge module, not one test state. Q-compressing the actual channel on I_L/d defines a CP/TNI actual gauge–bath map. A direct triangle yields 2delta_g; a signed truncation is never propagated as a state.
+10. **Induction:** postenergy lies below the outer barrier BEFORE cooling; explicit fixed dwell gives the pre-moment coefficient. Filters, pulse surrogates and killed dwells all remain subnormalized CP/TNI, eliminating correlated postselection bias. Telescoping followed by one positive-loss comparison gives the displayed T/G exponents.
+11. **Resources:** interaction opportunities are distinguished from net heat. Unforced fixed-H single-reservoir signed system energy change is O(N), not O(NT). Control/noise work, refrigerator cost and microscopic reservoir operation remain actual missing engineering quantities. No matched advantage is inferred.
+
+## Stable duality and exact primary imports
+
+The component audit `auditor_stable_duality.md` checks invariant critical inclusions, finite p-triangular exact inverses, a physical CSS coordinate Clifford rather than chain homotopy alone, correctly H-swapped product ancillas and actual inverse-transpose/trace-dual charts. Product ancillas preserve relative distance up to the fixed size factor. Pure CSS types make cross-energy changes exactly zero. At small linear U, at most U fixed-support descents supply global low-energy repair and an energy-only basin.
+
+Primary GJ Sections 7–8 were inspected directly: Theorem 7.2.1, actual chart equation (7.6), and simultaneous actual-code/actual-coordinate-dual expansion are the relevant imports. Primary Li Definition 2.1/eq.(2.7), actual sheaf eqs.(3.31)–(3.33), coordinate Propositions 3.3–3.4, Section 3.4 and gate eqs.(3.225)–(3.227) were checked. Fixed local fields/stalks and primal/dual PRS expansion under monomial/Frobenius transports are explicit there. Li earns rates for all three blocks by cup subrank; there is no need to force all three profiles through GJ's separate sufficient dimension-counting rate formula.
+
+Use Li's physical X/Z convention; GJ's parameter theorem swaps labels without changing distance/soundness. Retain Li's actual original DATA cubic gate, extended by identity on memory product ancillas. Omit optional repetition unless a new energy transfer is supplied. No physical stable-duality circuit is required during thermal service.
+
+## Binding scope
+
+The nominal exact Davies-form Markovian reservoir is distinct from the separately retained weak common bath. No exact microscopic exponential-time weak-coupling derivation is proved and no N1694 hardware/locality claim is transferred. Bare input/output floors, actual noisy gateway conditions, programme/control contract and total resource bill remain. CNOT/CCZ service is not a complete universal gate set.
+
+Known thermal qLDPC Gibbs samplers, measurement-free correction, self-correcting gate proposals and 2D autonomous universal computation are substantive prior art. This review accepts the derived theorem at its explicit scope; it does not establish historical firstness, useful thresholds, favorable cooling/work, an experimental device or civilization-scale advantage.

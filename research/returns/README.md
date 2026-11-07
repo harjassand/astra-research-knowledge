@@ -1,5 +1,8 @@
 # Supplied research returns
 
+**New thermal-family source:** [finite thermal collisions and warm protected service](2026-11-07-physical-cooling-thermal-service/README.md), with the complete original, readable proofs, exact-hash internal PASS reviews, inherited restricted transfers and open universal-control/resource gates. This is a distinct powered contract; earlier microscopic memory/Gibbs/autonomous-correction results retain their scopes.
+
+
 **Latest lifecycle and availability, 7 November Brisbane:** P3's selected sampling-state operation is assessed at NEW provisional correctness-assumed **70–80**, prior family/frontier **75–85** unchanged, ordinal/nonadditive/no90+; the broader programme remains UNFINISHED. Exact2191-character P3_AFTER_SAMPLING_STATE_CONTROL_20261107.txt/SHA256d888490744a812f1d4bf861ed29624aa040102e81879be3325f840e70b5b7bcf was POSTED ONCE in the same normal-web Pro, native USER-MESSAGE8a187aa5-3a8c-46a9-9fa2-1a924d1d369a, full visible body matched. Initial response will assess operations enlarging controllable physical states with source/noise/holding costs. Specific research action/final question is not yet visible: task-specific START remains UNCONFIRMED. P1/P2 work remains undisturbed; diagnostic prompts were not sent and the design is unstarted/not queued. Full original/proofs/actual prompt-response/expanded visible activity/prior capture available. All eighteen ZIP/N236/inherited source/Sol/Dots/team/resource holds retained. Capital sends no scientific prompt or recovery.
 
 
@@ -115,6 +118,7 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| Finite cooling and warm quantum service | [Actual finite collisions, coherent-bath closure, private thermal reserve, restricted ports and paid powered implementation](2026-11-07-physical-cooling-thermal-service/README.md) |
 | P3 sampling/state control | [Fresh-observation physical commands, complete output/reference, repeated-output independence and paid finite costs; 21-file original](2026-11-07-p3-sampling-state-control/README.md) |
 | P1 hidden phase complexity | [Exact observation equivalence, complete robust census, rational addressed phases and constrained NP-complete family; six-member original](2026-11-07-p1-hidden-phase-complexity/README.md) |
 | P2 thermal local-response horizon | [Local finite-temperature isospectral construction, matching information/recovery cost, full12-member original and activity](2026-11-07-p2-thermal-local-response-horizon/README.md) |
