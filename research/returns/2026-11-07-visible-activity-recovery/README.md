@@ -1,6 +1,7 @@
 # Recovered user-visible activity: ten existing returns
 
-**Latest lifecycle and availability, 7 November Brisbane:** P3 ce8eed3e completed source-driven sampling/state control within its retained, unfinished full programme. The standalone 21-file original, complete report/proofs and actual prompt/chat response are available. No new coordinator score or successor receipt was supplied. Opening captured; expanded visible activity awaits staging. P1 4ea7de89 is posted with initial response only, task-specific START unconfirmed; P2 24c10ee2 remains undisturbed. All eighteen ZIP holds remain, plus the newly reported non-ZIP N236 calibration-original 404. Prior scores and Sol/Dots/team/resource boundaries remain unchanged. Capital sends no scientific prompt or recovery.
+**Latest lifecycle and availability, 7 November Brisbane:** P3 ce8eed3e completed source-driven sampling/state control within its retained, unfinished full programme. The standalone 21-file original, complete report/proofs, exact prompt/chat response, expanded visible activity and prior capture are staged. No new coordinator score or successor receipt was supplied. P1 4ea7de89 now has dispatcher-confirmed task-specific activity on controlled experiments/reusable nonlinear prediction, observability, stable Hankel factorizations and finite causal memory; no final question or result inferred. P2 24c10ee2 remains undisturbed. All eighteen ZIP holds remain, plus the newly reported non-ZIP N236 calibration-original404. Prior scores and Sol/Dots/team/resource boundaries remain unchanged. Capital sends no scientific prompt or recovery.
+
 
 
 
