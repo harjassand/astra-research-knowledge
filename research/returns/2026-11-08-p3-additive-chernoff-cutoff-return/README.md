@@ -1,5 +1,8 @@
 # P3 additive phase: Chernoff construction and cutoff boundaries
 
+**Warm successor completed:** The [complete available98e return](../2026-11-08-p3-additive-after-chernoff-98e-return/README.md) has arrived; coordinator assessment is pending. Earlier active/collection-pending statements below are dated receipts. Untyped Library links and reported source holds remain; use the [live ledger](../COORDINATION_CURRENT_20261108.json).
+
+
 **Coordinator assessed: NEW provisional correctness-assumed60–70. The full unassisted quantum-capacity phase remains OPEN:0.413<x_*<=.5. No new positive or zero region is established; x=.45 remains UNKNOWN.** Prior75–85 capital and family90–94 remain unchanged/nonadditive; no95 claim.
 
 Read the [unchanged complete37,198-byte return](P3_ADDITIVE_CHERNOFF_CUTOFF_20261108_RETURN.txt), [full root assessment](ROOT_CHERNOFF_CUTOFF_SCOPE_AND_WARM_RELEASE.txt), [exact warm question](P3_ADDITIVE_PHASE_AFTER_CHERNOFF_20261108.txt) and [metadata](SOURCES.json). Root read/digest-matched the exact prompt, full response and entire available activity. Capital retained the original once without scientific replay.
