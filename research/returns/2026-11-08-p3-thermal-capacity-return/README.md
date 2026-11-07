@@ -1,6 +1,6 @@
 # P3 thermal-capacity return: finite witnesses and paid conversion
 
-**Current P2 lifecycle update:** P2 has a different [plain-model quantumness allocation](../2026-11-08-p2-plain-lwe-quantumness-allocation/README.md); POSTED ONCE1fbb5b53 / task-specific ACTIVE. Prior hydrodynamic idle/stop statements are history; P1/P3 work is preserved.
+**Live coordination:** Read the [current assignment ledger](../COORDINATION_CURRENT_20261108.json) for current role/activity and collection status. The scientific claims and dated post receipts on this page retain their recorded scope.
 
 
 Root assigns provisional correctness-assumed **60–70** to the finite non-Gaussian positive family, reference-safe code/witness compiler and critical-curve organisation. **The full original thermal zero-versus-positive phase remains UNRESOLVED.** Standard Gaussian/antidegradability/continuity/Klesse/composition machinery keeps credit. This is not90/95 or an addition to the programme90–94 frontier.
