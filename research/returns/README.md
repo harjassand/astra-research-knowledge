@@ -168,6 +168,7 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| P2 multimode Gaussian-cost complete available return | [Exact prompt, full response/activity; attribution and held-source gaps retained; coordinator assessment pending](2026-11-08-p2-multimode-gaussian-cost-return/README.md) |
 | P3 additive-capacity complete available return | [Assessed75–85: finite-energy positive region beyond.413 and exact purity law; full threshold OPEN; ZIP held](2026-11-08-p3-additive-capacity-return/README.md) |
 | P2 multimode Gaussian entanglement-cost allocation | [Exact prompt and active receipt; universal identity is the question, not a new result](2026-11-08-p2-multimode-gaussian-entanglement-cost-allocation/README.md) |
 | P2 plainLWE completed text | [Composition/quantifier diagnostics25–35; full LWE-only protocol unconstructed; scientific stop/reselection](2026-11-08-p2-plain-lwe-return/README.md) |
