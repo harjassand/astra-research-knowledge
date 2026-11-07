@@ -1,6 +1,6 @@
 # P2 nonlinear hierarchy and finite-cutoff certificates
 
-**Later different allocation:** The fixed-strength route remains stopped/full profiles unresolved. P2 has a [new plain-model LWE-only quantumness question](../2026-11-08-p2-plain-lwe-quantumness-allocation/README.md). Its actual lifecycle is P2_PLAIN_LWE_QUANTUMNESS_FINAL_ROOT_RELEASED_NOT_SCIENTIST_POSTED. Earlier idle statements below are dated receipts; use the live ledger for current work.
+**Later different allocation:** The fixed-strength route remains stopped/full profiles unresolved. P2 has a [new plain-model LWE-only quantumness question](../2026-11-08-p2-plain-lwe-quantumness-allocation/README.md). Its actual lifecycle is POSTED ONCE1fbb5b53 / task-specific ACTIVE. Earlier idle statements below are dated receipts; use the live ledger for current work.
 
 
 Root assigns provisional correctness-assumed **35–45** to an exact quartic-Gibbs/Hermite nonlinear hierarchy, supplied-cutoff residual certificates, arbitrarily slow observables above every fixed degree, a fixed-clock mesoscopic one-block bound and a core-versus-moment logical counterexample. **Full fixed-strength microscopic sound/heat profiles, exponents, amplitudes and uniform errors remain UNRESOLVED.** Classical polynomial/Galerkin/Duhamel/conservation/martingale machinery receives credit. FullB90–94 is unchanged/nonadditive.

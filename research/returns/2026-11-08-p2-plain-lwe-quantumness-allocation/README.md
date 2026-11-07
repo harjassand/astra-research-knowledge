@@ -1,6 +1,8 @@
 # P2 plain-model single-round quantumness: new allocation
 
-ROOT RELEASED / NOT YET SCIENTIST-POSTED. Expected2168-byte minusLF is not an actual sentCopy.
+**POSTED ONCE / task-specific ACTIVE**, SAME Pro/no attachment, as1fbb5b53-3d82-4102-94b3-d836317f0820. The final body remains2169/42ace111; actualCopy2168/22cdbf6304be6c2210e767e915ac8dfaebd1fde13e3d95a009cd3522a46cab3a omits only finalLF and matches the root expected digest. See the [actual post/start/exposure receipt](ACTUAL_POST_RECEIPT.json) and [local Copy representation](P2_PLAIN_LWE_SINGLE_ROUND_QUANTUMNESS_FINAL_20261108.sent-copy-representation.txt); Capital performed no new UI retrieval.
+
+Task-specific activity was confirmed20:30:21.096685UTC: checking protocol assumptions/LWE-only soundness, with three named receiving-chat activity entries visible. Child models,compute,private arguments and completions are not inferred. The earlier Thinking-only gap resolved without another scientist message,replay or interruption. Fresh previous924-completed/latest-human/empty-composer/Pro/once-only checks passed as reported.
 
 This is a DIFFERENT full question in the same existing P2 role. The previous fixed-strength hydrodynamic allocation remains stopped and its full profiles unresolved. The deliberate source-selection idle interval was real opportunity cost, not renewed permission hold. No new completed protocol, scientific grade,95 or causal policy benefit is claimed.
 
@@ -27,3 +29,9 @@ Root read Wu2409.04161v4 Problem1/Theorem1/SuppD.2-D.3: global truncation averag
 Obsolete local N675/N557 labels do not override current accepted internal mathematical reviews, reopen gates, or become new crypto premises. Targeted primary/Zenodo screening is not exhaustive absence/priority proof. This question makes no low-depth/native-noise/practical-device, randomness-generation or arbitrary-computation-verification claim.
 
 P1nonunitalc599 and P3additive7aa remain active/protected. The exact human available-subagent sentence is retained without inferring current usage. Exactly three principal Pro seats and all source/resource/Solclosed/Dotsprotected limits remain. Read the [live ledger](../COORDINATION_CURRENT_20261108.json) for subsequent posting/activity receipts. Capital sends no scientist message, reacquires no original and runs no scientific verification or generated-index build.
+
+## Recipient source exposure after first send
+
+The recipient reports FIRST retrieval failure for BOTH supplied https://arxiv.org/html/2405.15736v1 and https://arxiv.org/html/2609.01448v2, with reasons not provided. These exact routes are now HELD without retry or alternate acquisition. Root previously reading the governing scopes is not recipient fulltext exposure. The eprint2014/402PDF403/unread hold also remains.
+
+The frozen prompt,source-contract premises and full endpoint are unchanged; this is no scientific verdict or source-injection permission. No new result,95 or causal model/prompting effect is inferred from the start,source gap or visible activity. P1c599/P3additive7aa remain protected; all three existing seats have distinct current questions and all other holds/cadences persist.
