@@ -1,6 +1,6 @@
 # P1 nonunital prediction neighbourhood: active allocation
 
-**Current P2 lifecycle update:** P2 has a different [plain-model quantumness allocation](../2026-11-08-p2-plain-lwe-quantumness-allocation/README.md); P2_PLAIN_LWE_QUANTUMNESS_FINAL_ROOT_RELEASED_NOT_SCIENTIST_POSTED. Prior hydrodynamic idle/stop statements are history; P1/P3 work is preserved.
+**Current P2 lifecycle update:** P2 has a different [plain-model quantumness allocation](../2026-11-08-p2-plain-lwe-quantumness-allocation/README.md); POSTED ONCE1fbb5b53 / task-specific ACTIVE. Prior hydrodynamic idle/stop statements are history; P1/P3 work is preserved.
 
 
 The different nonunital-neighbourhood FINAL was **posted once** in the same P1 Pro chat asc5991cc9-0e6a-42db-929c-6885c13f643e; task-specific research is active. The earlier general2D sampling allocation remains stopped and its full endpoint unresolved. The earlier2183-byte/cb2f917d draft was never dispatched.

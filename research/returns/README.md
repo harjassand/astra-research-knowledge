@@ -168,7 +168,7 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
-| P2 current plainLWE quantumness allocation | [Complete plain-model one-round protocol is the question; source assumptions and final-body lifecycle explicit](2026-11-08-p2-plain-lwe-quantumness-allocation/README.md) |
+| P2 current plainLWE quantumness allocation | [FINAL posted once1fbb/task active; protocol remains the question; recipient first-access holds recorded](2026-11-08-p2-plain-lwe-quantumness-allocation/README.md) |
 | P3 thermal return/paid additive conversion | [Finite witness and reference-safe coding60–70; full thermal phase unresolved; new additive question posted/task active](2026-11-08-p3-thermal-capacity-return/README.md) |
 | P1 current nonunital allocation | [Different arbitrary-accuracy global-prediction neighbourhood question; FINAL posted once/task active](2026-11-08-p1-nonunital-neighbourhood-allocation/README.md) |
 | Current literature comparison correction | [Constructive positive1D whole-trajectory MPO with trace control credited; uniform fine-step2D gap retained; current theorem numbers](2026-11-08-noisy-2d-dynamics/LITERATURE_VERSION_CORRECTION_20261108.md) |
