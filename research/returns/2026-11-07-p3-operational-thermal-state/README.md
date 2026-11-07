@@ -1,13 +1,17 @@
 # Operational thermal-state and outcome-window compiler
 
-**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P2 first-Bfcfde411 assessed FULL B UNRESOLVED; achieved uniform specified-input finite-arithmetic local-horizon predictor, fixed-accuracy polynomial/inverse-polynomial-accuracy quasipolynomial, supplied correctness-assumed scoped70–80/prior frontier75–85 unchanged/no90+. SAME-P2 first-A exact8020/5c29e8bf POSTED ONCE as5547ad1c-448e-492b-9de7-4924b0424a3a in actual preserved chat/predecessor verified; identical P1 body including LF. Initial response/Thinking only, task-specific START pending. Root administrative stale-URL envelope caught/corrected before delivery, historical issued envelope/correction preserved, no replay. Counterbalanced transition not B resolution/abandonment or peer stage; B second attempt after four-initial barrier. P1 A00b3dbb1 task-specific ACTIVE/P3 live. Actual messages6/12 incl recovery, initialposts3/4/returns1/4/fullendpointresolutions0/followups0, five planned frontier requests remain/no reveal/fair draw/new allowance. Only matched disposable B ZIP download trashed after durable copies. Existing hourly action readback reported ACTIVE/same cadence/target/protocol. All18ZIP/12non-ZIP/Sol/Dots/resource holds remain; Capital sends no research/source recovery/new embargo.
+**P3 current role, 7 November Brisbane:** Macroscopic-certificate/computability question complete/scoped70–80/full state control unfinished; complete recovered activity FULLY READ by root, method evidence no longer unavailable/provisional. Same exact2387/afa18549 successor POSTED ONCE as0ec9367b with initial response only, specific question/source/task START pending. Earlier prepared-only/unsent/unqueued state is historical. Independent scientific choice observed without a causal policy benefit claim. This page's own source/result is below; earlier lifecycle-only statements are historical.
+
+
+**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P1 first-A FULL A UNRESOLVED/scoped50–60 and P2 first-B FULL B UNRESOLVED/scoped70–80 retain their own partial operations; programme frontier75–85 unchanged/no90+/ceiling/policy winner. P1 first-B369b3c60 source/entropy-locality activity now CONFIRMED ACTIVE; P2 A5547ad1c active, no new return. Diagnostic actualmessages7/12 including recovery, initialposts4/4/returns2/4/followups0/no endpoint resolution/draw/reveal or early peer exchange. P3 certificate/computability question complete/scoped70–80/full state control unfinished; complete10074byte activity RECOVERED/FULLY READ by root, method evidence no longer unavailable/provisional. Independent source-driven destination choice visible, no causal source-order/Zenodo-first/representation/ownership benefit established. SAME-P3 exact2387/afa18549 successor POSTED ONCE as0ec9367b-1d0b-4e86-8d30-6d4bcf4c0133, initial response only/specific question/source/task START pending; prior NOT SENT/NOT QUEUED state historical. Heisenberg-UCP permits Schrödinger non-unital resets, distinct from B's ONLY replacement noise. Only matched disposable P1/P3 Downloads trashed after durability/staging window closed. All18ZIP/15non-ZIP/Sol/Dots/resource holds retained; Capital sends no science prompt/source recovery/index build.
 
 
 
 
 
 
-**P3 current role, 7 November Brisbane:** Continuationf67c9f97 is confirmed ACTIVE on finite local certificates under arbitrary initialization, finite operating time and uncertain local dynamics, with no completed result supplied. Predecessor noisy-thermal-control75–85 and programme frontier retain their provisional correctness-assumed scopes; economical programme unfinished/no90+. This page's own source/result is below; earlier lifecycle-only statements are historical.
+
+
 
 
 
