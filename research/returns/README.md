@@ -168,6 +168,8 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| P2 nonlinear hierarchy | [Supplied-cutoff certificates35–45/full fixed-strength profiles unresolved; route stopped](2026-11-08-p2-nonlinear-hierarchy/README.md) |
+| Completed noisy2D dynamics dossier | [Faithful biased global-product readouts, bounded-cut sampling, scoped obstructions and completed internal reviews; generic2DTV open](2026-11-08-noisy-2d-dynamics/README.md) |
 | P3 current thermal-loss allocation | [Full capacity-phase question, read premises and active-post receipt; no new completed result](2026-11-08-p3-thermal-loss-capacity-allocation/README.md) |
 | P3 clock-history recovery | [Scoped common-record recovery bounds and clock-reset witness30–40; full autonomous phase open; route stopped for reselection](2026-11-08-p3-clock-history-recovery/README.md) |
 | P1 planar output sampler | [Paid continuous-noise planarXX full-TV sampler45–55; cut-mixture rank boundary; full general sampling unresolved](2026-11-08-p1-planar-output-sampler/README.md) |
