@@ -1,6 +1,7 @@
 # Conditional Ising blocks and the limits of direct nucleation simulation
 
-**Latest lifecycle and availability, 7 November Brisbane:** P1e61f06c8 and P3031cfb9a completed. P1 reports a completed restricted structural-inference question; its ZIP transfer is unconfirmed and held, with no retry. P3 supplies its noise-absorption original; the broader many-body state-control programme remains unfinished. Both matching expanded user-visible traces are now staged with prior captures preserved. No new assessment or successor-post/start receipt was supplied for these returns. P2e0144bad work is undisturbed. Earlier all-three-started snapshots are history. Stickies closure UNKNOWN is cleanup only. Capital does not select/dispatch science or recover held originals; Sol/Dots/N1683/team/resource limits remain.
+**Latest lifecycle and availability, 7 November Brisbane:** P1 collective laws and P3 noise absorption each have NEW provisional correctness-assumed70–80, with earlier science/programme frontier75–85 unchanged, ordinal/nonadditive/no90+. P1's selected structural question is complete; its ZIP remains transfer-unconfirmed/held, no retry or scientific penalty. P3's supplied-model operation is complete inside an unfinished broader state-control programme. Exact1967-character P1 next-question and2524-character P3 continuation prompts were each handed ONCE to the existing dispatcher; separate actual POST/START receipts are pending. P2e0144bad remains undisturbed. Both visible traces are staged. Handoffs/grades add no policy winner; Capital sends no prompt/recovery, and all source/N1683/Sol/Dots/team/resource limits remain.
+
 
 
 
