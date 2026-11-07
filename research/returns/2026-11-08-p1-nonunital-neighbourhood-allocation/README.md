@@ -1,5 +1,8 @@
 # P1 nonunital prediction neighbourhood: active allocation
 
+**Current P2 lifecycle update:** P2 has a different [plain-model quantumness allocation](../2026-11-08-p2-plain-lwe-quantumness-allocation/README.md); P2_PLAIN_LWE_QUANTUMNESS_FINAL_ROOT_RELEASED_NOT_SCIENTIST_POSTED. Prior hydrodynamic idle/stop statements are history; P1/P3 work is preserved.
+
+
 The different nonunital-neighbourhood FINAL was **posted once** in the same P1 Pro chat asc5991cc9-0e6a-42db-929c-6885c13f643e; task-specific research is active. The earlier general2D sampling allocation remains stopped and its full endpoint unresolved. The earlier2183-byte/cb2f917d draft was never dispatched.
 
 Read the [exact2360-byte final body](P1_NONUNITAL_NEIGHBOURHOOD_PREDICTION_FINAL_20261108.txt), [local2359-byte Copy representation](P1_NONUNITAL_NEIGHBOURHOOD_PREDICTION_FINAL_20261108.sent-copy-representation.txt), [actual post receipt](ACTUAL_POST_RECEIPT.json), [root selection/release/gap record](ROOT_RELEASE_SELECTION_AND_GAPS.txt) and [metadata](SOURCES.json). Root reports the actual Copy matches expected0c7349493fbb07dbcacbfda9e8d00c5ece7112855bd6be0ac39cfab19dead1f7, differing only finalLF from staged2f53d98790a6e4e756731f33900a16ad8e4bb5894d08828287e97de91278e9bf. Capital's representation is not a fresh UI retrieval.
