@@ -1,6 +1,7 @@
 # Acquired interfaces for genuinely new passive interventions
 
-**Latest lifecycle and availability, 7 November Brisbane:** all three current same-warm successors are POSTED ONCE/START CONFIRMED by separate dispatcher receipts: P14be18304, P2e0144bad and P3ce8eed3e. Exact1967-character P1 and2524-character P3 visible bodies matched. P1 begins current-source review/endpoint selection with no final question visible; P3 begins lower-cost calibration acquisition/maintenance with physical output retained. Starts are not new science or policy gains. Both completed returns retain NEW provisional correctness-assumed70–80, earlier frontier75–85 unchanged. P1's ZIP remains transfer-unconfirmed/held, no retry; P3's broader control programme remains unfinished. No scientific handoff is pending. Both traces/prior captures are staged; Stickies uncertainty is cleanup only. Capital sends no prompt/recovery; all source/N1683/Sol/Dots/team/resource holds remain.
+**Latest lifecycle and availability, 7 November Brisbane:** P2e0144bad completed its selected local thermal-response information question, reported complete at the scalar observation contract. No new coordinator assessment or successor-post/start receipt was supplied with this handoff. P14be18304 and P3ce8eed3e work remain undisturbed. P2's matching user-visible activity is staged with the prior capture preserved. Earlier all-three-started snapshots are history; the prior nucleation/QUBO questions remain scientifically unresolved at their original contracts. Publication/activity add no score or policy winner. P1's collective-law ZIP and all18 original-ZIP holds remain. Capital sends no scientific prompt or recovery; source/N1683/Sol/Dots/team/resource limits remain.
+
 
 
 
@@ -89,3 +90,5 @@ Later completed source: [rare-event-chain first-passage construction](../2026-11
 Later source return: [physical nucleation residence-to-law certificate and compression limits](../2026-11-07-p2-nucleation-law/README.md). The two-dimensional all-minus predictor is still unresolved; the conditional processor does not acquire global capacity/residence inputs. Earlier chain and response credit remains unchanged.
 
 Later supplied result: [conditional block transport and direct-simulation limits](../2026-11-07-p2-nucleation-block-transport/README.md). The full physical nucleation predictor stays unresolved; this is not a general algorithmic hardness result.
+
+Later completed information question: [local thermal-response horizon and matching reconstruction](../2026-11-07-p2-thermal-local-response-horizon/README.md). This changes from supplied microscopic kinetics to an unknown-source noisy scalar observation channel; it does not solve nucleation or imply hardness when actual coefficients are supplied.
