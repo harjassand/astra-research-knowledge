@@ -1,6 +1,11 @@
 # Supplied research returns
 
-**Latest lifecycle receipts, 7 November Brisbane:** all three current same-warm assignments are POSTED ONCE/START CONFIRMED by dispatcher reports: P1e61f06c8, P2d3da0a7c and P3031cfb9a. P1's exact2030-character next-programme body matched. Initial activity selects its next question and reviews recent repository commits/current sources; no specific scientific question is visible yet. This is initial activity, not a scientific result or policy efficacy. Its previous selected robustness-gap question is complete and assessed70–80; completing it in one return leaves across-return persistence untested. No scientific handoff is pending in the supplied receipt. P2/P3 work is undisturbed. Earlier pending snapshots are historical; all source/N1683/activity/Sol/Dots/team/resource limits remain. Capital sends no prompt or recovery attempt.
+**Latest lifecycle and availability, 7 November Brisbane:** all three current same-warm successors are POSTED ONCE/START CONFIRMED by dispatcher reports: P1e61f06c8, P2e0144bad and P3031cfb9a. P2's exact1820-character next-question body matched. Its visible start reassesses the destination and considers dynamic-kernel inference; no final question or scientific outcome is reported yet. Automatic fixed2D renewal ended, while the previous physical predictor remains scientifically unresolved. Block-transport NEW provisional correctness-assumed55–65 and earlier capital/frontier stay unchanged. No scientific handoff is pending. Ten historical activity gaps and this source's activity are closed with prior versions/hashes preserved; Stickies closure UNKNOWN is cleanup only. Selection/start adds no scientific or causal-policy gain. Capital sends no prompt or recovery attempt; all source/N1683/Sol/Dots/team/resource limits remain.
+
+
+
+**Latest sources:** [block transport](2026-11-07-p2-nucleation-block-transport/README.md) constructs a conditional operation and scoped direct-simulation limit; the full2Dpredictor is unresolved, with supplied NEW provisional correctness-assumed55–65 and earlier chain70–80/effective-law and programme75–85 unchanged, ordinal/nonadditive/no90+. [Ten historical activity corrections](2026-11-07-visible-activity-recovery/README.md) close those availability gaps without changing science or credit.
+
 
 
 
@@ -88,6 +93,8 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| P2 conditional block transport | [Exact cutwidth operation, physical comparisons and scoped direct-simulation obstruction; ten-member original](2026-11-07-p2-nucleation-block-transport/README.md) |
+| Historical activity correction | [Ten recovered visible traces with updated and pre-recovery captures](2026-11-07-visible-activity-recovery/README.md) |
 | P1 certified future protocols | [Paid dynamic acquisition, horizon-independent causal-noise gap, temporal-game algorithms, repeated-service records and34-member original](2026-11-07-p1-certified-future-protocols/README.md) |
 | P2 physical nucleation | [Conditional residence-to-law construction, rational processor, explicit failure families and ten-member original](2026-11-07-p2-nucleation-law/README.md) |
 | P3 local state restoration | [Every-supplied-circuit restoring process, complete initialization, precision/noise costs and auxiliary-robust bottleneck limits;18-member original](2026-11-07-p3-local-state-stabilization/README.md) |

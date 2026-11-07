@@ -1,6 +1,12 @@
 # Certified collective order from acquired port models
 
-**Latest lifecycle receipts, 7 November Brisbane:** all three current same-warm assignments are POSTED ONCE/START CONFIRMED by dispatcher reports: P1e61f06c8, P2d3da0a7c and P3031cfb9a. P1's exact2030-character next-programme body matched. Initial activity selects its next question and reviews recent repository commits/current sources; no specific scientific question is visible yet. This is initial activity, not a scientific result or policy efficacy. Its previous selected robustness-gap question is complete and assessed70–80; completing it in one return leaves across-return persistence untested. No scientific handoff is pending in the supplied receipt. P2/P3 work is undisturbed. Earlier pending snapshots are historical; all source/N1683/activity/Sol/Dots/team/resource limits remain. Capital sends no prompt or recovery attempt.
+**Latest lifecycle and availability, 7 November Brisbane:** all three current same-warm successors are POSTED ONCE/START CONFIRMED by dispatcher reports: P1e61f06c8, P2e0144bad and P3031cfb9a. P2's exact1820-character next-question body matched. Its visible start reassesses the destination and considers dynamic-kernel inference; no final question or scientific outcome is reported yet. Automatic fixed2D renewal ended, while the previous physical predictor remains scientifically unresolved. Block-transport NEW provisional correctness-assumed55–65 and earlier capital/frontier stay unchanged. No scientific handoff is pending. Ten historical activity gaps and this source's activity are closed with prior versions/hashes preserved; Stickies closure UNKNOWN is cleanup only. Selection/start adds no scientific or causal-policy gain. Capital sends no prompt or recovery attempt; all source/N1683/Sol/Dots/team/resource limits remain.
+
+
+
+**Availability correction:** matching expanded user-visible activity is now staged: [trace](activity/p1_certified_collective_order_20261107_return.visible-activity.txt), [updated return](P1_CERTIFIED_COLLECTIVE_ORDER_20261107_RETURN.txt) and [pre-recovery capture](P1_CERTIFIED_COLLECTIVE_ORDER_20261107_RETURN.pre-recovery.txt). Earlier missing-activity/locked-access descriptions below refer to the original handoff. This correction does not revise scientific scope, assessment or credit. [Recovery index](../2026-11-07-visible-activity-recovery/README.md).
+
+
 
 
 
