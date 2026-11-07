@@ -1,12 +1,15 @@
 # Three active normal programmes after explicit human release
 
-The later direct human release on8November supersedes the prior **Pro dispatch hold**. All three new assignments were **posted once in the same existing normal-web Pro chats**, with task-specific research active. Root's standing assessment/scientific-decision/exact-dispatch loop is restored. Capital records the existing receipts and sends no scientist messages.
+**Current coordination status, 8 November Brisbane:** P1 full-output firstreturn a405dc16 assessed: positive full-joint TVsampler with paid cut cost poly(B,n,1+ST,epsilon^-1)exp(O(T*A_pi)); scoped NEW50–60/general2Dpolynomial endpoint UNRESOLVED/no generalhardness or ceiling. Earned localpredictor/fullB/frontier90–94 unchanged/nonadditive/not retracted. Rootreleased samewarm full-question followup1717/14e256fd, actualPOST/START PENDING; do not mark started. P2active7fa7fedf; P3newerUSER continuation bb6018c3 active/protected over original803c05a0 programme-paid question, no coordinator/dispatcher duplicate recovery or cause inference. HumanProrelease/normal root decision loop remains; olddiagnosticCOMPLETE11requests unchanged. No95grade/two-turn-policywinner/guaranteedrate. No ZIPsupplied for P1; linkedreportlibfile_1eca81610084819188ff58f990c67701 NOTdownloaded/previewed/rootread/no alternate or scorepenalty. All other source-ZIP-PDF/Solclosed/Dotsprotected/3Pro/halfcore/RSS limits remain. Capital sends no scientist message and performs no science verification/replay/unpacking/download/index build.
+
+
+The later direct human release on8November supersedes the prior **Pro dispatch hold**. At the initial release snapshot, all three assignments were **posted once in the same existing normal-web Pro chats**, with task-specific research active. The current-status notice above governs later completion, followups and user continuations. Root's standing assessment/scientific-decision/exact-dispatch loop is restored. Capital records the existing receipts and sends no scientist messages.
 
 | Role | Governing question | Actual turn key / observed activity as root report |
 |---|---|---|
-| P1 | Full computational-basis output TV sampling for the same static2D product-input/replacement-noise class | a405dc16-5f0f-4fb0-9e49-9992e866b155; noisy-IQP obstruction/reduction work |
+| P1 | Full computational-basis output TV sampling for the same static2D product-input/replacement-noise class | Initial a405dc16 completed/assessed; warm1717/14e256fd followup released, actual post/start pending |
 | P2 | Fixed-strength quartic/nearest-neighbour momentum-exchange microscopic sound and heat structure-factor laws | 7fa7fedf-9602-42a0-9ecc-4edb24706966; chain/polynomial-closure work |
-| P3 | Entire programme-and-data-paid robust autonomous computation with encoded interfaces and generic coherent/nonunitary generator errors | 803c05a0-5ac7-4b67-ad44-7a88677fec46; full-paper/unitary-coverage/arbitrary-error-extension work |
+| P3 | Entire programme-and-data-paid robust autonomous computation with encoded interfaces and generic coherent/nonunitary generator errors | Governing803c05a0 with newer user continuationbb6018c3 active/protected; no duplicate coordinator recovery |
 
 ## Exact governing sources and Copy representations
 
