@@ -1,13 +1,17 @@
 # Certified future feedback protocols from finite experiments
 
-**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P2 known control was reconstructed in completed interruption recovery6c7a6d3d after censored6adedbf2; positive composition evidence, extra request/effort/exposure retained, no clean blind single-turn result/new grade. SAME-P2 exact initial frontier-B launch7683chars/100744ed was POSTED ONCE asfcfde411-6d0f-4612-8e2b-c37d3ee0457a, visible7682chars plus LF matched. Initial response only; task-specific derivation/source action START pending. Identical4222char7bf63746 common packet/exact B launch reserved for P1's scheduled first B, unchanged case3c55890e/B-before-A. P1 control51cba3fa active/uncompleted, P3f67c9f97 finite-local-certificate investigation ACTIVE/no result. Actual messages4/12=2control starts+1recovery+1B initial; initialfrontier posts1/4/completed0/4, followups0/4, no reveal/draw/extra allowance. Control-operation result1/2 is via recovery, not independent discovery. Earlier science/frontier75–85/no90+ and all18ZIP/12non-ZIP/Sol/Dots/resource holds remain. Capital dispatches no research.
+**P1 current role, 7 November Brisbane:** Known control51cba3fa reconstructed in one uninterrupted turn, no new discovery/impact grade or blindness claim; P2 recovery retains its different history. Exact first-A launch8020chars/5c29e8bf POSTED ONCE as00b3dbb1 with initial response only, task-specific derivation/source START pending. Identical A launch/source capsule reserved for P2 after B; inherited fixed admissible temperature/volume/input promises retained. Earlier acquired-chaotic-laws70–80 remains its own science. This page's own source/result is below; earlier lifecycle-only statements are historical.
+
+
+**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** Both known operations reconstructed: P1control51cba3fa uninterrupted, P2 in extra recovery6c7a6d3d after genuine interruption; positive composition evidence, no new grade/discovery/blindness or matched one-turn/policy-winner claim. SAME-P1 exact first-A launch8020chars/5c29e8bf POSTED ONCE as00b3dbb1-f9e7-48e1-9900-448bdf63c963; visible8019chars plus LF matched. Initial response only, task-specific derivation/source START pending. Unchanged A b1637bf8/common4633 e9e9b5aa retains fixed admissible temperature/volume/input promises/current law/block/chain originals; identical A reserved for P2 after B. P2Bfcfde411/P3f67c9f97 task-specifically ACTIVE/no completed frontier result. Actual scientist messages5/12 including recovery, initialfrontier posts2/4/results0/4/followups0, six planned frontier requests remain, no reveal currently justified/fair draw/new worker/allowance. Prior science/frontier75–85/no90+ and all18ZIP/12non-ZIP/Sol/Dots/resource holds unchanged. Only matched disposable P1 ZIP download trashed after durable copies. Capital sends no follow-up/source recovery/new embargo.
 
 
 
 
 
 
-**P1 current role, 7 November Brisbane:** Acquired-chaotic-laws return4ea7de89 completed its restricted torus-map question, assessed NEW provisional correctness-assumed70–80; family/programme frontier75–85 unchanged. This is PRETRIAL science, not a diagnostic attempt. First known-solution control51cba3fa is POSTED ONCE with initial response only; task-specific START PENDING, full prior/Personal Context exposure UNKNOWN/not blind, zero new-discovery credit/no accepted-original re-audit. This page's own result and scope are recorded below.
+
+
 
 
 
