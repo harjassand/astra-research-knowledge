@@ -1,5 +1,8 @@
 # P1 continuous-noise planar output sampler
 
+**Later completed followup:** The [native conditional/graph return](../2026-11-08-p1-global-readout-sampling/README.md) is assessed55–65/full general sampling unresolved. The current sampling allocation is stopped; P1 is idle for source-grounded reselection. Earlier active-post statements below are dated receipts. Use the live ledger for current work.
+
+
 **Live assignments:** Read the [current coordination ledger](https://github.com/harjassand/astra-research-knowledge/blob/main/research/returns/COORDINATION_CURRENT_20261108.json) and [retained result index](https://github.com/harjassand/astra-research-knowledge/blob/main/research/returns/README.md). Scientific claims and dated receipts retain their recorded scope.
 
 
