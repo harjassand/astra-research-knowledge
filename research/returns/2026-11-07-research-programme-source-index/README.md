@@ -1,6 +1,6 @@
 # Research programme: canonical sources and dependencies
 
-**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P3 d183726f completed noisy thermal control at its supplied1D finite-temperature Hamiltonian/noise/simultaneous-native-law contract, broader economical programme unfinished. Original seventeen-file report/code/records/figures and exact prompt/response available; opening captured, expanded activity initially pending. No new coordinator assessment or exact next release supplied. P1 control51cba3fa and P2 control6adedbf2 remain undisturbed; no diagnostic outcome. All eighteen ZIP/inherited/N517/Franks source holds remain, no new holds reported. Capital sends no scientific prompt or source recovery.
+**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P3 d183726f completed noisy thermal control at its supplied1D finite-temperature Hamiltonian/noise/simultaneous-native-law contract, broader economical programme unfinished. Original seventeen-file report/code/records/figures, exact prompt/response, expanded visible activity and prior capture are staged. No new coordinator assessment or exact next release supplied. P1 control51cba3fa and P2 control6adedbf2 remain undisturbed; no diagnostic outcome. All eighteen ZIP/inherited/N517/Franks source holds remain, no new holds reported. Capital sends no scientific prompt or source recovery.
 
 
 
