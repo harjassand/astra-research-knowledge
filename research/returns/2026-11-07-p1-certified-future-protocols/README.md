@@ -1,0 +1,70 @@
+# Certified future feedback protocols from finite experiments
+
+**Latest lifecycle receipts, 7 November Brisbane:** P1's166a3f5e turn completed. The producer reports completion of its selected robustness-gap causal-protocol endpoint, with general temporal-game construction proved/costed and a repeated-service safety game executed; arbitrary-source inference remains outside that contract. This source handoff supplies no new coordinator assessment or successor-post/start receipt. Earlier all-three-started notices are historical. P2d3da0a7c and P3031cfb9a work remain undisturbed in the handoff. Completion in one return does not test across-return continuity or establish a causal policy benefit. Capital does not choose or dispatch science; all activity/source/Sol/Dots/team/resource limits remain.
+
+
+The producer reports a complete acquisition-to-temporal-game construction for the selected **robustness-gap contract**, with full costs and an executed repeated-service safety-game instance. The broader ambition of certified inference for arbitrary scientific sources remains outside this result. No new coordinator assessment or impact score was supplied with this source handoff; earlier accepted science retains its credit.
+
+Read the [full theorem and algorithms](package/THEOREM.txt), [research report](package/RESEARCH_REPORT.txt), [selected endpoint](package/ENDPOINT.txt), and [source credits and access limits](package/SOURCES.txt). The [exact prompt, complete response and opening explanation](P1_CERTIFIED_FUTURE_PROTOCOLS_20261107_RETURN.txt), [original ZIP](original/Certified_all_future_protocols_2026-11-07.zip), and all34 members are published unchanged. Both theorem/report files are inside this ZIP; the separately displayed copies were not downloaded. [Publication provenance](SOURCES.json) distinguishes source results from Capital curation.
+
+## Enabling operation and contract
+
+Finite paid experiments acquire a uniform causal input/output approximation reusable for later finite-state temporal tasks involving safety, ordering, deadlines, eventual completion and repeated operation. The general source has a **warranted uniform fading-memory modulus**, bounded admitted preparations and bounded finite-alphabet commands at a fixed calibrated schedule. A successful fit does not establish that structural premise.
+
+The compressed construction uses stationary self-adjoint dissipative bulk `x'=-Hx+Bv`, normalized collocated ports `B*B=I`, `H>=aI`, bounded unknown preparation and a calibrated first-order actuator `tau v'=-v+c+e_a`, with `a tau<=1/2` for the stated estimates. Hidden dimension may be infinite. Decay, coupling-moment, instrument, actuator, precision and timing bounds must be warranted. Later feedback logic need not make the whole loop contractive.
+
+Acquisition needs a paid numerical port reader. Deployment reports `o_k=Q(y_k+nu_k)` through known calibrated finite quantizer cells, with every error history `||nu_k||_infinity<=r` allowed. This full adversarial box law is essential to the converse. A constant bias, stochastic error law, extra reads, different clock or command interface changes the question. A deterministic parity automaton encodes the task; its size and any specification translation are charged. The core task concerns observations/commands. True sampled-output and continuous-time conditions need the explicit cell and between-sample margins.
+
+## Horizon-independent robustness gap
+
+Suppose the last m commands determine a prediction fhat whose uniform error is at most epsilon, for every admitted fixed source, preparation, history and future read. Let G_rho permit exactly the quantizer cells intersecting the radius-rho prediction cube. For every causal controller pi, fixed compatible source F and `r>=epsilon`, the supplied theorem gives
+
+```text
+Traces(G_(r-epsilon), pi)
+    subset Traces(F,r,pi)
+    subset Traces(G_(r+epsilon), pi).
+```
+
+Finite and infinite traces are covered; there is no horizon multiplier. The source stays fixed throughout. The left inclusion chooses an allowed read-error sequence to reproduce a smaller-channel observation history. It is not a free physical noise generator with a true-state reader, trajectory-closeness theorem or infinite stochastic path-TV bound.
+
+A winning policy in the larger game guarantees the task on every compatible source. Losing the smaller game rules out a guaranteed solution by any causal controller under the declared full bounded-error interface. The disagreement region remains explicit. A complete two-sided gap decision at radii `r±2epsilon` has its stated `r>=2epsilon` condition. The optimum reader-noise tolerance differs from its finite-channel optimum by at most epsilon, with a sharp constant in the supplied threshold family.
+
+## Paid acquisition and finite synthesis
+
+The linear construction actually acquires new dynamic pulse matrices; the predecessor's static impedance certificate alone is not used as a transient model. Readings occur at `kh-ell`, with `0<ell<h`, leaving a positive computation/communication window before the next command. The old command remains active during that window. Four kinds of error remain paid: preparation/actuator residue, discarded memory, every acquired coefficient, and deployment actuation/clock/arithmetic error. No fixed adversarial noise is averaged away.
+
+For p ports and m lags, coordinate-pulse experiments acquire `p^2 m` scalar readings/coefficients after finite relaxation, with no exact hidden reset. A small binary encoding of a small decay rate does not make the experiment short. Refinement requires actually available, paid precision. The acquired matrices support later temporal specifications and later finite command alphabets within the original amplitude cap and fixed clock/read phase.
+
+For K commands and a q-state parity monitor, there are at most `N_c=q K^m` controller positions and `N_e=K N_c` environment positions before extra request states. The explicit general algorithm uses classical parity-game positional determinacy and strategy enumeration, with leading counts `K^N_c + |O|^N_e`, including ordinary access/preprocessing/storage costs. **No general polynomial-time temporal synthesis claim is made.** The executed `game.py` implements the simpler safety fixed point, not an arbitrary-parity compiler. Sampled digital products of acquired components compose their errors and costs without independence or whole-loop contraction, while product-game growth is charged. Continuous physical assembly needs its own warranted model.
+
+## Executed repeated-service instance
+
+The producer's software uses three ports and256 hidden relaxation modes. Three paid pulse trials acquire four lag matrices:36 scalar readings,114 source-time units, no exact resets. The complete future prediction residual is approximately `0.000671103281624`. Commands are zero and six signed coordinate unit vectors, with a zero-command cooldown after each nonzero command. An arbitrary request must achieve its signed coordinate threshold within four ticks; simultaneous active-port labels are forbidden. A new request follows each completion.
+
+The fixed schedule has `h=2`, `ell=1/4096`, and exact40-bit nearest-even ADC cells. Cooldown reduces2401 four-command words to133 reachable suffixes and3192 game states. The proof justifies label merging for this task even for controllers retaining the admitted full numeric codes; it does not enlarge the read/command interface.
+
+The nominal optimal radius is `316497274091/2199023255552 ≈0.143926296956`. Every compatible source optimum is enclosed by `[0.143255193674,0.144597400237]`. A policy wins at `73/512=0.142578125`; a finite counterstrategy rules out a guarantee at `149/1024=0.1455078125`. [Game certificates](package/results/GAME_CERTIFICATE.json) and [producer verification](package/results/VERIFICATION.json) cover all permitted policy branches and11112 failing-radius state/action refutations. The gap between positive and negative conclusions remains.
+
+The [complete transcript](package/results/TRANSCRIPT.json) records120 completed requests,432 command periods,1296 scalar deployment readings,216 nonzero periods and431 command changes. The actual requested signed output is certified at least0.357421875 at each acknowledged read and0.355712890625 at the command boundary, with completion within eight source-time units. This finite history is distinct from the theorem and complete finite-game certificate supporting all-future claims. These are producer software results, not a Capital scientific replay or independent scientist/hardware audit.
+
+## Resource and physical limits
+
+[Resource certificates](package/results/RESOURCE_CERTIFICATE.json), [native total costs](package/results/NATIVE_TOTAL_COST.json), [execution](package/results/EXECUTION.json), and all three earlier development records are retained. Delivered acquisition/use totals include1008 source-time units,228352 native source coordinate updates,685056 source integer multiplications,5352 actuator integer multiplications,771 exponential enclosures and15192 Taylor terms. Native propagation uses80 fractional bits with160-bit largest propagation integers. The compiler used12 game solves and55 fixed-point rounds. All four development executions and their cost records remain visible.
+
+The conservative sequential controller bound is58237300 bit operations per round, requiring about`2.3854e11` bit operations per source-time unit to meet the`1/4096` window unless a justified tighter implementation is supplied. Software wall time is not a calibrated physical worst-case deadline. Driver, sensor, clock, communication, processor and energy envelopes still need calibration; no physical deployment is established.
+
+Actuator norm/slew bounds are2 and32; absolute source work is bounded by3576 for the prepared deployment. The service guarantee gives a net source-work lower bound of approximately0.260918779 for the120-request active prefix after preparation, and limiting average net source supply at least0.000271790395 for perpetual backlog. These are declared power-conjugate units, not measured watts/joules. Infinite-horizon correctness pays a continuing bill for each finite duration; the executed prefix is not a free shutdown or free perpetual operation.
+
+## Acquisition and exact-margin obstructions
+
+General fading memory permits a de Bruijn table acquisition with`K^m` readings and`K^m+m-1` command periods. It does not imply linear compression. The explicit contracting nonlinear family, with1-Lipschitz scalar readout and an independent bit per binary word, requires`2^m` informative scalar readings and retained bits for sufficiently accurate uniform prediction. The source readout itself contains those bits; this is not a lower bound for a small supplied parametric description or a general computational hardness claim.
+
+A separate pair`H=1-delta` and`H=1+delta` has close bounded-drive responses and indistinguishable adaptive records under a fixed adversarial acquisition-noise floor, yet only one can reach`y>1` under the specified drive. Exact zero-margin physical classification is therefore not supplied by the positive robustness-gap operation.
+
+## Credit and availability
+
+The [source record](package/SOURCES.txt) credits classical fading-memory approximation, input-history symbolic states/QUEST, robustness margins and approximately complete abstractions, and parity-game determinacy. The current data-driven PAC literature retains its finite-horizon/extension conditions. A formalized parity-game dependency is not formal verification of this new theorem or implementation. N736 retains its frozen-policy finite-horizon scope; N1068–N1070, N997/N1018 and earlier component/control results keep their stated credit. No historical priority or causal coordination-policy benefit is established.
+
+The included [unchanged predecessor ZIP](package/predecessors/Certified_collective_state_selection_2026-11-07.zip) is the already-acquired BATCH375 source, not a new intake or recovery of a held original. N1683 and every earlier source/access/transfer hold remain. Boyd's attempted author PDF and the full current publisher/PDF of the cited data-driven paper were not acquired as reported; preview/abstract credit is distinct from operative theorem access. No governing Zenodo payload was adopted, and Capital performs no alternate recovery.
+
+The complete response, actual prompt and opening are staged; expanded visible activity remains in the predecessor chat and was not staged while native access was locked. Displayed duration is not compute or a score penalty. Capital does not unlock, dispatch, contact researchers, install dependencies, execute the source code or rebuild the full generated retrieval corpus. Sol remains closed/held, Dots protected/unmessaged and all three-role/resource limits retained. [Packet README](package/README.txt) and [member manifest](package/MANIFEST.json) are unchanged.

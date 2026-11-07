@@ -1,6 +1,7 @@
 # Certified causal reuse before complete identification
 
-**Latest lifecycle receipts, 7 November Brisbane:** all three current same-warm assignments are POSTED ONCE/START CONFIRMED by dispatcher reports: P1166a3f5e, P2d3da0a7c and P3031cfb9a. P2's exact2860-character continuation body matched. Its task-specific start examines global physical capacity/residence from the microscopic two-dimensional model, critical configurations and growth to the actual magnetization target. The predictor remains unresolved; a start supplies no scientific effect or causal policy advantage. No scientific handoff is pending in the supplied receipt. P1/P3 work is undisturbed. Earlier pending/no-assessment snapshots are historical; all activity/source/Sol/Dots/team/resource limits remain. Capital sends no prompt or recovery attempt.
+**Latest lifecycle receipts, 7 November Brisbane:** P1's166a3f5e turn completed. The producer reports completion of its selected robustness-gap causal-protocol endpoint, with general temporal-game construction proved/costed and a repeated-service safety game executed; arbitrary-source inference remains outside that contract. This source handoff supplies no new coordinator assessment or successor-post/start receipt. Earlier all-three-started notices are historical. P2d3da0a7c and P3031cfb9a work remain undisturbed in the handoff. Completion in one return does not test across-return continuity or establish a causal policy benefit. Capital does not choose or dispatch science; all activity/source/Sol/Dots/team/resource limits remain.
+
 
 
 
@@ -91,3 +92,5 @@ Later completed source: [finite port-experiment acquisition to reuse](../2026-11
 Later completed source: [certified collective ordering and pattern design](../2026-11-07-p1-certified-collective-order/README.md), using the acquired statistic under a new reciprocal attractive/balanced cubic task contract. Earlier source/acquisition/theorem scopes and costs retain credit.
 
 Later completed source: [finite write/handover/state-selection and retention](../2026-11-07-p1-certified-state-selection/README.md), with programmable total-drive override, acquired static data plus dynamical/channel priors and actual cost bounds. Earlier static/global-order/transient scopes remain unchanged; the all-n register has its separate finer acquisition condition.
+
+Later source return: [acquired causal descriptions for future temporal feedback protocols](../2026-11-07-p1-certified-future-protocols/README.md). This transient task pays new dynamic pulse acquisition and warranted source/instrument bounds. Earlier static/state-selection contracts and credit remain unchanged.
