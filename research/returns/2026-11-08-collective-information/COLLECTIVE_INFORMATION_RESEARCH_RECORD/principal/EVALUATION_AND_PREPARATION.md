@@ -1,0 +1,10 @@
+# Certified evaluation and preparation
+
+## Positive scaling and squaring, including its cost
+For a q-state Markov row generator Q with exit bound R>0 and rational time T, take s=ceil(log2(max(1,RT))) and h=T/2^s. Then Rh<=1 and P=I+Q/R is stochastic. Approximate exp(hQ) by
+S0=exp(-Rh)sum_(j=0)^(K-1)(Rh)^j P^j/j!+[Poisson(Rh) tail from K] I.
+It is stochastic and has row-l1 operator error <=2e/K!. K=O(s+log(1/nu)) suffices for base error nu/2^(s+2). Square s times; stochastic contraction makes each squared-matrix error at most twice the previous one. For finite arithmetic round entries down to positive b-bit dyadics and add each row deficit to the diagonal. This preserves stochasticity, changing row-l1 by <=2q2^-b. Allocate each of K+s operations error <=nu/[2^(s+3)(K+s+1)]. Then total error <=nu with b=O(s+log q+log(K+s+1)+log1/nu). Positive rounded-down Poisson weights plus a diagonal remainder give the analogous coefficient implementation. Dense cost O(q^3(K+s)) arithmetic, with polynomial input and working bits.
+This proves polynomial log(T+1) numerical cost for a supplied polynomial-size finite generator. It neither makes q=product_r(m_r+1) polynomial in a growing number of blocks nor removes physical parameter error. H separately described control segments cost H evaluations with numerical budgets split across them. Input drive description, output observables and initial-law sampling are paid.
+
+## Preparation note
+A robust direct finite-temperature writer has been derived independently by the auditor; see its formal REVIEW_RELATIVE_ENERGY.md. Add individual pinning fields while pausing stirring, retain arbitrary bounded-increment collective interaction U, bound wrong-bit correction and creation hazards, and use dE(numberwrong)/dt<=NB-(A+B)E(numberwrong). This avoids a global thermal source assumption and any unknown macroscopic mixing time. Hpin grows logarithmically in N/zeta and a declared clock throttle can keep attempts bounded. Target-mode fixed maximum fields are not assumed during writing. Source TV error zeta adds at most2zeta to bounded terminal predictions; relative rare mean lifetimes need a stronger source certificate.

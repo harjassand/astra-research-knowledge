@@ -1,0 +1,933 @@
+
+Data-driven learning for the Mori–Zwanzig formalism: a generalization of the Koopman learning framework
+Skip to main content
+Report GitHub Issue
+ ×
+ Title:
+Content selection saved. Describe the issue below:
+ Description:
+ Submit without GitHub
+ Submit in GitHub
+ Why HTML?
+ Report Issue
+ Back to Abstract
+ Download PDF
+ Contents
+ Reading mode
+ Colour theme
+ License: CC BY-NC-ND 4.0
+arXiv:2101.05873v3 [cond-mat.stat-mech] 26 Jul 2021
+Data-driven learning for the Mori–Zwanzig formalism: a generalization of the Koopman learning framework
+Yen Ting Lin
+Affiliation: Information Sciences Group, Computer, Computational and Statistical Sciences Division (CCS-3), Los Alamos National Laboratory, Los Alamos, NM 87545, USA
+Affiliation: Corresponding author: yentingl@lanl.gov
+Yifeng Tian
+Affiliation: Computational Physics and Methods Group, Computer, Computational and Statistical Sciences Division (CCS-2), Los Alamos National Laboratory, Los Alamos, NM 87545, USA
+Marian Anghel
+Affiliation: Information Sciences Group, Computer, Computational and Statistical Sciences Division (CCS-3), Los Alamos National Laboratory, Los Alamos, NM 87545, USA
+Daniel Livescu
+Affiliation: Computational Physics and Methods Group, Computer, Computational and Statistical Sciences Division (CCS-2), Los Alamos National Laboratory, Los Alamos, NM 87545, USA
+August 24, 2026
+Abstract
+A theoretical framework which unifies the conventional Mori–Zwanzig formalism and the approximate Koopman learning of deterministic dynamical systems from noiseless observation is presented. In this framework, the Mori–Zwanzig formalism, developed in statistical mechanics to tackle the hard problem of construction of reduced-order dynamics for high-dimensional dynamical systems, can be considered as a natural generalization of the Koopman description of the dynamical system. We next show that similar to the approximate Koopman learning methods, data-driven methods can be developed for the Mori–Zwanzig formalism with Mori’s linear projection operator. We have developed two algorithms to extract the key operators, the Markov and the memory kernel, using time series of a reduced set of observables in a dynamical system. We have adopted the Lorenz ‘96 system as a test problem and solved for the above operators. These operators exhibit complex behaviors, which are unlikely to be captured by traditional modeling approaches in Mori–Zwanzig analysis. The nontrivial Generalized Fluctuation Dissipation relationship, which relates the memory kernel with the two-time correlation statistics of the orthogonal dynamics, was numerically verified as a validation of the solved operators. We present numerical evidence that the Generalized Langevin Equation, a key construct in the Mori–Zwanzig formalism, is more advantageous in predicting the evolution of the reduced set of observables than the conventional approximate Koopman operators.
+Keywords: Mori–Zwanzig formalism, memory effects, Generalized Langevin Equations, Generalized Fluctuation-Dissipation relationship, Dynamic Mode Decomposition, Extended Dynamic Mode Decomposition, approximate Koopman learning, data-driven, reduced-order dynamical system
+AMS subject classifications: 37M19, 37M99, 46N55, 65P99, 82C31
+1 Introduction
+The Mori–Zwanzig formalism [29, 51, 52, 14] was first developed in statistical physics for the difficult task of constructing coarse-grained models from high-dimensional microscopic models. The goal of model coarse-graining is to construct equations describing the evolution of a smaller set of variables which are measurable, or quantities of our interests. These quantities are often referred to as the relevant or resolved variables. For example, a microscopic model can be all-atom molecular dynamics simulation of a protein in a solvent, and a relevant variable can be the distance between two atoms of our interests. It is desirable to construct a closed dynamical system which include only the resolved variables without the information of other degrees of freedom. On the one hand, it is easier to perform analysis on a closed lower-dimensional system and to shed
+important insights on the interactions between the resolved variables. On the other hand, it is more efficient to simulate the reduced-dimensional system computationally.
+The major challenge of coarse-graining modeling is that the resolved variables may be influenced by the unresolved variables. In the above example, the distance between the two specific atoms may be influenced by nearby water molecules that are not in the set of resolved variables. To solve this difficult closure problem, Mori [29] and Zwanzig [51] developed the projection-based methods to express the effect of the unresolved variables in terms of the resolved ones. The Generalized Langevin Equation, the main result of the Mori–Zwanzig formalism, decomposes the evolutionary equations of the resolved variables into three parts: a Markov term, which captures the interaction within the resolved variables, a memory term, which is history-dependent and captures the interactions between the resolved and the unresolved variables, and a term representing the orthogonal dynamics, which captures the unknown initial condition of the unresolved variables.
+Although the Generalized Langevin equation is formally exact, it is challenging to theoretically derive closed-form expressions of these terms in the Generalized Langevin Equation without approximations.
+Conventionally, the applications of the Mori–Zwanzig formalism rely on modeling self-consistent operators based on the mathematical structure of the Generalized Langevin Equation [39, 12, 7, 22, 21, 23, 33, 45, 13].
+In a seemingly unrelated research area, approximate Koopman learning methods such as Dynamic Mode Decomposition [36, 37] and Extended Dynamic Mode Decomposition [47], have been actively developed for data-driven modeling of dynamical systems. The general idea is that by collecting enough data of a dynamical system, possibly from a high-fidelity simulation of the microscopic system, one would be able to learn important features in the dynamics, e.g., spectral [27] and dynamic modes [36, 37, 47]. The theoretical foundation of these methods, the Koopman theory, is a formulation for general dynamical systems [18, 17]. Instead of the typical description of a possibly nonlinear system in the physical space, in Koopman theory, the dynamics are described as a linear dynamical system of the functions of the observables in an infinite-dimensional Hilbert space. Because the interactions in this framework are linear (but with a caveat that the space is infinite dimensional), learning from data is a convex problem which is easier to solve, in contrast to the nonlinear regression in the conventional physical-space picture.
+The major aim of this article is to bridge these two seemingly disconnected research areas in dynamical systems: the Mori–Zwanzig formalism and the approximate Koopman learning. We will establish that the Mori–Zwanzig formalism with Mori’s linear projector is functionally identical to the approximate Koopman learning methods in a shared Hilbert space. This connection helps to bring the advantage of one research area to another. On the one hand, the approximate Koopman learning methods can be generalized for data-driven modeling of the operators in Mori–Zwanzig formalism. As will be seen in this article, the operators describing the Markov and memory terms in the Generalized Langevin Equation can be numerically learned from the simulation of the microscopic system. Surprisingly, these operators, inferred from data, are highly nontrivial and are unlikely to be modeled accurately without in-depth knowledge of the system. On the other hand, the memory terms in the Mori–Zwanzig formalism can be considered as higher-order corrections of the Koopman learning methods. We will show that by including the memory kernel and the history of the resolved variables, the Generalized Langevin Equation predicts more accurately than the Extended Dynamic Mode Decomposition.
+This article is organized by the following structure. In Sec. 2, we provide a gentle introduction to the two descriptions of a dynamical system: the description of a finite-dimensional, but possibly nonlinear dynamics in the physical space, and the Koopman description of an infinite-dimensional, but linear dynamics of the observables. For completeness, we include a self-contained introduction and review of the Mori–Zwanzig formalism in Sec. 3. We establish that the Mori–Zwanzig formalism is a generalization, in the sense that it contains the higher-order memory effect, of the Extended Dynamic Mode Decomposition (EDMD, [47]) in Sec. 4. Two novel algorithms, motivated by the EDMD to extract the key operators in the Mori–Zwanzig formalism by simulation data, are presented in Sec. 5. We perform numerical experiments on a Lorenz ‘96 model [25] and present the results in Sec. 6. In Sec. 6.2, we demonstrate the advantage of the Mori–Zwanzig formalism over the conventional EDMD in predicting dynamical systems into the future. Finally, we provide a discussion and future outlook in Sec. 7.
+2 Preliminaries
+There exist two equivalent formulations to describe a dynamical system. In the first formulation [1, 40], the system is characterized by a collection of physical-space variables, often termed as the state of the system. For example, a physical-space variable can be one component of the position of an atom in a many-particle system, or one component of the velocity field at a specific location in a fluid dynamical system. The aim of this first formulation is to describe the evolution of these physical-space variables. Suppose the state of the system is fully characterized by NN physical-space variables ϕi\phi_{i}, i=1,…,Ni=1,\ldots,N, and we denote the state of the system at time tt by 𝚽⁡(t):=[ϕ1​(t),…,ϕN​(t)]T{\bf\Phi}\left(t\right):=\left[\phi_{1}\left(t\right),\ldots,\phi_{N}\left(t\right)\right]^{T}, an N×1N\times 1 column vector. Then, the evolution of the variables in the physical space (assumed to be ℝN\mathbb{R}^{N} for simplicity) is described by the deterministic evolutionary equations
+ d d​t​ϕi​(t)=Ri​(𝚽⁡(t),t),and𝚽⁡(0)=𝚽0,i=1,…​N,\frac{\text{\,d}}{\text{\,d}t}\phi_{i}\left(t\right)=R_{i}\left({\bf\Phi}\left(t\right),t\right),\quad\text{and}\quad{\bf\Phi}\left(0\right)={\bf\Phi}_{0},\quad i=1,\ldots N,
+(1)
+where the flow Ri:ℝN→ℝR_{i}:\mathbb{R}^{N}\rightarrow\mathbb{R} is a function which maps the state 𝚽{\bf\Phi} to a real number that characterizes the velocity of the physical-space variable ϕi\phi_{i} at time tt, and 𝚽0{\bf\Phi}_{0} is the given N×1N\times 1 column vector specifying the initial condition of the system’s state. In this article, we exclusively consider autonomous dynamical systems, where RiR_{i} does not explicitly depends on the time tt. Thus, the evolutionary equation (1) can be written in a terse form 𝚽˙=𝐑⁡(𝚽)\dot{{\bf\Phi}}={\bf R}\left({\bf\Phi}\right), where the flow 𝐑{\bf R} is defined as [R1​(𝚽⁡(t)),…,RN​(𝚽⁡(t))]T\left[R_{1}\left({\bf\Phi}\left(t\right)\right),\ldots,R_{N}\left({\bf\Phi}\left(t\right)\right)\right]^{T} and is implicitly time-dependent. In general, the flow 𝐑{\bf R} can be nonlinear in 𝚽{\bf\Phi}.
+In the second formulation proposed by Koopman [18, 17], the system is characterized by a collection of observables which are functions of the physical-space variables. For example, an observable can be a component of the total angular momentum of a subset of all atoms in a particle system, or the locally averaged density in a fluid dynamical system. The Koopmanian formulation describes how observables evolve in an infinite-dimensional Hilbert space ℋ\mathcal{H}, which is composed of all the possible observables. The advantage of this formulation is that the evolution of the observables, which is a vector in the infinite dimensional Hilbert space ℋ\mathcal{H}, is always linear, even for systems that are nonlinear in the physical-space picture. The disadvantage of this formulation is that the state space of the system, which consists of all possible observables, is infinite dimensional.
+To illustrate the difference of the formulations, we consider a one-dimensional nonlinear dynamical system in the physical-space formulation: ϕ˙​(t)=R​(ϕ​(t))\dot{\phi}(t)=R\left(\phi\left(t\right)\right) and ϕ⁡(0):=ϕ0\phi\left(0\right):=\phi_{0}, where R⁡(x):=−x2R(x):=-x^{2} is a nonlinear function and ϕ0\phi_{0} is the initial condition. While the analytic solution exists for this simple problem (ϕ⁡(t)=1/(t+1/ϕ0)\phi\left(t\right)=1/(t+1/\phi_{0})), it is challenging to derive the closed-form solution for general multidimensional (N>1N>1) nonlinear dynamical systems. Note that ϕ⁡(t)\phi(t) is a nonlinear function of the initial condition ϕ0\phi_{0}. In the Koopman formulation, the dynamics are characterized by observables of ϕ\phi. It is sufficient for us to consider a set of observables which will serve as the basis functions. For this example, we consider gk​(ϕ):=ϕkg_{k}(\phi):=\phi^{k}, k∈ℤ+k\in\mathbb{Z}_{+}. Other observables can be expressed as a weighted linear superposition of these basis functions via Taylor series expansion. In contrast to the first formulation, Koopman’s theory describes the dynamics of the basis functions gkg_{k}:
+ d d​t​gk​(t):= d d​t​[gk∘ϕ⁡(t)]= d​gk d​ϕ⋅ d​ϕ d​t=k​ϕk−1​(t)⋅[−ϕ2​(t)]=−k​gk+1​(t).\frac{\text{\,d}}{\text{\,d}t}g_{k}\left(t\right):=\frac{\text{\,d}}{\text{\,d}t}\left[g_{k}\circ\phi\left(t\right)\right]=\frac{\text{\,d}g_{k}}{\text{\,d}\phi}\cdot\frac{\text{\,d}\phi}{\text{\,d}t}=k\phi^{k-1}\left(t\right)\cdot\left[-\phi^{2}\left(t\right)\right]=-kg_{k+1}\left(t\right).
+(2)
+Throughout this article, we will use the symbol ∘\circ to denote the composite functions. Here, the observable functions gkg_{k} are functions of the physical-space variable ϕ\phi, which is a function of the physical time tt. The dynamics of gk​(t)g_{k}(t) is always linearly dependent to gk+1​(t)g_{k+1}(t), but is not closed unless the system involves infinitely many kk’s. The evolution of lower-order nonlinearity involves higher-order nonlinearity, similar to the common phenomenon in Carleman linearization [6, 19] and moment expansion methods [2, 38]. Nevertheless, we can choose two simple functions g0​(ϕ):=ϕ0g_{0}(\phi):=\phi^{0} and g−1​(ϕ)=ϕ−1g_{-1}\left(\phi\right)=\phi^{-1} and their dynamics are closed:
+ d d​t​[g0​(t)g−1​(t)]=[0010]​[g0​(t)g−1​(t)],and[g0​(0)g−1​(0)]=[1ϕ0−1].\frac{\text{\,d}}{\text{\,d}t}\left[\begin{array}[]{c}g_{0}\left(t\right)\\
+g_{-1}\left(t\right)\end{array}\right]=\left[\begin{array}[]{cc}0&0\\
+1&0\end{array}\right]\left[\begin{array}[]{c}g_{0}\left(t\right)\\
+g_{-1}\left(t\right)\end{array}\right],\quad\text{and}\quad\left[\begin{array}[]{c}g_{0}\left(0\right)\\
+g_{-1}\left(0\right)\end{array}\right]=\left[\begin{array}[]{c}1\\
+\phi_{0}^{-1}\end{array}\right].
+(3)
+The above linear ordinary differential equations are solved to derive the analytical solution of g−1​(ϕ⁡(t))=t+ϕ0−1g_{-1}\left(\phi\left(t\right)\right)=t+\phi_{0}^{-1}, which is then used to calculate ϕ⁡(t)\phi\left(t\right). The choice of this invariant set of functions is not unique. We can even choose a smaller set which contains only one observable ge(ϕ):=exp(−1/ϕ)g_{e}(\phi):=\exp(-1/\phi), which satisfies a one-dimensional linear ordinary equation ge˙​(t)=−ge​(t)\dot{g_{e}}(t)=-g_{e}(t).
+The above examples illuminate two key features of the Koopman theory. First, the dynamics of observables are always linearly dependent on other observables. Secondly, to derive closed-form solution in the Koopman theory is equivalent to identifying a set of observables whose dynamics are invariant in a subspace which is linearly spanned by the set of the observables. In general, it is challenging to identify the finite set of observables that closes the dynamics, and one has to resort to approximation methods to close the system. In the next section, we illustrate how the Mori–Zwanzig formalism leverage the projection operators to close the dynamics.
+3 The Mori–Zwanzig Formalism
+Here, we provide a review to the Mori–Zwanzig formalism. For completeness, we provide two comprehensive derivations of the major result of the Mori–Zwanzig formalism, the Generalized Langevin Equation (GLE). We begin with the operator algebraic derivation [8, 3, 10] in Sec. 3.1. To make the connection to the Koopman representation of the dynamics, we provide an alternative derivation of the GLE based on the the Koopman eigenfunctions in Sec. 3.2. Although the first derivation is terse and elegant, it is not easy to build intuition to understand the action of operators in the GLE. The second derivation has two advantages: (1) it provides a more transparent representation of the Mori–Zwanzig operators and (3) its terminology naturally bridges to approximate Koopman analysis such as EDMD [47]. In fact, the second approach’s geometric representation in the functional space is identical to Mori’s original construct [29], and the derivation is very close to the variation of constant method presented in Zwanzig’s own derivation [52]. We will thus adopt the terminology of the second derivation throughout the rest of the paper. After the GLE is set up, we provide a geometric interpretation of the GLE in Sec. 3.3 and a detailed discussion on the projection operator in Sec. 3.4. In Sec. 3.5 we discuss the consequence of the GLE on the evolutionary equations of the covariance matrices and the projected image. Sec. 3.6 is dedicated to the emergence of the self-consistent generalized fluctuation dissipation relationship. We conclude the review to the Mori–Zwanzig by remarking its applicability to discrete-time dynamics in Sec. 3.7.
+3.1 Operator algebraic derivation of the Generalized Langevin Equation
+We begin with the evolutionary equation (1), where the flow field ℝ:ℝN→ℝN\mathbb{R}:\mathbb{R}^{N}\rightarrow\mathbb{R}^{N} is assumed to be locally Lipschitz continuous such that a unique 𝚽⁡(t){\bf\Phi}(t) exists ∀t≥0\forall t\geq 0. More generally, the state space can be any compact Riemannian manifold endowed with the Borel σ\sigma-algebra and a measure; for brevity, we will consider the state space as ℝN\mathbb{R}^{N} below. The solution 𝚽⁡(t,𝚽0){\bf\Phi}(t;{\bf\Phi}_{0}) nonlinearly maps the initial condition 𝚽0{\bf\Phi}_{0} to the phase-space configuration at physical time tt. Next, one defines the Liouville operator ℒ:=∑i=1NRi(𝐱)∂xi\mathcal{L}:=\sum_{i=1}^{N}R_{i}\left({\bf x}\right)\partial_{x_{i}}, with a dummy variable 𝐱∈ℝN{\bf x}\in\mathbb{R}^{N}, and considers the following partial differential equation (PDE)
+∂ψ⁡(t,𝐱)∂t=\displaystyle\frac{\partial\psi(t,{\bf x})}{\partial t}={}
+ℒ​ψ​(t,𝐱),\displaystyle\mathcal{L}\psi(t,{\bf x}),
+(4a)
+ψ⁡(0,𝐱)=\displaystyle\psi(0,{\bf x})={}
+g⁡(𝐱),\displaystyle g\left({\bf x}\right),
+(4b)
+where g:ℝN→ℝg:\mathbb{R}^{N}\rightarrow\mathbb{R} is real-valued function of the state of the system, 𝐱∈ℝN{\bf x}\in\mathbb{R}^{N}. One can show that, the solution to the above first-order PDE is u⁡(t,𝐱)≡g⁡(𝚽⁡(t,𝐱))u(t,{\bf x})\equiv g\left({\bf\Phi}\left(t;{\bf x}\right)\right) by the method of characteristics. Note that 𝐱∈ℝN{\bf x}\in\mathbb{R}^{N} can be any initial state. Thus, solving the above linear PDE fully solves the function gg evaluated at the trajectory of the nonlinear system given any initial condition 𝚽0{\bf\Phi}_{0}: g⁡(𝚽⁡(t,𝚽0))=ψ⁡(t,𝚽0)g\left({\bf\Phi}\left(t;{\bf\Phi}_{0}\right)\right)=\psi(t,{\bf\Phi}_{0}). We adopt the slightly abused notation in published literature [8, 3, 10] and denote the solution ψ⁡(t,𝐱)\psi\left(t,{\bf x}\right) with the initial condition ψ⁡(0,𝐱)=g⁡(𝐱)\psi(0,{\bf x})=g({\bf x}) by g⁡(t,𝐱)g(t,{\bf x}). A special choice of gg is g⁡(𝐱):=xig({\bf x}):=x_{i}, that gg extracts the ithi^{\text{th}} component of the multivariate vector. In this case ψ⁡(𝚽0,t)\psi({\bf\Phi}_{0},t) is the solution of the ithi^{\text{th}} component, ψ⁡(t,𝚽0)≡ϕi​(t,𝚽0)\psi(t,{\bf\Phi}_{0})\equiv\phi_{i}\left(t;{\bf\Phi}_{0}\right). The semigroup notation tersely represents the solution of the above PDE (4) as ψ⁡(t,𝐱)=et​ℒ​g​(𝐱)\psi(t,{\bf x})=e^{t\mathcal{L}}g({\bf x}), with an evolutionary equation
+∂∂t​[et​ℒ​g]​(𝐱)=(ℒ​et​ℒ​g)​(𝐱)=(et​ℒ​ℒ​g)​(𝐱).\frac{\partial}{\partial t}\left[e^{t\mathcal{L}}g\right]({\bf x})=\left(\mathcal{L}e^{t\mathcal{L}}g\right)({\bf x})=\left(e^{t\mathcal{L}}\mathcal{L}g\right)({\bf x}).
+(5)
+The above equation applies to any 𝐱∈ℝ{\bf x}\in\mathbb{R} so “(𝐱)\left({\bf x}\right)” is often neglected in calculations.
+Conventionally, the goal of Mori–Zwanzig procedure is to construct the evolutionary equations for a set of components ϕ^:={ϕi}i=1M\hat{{\bf\phi}}:=\left\{\phi_{i}\right\}_{i=1}^{M}, M<NM<N, referred to as the resolved components. These are the components which we can measure as the dynamics move forward in time. Because the state space ℝN\mathbb{R}^{N} can be fully characterized by NN coordinates ϕi\phi_{i}, i=1​…​Ni=1\ldots N, knowing M<NM<N resolved observables could not fully specify the system’s state for constructing a closed dynamical system. Consequently, one would need to postulate another N−MN-M under-resolved components, often denoted by ϕ~\tilde{\phi}. Mori–Zwanzig procedure proceeds with a postulated joint distribution  d​μ≡ρ⁡(𝐱)​ dN​𝐱\text{\,d}\mu\equiv\rho({\bf x})\text{\,d}^{N}{\bf x}, where ρ\rho is the probability density and  dN​𝐱\text{\,d}^{N}{\bf x} is the Borel measure in ℝN\mathbb{R}^{N}, for asserting the initial distribution of the under-resolved ϕ~\tilde{\phi} conditioned on a given set ϕ^\hat{\phi}. The choice of  d​μ\text{\,d}\mu is model-specific but often the equilibrium (or non-equilibrium stationary) distribution of the system. Despite the conventional choice of using the components of the state (i.e., g⁡(𝐱)=xig({\bf x})=x_{i}) as the resolved and under-resolved observables, gg can be any function of the state (for example, gg can be the center of mass of a molecule whose full configurations are specified by the position and momentum of all its atoms.) A technical condition on gg is that it has to be L2L^{2}-integrable with respect to the measure  d​μ\text{\,d}\mu for constructing an inner product of a Hilbert space in which Mori–Zwanzig formalism operates.
+Mori–Zwanzig procedure proceeds with a specified projection operator 𝒫\mathcal{P}, which maps a function of the full-space configuration, g:ℝN→ℝg:\mathbb{R}^{N}\rightarrow\mathbb{R}, to a function of only the resolved observables 𝒫​g:ℝM→ℝ\mathcal{P}g:\mathbb{R}^{M}\rightarrow\mathbb{R}, assumed to be L2L^{2}-integrable with respect to  d​μ\text{\,d}\mu. The complement of the projection operator is defined as 𝒬:=I−𝒫\mathcal{Q}:=I-\mathcal{P}. Applying the Dyson identity [9]
+et⁡(A+B)=et​B+∫0te(t−s)​(A+B)​A​es​B​ d​se^{t(A+B)}=e^{tB}+\int_{0}^{t}e^{(t-s)(A+B)}Ae^{sB}\text{\,d}s
+(6)
+to operators A:=𝒫​ℒA:=\mathcal{PL} and B:=𝒬​ℒB:=\mathcal{QL}, one obtains
+et​ℒ=et​𝒬​ℒ+∫0te(t−s)​ℒ​𝒫​ℒ​es​𝒬​ℒ​ d​s.e^{t\mathcal{L}}=e^{t\mathcal{QL}}+\int_{0}^{t}e^{(t-s)\mathcal{L}}\mathcal{PL}e^{s\mathcal{QL}}\text{\,d}s.
+(7)
+The operator is applied to Eq. 5, resulting in the following expression for any gg with the fact that 𝒫+𝒬=I\mathcal{P}+\mathcal{Q}=I:
+ d d​t​[et​ℒ​g]=\displaystyle\frac{\text{\,d}}{\text{\,d}t}\left[e^{t\mathcal{L}}g\right]={}
+[et​ℒ​ℒ​g]=[et​ℒ​(𝒫+𝒬)​ℒ​g]\displaystyle\left[e^{t\mathcal{L}}\mathcal{L}g\right]=\left[e^{t\mathcal{L}}\left(\mathcal{P}+\mathcal{Q}\right)\mathcal{L}g\right]
+(8)
+=\displaystyle={}
+[et​ℒ​𝒫​ℒ​g]+[et​𝒬​ℒ​𝒬​ℒ​g]+∫0te(t−s)​ℒ​[𝒫​ℒ​es​𝒬​ℒ​𝒬​ℒ​g]​ d​s\displaystyle\left[e^{t\mathcal{L}}\mathcal{PL}g\right]+\left[e^{t\mathcal{QL}}\mathcal{QL}g\right]+\int_{0}^{t}e^{(t-s)\mathcal{L}}\left[\mathcal{PL}e^{s\mathcal{QL}}\mathcal{QL}g\right]\text{\,d}s
+Specifically for g⁡(𝐱)=xig\left({\bf x}\right)=x_{i}, i=1​…​Mi=1\ldots M, one define the Markov transition Mi​(𝐱^):=[𝒫​Ri]​(𝚽⁡(t,𝐱))M_{i}(\hat{{\bf x}}):=\left[\mathcal{P}R_{i}\right]\left({\bf\Phi}\left(t,{\bf x}\right)\right), the orthogonal dynamics Fi​(t,𝐱):=[et​𝒬​ℒ​𝒬​ℒ​g]​(𝐱)F_{i}(t,{\bf x}):=\left[e^{t\mathcal{QL}}\mathcal{QL}g\right]({\bf x}) and the memory function Ki​(t,𝐱^):=−[𝒫​ℒ​Fi]​(t,𝐱)K_{i}(t,{\bf\hat{x}}):=-\left[\mathcal{PL}F_{i}\right]\left(t,{\bf x}\right) to obtain the the generalized Langevin equation (GLE) describing the evolution of resolved components given an initial condition 𝚽0{\bf\Phi}_{0}:
+ d d​t​ϕ^i​(t,𝚽0)=Mi​(𝚽^​(t,𝚽0))−∫0tKi​(𝚽^​(t,𝚽0),t−s)​ d​s+Fi​(t,𝚽0).\frac{\text{\,d}}{\text{\,d}t}\hat{\phi}_{i}(t,{\bf\Phi}_{0})=M_{i}\left(\hat{{\bf\Phi}}\left(t,{\bf\Phi}_{0}\right)\right)-\int_{0}^{t}K_{i}\left(\hat{{\bf\Phi}}\left(t,{\bf\Phi}_{0}\right),t-s\right)\text{\,d}s+F_{i}(t,{\bf\Phi}_{0}).
+(9)
+Note that we follow the original sign convention that Mori [29] and Zwanzig [51] adopted: the memory term is with a negative sign, contrast to later publications [8, 3, 10] in which the memory term was defined with a positive sign.
+The difference between Mori and Zwanzig is their choice of the projection operator. With Mori’s construction [29], one relies on an inner product defined as
+⟨f,g⟩=∫ℝNf⁡(𝐱)​g​(𝐱)​ρ​(𝐱)​ dN​𝐱,f,g∈L2​(μ)\left\langle f,g\right\rangle=\int_{\mathbb{R}^{N}}f\left({\bf x}\right)g\left({\bf x}\right)\rho\left({\bf x}\right)\text{\,d}^{N}{\bf x},\quad f,g\in L^{2}\left(\mu\right)
+(10)
+to define a projection operator given a set of resolved observables ϕ^={ϕi}i=1M\hat{\phi}=\left\{\phi_{i}\right\}_{i=1}^{M}:
+[𝒫​f]​(ϕ^):=∑i,j=1M⟨f,ϕi⟩​[𝐂0−1]i,j​ϕj.\left[\mathcal{P}f\right]\left(\hat{\phi}\right):=\sum_{i,j=1}^{M}\left\langle f,\phi_{i}\right\rangle\left[{\bf C}^{-1}_{0}\right]_{i,j}\phi_{j}.
+(11)
+where 𝐂−1​(0){\bf C}^{-1}(0) is the inverse of an M×MM\times M matrix 𝐂0{\bf C}_{0} whose (i,j)(i,j) entry is ⟨ϕi,ϕj⟩\left\langle\phi_{i},\phi_{j}\right\rangle. A more geometric interpretation of Mori’s projector will be presented in Sec. 3.4. Note that 𝒫​f\mathcal{P}f is a linear function of the resolved observables, ϕj\phi_{j}, j=1​…​Mj=1\ldots M, and thus Mori’s projector is often referred to as a linear projection. In contrast, with the same set of observables, Zwanzig [51] does not rely on the inner product but relies on the direct marginalization of the under-resolved obeservables:
+[𝒫​f]​(𝐱^):=∫ℝN−Mf⁡(𝐱^,𝐱~)​ρ​(𝐱^,𝐱~)​ d​𝐱~∫ℝN−Mρ⁡(𝐱^,𝐱~)​ d​𝐱~.\left[\mathcal{P}f\right]\left(\hat{{\bf x}}\right):=\frac{\int_{\mathbb{R}^{N-M}}f\left(\hat{{\bf x}},\tilde{{\bf x}}\right)\rho\left(\hat{{\bf x}},\tilde{{\bf x}}\right)\text{\,d}\tilde{{\bf x}}}{\int_{\mathbb{R}^{N-M}}\rho\left(\hat{{\bf x}},\tilde{{\bf x}}\right)\text{\,d}\tilde{{\bf x}}}.
+(12)
+Note that the resulting function 𝒫​f\mathcal{P}f is generally nonlinear in the resolved observables, and thus, Zwanzig’s projection is often referred to as the “nonlinear projection”. Also termed as the nonlinear projection [3] and infinite-rank projection [10], Zwanzig’s projection opeator can lead to a nonlinear Markov transition and nonlinear memory kernel in the Generalized Langevin Equation [8, 3, 13].
+After applying Mori’s projection operator to MM, FF, and KK, one obtains a linear GLE [52]:
+ d d​t​ϕ^i​(t,𝚽0)=∑j=1M[𝐌]i,j​ϕ^j​(t,𝚽0)−∫0t[𝐊⁡(t−s)]i,j​ϕ^j​(t,𝚽0)​ d​s+Fi​(t,𝚽0).\frac{\text{\,d}}{\text{\,d}t}\hat{\phi}_{i}(t,{\bf\Phi}_{0})=\sum_{j=1}^{M}\left[{\bf M}\right]_{i,j}\hat{\phi}_{j}\left(t,{\bf\Phi}_{0}\right)-\int_{0}^{t}\left[{\bf K}(t-s)\right]_{i,j}\hat{\phi}_{j}\left(t,{\bf\Phi}_{0}\right)\text{\,d}s+F_{i}(t,{\bf\Phi}_{0}).
+(13)
+where 𝐌{\bf M} is an M×MM\times M constant matrix, as well as 𝐊⁡(t){\bf K}(t), t≥0t\geq 0. We will illuminate the physical meaning of this linear GLE in Sec. 3.3. In this manuscript, we will focus on Mori’s projection and its connection to the approximate Koopman learning methods.
+3.2 Generalized Langevin Equation in Koopman representation
+It is not easy to build intuitions from the terse derivation presented in the previous section 3.1. R. Zwanzig even commented “The derivation to be given here is based on abstract operator manipulations that were designed to get to the desired result as quickly as possible” and provided a more lengthy motivating derivation based on variation of constant method prior to the formal operator algebraic derivation. In this section, we aim to provide a similar derivation using Koopman representation of the dynamics for better understanding the GLE. By introducing a Koopman representation of the dynamics, we also aim to make a natural and formal connection between Mori–Zwanzig and Koopman formulations.
+As shown in the motivating example in Sec. 2, in Koopman representation of the dynamics, one aims to describe the evolution of the observables, which are functions of the system’s state 𝚽{\bf\Phi}. In the space of all L2L^{2}-integrable observables, the evolution is always linear in other observables, but the dimensionality of the operating space can be infinite. Formally, given a measure  d​μ\text{\,d}\mu, we denote the space of all L2L^{2}-integrable real-valued (can be generalized to complex-valued) observables of the state space by ℱ=L2​(ℝN,μ)\mathcal{F}=L^{2}\left(\mathbb{R}^{N},\mu\right). Together with a defined inner product, such as (10), these functions form a Hilbert functional space ℋ\mathcal{H}, in which the functions evolve forward in time. The continuous-time Koopman operator 𝒦t:ℱ→ℱ\mathcal{K}_{t}:\mathcal{F}\rightarrow\mathcal{F} is defined by
+(𝒦t​g)​(𝚽0)=g∘𝚽⁡(t,𝚽0)≡g⁡(𝚽⁡(t,𝚽0)),∀g∈ℱ,∀𝚽0∈ℝN.\left(\mathcal{K}_{t}g\right)\left({\bf\Phi}_{0}\right)=g\circ{\bf\Phi}\left(t;{\bf\Phi}_{0}\right)\equiv g\left({\bf\Phi}\left(t;{\bf\Phi}_{0}\right)\right),\,\forall g\in\mathcal{F},\,\forall{\bf\Phi}_{0}\in\mathbb{R}^{N}.
+(14)
+In other words, Koopman operator 𝒦t\mathcal{K}_{t} transforms the function gg to a function 𝒦t​g\mathcal{K}_{t}g of any initial condition 𝚽0{\bf\Phi}_{0}. At any time t≥0t\geq 0, 𝒦t​g\mathcal{K}_{t}g is equivalent to the observable gg evaluated at the solution of the dynamics 𝚽⁡(t,𝚽0){\bf\Phi}\left(t;{\bf\Phi}_{0}\right), which is also a function of 𝚽0{\bf\Phi}_{0}. The above equation shows the dual representations of the dynamics: The left hand side of the equation is the Koopman picture, analogous to the Heisenberg picture in quantum mechanics, that the observable is evolving (transformed by 𝒦t\mathcal{K}_{t}) forward in time and is always evaluated at the fixed state 𝚽0{\bf\Phi}_{0}, while the right hand side of the equation is the Perron–Frobenius picture, analogous to the Schrödinger’s picture in quantum mechanics, that the state is evolving forward in time (𝚽⁡(t,𝚽0){\bf\Phi}\left(t;{\bf\Phi}_{0}\right)) and evaluated by a fixed observable gg.
+The linear Koopman operator 𝒦t\mathcal{K}_{t} can be characterized by its eigenvalues and eigenfunction. A function ϕ:ℝN→ℝ\phi:\mathbb{R}^{N}\rightarrow\mathbb{R} (or ℂ\mathbb{C}) is defined as a Koopman eigenfunction if it satisfies (𝒦t​ϕ)=eλ​t​ϕ\left(\mathcal{K}_{t}\phi\right)=e^{\lambda t}\phi. Here, we drop the “as a function of initial-condition” annotation “(𝚽0)\left({\bf\Phi}_{0}\right)” again. The space of the eigenfunctions are infinite-dimensional: given two pairs (λ1,ϕ1)(\lambda_{1},\phi_{1}) and (λ2,ϕ2)(\lambda_{2},\phi_{2}), one can generate infinitely many eigenfunctions (m​λ1+n​λ2,ϕ1m​ϕ2n)(m\lambda_{1}+n\lambda_{2},\phi_{1}^{m}\phi_{2}^{n}), m,n∈ℕm,n\in\mathbb{N}. The infinitesimal generator of 𝒦t\mathcal{K}_{t}, limt↓0(𝒦t−I)/t\lim_{t\downarrow 0}\left(\mathcal{K}_{t}-I\right)/t is the Liouville operator ℒ:=∑i=1NRi(𝐱)∂xi\mathcal{L}:=\sum_{i=1}^{N}R_{i}\left({\bf x}\right)\partial_{x_{i}}, which is the Lie derivative with respect to the flow field 𝐑:ℝN→ℝN{\bf R}:\mathbb{R}^{N}\rightarrow\mathbb{R}^{N} [26]. Note that ℒ​ϕ=λ​ϕ\mathcal{L}\phi=\lambda\phi. As such, the Koopman eigenfunctions are the eigenfunctions of the Liouville operator and are special initial data following a coherent evolution ψ⁡(t,𝐱)=ϕ⁡(𝐱)​exp⁡(λ​t)\psi(t,{\bf x})=\phi({\bf x})\exp\left(\lambda t\right) by Eq. (4).
+One aims to construct the evolution of a set of linearly independent observables, ℳ:={gi}i=1M{\mathcal{M}}:=\left\{g_{i}\right\}_{i=1}^{M}. Given a time t≥0t\geq 0, we would like to know how gi​(t):=𝒦t​gig_{i}(t):=\mathcal{K}_{t}g_{i}, a function of the initial condition 𝚽0{\bf\Phi}_{0} parametrized by time tt, changes with respect to time tt. We remark that such a dynamical variable notation (“gi​(t)g_{i}(t)”) was first introduced by Mori [29] and has been the mainstream notation in the physics literature [52]. Using the modern Koopman notation, g⁡(t)g(t) is expressed as 𝒦t​gi\mathcal{K}_{t}g_{i}, and with the algebraic notation in Sec. 3.1 as gi​(t,⋅)g_{i}(t,\cdot). Note that gi​(0)=𝒦0​gi=gig_{i}(0)=\mathcal{K}_{0}g_{i}=g_{i}. Although the Koopman operator may contain a continuous spectrum [18, 44, 27] for chaotic dynamical systems, in this derivation, we consider systems with only point spectra for brevity. For these systems, the observables gig_{i} can be expressed as a linear combination of the countably infinite eigenfunctions [35, 47]:
+gi=∑j=1∞vi,j​ϕj,i=1​…​M.g_{i}=\sum_{j=1}^{\infty}v_{i,j}\phi_{j},\,i=1\ldots M.
+(15)
+In contrast to the above equation which decompose a function into Koopman eigenfunctions, Mori–Zwanzig formalism utilizes the inner product in the Hilbert space to decompose the space into the subspace linearly spanned by the set of observables, ℋ𝐠:=Span​(ℳ)\mathcal{H}_{\bf g}:=\text{Span}({\mathcal{M}}), and an orthogonal subspace ℋ𝐠¯={g¯∈ℱ:⟨g¯,gi⟩=0,gi∈ℳ}\mathcal{H}_{\bar{{\bf g}}}=\left\{\bar{g}\in\mathcal{F}:\left\langle\bar{g},g_{i}\right\rangle=0,g_{i}\in{\mathcal{M}}\right\}. One proceeds with constructing a complete set of basis functions in ℋ\mathcal{H}, with a natural choice of using ℳ{\mathcal{M}} as the set of basis functions in ℋ𝐠\mathcal{H}_{\bf g}. One can then use the Gram-Schimidt process to construct the basis functions in the orthogonal space from the Koopman eigenfunctions, {ϕi}i=1∞\left\{\phi_{i}\right\}_{i=1}^{\infty}. We denote this infinite set of basis functions by ℳ¯:={g¯i}i=1∞{\bar{\mathcal{M}}}:=\left\{\bar{g}_{i}\right\}_{i=1}^{\infty}.
+Similar to Eq. (15), we can decompose g¯i\bar{g}_{i}’s in terms of the eigenfunctions: g¯i=∑j=1∞v¯i,j​ϕj,i∈ℕ.\bar{g}_{i}=\sum_{j=1}^{\infty}\bar{v}_{i,j}\phi_{j},\,i\in\mathbb{N}.
+By construction, ⟨gi,g¯j⟩=0\left\langle g_{i},\bar{g}_{j}\right\rangle=0, i∈{1,…,M}i\in\left\{1,\ldots,M\right\}, j∈ℕj\in\mathbb{N}. Note that we did not require orthogonality between the basis functions in the same subspace, that is, ⟨gi,gj⟩\left\langle g_{i},g_{j}\right\rangle and ⟨g¯i,g¯j⟩\left\langle\bar{g}_{i},\bar{g}_{j}\right\rangle are not required to be 00 if i≠ji\neq j. However, we assume linear independence between any of the pairs of the basis functions, and the combined set ℳ∪ℳ¯{\mathcal{M}}\cup{\bar{\mathcal{M}}} forms a complete set of basis functions in ℋ\mathcal{H}. Consequently, one can express any Koopman eigenfunction ϕi\phi_{i} in terms of these new basis functions
+ϕi=∑j=1Mωi,j​gj+∑j=1∞ω¯i,j​g¯j.\phi_{i}=\sum_{j=1}^{M}\omega_{i,j}g_{j}+\sum_{j=1}^{\infty}\bar{\omega}_{i,j}\bar{g}_{j}.
+(16)
+Applying the Koopman operator 𝒦t\mathcal{K}_{t} to the above equation, we obtain the relationship ∀t≥0\forall t\geq 0, ϕi​(t)=∑j=1Mωi,j​gj​(t)+∑j=1∞ω¯i,j​g¯j​(t)\phi_{i}(t)=\sum_{j=1}^{M}\omega_{i,j}g_{j}(t)+\sum_{j=1}^{\infty}\bar{\omega}_{i,j}\bar{g}_{j}(t). Now, we can express the evolution of the basis functions gig_{i}, i=1​…​Mi=1\ldots M:
+ d d​t​gi​(t)=\displaystyle\frac{\text{\,d}}{\text{\,d}t}g_{i}(t)={}
+lims↓0𝒦s​gi​(t)−gi​(t)s=∑j=1∞vi,j​λj​eλj​t​ϕj=∑i=0∞vi,j​λj​ϕj​(t)\displaystyle\lim_{s\downarrow 0}\frac{\mathcal{K}_{s}g_{i}(t)-g_{i}(t)}{s}=\sum_{j=1}^{\infty}v_{i,j}\lambda_{j}e^{\lambda_{j}t}\phi_{j}=\sum_{i=0}^{\infty}v_{i,j}\lambda_{j}\phi_{j}(t)
+(17)
+=\displaystyle={}
+∑ℓ=1M(∑j=1∞vi,j​λj​ωj,ℓ)​gℓ​(t)+∑ℓ=1∞(∑j=1∞vi,j​λj​ω¯j,ℓ)​g¯ℓ​(t),\displaystyle\sum_{\ell=1}^{M}\left(\sum_{j=1}^{\infty}v_{i,j}\lambda_{j}\omega_{j,\ell}\right)g_{\ell}(t)+\sum_{\ell=1}^{\infty}\left(\sum_{j=1}^{\infty}v_{i,j}\lambda_{j}\bar{\omega}_{j,\ell}\right)\bar{g}_{\ell}(t),
+and similarly for g¯i\bar{g}_{i}, i∈ℕi\in\mathbb{N}:
+ d d​t​g¯i​(t)=∑ℓ=1M(∑j=1∞v¯i,j​λj​ωj,ℓ)​gℓ​(t)+∑ℓ=1∞(∑j=1∞v¯i,j​λj​ω¯j,ℓ)​g¯ℓ​(t).\displaystyle\frac{\text{\,d}}{\text{\,d}t}\bar{g}_{i}(t)=\sum_{\ell=1}^{M}\left(\sum_{j=1}^{\infty}\bar{v}_{i,j}\lambda_{j}\omega_{j,\ell}\right)g_{\ell}(t)+\sum_{\ell=1}^{\infty}\left(\sum_{j=1}^{\infty}\bar{v}_{i,j}\lambda_{j}\bar{\omega}_{j,\ell}\right)\bar{g}_{\ell}(t).
+(18)
+We have established that at any time, the evolution of gi​(t)g_{i}(t) and g¯i​(t)\bar{g}_{i}(t) are linear functions of themselves, which is the major consequence of the Koopman representation. We now adopt a terse vector notation 𝐠ℳ​(t)=[g1​(t),…​gM​(t)]T{\bf g}_{\mathcal{M}}\left(t\right)=\left[g_{1}(t),\ldots g_{M}(t)\right]^{T} and 𝐠ℳ¯​(t)=[g¯1​(t),g¯2​(t)​…]T{\bf g}_{\bar{\mathcal{M}}}\left(t\right)=\left[\bar{g}_{1}(t),\bar{g}_{2}(t)\ldots\right]^{T} and concisely express the full dynamics as:
+ d d​t​[𝐠ℳ​(t)𝐠ℳ¯​(t)]=𝐋⋅[𝐠ℳ​(t)𝐠ℳ¯​(t)]:=[𝐋ℳ​ℳ𝐋ℳ​ℳ¯𝐋ℳ¯​ℳ𝐋ℳ¯​ℳ¯]⋅[𝐠ℳ​(t)𝐠ℳ¯​(t)].\frac{\text{\,d}}{\text{\,d}t}\begin{bmatrix}{\bf g}_{\mathcal{M}}(t)\\
+{\bf g}_{\bar{\mathcal{M}}}(t)\end{bmatrix}={\bf L}\cdot\begin{bmatrix}{\bf g}_{\mathcal{M}}(t)\\
+{\bf g}_{\bar{\mathcal{M}}}(t)\end{bmatrix}:=\begin{bmatrix}{\bf L}_{{\mathcal{M}}{\mathcal{M}}}&{\bf L}_{{\mathcal{M}}{\bar{\mathcal{M}}}}\\
+{\bf L}_{{\bar{\mathcal{M}}}{\mathcal{M}}}&{\bf L}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}\ \end{bmatrix}\cdot\begin{bmatrix}{\bf g}_{\mathcal{M}}(t)\\
+{\bf g}_{\bar{\mathcal{M}}}(t)\end{bmatrix}.
+(19)
+Here, the matrices 𝐋i,j{\bf L}_{i,j}, i,j∈{ℳ,ℳ¯}i,j\in\left\{{\mathcal{M}},{\bar{\mathcal{M}}}\right\}, quantifies the effect from set jj to set ii in the linear evolution. While these matrices can be found explicitly from Eqs. (17) and (18) should one know the Koopman eigenfunctions, we derive them just for the purpose of establishing the linear evolutionary equation (19). We emphasize that although gi​(0)=gi∈ℋ𝐠g_{i}(0)=g_{i}\in\mathcal{H}_{\bf g} and g¯i​(0)=g¯i∈ℋ𝐠¯\bar{g}_{i}(0)=\bar{g}_{i}\in\mathcal{H}_{\bar{{\bf g}}}, for t>0t>0, gi​(t)g_{i}(t) and g¯i​(t)\bar{g}_{i}(t) are not necessarily in ℋ𝐠\mathcal{H}_{\bf g} and ℋ𝐠¯\mathcal{H}_{\bar{{\bf g}}} respectively, if the interactions between the spaces, 𝐋ℳ​ℳ¯{\bf L}_{{\mathcal{M}}{\bar{\mathcal{M}}}} and 𝐋ℳ¯​ℳ{\bf L}_{{\bar{\mathcal{M}}}{\mathcal{M}}}, are not zero. In other words, in general, both gi​(t)g_{i}(t) and g¯i​(t)\bar{g}_{i}(t) have nonzero components of the basis functions in ℋ𝐠\mathcal{H}_{\bf g} and ℋ𝐠¯\mathcal{H}_{\bar{{\bf g}}}. Nevertheless, the above linear equation (19) always holds.
+To obtain a closed-form evolution for our observables of interest in ℳ{\mathcal{M}}, we first solve for the observables in set ℳ¯{\bar{\mathcal{M}}} implicitly. Treating 𝐋ℳ¯​ℳ​𝐠ℳ{\bf L}_{{\bar{\mathcal{M}}}{\mathcal{M}}}{\bf g}_{\mathcal{M}} as an inhomogeneous driving term of the linear system, we solve the linear evolutionary equation for 𝐠ℳ¯{\bf g}_{\bar{\mathcal{M}}}:
+𝐠ℳ¯​(t)=\displaystyle{\bf g}_{\bar{\mathcal{M}}}(t)={}
+∫0te(t−s)​𝐋ℳ¯​ℳ¯⋅𝐋ℳ¯​ℳ⋅𝐠ℳ​(s)​ d​s+et​𝐋ℳ¯​ℳ¯⋅𝐠ℳ¯​(0).\displaystyle\int_{0}^{t}e^{\left(t-s\right){\bf L}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}}\cdot{\bf L}_{{\bar{\mathcal{M}}}{\mathcal{M}}}\cdot{\bf g}_{\mathcal{M}}(s)\text{\,d}s+e^{t{\bf L}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}}\cdot{\bf g}_{\bar{\mathcal{M}}}(0).
+(20)
+The implicit solution of 𝐠ℳ¯{\bf g}_{\bar{\mathcal{M}}} is in turn used to express closed evolutionary equations for the observables in the set ℳ{\mathcal{M}}.
+ d d​t​𝐠ℳ​(t)=\displaystyle\frac{\text{\,d}}{\text{\,d}t}{\bf g}_{\mathcal{M}}(t)={}
+𝐋ℳ​ℳ​𝐠ℳ​(t)+𝐋ℳ​ℳ¯​∫0te(t−s)​𝐋ℳ¯​ℳ¯⋅𝐋ℳ¯​ℳ⋅𝐠ℳ​(s)​ d​s\displaystyle{\bf L}_{{\mathcal{M}}{\mathcal{M}}}{\bf g}_{\mathcal{M}}\left(t\right)+{\bf L}_{{\mathcal{M}}{\bar{\mathcal{M}}}}\int_{0}^{t}e^{\left(t-s\right){\bf L}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}}\cdot{\bf L}_{{\bar{\mathcal{M}}}{\mathcal{M}}}\cdot{\bf g}_{\mathcal{M}}(s)\text{\,d}s
+(21)
++𝐋ℳ​ℳ¯et​𝐋ℳ¯​ℳ¯⋅𝐠ℳ¯(0).\displaystyle+{\bf L}_{{\mathcal{M}}{\bar{\mathcal{M}}}}e^{t{\bf L}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}}\cdot{\bf g}_{\bar{\mathcal{M}}}(0).
+Equation (21) is almost closed in our chosen set of variables except for the last term. The first term is the instantaneous configuration of the set of observables applied to the physical-space configuration at time tt and the second is a delayed impact of the set of observables applied to the physical-space variables at an earlier time s<ts<t. Both these terms depend only on the resolved observables 𝐠ℳ{\bf g}_{\mathcal{M}} at time tt. However, the third term is induced by the initial setting of the under-resolved observables, 𝐠ℳ¯​(0){\bf g}_{\bar{\mathcal{M}}}(0), which cannot be generally resolved. Equation (21) is exact if one knows both 𝐠ℳ¯​(0){\bf g}_{\bar{\mathcal{M}}}(0) and 𝐠ℳ¯​(0){\bf g}_{\bar{\mathcal{M}}}(0), in which case, the system is fully resolved. Unfortunately, we do not have direct access to 𝐠ℳ¯​(0){\bf g}_{\bar{\mathcal{M}}}(0) as they are under-resolved observables, and one has to postulate their configurations in practice.
+This simple analysis illustrates the essential intuition of the Mori–Zwanzig formalism. Because we only resolve a set of observables 𝐠ℳ​(t){\bf g}_{\mathcal{M}}(t) of the full dynamics, the impact from other observables 𝐠ℳ¯​(t){\bf g}_{\bar{\mathcal{M}}}(t) in Eq. (19) cannot be directly accessed. Instead, we indirectly estimate the effect 𝐋ℳ​ℳ¯⋅𝐠⁡(t){\bf L}_{{\mathcal{M}}{\bar{\mathcal{M}}}}\cdot{\bf g}\left(t\right) from Eq. (20), which contains two parts: the impact of resolved observables 𝐠ℳ​(s){\bf g}_{\mathcal{M}}(s) at an earlier time ss, and the initial conditions of the orthogonal observables 𝐠ℳ¯{\bf g}_{\bar{\mathcal{M}}}. The former characterizes the “echo” of the set of our interested observables to itself: at an earlier time ss, these observables made an impact to the under-resolved observables 𝐠ℳ¯{\bf g}_{\bar{\mathcal{M}}} (via 𝐋ℳ¯​ℳ{\bf L}_{{\bar{\mathcal{M}}}{\mathcal{M}}}), and such an impact propagates among the under-resolved observables 𝐠ℳ¯{\bf g}_{\bar{\mathcal{M}}} for t−st-s time via e(t−s)​𝐋ℳ¯​ℳ¯e^{(t-s){\bf L}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}} before coming back to affect the resolved observables at time tt via Lℳ​ℳ¯L_{{\mathcal{M}}{\bar{\mathcal{M}}}}. The second part is a generic impact from the initial configuration of the orthogonal set of observables, 𝐠ℳ¯​(0){\bf g}_{{\bar{\mathcal{M}}}}(0), which has propagated in the under-resolved observables until the current time tt and affects the resolved observables. In the end, Eq. (21) tells us that the accurate evolutionary equations of 𝐠ℳ​(t){\bf g}_{\mathcal{M}}(t) always depend on (1) their instantaneous configuration, (2) their past history, and (3) an external “driving force” which depends on the initial configurations in the orthogonal space.
+We make a remark that the second and the third term are zero if the dynamics is closed in ℳ{\mathcal{M}}, that is, 𝐋ℳ​ℳ¯=0{\bf L}_{{\mathcal{M}}{\bar{\mathcal{M}}}}=0 which corresponds to the scenario when we have a complete set of observables to describe the full dynamics. For example, this would be the ge:=exp(−1/x)g_{e}:=\exp(-1/x) for the dynamics x˙=−x2\dot{x}=-x^{2}. The memory and the external driven force exist only because we have an incomplete observable set in ℋ\mathcal{H}.
+We now drop the subscript ℳ{\mathcal{M}} in 𝐠ℳ{\bf g}_{\mathcal{M}}, as we only care about the dynamics of the resolved observables. By defining an M×MM\times M matrix 𝐌:=𝐋ℳ​ℳ{\bf M}:={\bf L}_{{\mathcal{M}}{\mathcal{M}}}, an M×MM\times M matrix parametrized by 𝐊(s):=−𝐋ℳ​ℳ¯es​𝐋ℳ¯​ℳ¯⋅𝐋ℳ¯​ℳ{\bf K}\left(s\right):=-{\bf L}_{{\mathcal{M}}{\bar{\mathcal{M}}}}e^{s{\bf L}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}}\cdot{\bf L}_{{\bar{\mathcal{M}}}{\mathcal{M}}} parametrized by s∈ℝ+s\in\mathbb{R}^{+}, and an M×1M\times 1 matrix 𝐅⁡(t):=𝐋ℳ​ℳ¯​et​𝐋ℳ¯​ℳ¯⋅𝐠ℳ¯​(0){\bf F}(t):={\bf L}_{{\mathcal{M}}{\bar{\mathcal{M}}}}e^{t{\bf L}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}}\cdot{\bf g}_{\bar{\mathcal{M}}}(0), we arrive at the GLE
+ d d​t​𝐠​(t)=𝐌⋅𝐠⁡(t)−∫0t𝐊⁡(t−s)⋅𝐠⁡(s)​ d​s+𝐅⁡(t).\frac{\text{\,d}}{\text{\,d}t}{\bf g}\left(t\right)={\bf M}\cdot{\bf g}\left(t\right)-\int_{0}^{t}{\bf K}\left(t-s\right)\cdot{\bf g}\left(s\right)\text{\,d}s+{\bf F}\left(t\right).
+(22)
+In the rest of the paper, we refer to 𝐌{\bf M} as the Markov transition matrix, 𝐊⁡(s){\bf K}(s) as the memory kernel, and 𝐅⁡(t){\bf F}(t) as the orthogonal dynamics. Although 𝐅⁡(t){\bf F}(t) is fully deterministic in Mori–Zwanzig formalism for deterministic systems, it is often referred to as the noise because its resemblance of a Langevin noise in a Langevin equation. Note that the operators 𝐌{\bf M} quantify the interactions within the group of the relevant observables {gi}i=1M\left\{g_{i}\right\}_{i=1}^{M} (that is, 𝐋ℳ​ℳ{\bf L}_{{\mathcal{M}}{\mathcal{M}}}). In contrast, the memory kernel combines the effects of the rest of the interactions (𝐋ℳ​ℳ¯{\bf L}_{{\mathcal{M}}{\bar{\mathcal{M}}}}, 𝐋ℳ¯​ℳ{\bf L}_{{\bar{\mathcal{M}}}{\mathcal{M}}}, and 𝐋ℳ¯​ℳ¯{\bf L}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}})
+Finally, we remark that despite their different terminologies, Eq. (22) and the operator algebraic formulation Eq. (13) are equivalent. When gi​(𝐱)=xig_{i}({\bf x})=x_{i}, given an initial condition 𝚽0{\bf\Phi}_{0}, gi∘𝚽0g_{i}\circ{\bf\Phi}_{0} in Eq. (22) is ϕi​(t,𝚽0)\phi_{i}\left(t,{\bf\Phi}_{0}\right) in Eq. (13).
+3.3 Geometric interpretation of the GLE
+The GLE describe the exact evolution of 𝐠⁡(t){\bf g}(t) in ℋ\mathcal{H}. Figure 1 illustrates a schematic diagram of the dynamics of 𝐠⁡(t){\bf g}(t) in the space ℋ\mathcal{H}.
+Because the GLE (22) is linear, the observables 𝐠⁡(t){\bf g}(t) can be decomposed into two components: 𝐠⁡(t)=𝐠∥​(t)+𝐠⟂​(t){\bf g}(t)={\bf g}_{\parallel}\left(t\right)+{\bf g}_{\perp}\left(t\right). We define the parallel component 𝐠∥​(t){\bf g}_{\parallel}\left(t\right) as the general solution of the linear system and satisfies
+𝐠˙∥​(t)=\displaystyle\dot{{\bf g}}_{\parallel}\left(t\right)={}
+𝐌⋅𝐠∥​(t)−∫0t𝐊⁡(t−s)⋅𝐠∥​(s)​ d​s,\displaystyle{\bf M}\cdot{\bf g}_{\parallel}\left(t\right)-\int_{0}^{t}{\bf K}\left(t-s\right)\cdot{\bf g}_{\parallel}\left(s\right)\text{\,d}s,
+(23a)
+𝐠∥​(0)=\displaystyle{\bf g}_{\parallel}\left(0\right)={}
+𝐠⁡(0).\displaystyle{\bf g}\left(0\right).
+(23b)
+Because (23) is linear, it is clear that 𝐠∥​(t){\bf g}_{\parallel}(t) is just linear combination of the initial observables, i.e., we can always express 𝐠∥​(t)=∑i=1Mαi​(t)​𝐠i​(0){\bf g}_{\parallel}(t)=\sum_{i=1}^{M}\alpha_{i}(t){\bf g}_{i}(0) with some time-dependent coefficients αi​(t)\alpha_{i}(t). Then, for any t≥0t\geq 0, (𝐠∥​(t))i∈ℋ𝐠\left({\bf g}_{\parallel}\left(t\right)\right)_{i}\in\mathcal{H}_{\bf g}, i=1​…​Mi=1\ldots M. The orthogonal component 𝐠⟂​(t){\bf g}_{\perp}\left(t\right) is the particular solution of the linear system with the driven force 𝐅⁡(t){\bf F}(t) and satisfies
+𝐠˙⟂​(t)=\displaystyle\dot{{\bf g}}_{\perp}\left(t\right)={}
+𝐌⋅𝐠⟂​(t)−∫0t𝐊⁡(t−s)⋅𝐠⟂​(s)​ d​s+𝐅⁡(t),\displaystyle{\bf M}\cdot{\bf g}_{\perp}\left(t\right)-\int_{0}^{t}{\bf K}\left(t-s\right)\cdot{\bf g}_{\perp}\left(s\right)\text{\,d}s+{\bf F}(t),
+(24a)
+𝐠⟂​(0)=\displaystyle{\bf g}_{\perp}\left(0\right)={}
+0.\displaystyle 0.
+(24b)
+Recall that the orthogonal dynamics (𝐅⁡(t))i∈ℋ𝐠¯\left({\bf F}(t)\right)_{i}\in\mathcal{H}_{\bar{{\bf g}}}, i=1​…​Mi=1\ldots M. Then, again due to the linearity of (24), the orthogonal component (𝐠⟂​(t))i∈ℋ𝐠¯\left({\bf g}_{\perp}(t)\right)_{i}\in\mathcal{H}_{\bar{{\bf g}}}, for any time t≥0t\geq 0.
+Figure 1: Schematic diagram of the Mori–Zwanzig formalism. The Hilbert space ℋ\mathcal{H} contains all possible observables which are functions of the initial conditions of the physical-space variables 𝚽0{\bf\Phi}_{0}. The subspace ℋ𝐠\mathcal{H}_{\bf g} is linearly spanned by the set of selected observables Span​({gi}i=1M)\text{Span}(\left\{g_{i}\right\}_{i=1}^{M}). We define the functions gi​(t)g_{i}(t) parametrized by time tt to be gi​(t)∘𝚽0:=gi∘𝚽tg_{i}(t)\circ{\bf\Phi}_{0}:=g_{i}\circ{\bf\Phi}_{t}, noting that 𝚽⁡(t){\bf\Phi}(t) are functions of the initial condition 𝚽0{\bf\Phi}_{0}. At time t=0t=0, the vector 𝐠⁡(0)=[g1​(0),…,gM​(0)]T{\bf g}\left(0\right)=\left[g_{1}(0),\ldots,g_{M}(0)\right]^{T} is exactly the vector of the basis {gi}i=1M\left\{g_{i}\right\}_{i=1}^{M} and thus, 𝐠⁡(0){\bf g}\left(0\right) is in ℋ𝐠\mathcal{H}_{\bf g}. As the nonlinear dynamics evolves, 𝐠⁡(t){\bf g}\left(t\right) does not necessarily stays invariantly in ℋ𝐠\mathcal{H}_{\bf g}; in other words, 𝐠⁡(t){\bf g}\left(t\right) is not necessarily a linear combination of {gi}i=1M\left\{g_{i}\right\}_{i=1}^{M}. Mori’s projection operator 𝒫\mathcal{P} projects 𝐠⁡(t){\bf g}(t) into ℋ𝐠\mathcal{H}_{\bf g}. The image is termed as 𝐠∥​(t){\bf g}_{\parallel}(t), which is a linear combination of {gi}i=1M\left\{g_{i}\right\}_{i=1}^{M} and 𝐠∥​(t){\bf g}_{\parallel}(t) satisfies Eq. (23).
+The geometric representation in Fig. 1 illustrates the closure problem in the Hilbert space: to evolve the exact 𝐠⁡(t){\bf g}(t), one needs to provide the orthogonal dynamics 𝐅⁡(t){\bf F}(t). Solving 𝐅⁡(t){\bf F}(t) is as difficult as solving the full dynamics in the physical-space picture—we would need all the information of the orthogonal components, and thus the Mori–Zwanzig formalism has little to no advantage over the physical-space picture if the task is to solve for the exact 𝐠⁡(t){\bf g}(t). In fact, there is no free lunch by changing the Perron–Frobenius picture to the dual Koopman picture. To move forward, traditional analysis aim to select a set of slow-evolving observables—often referred to as the coarse-grained variables—and a noise model to replace the orthogonal dynamics 𝐅⁡(t){\bf F}(t). The rational of this approach is that, if the selected observables are complete to describe the slow dynamics, the orthogonal dynamics shall live at a much faster timescale and a proper noise model should suffice to model the dynamics of 𝐅⁡(t){\bf F}(t). When a set of observables is given and when their dynamics when the timescales of the resolved and under-resolved observables are well-separated, Gottwald et al. [11] provides a systematic slow-fast asymptotic analysis to homogenize effect of the orthogonal noise. The challenge is that it is not a priori known what these observables are and what the corresponding noise model is, and identifying the observables and noise model is often from educated guesses supported by domain-specific knowledge.
+3.4 Mori’s linear projection operator
+Both the Koopman [18, 17, 27] and Mori–Zwanzig formulations operate in a Hilbert space, whose inner product is commonly defined as the inner product of two functions as the expected value of the product of the two with respect to a chosen measure  d​μ\text{\,d}\mu, Eq. (10). Despite of the freedom to choose this measure,  d​μ\text{\,d}\mu is conventionally set as a natural measure that is specific to the dynamics. For example, it is natural to adopt the canonical equilibrium distribution (Gibbs’ measure) for equilibrium Hamiltonian systems [29]. For non-equilibrium systems, we can adopt the stationary measure as  d​μ\text{\,d}\mu [14], as shown below. For stochastic and transient systems, it is natural to choose the induced time-dependent distribution [48].
+With a defined inner product, Mori used an operator 𝒫\mathcal{P} that projects any function (of the initial condition 𝚽0{\bf\Phi}_{0}) f∈ℋf\in\mathcal{H}, onto the subspace ℋ𝐠:=span​(ℳ)=span​({gi}i=1M)\mathcal{H}_{\bf g}:=\text{span}\left({\mathcal{M}}\right)=\text{span}\left(\left\{g_{i}\right\}_{i=1}^{M}\right). As such, the projected image can be expressed by 𝒫​f:=∑i=1Mαi​gi\mathcal{P}f:=\sum_{i=1}^{M}\alpha_{i}g_{i} with coefficients αi\alpha_{i}. Now, we decompose the function ff by f=𝒫​f+f⟂f=\mathcal{P}f+f_{\perp} where f⟂∈ℋ𝐠¯f_{\perp}\in\mathcal{H}_{\bar{{\bf g}}}. Because ⟨f⟂,gj⟩=0\left\langle f_{\perp},g_{j}\right\rangle=0, j=1​…​Mj=1\ldots M, the inner product ⟨f,gj⟩\left\langle f,g_{j}\right\rangle is:
+⟨f,gj⟩=⟨𝒫​f,gj⟩=∑i=1Mαi​⟨gi,gj⟩.\left\langle f,g_{j}\right\rangle=\left\langle\mathcal{P}f,g_{j}\right\rangle=\sum_{i=1}^{M}\alpha_{i}\left\langle g_{i},g_{j}\right\rangle.
+(25)
+In vector notation, 𝐠:=[g1​…​gM]T{\bf g}:=\left[g_{1}\ldots g_{M}\right]^{T} and α:=[α1​…​αM]{\bf\alpha}:=\left[\alpha_{1}\ldots\alpha_{M}\right], the above equation can be expressed concisely by ⟨f,𝐠T⟩=α⋅⟨𝐠,𝐠T⟩\left\langle f,{\bf g}^{T}\right\rangle={\bf\alpha}\cdot\left\langle{\bf g},{\bf g}^{T}\right\rangle. Because the basis functions gig_{i}’s are linearly independent, ⟨𝐠,𝐠T⟩\left\langle{\bf g},{\bf g}^{T}\right\rangle is a full-rank and invertible matrix. Then, α=⟨f,𝐠T⟩⋅⟨𝐠,𝐠T⟩−1{\bf\alpha}=\left\langle f,{\bf g}^{T}\right\rangle\cdot\left\langle{\bf g},{\bf g}^{T}\right\rangle^{-1}, and we obtain the final expression for the projection operator
+𝒫​f=⟨f,𝐠T⟩⋅⟨𝐠,𝐠T⟩−1⋅𝐠.\mathcal{P}f=\left\langle f,{\bf g}^{T}\right\rangle\cdot\left\langle{\bf g},{\bf g}^{T}\right\rangle^{-1}\cdot{\bf g}.
+(26)
+Note that if and only if the pre-selected set of functions {gi}i=1M\left\{g_{i}\right\}_{i=1}^{M} are orthonormal with respect to the defined inner product, ⟨𝐠,𝐠T⟩−1\left\langle{\bf g},{\bf g}^{T}\right\rangle^{-1} is an identity matrix and the expression can be simplified by 𝒫​f=⟨f,𝐠T⟩⋅𝐠\mathcal{P}f=\left\langle f,{\bf g}^{T}\right\rangle\cdot{\bf g}. Finally, we emphasize that the projection operator crucially depends on the choice of the defined inner product. In the rest of this article, we consider an inner product defined by averaging the observables over a long trajectory of the dynamical system:
+⟨f,g⟩:=limT→∞1T​∫0T(f∘𝚽⁡(s))​(g∘𝚽⁡(s))​ d​s,\left\langle f,g\right\rangle:=\lim_{T\rightarrow\infty}\frac{1}{T}\int_{0}^{T}\left(f\circ{\bf\Phi}(s)\right)\left(g\circ{\bf\Phi}(s)\right)\text{\,d}s,
+(27)
+where 𝚽⁡(t){\bf\Phi}\left(t\right) is the solution of Eq. (1) from any initial condition, assuming the choice of the initial condition does not change the long-time statistics.
+3.5 The evolution of the projected image and time correlation matrix
+The GLE (22) is not a closed dynamical system for the exact 𝐠⁡(t){\bf g}(t) because it contains the generalized Langevin noise, 𝐅{\bf F}, which is not known and hard to obtain. However, because 𝐠⁡(t)=𝐠∥+𝐠⟂{\bf g}(t)={\bf g}_{\parallel}+{\bf g}_{\perp}, the projected image 𝒫​𝐠​(t)=𝒫​𝐠∥​(t)+𝒫​𝐠⟂​(t)=𝐠∥\mathcal{P}{\bf g}(t)=\mathcal{P}{\bf g}_{\parallel}(t)+\mathcal{P}{\bf g}_{\perp}(t)={\bf g}_{\parallel} follows the closed evolutionary Eq. (23) and with an initial condition 𝒫​𝐠​(0)=𝐠⁡(0)\mathcal{P}{\bf g}(0)={\bf g}(0). The L2L^{2}-norm of the residual error of the projected image ‖𝐠−𝒫​𝐠‖22:=⟨𝐠−𝒫​𝐠,𝐠−𝒫​𝐠⟩\|{\bf g}-\mathcal{P}{\bf g}\|_{2}^{2}:=\left\langle{\bf g}-\mathcal{P}{\bf g},{\bf g}-\mathcal{P}{\bf g}\right\rangle is minimal among all the schemes that decompose 𝐠⁡(t){\bf g}(t) into a parallel component and a non-parallel component. Thus, the projected image 𝒫​𝐠​(t)\mathcal{P}{\bf g}(t) is the best approximation to the evolution of g(t) in the parallel space, and in this sense one can conceive it as the optimal predictor of the exact evolution 𝐠⁡(t){\bf g}(t) into the future (t>0t>0). Somewhat interestingly, this shows that the optimal prediction into the future defined as above only depends on the choice of the inner product (and consequently the projection operator) and does not depend on the orthogonal dynamics 𝐅⁡(t){\bf F}(t).
+A related way to close the dynamics is to apply ⟨⋅,𝐠T⟩\left\langle\cdot,{\bf g}^{T}\right\rangle to the GLE (22), resulting in the evolutionary equation for the two-time correlation function 𝐂⁡(t):=⟨𝐠⁡(t),𝐠T⟩{\bf C}(t):=\left\langle{\bf g}(t),{\bf g}^{T}\right\rangle:
+ d d​t​𝐂​(t)=𝐌⋅𝐂⁡(t)−∫0t𝐊⁡(t−s)​𝐂​(s)​ d​s,𝐂⁡(0)=⟨𝐠,𝐠T⟩.\frac{\text{\,d}}{\text{\,d}t}{\bf C}(t)={\bf M}\cdot{\bf C}(t)-\int_{0}^{t}{\bf K}\left(t-s\right){\bf C}(s)\text{\,d}s,\quad{\bf C}(0)=\left\langle{\bf g},{\bf g}^{T}\right\rangle.
+(28)
+Here, 𝐂⁡(t){\bf C}(t) is the expected two-time correlation of the observables with respect to an initial condition 𝚽0{\bf\Phi}_{0} distributed according to a long-time statistics  d​μ\text{\,d}\mu (cf. Eq. (27)).
+Multiplying 𝐂−1​(0)⋅𝐠​(0){\bf C}^{-1}(0)\cdot{\bf g}(0) to Eq. (28) from the right, we obtain
+ d d​t​𝐂​(t)⋅𝐂−1​(0)⋅𝐠⁡(0)=𝐌⋅𝐂⁡(t)⋅𝐂−1​(0)⋅𝐠⁡(0)−∫0t𝐊⁡(t−s)​𝐂​(s)⋅𝐂−1​(0)⋅𝐠⁡(0)​ d​s.\frac{\text{\,d}}{\text{\,d}t}{\bf C}(t)\cdot{\bf C}^{-1}(0)\cdot{\bf g}(0)={\bf M}\cdot{\bf C}(t)\cdot{\bf C}^{-1}(0)\cdot{\bf g}(0)-\int_{0}^{t}{\bf K}\left(t-s\right){\bf C}(s)\cdot{\bf C}^{-1}(0)\cdot{\bf g}(0)\text{\,d}s.
+(29)
+Comparing Eq. (29) to the evolutionary Eq. (23), we immediately identify the solution of the projected image 𝐠∥​(t){\bf g}_{\parallel}(t):
+𝐠∥​(t)=𝐂⁡(t)⋅𝐂−1​(0)⋅𝐠⁡(0).{\bf g}_{\parallel}(t)={\bf C}(t)\cdot{\bf C}^{-1}(0)\cdot{\bf g}(0).
+(30)
+Thus, the temporal correlation matrix 𝐂⁡(t){\bf C}(t) encodes the information for optimally predicting the dynamics into the future. In addition, it is straightforward to solve the orthogonal component 𝐠⟂​(t){\bf g}_{\perp}(t) as a superposition of the orthogonal driven force 𝐅⁡(t){\bf F}(t):
+𝐠⟂​(t)=∫0t𝐂⁡(t−s)⋅𝐂−1​(0)⋅𝐅⁡(s)​ d​s.{\bf g}_{\perp}(t)=\int_{0}^{t}{\bf C}(t-s)\cdot{\bf C}^{-1}(0)\cdot{\bf F}(s)\text{\,d}s.
+(31)
+We illustrate the analysis in Appendix A.
+As will be seen in Sec. 5, Eq. (28) plays a pivotal role for data-driven learning of the Markov transition 𝐌{\bf M} and memory kernel 𝐊⁡(s){\bf K}(s), s≥0s\geq 0.
+We will also see that the solution of the optimal prediction Eq. (30) establishes the equivalence between the Mori–Zwanzig formalism and the approximate Koopman learning algorithm in Sec. 4.
+3.6 Generalized Fluctuation-Dissipation Relationship
+With a suitable choice of the inner product, there exists a subtle relationship—often referred to as the Generalized Fluctuation-Dissipation (GFD) relationship—between the memory kernel 𝐊{\bf K} and the orthogonal dynamics 𝐅{\bf F}:
+𝐊⁡(s)=⟨𝐅⁡(s),𝐅T​(0)⟩​𝐂−1​(0).{\bf K}\left(s\right)=\left\langle{\bf F}(s),{\bf F}^{T}(0)\right\rangle{\bf C}^{-1}(0).
+(32)
+Using the notations defined in Sec. 3.2, we illustrate how this subtle relationship emerges.
+Explicitly, from Eq. (21), we identify the orthogonal dynamics
+𝐅⁡(t)=𝐋ℳ​ℳ¯​et​𝐋ℳ¯​ℳ¯​𝐠ℳ¯,\displaystyle{\bf F}(t)={\bf L}_{{\mathcal{M}}{\bar{\mathcal{M}}}}e^{t{\bf L}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}}{\bf g}_{\bar{\mathcal{M}}},
+(33)
+because 𝐠ℳ¯​(0)≡𝐠ℳ¯{\bf g}_{\bar{\mathcal{M}}}(0)\equiv{\bf g}_{\bar{\mathcal{M}}}.
+Next, with the choice of the temporal averaging inner product Eq. (27), we can obtain:
+⟨𝐅⁡(t),𝐅T​(0)⟩=limT→∞1T​∫0T𝐋ℳ​ℳ¯​et​𝐋ℳ¯​ℳ¯​𝐠ℳ¯∘𝚽⁡(s)⋅[𝐋ℳ​ℳ¯​𝐠ℳ¯∘𝚽⁡(s)]T​ d​s.\displaystyle\left\langle{\bf F}(t),{\bf F}^{T}(0)\right\rangle=\lim_{T\rightarrow\infty}\frac{1}{T}\int_{0}^{T}{\bf L}_{{\mathcal{M}}{\bar{\mathcal{M}}}}e^{t{\bf L}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}}{\bf g}_{\bar{\mathcal{M}}}\circ{\bf\Phi}(s)\cdot\left[{\bf L}_{{\mathcal{M}}{\bar{\mathcal{M}}}}{\bf g}_{\bar{\mathcal{M}}}\circ{\bf\Phi}(s)\right]^{T}\text{\,d}s.
+(34)
+Induced by the dynamics Eq. (1), 𝐠ℳ¯​(s)≡𝐠ℳ¯∘𝚽⁡(s){\bf g}_{\bar{\mathcal{M}}}(s)\equiv{\bf g}_{\bar{\mathcal{M}}}\circ{\bf\Phi}(s) and 𝐠ℳ​(s)≡𝐠ℳ∘𝚽⁡(s){\bf g}_{\mathcal{M}}(s)\equiv{\bf g}_{\mathcal{M}}\circ{\bf\Phi}(s) satisfy Eq. (19), so we use the identity
+𝐋ℳ​ℳ¯​𝐠ℳ¯​(s)= d d​s​𝐠ℳ​(s)−𝐋ℳ​ℳ​𝐠ℳ​(s){\bf L}_{{\mathcal{M}}{\bar{\mathcal{M}}}}{\bf g}_{\bar{\mathcal{M}}}(s)=\frac{\text{\,d}}{\text{\,d}s}{\bf g}_{\mathcal{M}}(s)-{\bf L}_{{\mathcal{M}}{\mathcal{M}}}{\bf g}_{\mathcal{M}}(s)
+(35)
+to replace 𝐋ℳ​ℳ¯​𝐠ℳ¯​(s){\bf L}_{{\mathcal{M}}{\bar{\mathcal{M}}}}{\bf g}_{\bar{\mathcal{M}}}(s) in (34):
+⟨𝐅⁡(t),𝐅T​(0)⟩=\displaystyle\left\langle{\bf F}(t),{\bf F}^{T}(0)\right\rangle={}
+limT→∞1T​∫0T𝐋ℳ​ℳ¯​et​𝐋ℳ¯​ℳ¯​𝐠ℳ¯​(s)⋅[ d d​s​𝐠ℳ​(s)−𝐋ℳ​ℳ​𝐠ℳ​(s)]T​ d​s\displaystyle\lim_{T\rightarrow\infty}\frac{1}{T}\int_{0}^{T}{\bf L}_{{\mathcal{M}}{\bar{\mathcal{M}}}}e^{t{\bf L}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}}{\bf g}_{\bar{\mathcal{M}}}(s)\cdot\left[\frac{\text{\,d}}{\text{\,d}s}{\bf g}_{\mathcal{M}}(s)-{\bf L}_{{\mathcal{M}}{\mathcal{M}}}{\bf g}_{\mathcal{M}}(s)\right]^{T}\text{\,d}s
+=\displaystyle={}
+limT→∞1T​∫0T𝐋ℳ​ℳ¯​et​𝐋ℳ¯​ℳ¯​𝐠ℳ¯​(s)⋅ d d​s​𝐠ℳT​(s)​ d​s\displaystyle\lim_{T\rightarrow\infty}\frac{1}{T}\int_{0}^{T}{\bf L}_{{\mathcal{M}}{\bar{\mathcal{M}}}}e^{t{\bf L}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}}{\bf g}_{\bar{\mathcal{M}}}(s)\cdot\frac{\text{\,d}}{\text{\,d}s}{\bf g}_{\mathcal{M}}^{T}(s)\text{\,d}s
+−𝐋ℳ​ℳ¯​et​𝐋ℳ¯​ℳ¯​⟨𝐠ℳ¯,𝐠ℳT⟩​𝐋ℳ​ℳT\displaystyle-{\bf L}_{{\mathcal{M}}{\bar{\mathcal{M}}}}e^{t{\bf L}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}}\left\langle{\bf g}_{\bar{\mathcal{M}}},{\bf g}_{\mathcal{M}}^{T}\right\rangle{\bf L}_{{\mathcal{M}}{\mathcal{M}}}^{T}
+=\displaystyle={}
+limT→∞1T​∫0T𝐋ℳ​ℳ¯​et​𝐋ℳ¯​ℳ¯​𝐠ℳ¯​(s)⋅ d d​s​𝐠ℳT​(s)​ d​s.\displaystyle\lim_{T\rightarrow\infty}\frac{1}{T}\int_{0}^{T}{\bf L}_{{\mathcal{M}}{\bar{\mathcal{M}}}}e^{t{\bf L}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}}{\bf g}_{\bar{\mathcal{M}}}(s)\cdot\frac{\text{\,d}}{\text{\,d}s}{\bf g}_{\mathcal{M}}^{T}(s)\text{\,d}s.
+(36)
+In the last line, we have used the fact that 𝐠ℳ{\bf g}_{\mathcal{M}} and 𝐠ℳ¯{\bf g}_{\bar{\mathcal{M}}} are orthogonal with respect to the inner product by construction. Next, we perform an integration by part, assume that the boundary terms are bounded and thus converge to 00 after divided by TT in the limit T→∞T\rightarrow\infty, and use the full dynamics Eq. (19) again to obtain
+⟨𝐅⁡(t),𝐅T​(0)⟩=\displaystyle\left\langle{\bf F}(t),{\bf F}^{T}(0)\right\rangle={}
+−limT→∞1T∫0T𝐋ℳ​ℳ¯et​𝐋ℳ¯​ℳ¯ d d​s𝐠ℳ¯(s)⋅𝐠ℳT(s) ds\displaystyle-\lim_{T\rightarrow\infty}\frac{1}{T}\int_{0}^{T}{\bf L}_{{\mathcal{M}}{\bar{\mathcal{M}}}}e^{t{\bf L}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}}\frac{\text{\,d}}{\text{\,d}s}{\bf g}_{\bar{\mathcal{M}}}(s)\cdot{\bf g}_{\mathcal{M}}^{T}(s)\text{\,d}s
+=\displaystyle={}
+−limT→∞1T∫0T𝐋ℳ​ℳ¯et​𝐋ℳ¯​ℳ¯[𝐋ℳ¯​ℳ𝐠ℳ(s)+𝐋ℳ¯​ℳ¯𝐠ℳ¯(s)]⋅𝐠ℳT(s) ds\displaystyle-\lim_{T\rightarrow\infty}\frac{1}{T}\int_{0}^{T}{\bf L}_{{\mathcal{M}}{\bar{\mathcal{M}}}}e^{t{\bf L}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}}\left[{\bf L}_{{\bar{\mathcal{M}}}{\mathcal{M}}}{\bf g}_{{\mathcal{M}}}(s)+{\bf L}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}{\bf g}_{{\bar{\mathcal{M}}}}(s)\right]\cdot{\bf g}_{\mathcal{M}}^{T}(s)\text{\,d}s
+=\displaystyle={}
+−𝐋ℳ​ℳ¯​et​𝐋ℳ¯​ℳ¯​[𝐋ℳ¯​ℳ​⟨𝐠ℳ,𝐠ℳT⟩+𝐋ℳ¯​ℳ¯​⟨𝐠ℳ¯,𝐠ℳT⟩]\displaystyle-{\bf L}_{{\mathcal{M}}{\bar{\mathcal{M}}}}e^{t{\bf L}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}}\left[{\bf L}_{{\bar{\mathcal{M}}}{\mathcal{M}}}\left\langle{\bf g}_{{\mathcal{M}}},{\bf g}^{T}_{{\mathcal{M}}}\right\rangle+{\bf L}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}\left\langle{\bf g}_{{\bar{\mathcal{M}}}},{\bf g}^{T}_{{\mathcal{M}}}\right\rangle\right]
+=\displaystyle={}
+−𝐋ℳ​ℳ¯​et​𝐋ℳ¯​ℳ¯​𝐋ℳ¯​ℳ​⟨𝐠ℳ,𝐠ℳT⟩.\displaystyle-{\bf L}_{{\mathcal{M}}{\bar{\mathcal{M}}}}e^{t{\bf L}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}}{\bf L}_{{\bar{\mathcal{M}}}{\mathcal{M}}}\left\langle{\bf g}_{{\mathcal{M}}},{\bf g}^{T}_{{\mathcal{M}}}\right\rangle.
+(37)
+Again, we used the orthogonality ⟨𝐠ℳ,𝐠ℳ¯⟩=0\left\langle{\bf g}_{\mathcal{M}},{\bf g}_{\bar{\mathcal{M}}}\right\rangle=0. Finally, the memory kernel 𝐊⁡(t):=−𝐋ℳ​ℳ¯​et​𝐋ℳ¯​ℳ¯​𝐋ℳ¯​ℳ{\bf K}(t):=-{\bf L}_{{\mathcal{M}}{\bar{\mathcal{M}}}}e^{t{\bf L}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}}{\bf L}_{{\bar{\mathcal{M}}}{\mathcal{M}}} can be expressed as the two-time correlation statistics of the orthogonal dynamics 𝐅⁡(t){\bf F}(t) and the autocorrelation of the observables ⟨𝐠ℳ,𝐠ℳT⟩\left\langle{\bf g}_{{\mathcal{M}}},{\bf g}^{T}_{{\mathcal{M}}}\right\rangle:
+𝐊⁡(t)=⟨𝐅⁡(t),𝐅T​(0)⟩⋅⟨𝐠ℳ,𝐠ℳT⟩−1.{\bf K}(t)=\left\langle{\bf F}(t),{\bf F}^{T}(0)\right\rangle\cdot\left\langle{\bf g}_{{\mathcal{M}}},{\bf g}^{T}_{{\mathcal{M}}}\right\rangle^{-1}.
+(38)
+The above relationship between the two-time statistics of the orthogonal dynamics 𝐅⁡(t){\bf F}(t) and the memory kernel 𝐊⁡(t){\bf K}(t) is referred to as the Generalized Fluctuation-Dissipation relationship. In the operator algebraic derivation (cf. 3.1), GFD holds when the Liouville operator ℒ=ℒ⁡(Φ)\mathcal{L}=\mathcal{L}\left(\Phi\right) is anti self-adjoint with respect to the chosen inner product, i.e., for any test functions ff and hh of the physical-space variable 𝚽{\bf\Phi},
+⟨f,ℒ​h⟩=−⟨ℒ​f,h⟩.\left\langle f,\mathcal{L}h\right\rangle=-\left\langle\mathcal{L}f,h\right\rangle.
+(39)
+For Hamiltonian systems, the anti self-adjointness is guaranteed directly from the volume-preserving property of the dynamics [18]. For non-equilibrium systems, using long time-averaging as the inner product also has the anti self-adjoint property:
+⟨f,ℒ​h⟩=\displaystyle\left\langle f,\mathcal{L}h\right\rangle={}
+⟨f, d d​t​h⟩=limT→∞1T​∫0Tf∘𝚽⁡(t)​ d d​t​[g∘𝚽⁡(t)]​ d​t\displaystyle\left\langle f,\frac{\text{\,d}}{\text{\,d}t}h\right\rangle=\lim_{T\rightarrow\infty}\frac{1}{T}\int_{0}^{T}f\circ{\bf\Phi}(t)\frac{\text{\,d}}{\text{\,d}t}\left[g\circ{\bf\Phi}(t)\right]\text{\,d}t
+=\displaystyle={}
+−limT→∞1T∫0T d d​t[f∘𝚽(t)]g∘𝚽(t) dt=−⟨ d d​tf,h⟩=−⟨ℒf,h⟩.\displaystyle-\lim_{T\rightarrow\infty}\frac{1}{T}\int_{0}^{T}\frac{\text{\,d}}{\text{\,d}t}\left[f\circ{\bf\Phi}(t)\right]g\circ{\bf\Phi}(t)\text{\,d}t=-\left\langle\frac{\text{\,d}}{\text{\,d}t}f,h\right\rangle=-\left\langle\mathcal{L}f,h\right\rangle.
+(40)
+All we need are the minor conditions that the integration by part is valid, and negligible boundary terms which can be guaranteed for bounded systems.
+Furthermore, if the dynamical system is ergodic, the temporal average (27) converges to (10), in which  d​μ=ρstat​(𝚽0)​ dN​𝐱\text{\,d}\mu=\rho_{\text{stat}}\left({\bf\Phi}_{0}\right)\text{\,d}^{N}{\bf x} where ρstat\rho_{\text{stat}} is the stationary density function and satisfies et​ℒ∗​ρstat=ρstate^{t\mathcal{L}^{*}}\rho_{\text{stat}}=\rho_{\text{stat}}; here, the adjoint ℒ∗\mathcal{L}^{\ast} defines the Perron-Frobenius operator. In the literature, it is generally presented that the anti self-adjointness is valid for Hamiltonian systems in a heat bath, e.g., where there is an induced Gibbs measure [3]. Our analysis shows that GFD is generally valid, even for non-equilibrium (not necessarily Hamiltonian) systems, so long as we choose time-averaging as the inner product and the observables along a long trajectory is bounded.
+Finally, GFD can be considered as a self-consistent condition of the memory kernel 𝐊{\bf K} and the orthogonal dynamics 𝐅{\bf F}. A real stochastic Langevin system with a white noise (no time correlation) would result in a 𝐊⁡(t)=𝐊0​δ​(t){\bf K}(t)={\bf K}_{0}\,\delta\left(t\right) where 𝐊0{\bf K}_{0} is a constant matrix and δ\delta is the Dirac δ\delta-distribution. The Mori–Zwanzig formalism shows that when a dynamical system is not fully resolved, in general, there exists a non-zero memory kernel 𝐊{\bf K} and thus the self-consistent orthogonal dynamics 𝐅{\bf F} must be a color noise. Below in Sec. 5 we provide data-driven algorithms to extract the memory kernel and the noise directly from the measured observables along a long trajectory. The GFD can serve as a very stringent self-consistency check for the algorithms.
+3.7 A discrete-time Mori–Zwanzig formalism
+Even though we are interested in a continuous-time model, it is common that the observations—either empirical measurements of the physical system or the output of computer simulations—are discrete in time. It is also desirable to store the trajectories of a large set of observables sparsely sampled in time to mitigate to the storage limitation. In this case, the continuous-time Mori–Zwanzig formalism is not adequate. In this section, we provide the result of a discretized Mori–Zwanzig formulation that is more suitable for discrete-time data. For brevity, we only present the result in this section and leave the tedious yet straightforward derivation in Appendix B.
+We consider to observe the continuous-time system at discretization of times, t=k​Δt=k\Delta, k∈ℤ≥0k\in\mathbb{Z}_{\geq_{0}} and Δ\Delta is not necessarily small. After integrating the GLE Eq. (22) and the evolutionary equations for the correlation matrix 𝐂⁡(t){\bf C}(t) (Eq. (28)) and the optimal prediction 𝒫​𝐠​(t)\mathcal{P}{\bf g}\left(t\right) (Eq. (30)) at the discrete times, the snapshots of the observables of interests satisfy very similar mathematical structures of the continuous-time formulations. Specifically, in Appendix B.1, we establish the discrete-time GLE (cf. Eq. (22))
+𝐠⁡((k+1)​Δ)=∑ℓ=0k𝛀Δ(ℓ)⋅𝐠⁡((k−ℓ)​Δ)+𝐖k,{\bf g}\left(\left(k+1\right)\Delta\right)=\sum_{\ell=0}^{k}{\bf\Omega}_{\Delta}^{\left(\ell\right)}\cdot{\bf g}(\left(k-\ell\right)\Delta)+{\bf W}_{k},
+(41)
+where 𝛀Δ(ℓ){\bf\Omega}_{\Delta}^{\left(\ell\right)}’s are M×MM\times M, Δ\Delta-dependent matrices which can be defined in terms of the continuous-time Markov transition matrix 𝐌{\bf M} and memory kernel 𝐊{\bf K}, and 𝐖k{\bf W}_{k} is the discrete-time orthogonal dynamics which can be decomposed into linear functions of the continuous-time orthogonal dynamics 𝐅{\bf F}. Similarly, the snapshots of the correlation matrix 𝐂{\bf C} satisfy (cf. Eq. (28))
+𝐂⁡((k+1)​Δ)=∑ℓ=0k𝛀Δ(ℓ)⋅𝐂⁡((k−ℓ)​Δ),{\bf C}\left(\left(k+1\right)\Delta\right)=\sum_{\ell=0}^{k}{\bf\Omega}_{\Delta}^{\left(\ell\right)}\cdot{\bf C}(\left(k-\ell\right)\Delta),
+(42)
+and the snapshots of the projected image 𝒫​𝐠​(t)\mathcal{P}{\bf g}(t) satisfy (cf. Eq. (30))
+𝒫​𝐠​((k+1)​Δ)=∑ℓ=0k𝛀Δ(ℓ)⋅𝒫​𝐠​((k−ℓ)​Δ).\mathcal{P}{\bf g}\left(\left(k+1\right)\Delta\right)=\sum_{\ell=0}^{k}{\bf\Omega}_{\Delta}^{\left(\ell\right)}\cdot\mathcal{P}{\bf g}(\left(k-\ell\right)\Delta).
+(43)
+It is tempting to associate the operator 𝛀Δ(0){\bf\Omega}_{\Delta}^{\left(0\right)} to the continuous-time Markov matrix 𝛀Δ(0)≈𝐈+𝐌​Δ{\bf\Omega}_{\Delta}^{\left(0\right)}\approx{\bf I}+{\bf M}\Delta, where 𝐈{\bf I} is the M×MM\times M identity matrix, and to associate the operator 𝛀Δ(ℓ){\bf\Omega}_{\Delta}^{\left(\ell\right)}, ℓ>1\ell>1, to the continuous-time memory kernel by 𝛀Δ(ℓ)≈Δ2​𝐊​(ℓ​Δ){\bf\Omega}_{\Delta}^{\left(\ell\right)}\approx\Delta^{2}{\bf K}\left(\ell\Delta\right). We remark that these representations involving the infinitesimal Δ≪1\Delta\ll 1 are mathematically valid, but in general for finite Δ\Delta, the expressions of the operators 𝛀Δ(ℓ){\bf\Omega}_{\Delta}^{\left(\ell\right)} in terms of the continuous-time objects (𝐌{\bf M} and 𝐊⁡(s){\bf K}(s)) are not simple; see Lemma 1 in Appendix B.1. Nevertheless, the above Eqs. (41), (42), and (43) are always valid regardless of the choice of Δ\Delta. We also establish the GFD relationship in Appendix B.4.
+For a generic discrete-time dynamical system, it is also possible to directly derive its Mori–Zwanzig formula (Appendix B.2 and reference [24]). We remark that while the mathematical expression of the results of this approach look identical to Eqs. (41)-(43), there exists a subtlety between discretizing the correlation matrix 𝐂⁡(t){\bf C}(t) of a continuous-time system (Appendix B.1) and the generic discrete-time correlation matrix (Appendix B.2). We discuss such a subtlety in Appendix B.3. Furthermore, in Appendix B.4.2, we show that the GFD relationship is valid when the discrete-time operator ℒd\mathcal{L}_{d}, which forward propagates the observables (i.e., 𝐠⁡((k+1)​Δ)=ℒd​𝐠​(k​Δ){\bf g}\left(\left(k+1\right)\Delta\right)=\mathcal{L}_{d}{\bf g}\left(k\Delta\right)), is anti-self-adjoint with respect to the invariant measure of the discrete-time dynamics (cf. Sec. 3.6).
+4 Relation to the approximate Koopman learning methods
+The discretized formulations presented in Sec. 3.7 provide the mathematical structure for making comparison to the approximate Koopman learning framework [36, 37, 47]. In this section, we establish that the Mori–Zwanzig formalism with Mori’s projection operator is not only compatible with, but also a generalization of the Koopman learning framework.
+We begin with a short summary of the approximate Kooman learning methods, specifically, the extended dynamic mode decomposition (EDMD, [47]). EDMD takes a long trajectory of a set of MM observables, {gi}i=1M\left\{g_{i}\right\}_{i=1}^{M}, of a nonlinear dynamical system as an input. The snapshots of these descriptors on a uniformly separated temporal grid were recorded as gi​(j​δ)g_{i}\left(j\delta\right), j=0​…​N−1j=0\ldots N-1. Generally, δ\delta is conceived as a small time separation. The goal of the EDMD is to identify the approximate Kooman operator 𝐊δKoop{\bf{K}}_{\delta}^{\text{Koop}}—note the unfortunate convention of 𝐊{\bf K} for memory kernel in the context of Mori–Zwanzig—which linearly maps the previous snapshots to the consecutive next ones with a minimal squared residual error. Operationally, EDMD stacks up the snapshots into an array of “dependent variables” 𝐘{\bf Y} and “independent variables” 𝐗{\bf X}:
+𝐘=[𝐠1​(1​δ)…𝐠1​((N−1)​δ)𝐠2​(1​δ)…𝐠2​((N−1)​δ)⋱𝐠M​(1​δ)…𝐠M​((N−1)​δ)],𝐗=[𝐠1​(0​δ)…𝐠1​((N−2)​δ)𝐠2​(0​δ)…𝐠2​((N−2)​δ)⋱𝐠M​(0​δ)…𝐠M​((N−2)​δ)],\displaystyle{\bf Y}=\begin{bmatrix}{\bf g}_{1}\left(1\delta\right)&\ldots&{\bf g}_{1}\left(\left(N-1\right)\delta\right)\\
+{\bf g}_{2}\left(1\delta\right)&\ldots&{\bf g}_{2}\left(\left(N-1\right)\delta\right)\\
+\vdots&\ddots&\vdots\\
+{\bf g}_{M}\left(1\delta\right)&\ldots&{\bf g}_{M}\left(\left(N-1\right)\delta\right)\\
+\end{bmatrix},\quad{\bf X}=\begin{bmatrix}{\bf g}_{1}\left(0\delta\right)&\ldots&{\bf g}_{1}\left(\left(N-2\right)\delta\right)\\
+{\bf g}_{2}\left(0\delta\right)&\ldots&{\bf g}_{2}\left(\left(N-2\right)\delta\right)\\
+\vdots&\ddots&\vdots\\
+{\bf g}_{M}\left(0\delta\right)&\ldots&{\bf g}_{M}\left(\left(N-2\right)\delta\right)\\
+\end{bmatrix},
+(44)
+and the M×MM\times M matrix 𝐊^δKoop{\bf\hat{K}}_{\delta}^{\text{Koop}} is the linear operator which minimizes the mean squared error
+ε2:=1N−1​∑j=1N−1∑i=1M(𝐲−𝐊δKoop⋅𝐱)i,j2.\varepsilon^{2}:=\frac{1}{N-1}\sum_{j=1}^{N-1}\sum_{i=1}^{M}\left({\bf y}-{\bf{K}}_{\delta}^{\text{Koop}}\cdot{\bf x}\right)_{i,j}^{2}.
+(45)
+When the observables form a complete set of basis functions, the dynamics is closed in the linear spanned space ℋ𝐠\mathcal{H}_{\bf g}, and ε2\varepsilon^{2} can be minimized to zero. Nevertheless, for general problems, it is challenging to identify a complete set of basis functions. Consequently, there exist non-zero residuals. The learning problem is fundamentally a linear regression problem, which is concave. Formally, the unique minimizer 𝐊^δKoop{\bf\hat{K}}_{\delta}^{\text{Koop}} conditioned on a pair of 𝐘{\bf Y} and 𝐗{\bf X} is
+𝐊δKoop=(𝐘⋅𝐗T)⋅(𝐗⋅𝐗T)−1,{\bf{K}}_{\delta}^{\text{Koop}}=\left({\bf Y}\cdot{\bf X}^{T}\right)\cdot\left({\bf X}\cdot{\bf X}^{T}\right)^{-1},
+(46)
+when the set of the observables are linearly independent. When the set of the observables are not linearly independent, the problem is under-determined and there exist a family of minimizers [47]; in such a case, the inverse matrix (𝐗⋅𝐗T)−1\left({\bf X}\cdot{\bf X}^{T}\right)^{-1} can be operationally carried out by the Moore–Penrose pseudoinverse [47] to identify one of the minimizers. In the analysis below, we assume that the set of the basis functions is carefully chosen so that they are linearly independent.
+Equation (46) exhibits the exact mathematical expressions of the projected image 𝐠∥​(t){\bf g}_{\parallel}(t) in the continuous-time Mori–Zwanzig formalism (Eq. (30)). In the limit of infinitely long snapshots separated by δ\delta, the matrices 𝐘⋅𝐗T{\bf Y}\cdot{\bf X}^{T} and 𝐗⋅𝐗T{\bf X}\cdot{\bf X}^{T} are exactly 𝐂⁡(δ){\bf C}(\delta) and 𝐂⁡(0){\bf C}(0) where the inner product is defined to be with respect to the distribution induced by the long trajectories:
+𝐂⁡(0)=\displaystyle{\bf C}(0)={}
+⟨𝐠,𝐠T⟩=limT→∞1T​∫0T𝐠∘𝚽⁡(s)⋅𝐠T∘𝚽⁡(s)​ d​s≈𝐗⋅𝐗T,\displaystyle\left\langle{\bf g},{\bf g}^{T}\right\rangle=\lim_{T\rightarrow\infty}\frac{1}{T}\int_{0}^{T}{\bf g}\circ{\bf\Phi}\left(s\right)\cdot{\bf g}^{T}\circ{\bf\Phi}\left(s\right)\text{\,d}s\approx{\bf X}\cdot{\bf X}^{T},
+(47a)
+𝐂⁡(δ)=\displaystyle{\bf C}(\delta)={}
+⟨eδ​ℒ​𝐠,𝐠T⟩=limT→∞1T​∫0T𝐠∘𝚽⁡(s+δ)⋅𝐠T∘𝚽⁡(s)​ d​s≈𝐘⋅𝐗T.\displaystyle\left\langle e^{\delta\mathcal{L}}{\bf g},{\bf g}^{T}\right\rangle=\lim_{T\rightarrow\infty}\frac{1}{T}\int_{0}^{T}{\bf g}\circ{\bf\Phi}\left(s+\delta\right)\cdot{\bf g}^{T}\circ{\bf\Phi}\left(s\right)\text{\,d}s\approx{\bf Y}\cdot{\bf X}^{T}.
+(47b)
+Thus, both formulations predict the exact propagator forward δ\delta-time 𝐂​(δ)⋅𝐂−1​(0){\bf C}(\delta)\cdot{\bf C}^{-1}(0).
+It is intriguing that the Mori–Zwanzig formulation relies on the projection operator 𝒫\mathcal{P} which requires the equipped inner product of the Hilbert space, but the approximate Koopman learning framework only relies on the mean L2L^{2}-norm of the error which relies on a less strict norm space. Nevertheless, operationally, we can use the geometric interpretation provided in Sec. 3.3 to illustrate the intuition of the two formulations. The Koopman learning framework seeks a point in ℋ𝐠\mathcal{H}_{\bf g} that minimizes the L2L^{2}-norm between the point and 𝐠⁡(δ){\bf g}(\delta), which is generally outside ℋ𝐠\mathcal{H}_{\bf g} (see Fig. 1). In contrast, the Mori–Zwanzig formalism simply projects 𝐠⁡(δ){\bf g}(\delta) onto ℋ𝐠\mathcal{H}_{\bf g}. These two formulations are formally identical because the projected image 𝒫​𝐠​(δ)\mathcal{P}{\bf g}(\delta) would be the unique point on ℋ𝐠\mathcal{H}_{\bf g} such that the L2L^{2}-error of the projected image to 𝐠⁡(δ){\bf g}(\delta), ‖𝐠⁡(δ)−𝒫​𝐠​(δ)‖22=⟨𝐠⁡(δ)−𝒫​𝐠​(δ),𝐠⁡(δ)−𝒫​𝐠​(δ)⟩\left\|{\bf g}(\delta)-\mathcal{P}{\bf g}(\delta)\right\|_{2}^{2}=\left\langle{\bf g}(\delta)-\mathcal{P}{\bf g}(\delta),{\bf g}(\delta)-\mathcal{P}{\bf g}(\delta)\right\rangle is minimized. We remark the subtle difference between the two frameworks. In the Koopman framework, orthogonality between the residual and the ℋ𝐠\mathcal{H}_{\bf g} is not established—there is no notion of an inner product. In the Mori–Zwanzig formalism with the equipped inner product in ℋ\mathcal{H}, the unique operator 𝐂​(k​δ)⋅𝐂−1​(0){\bf C}(k\delta)\cdot{\bf C}^{-1}(0), k∈ℕk\in\mathbb{N} propagates 𝐠⁡(0){\bf g}(0) to 𝐂⁡(k​δ)⋅𝐂−1​(0)⋅𝐠⁡(0){\bf C}(k\delta)\cdot{\bf C}^{-1}(0)\cdot{\bf g}(0) which is always the projected image of 𝐠⁡(k​δ){\bf g}(k\delta), and the residual 𝐠⁡(k​δ)−𝒫​𝐠​(k​δ){\bf g}(k\delta)-\mathcal{P}{\bf g}(k\delta) is always orthogonal to ℋ𝐠\mathcal{H}_{\bf g}, with respect to the induced inner product. We remark that 𝐂​(δ)⋅𝐂−1​(0){\bf C}(\delta)\cdot{\bf C}^{-1}(0) can also be derived from Rayleigh–-Ritz variational principle of the leading eigenvalues of either the Perron–Frobenius of Koopman operators using related algorithms such as the time-lagged independent component analysis and Algorithm for Multiple Unknown Signals Extraction, commonly used and historically founded in the Perron–Frobenius picture by the molecular dynamics community [43, 28, 34, 30, 31, 49, 16, 48].
+We have established the equivalence of the Mori–Zwanzig formalism and the approximate Koopman learning framework. Mori–Zwanzig is more general than the existing Koopman learning methods. First, Eq. (43) prescribes the optimal prediction 𝒫​𝐠​(Δ)=𝛀Δ(0)​𝐠​(0)\mathcal{P}{\bf g}(\Delta)={\bf\Omega}_{\Delta}^{(0)}{\bf g}(0) if 𝐠⁡(0){\bf g}(0) was sampled from the measure  d​μ\text{\,d}\mu which was used to define the inner product, and the horizon Δ\Delta does not have to be small. Our analysis in Appendix B.1 shows that it is always possible to identify the unique (but Δ\Delta-dependent) operator 𝛀Δ(0){\bf\Omega}_{\Delta}^{(0)}, regardless of how large Δ\Delta is. Interestingly, in our derivation provided in Appendix B.1, we can see that 𝛀Δ(0){\bf\Omega}_{\Delta}^{(0)} depends on not only the Markov transition 𝐌{\bf M} but also the memory kernel 𝐊⁡(s){\bf K}(s), s∈[0,Δ)s\in[0,\Delta). This formally states that when the system is not fully resolved, the forward operator cannot be simply approximated by et​𝐌e^{t{\bf M}}. Instead, the linear operator 𝛀Δ(0){\bf\Omega}_{\Delta}^{(0)}, which can be estimated by our proposed algorithm in Sec. 5, has an implicit memory-kernel (𝐊⁡(s){\bf K}(s), s∈[0,Δ)s\in\left[0,\Delta\right)) dependence, and thus we cannot simply exponentiate it for predicting the system further than Δ\Delta into the future. Secondly, the discretized Generalized Langevin Equation (41) states that the prediction shall be made with the past history, when it is available and when the discretized memory kernel 𝛀Δ(ℓ){\bf\Omega}_{\Delta}^{(\ell)}, ℓ≥1\ell\geq 1 is not zero. By taking into the account of the past history, we will be simultaneously use the information in the parallel component 𝐠∥​(j​Δ){\bf g}_{\parallel}(j\Delta) and the perpendicular component 𝐠⟂​(j​Δ){\bf g}_{\perp}(j\Delta) to forward propagate the system and thus reduce the prediction error. In contrast, in approximate Koopman learning, we only use the current time to predict the next time step and neglect the orthogonal contribution which would be estimated by the past trajectory in the context of Mori–Zwanzig formalism. The advantage of of the Mori–Zwanzig’s history-dependent prediction will be numerically illustrated in Sec. 6.2.
+5 Learning the operators in the Mori–Zwanzig formalism from data
+Conventionally, the aim of Mori–Zwanzig analysis is to select a set of coarse-grained variables to construct a parallel space ℋ𝐠\mathcal{H}_{\bf g} in which the projected image 𝒫​𝐠​(t)\mathcal{P}{\bf g}(t) captures the slow modes of the dynamics, mostly described by the Markov transition matrix 𝐌{\bf M}. If the parallel space fully capture the slow modes, the orthogonal dynamics would predominantly be the fast modes of the dynamics. In such construction by time-scale separation, the orthogonal dynamics 𝐅⁡(t){\bf F}(t) are usually modeled by a generic stochastic process, and the self-consistent memory kernel can be constructed to establish the Generalized Langevin Equation (22) describing the slow modes of the dynamics [39, 12, 7, 22, 21, 23, 33, 45, 13].
+The conventional approach is challenging because the selection of the observables requires sophisticated understanding of how to separate the modes with different timescales in a complex dynamical systems. Nevertheless, the GLE (22) is always mathematically correct, and thus, if we have collected a large enough set of data of a dynamical system, it is possible to numerically estimate Markov transition matrix 𝐌{\bf M}, memory kernel 𝐊{\bf K}, and the orthogonal dynamics 𝐅{\bf F} directly from the collected data. Here, we provide two algorithms, one for continuous-time models (Algorithm 1) and the other for discrete-time models (Algorithm 2) for estimating the key quantities in the Mori–Zwanzig formalism directly from long trajectories of the observables. We remark that the scope of this study is restricted to noiseless observations of deterministic systems. For systems with some form of randomness, such as noisy observation on a deterministic system or a generic stochastic system, the estimation of stochastic Koopman operators [27, 47, 13, 49] requires additional mathematical construction (a probability space) that is beyond the scope of our theoretical analysis in the previous sections. As such, we will defer these cases to future studies.
+The procedure begins with calculating the two-time correlation functions 𝐂⁡(t){\bf C}(t) of the observables from the recorded long trajectory. Then, we exploit Eqs. (28) for continuous-time systems and (42) for discrete-time systems to estimate continuous-time 𝐌{\bf M} and 𝐊{\bf K} and various orders of discrete-time 𝛀(ℓ){\bf\Omega}^{(\ell)}. After solving these operators, we will use Eqs. (22) and (41) to solve for the orthogonal dynamics 𝐅{\bf F} (continuous-time) and 𝐖k{\bf W}_{k} (discrete-time).
+Specifically, for the continuous-time system, we first set t=0t=0 in Eq. (28), leading to
+𝐂˙​(0)=𝐌⋅𝐂​(0).\dot{{\bf C}}(0)={\bf M}\cdot{\bf C}(0).
+(48)
+Thus, we can solve for the Markov matrix 𝐌=𝐂˙​(0)⋅𝐂−1​(0){\bf M}=\dot{{\bf C}}(0)\cdot{\bf C}^{-1}(0). The estimation of 𝐂˙​(0)\dot{{\bf C}}(0) can be made by finite-difference method, or alternatively, directly computed from the right-hand-side of the dynamical equation (1) in the microscopic simulator. Next, we differentiate Eq. (28) with respect to time tt once and obtain
+𝐂¨​(0)=𝐊​(0)⋅𝐂​(0).\ddot{{\bf C}}(0)={\bf K}(0)\cdot{\bf C}(0).
+(49)
+The memory kernel evaluated at t=0t=0 is 𝐊⁡(0)=𝐂¨​(0)⋅𝐂−1​(0){\bf K}(0)=\ddot{{\bf C}}(0)\cdot{\bf C}^{-1}(0). Again, 𝐂¨​(0)\ddot{{\bf C}}(0) can either be accessed directly in the simulator, or estimated by finite-difference data. Then, we set t=δ≪1t=\delta\ll 1 to Eq. (28) and approximate the memory integration by trapezoidal rule
+∫0δ𝐊⁡(δ−s)⋅𝐂⁡(s)​ d​s≈δ2​(𝐊⁡(0)⋅𝐂⁡(δ)+𝐊⁡(δ)⋅𝐂⁡(0))\int_{0}^{\delta}{\bf K}(\delta-s)\cdot{\bf C}(s)\text{\,d}s\approx\frac{\delta}{2}\left({\bf K}(0)\cdot{\bf C}(\delta)+{\bf K}(\delta)\cdot{\bf C}(0)\right)
+(50)
+to solve for 𝐊⁡(δ)=[2​C˙​(δ)−2​𝐌⋅𝐂⁡(δ)−δ​𝐊​(0)⋅𝐂⁡(δ)]⋅𝐂−1​(0){\bf K}(\delta)=\left[2\dot{C}(\delta)-2{\bf M}\cdot{\bf C}(\delta)-\delta{\bf K}(0)\cdot{\bf C}(\delta)\right]\cdot{\bf C}^{-1}\left(0\right). Similarly, we can recursively solve for 𝐊⁡((k+1)​δ){\bf K}(\left(k+1\right)\delta), k∈ℕk\in\mathbb{N}, as functions of previously obtained 𝐊⁡((ℓ)​δ){\bf K}(\left(\ell\right)\delta), ℓ≤k\ell\leq k, and the measured correlation matricies 𝐂{\bf C}:
+𝐊⁡((k+1)​δ)=\displaystyle\quad{\bf K}((k+1)\delta)=
+(51)
+2​[𝐂˙​(k​δ)−𝐌⋅𝐂​(k​δ)δ+∑ℓ=1k𝐊⁡(ℓ​δ)⋅𝐂⁡((k−ℓ)​δ)+𝐊⁡(0)⋅𝐂⁡(k​δ)2]⋅𝐂−1​(0).\displaystyle 2\left[\frac{\dot{{\bf C}}(k\delta)-{\bf M}\cdot{\bf C}\left(k\delta\right)}{\delta}+\sum_{\ell=1}^{k}{\bf K}\left(\ell\delta\right)\cdot{\bf C}\left(\left(k-\ell\right)\delta\right)+\frac{{\bf K}\left(0\right)\cdot{\bf C}\left(k\delta\right)}{2}\right]\cdot{\bf C}^{-1}\left(0\right).
+Once 𝐌{\bf M} and 𝐊{\bf K} are solved, we use Eq. (22) and the measured trajectory to solve for the orthogonal dynamics 𝐅⁡(t){\bf F}(t). A detailed description of our proposed procedure is presented as Algorithm 1.
+Algorithm 1 Data-driven learning of the continuous-time Mori–Zwanzig operators. This algorithm uses a long trajectory of the reduced-order dynamics to estimate the continuous-time Markov transition matrix 𝐌{\bf M}, memory kernel 𝐊⁡(s){\bf K}(s), and orthogonal dynamics 𝐅⁡(t){\bf F}(t) in the Generalized Langevin Equation (22). The algorithm requires the trajectories of MM a priori selected observables {gi}i=1M\left\{g_{i}\right\}_{i=1}^{M}, measured at finely and evenly discretized times t=k​δt=k\delta, δ≪1\delta\ll 1, k=0​…​N−1k=0\ldots N-1 along the long (N≫1N\gg 1) trajectory. A number 0≤h<N0\leq h<N is required to specify the longest estimated horizon of the memory kernel 𝐊{\bf K}. The algorithm will deliver estimates of the (1) Markov transition matrix 𝐌{\bf M}, (2) memory kernel at the discretized time points 𝐊⁡(k​δ){\bf K}(k\delta), and (3) the orthogonal dynamics 𝐅⁡(k​δ|i){\bf F}(k\delta|i), evaluated at discrete times k=0​…​h−1k=0\ldots h-1, conditioned on the system started at the ithi^{\text{th}} snapshot (i.e., the system’s initial condition was set at 𝐠⁡(i​δ){\bf g}\left(i\delta\right)).
+ for kk in {0,…​h+1}\left\{0,\ldots h+1\right\} do
+   Ci​j​(k​δ)←1N−k​[∑ℓ=0N−k−1gi​((k+ℓ)​δ)×gj​(ℓ​δ)]C_{ij}\left(k\delta\right)\leftarrow\frac{1}{N-k}\left[\sum_{\ell=0}^{N-k-1}g_{i}(\left(k+\ell\right)\delta)\times g_{j}(\ell\delta)\right]
+ end for
+ for kk in {1,2}\left\{1,2\right\} do
+   Ci​j​(−k​δ)←Cj​i​(k​δ)C_{ij}\left(-k\delta\right)\leftarrow C_{ji}\left(k\delta\right)
+ end for
+ for kk in {−1,0,…​h}\left\{-1,0,\ldots h\right\} do
+   C˙i​j​(k​δ)←12​δ​[Ci​j​((k+1)​δ)−Ci​j​((k−1)​δ)]\dot{C}_{ij}\left(k\delta\right)\leftarrow\frac{1}{2\delta}\left[C_{ij}\left((k+1)\delta\right)-C_{ij}\left((k-1)\delta\right)\right]
+ end for
+ for kk in {0,…​h}\left\{0,\ldots h\right\} do
+   C¨i​j​(0)←12​δ​[C˙i​j​(δ)−C˙i​j​(−δ)]\ddot{C}_{ij}\left(0\right)\leftarrow\frac{1}{2\delta}\left[\dot{C}_{ij}\left(\delta\right)-\dot{C}_{ij}\left(-\delta\right)\right]
+ end for
+ 𝐌←𝐂˙​(0)⋅𝐂−1​(0){\bf M}\leftarrow\dot{{\bf C}}(0)\cdot{\bf C}^{-1}\left(0\right)
+ 𝐊⁡(0)←𝐂¨​(0)⋅𝐂−1​(0){\bf K}\left(0\right)\leftarrow\ddot{{\bf C}}(0)\cdot{\bf C}^{-1}\left(0\right)
+ for kk in {1,…​h}\left\{1,\ldots h\right\} do
+   𝐊⁡(k​δ)←2​[𝐂˙​(0)−𝐌⋅𝐂​(k​δ)δ+∑ℓ=1k−1𝐊⁡(ℓ​δ)⋅𝐂⁡((k−ℓ)​δ)+𝐊⁡(0)⋅𝐂⁡(k​δ)2]⋅𝐂−1​(0){\bf K}(k\delta)\leftarrow 2\left[\frac{\dot{{\bf C}}(0)-{\bf M}\cdot{\bf C}\left(k\delta\right)}{\delta}+\sum_{\ell=1}^{k-1}{\bf K}\left(\ell\delta\right)\cdot{\bf C}\left(\left(k-\ell\right)\delta\right)+\frac{{\bf K}\left(0\right)\cdot{\bf C}\left(k\delta\right)}{2}\right]\cdot{\bf C}^{-1}\left(0\right)
+ end for
+ for ii in {0,…​N−h−1}\left\{0,\ldots N-h-1\right\} do
+   for kk in {0,…​h}\left\{0,\ldots h\right\} do
+    m←δ2​[𝐊⁡(0)⋅𝐠⁡(k​δ)+2​∑ℓ=1k−1𝐊⁡(ℓ​δ)⋅𝐂⁡((k−ℓ)​δ)+𝐊⁡(k​δ)⋅𝐠⁡(0)]m\leftarrow\frac{\delta}{2}\left[{\bf K}\left(0\right)\cdot{\bf g}\left(k\delta\right)+2\sum_{\ell=1}^{k-1}{\bf K}\left(\ell\delta\right)\cdot{\bf C}\left(\left(k-\ell\right)\delta\right)+{\bf K}\left(k\delta\right)\cdot{\bf g}\left(0\right)\right]
+    𝐅⁡(k​δ|i)←1δ​[𝐠⁡((k+1)​δ)−𝐠⁡(k​δ)]−𝐌⋅𝐠⁡(k​δ)+m{\bf F}(k\delta|i)\leftarrow\frac{1}{\delta}\left[{\bf g}\left(\left(k+1\right)\delta\right)-{\bf g}\left(k\delta\right)\right]-{\bf M}\cdot{\bf g}\left(k\delta\right)+m
+   end for
+ end forreturn 𝐌{\bf M}, 𝐊⁡(k​δ){\bf K}(k\delta), 𝐅⁡(ℓ​δ|i){\bf F}(\ell\delta|i)
+As for the discrete-time dynamics, we use Eq. (42). Setting k=0k=0 in (42), 𝐂⁡(Δ)=𝛀Δ(0)​𝐂​(0){\bf C}\left(\Delta\right)={\bf\Omega}_{\Delta}^{(0)}{\bf C}(0) indicates that 𝛀Δ(0)=𝐂⁡(Δ)⋅𝐂−1​(0){\bf\Omega}_{\Delta}^{(0)}={\bf C}\left(\Delta\right)\cdot{\bf C}^{-1}(0), exactly the approximate Koopman operator that one would obtain by carrying out EDMD analysis (cf. Sec. 4). Then, recursively, we can solve 𝛀Δ(k){\bf\Omega}_{\Delta}^{(k)}, k∈ℕk\in\mathbb{N} in terms of the correlation matrices 𝐂{\bf C} and previously solved lower-order ΩΔ(ℓ)\Omega^{(\ell)}_{\Delta}, ℓ<k\ell<k, using Eq. (42):
+𝛀Δ(k)=(𝐂⁡((k+1)​Δ)−∑ℓ=0k−1𝛀Δ(ℓ)⋅𝐂⁡((k−ℓ)​Δ))⋅𝐂−1​(0).{\bf\Omega}_{\Delta}^{(k)}=\left({\bf C}\left(\left(k+1\right)\Delta\right)-\sum_{\ell=0}^{k-1}{\bf\Omega}^{(\ell)}_{\Delta}\cdot{\bf C}\left(\left(k-\ell\right)\Delta\right)\right)\cdot{\bf C}^{-1}(0).
+(52)
+Once the operators 𝛀Δ(k){\bf\Omega}^{(k)}_{\Delta}’s are solved, we use Eq. (41) and the measured trajectory to solve for the discrete-time noise 𝐖{\bf W}. A detailed description of the procedure is presented as Algorithm 2.
+Algorithm 2 Data-driven learning of the discrete-time Mori–Zwanzig operators. This algorithm estimates the discrete-time operators 𝛀Δ(ℓ){\bf\Omega}_{\Delta}^{\left(\ell\right)} and the orthogonal dynamics 𝐖{\bf W} in the discrete-time Generalized Langevin Equation (41) from a long trajectory of the dynamical simulations of the dynamical system. The algorithm requires the snapshots of a set of MM a priori selected observables {gi}i=1M\left\{g_{i}\right\}_{i=1}^{M} measured at evenly distributed times t=k​Δt=k\Delta, k=0​…​N−1k=0\ldots N-1, along a long (N≫1N\gg 1) trajectory. In contrast to Algorithm 1, the time separation of the snapshots Δ\Delta does not necessarily to be small. A number 0≤h<N0\leq h<N is required to specified the highest order of the discrete-time operators (𝛀(h){\bf\Omega}^{\left(h\right)}). The algorithm delivers estimates of (1) the discrete-time operators 𝛀⁡(k​Δ){\bf\Omega}(k\Delta) and (2) the orthogonal dynamics 𝐖⁡(k​Δ|i​Δ){\bf W}\left(k\Delta|i\Delta\right), k=0,1,…​hk=0,1,\ldots h conditioned on the system started at the ithi^{\text{th}} snapshot (i.e., the system’s initial condition was set as 𝐠⁡(i​Δ){\bf g}\left(i\Delta\right)).
+ for kk in {0,…​h+1}\left\{0,\ldots h+1\right\} do
+   Ci​j​(k​Δ)←1N−k​[∑ℓ=0N−k−1gi​((k+ℓ)​Δ)×gj​(ℓ​Δ)]C_{ij}\left(k\Delta\right)\leftarrow\frac{1}{N-k}\left[\sum_{\ell=0}^{N-k-1}g_{i}(\left(k+\ell\right)\Delta)\times g_{j}(\ell\Delta)\right]
+ end for
+ 𝛀Δ(0)←𝐂⁡(Δ)⋅𝐂−1​(0){\bf\Omega}_{\Delta}^{(0)}\leftarrow{\bf C}(\Delta)\cdot{\bf C}^{-1}\left(0\right)
+ for kk in {1,…​h}\left\{1,\ldots h\right\} do
+   𝛀Δ(k)←[𝐂⁡((k+1)​Δ)−∑ℓ=0k−1𝛀(ℓ)⋅𝐂⁡((k−ℓ)​Δ)]⋅𝐂−1​(0){\bf\Omega}_{\Delta}^{\left(k\right)}\leftarrow\left[{\bf C}\left(\left(k+1\right)\Delta\right)-\sum_{\ell=0}^{k-1}{\bf\Omega}^{\left(\ell\right)}\cdot{\bf C}\left(\left(k-\ell\right)\Delta\right)\right]\cdot{\bf C}^{-1}(0)
+ end for
+ for ii in {0,…​N−h−1}\left\{0,\ldots N-h-1\right\} do
+   for kk in {0,…​h}\left\{0,\ldots h\right\} do
+    𝐖⁡(k​Δ|i​Δ)←𝐠⁡(i+k+1)−∑ℓ=0k𝛀(ℓ)⋅𝐠⁡((i+k−ℓ)​Δ){\bf W}(k\Delta|i\Delta)\leftarrow{\bf g}\left(i+k+1\right)-\sum_{\ell=0}^{k}{\bf\Omega}^{\left(\ell\right)}\cdot{\bf g}\left(\left(i+k-\ell\right)\Delta\right)
+   end for
+ end forreturn 𝛀Δ(k){\bf\Omega}_{\Delta}^{(k)}, 𝐖⁡(k​Δ|i​Δ){\bf W}(k\Delta|i\Delta)
+Figure 2: The dynamics of the physical-space variables {ϕi}i=120\left\{\phi_{i}\right\}_{i=1}^{20} of the Lorenz ’96 system (53). The highlighted panels are those chosen variables which serve as the observables g1:=ϕ1g_{1}:=\phi_{1}, g2:=ϕ4g_{2}:=\phi_{4}, g3:=ϕ8g_{3}:=\phi_{8}, and g4:=ϕ14g_{4}:=\phi_{14}. Because the observables are not zero-meaned, we also include a constant function g0:=1g_{0}:=1. For the reference of the reader, the estimated Lyapunov time ≈0.622\approx 0.622. 
+Figure 3: The two-time correlation function 𝐂⁡(t){\bf C}(t) computed from snapshots along a long (10510^{5}) trajectory Ci​j​(k​δ)=10−5×∑ℓ=1105−kgi​((k+ℓ)​δ)​gj​(k​δ)C_{ij}(k\delta)=10^{-5}\times\sum_{\ell=1}^{10^{5}-k}g_{i}(\left(k+\ell\right)\delta)\,g_{j}(k\delta). The estimated Lyapunov time ≈0.622\approx 0.622.
+6 Numerical experiment
+6.1 Test model
+In this section, we present the application of our proposed algorithms. Our aim is to illustrate that the usage and the capability of the algorithms to extract the Mori–Zwanzig operators from a long trajectory of simulation.
+Throughout this section, we adopt the Lorenz ’96 system [25] as the test problem. The system consists of NN physical-space variables which evolve nonlinearly by
+dd​t​ϕi​(t)=(ϕi+1−ϕi−2)​ϕi−1−ϕi+F,i=1​…​N,\frac{\text{d}}{\text{d}t}\phi_{i}\left(t\right)=\left(\phi_{i+1}-\phi_{i-2}\right)\phi_{i-1}-\phi_{i}+F,\ i=1\ldots N,
+(53)
+with the periodic boundary condition ϕ−1=ϕN−1\phi_{-1}=\phi_{N-1}, ϕ0=ϕN\phi_{0}=\phi_{N}, and ϕN+1=ϕ1\phi_{N+1}=\phi_{1}. We fixed the model parameter N=20N=20 and F=8F=8, with which the system has a chaotic behavior.
+We define our observables to be g1​(t):=ϕ1​(t)g_{1}(t):=\phi_{1}(t), g2​(t):=ϕ4​(t)g_{2}(t):=\phi_{4}(t), g3​(t):=ϕ8​(t)g_{3}(t):=\phi_{8}(t), and g4​(t)=ϕ14​(t)g_{4}(t)=\phi_{14}(t). We also include a constant function g0=1g_{0}=1 because the long-time average of the observables are not zero-meaned. We remark that the results below are conditioned on the choice of the observables we choose. We use the general-purpose integrator LSODA (by scipy.integrate.solve_ivp) to solve the evolutionary equation (53). LSODA uses adaptive time steps for controlling the error of the numerical integration, and can handle stiff ODE systems. We chose a randomized initial condition, integrated the trajectory until t=105t=10^{5}, and recorded the snapshot of the observables every δ=0.01\delta=0.01. The total length t=105t=10^{5} was deemed sufficient from the convergence of the computed correlation matrix 𝐂{\bf C} between these chosen observables. We checked that the choice of the initial condition does not affect the obtained two-time correlations. Numerically, the trajectory is long enough such that the contribution of the initial transient behavior of the trajectory converging to the attractor is negligible. A short-time behavior of the dynamical system is shown in Fig. 2, where the observables are highlighted. We numerically computed the Lyapunov exponents of the system and determined that the largest Lyapunov exponent ≈1.608\approx 1.608, which corresponds to a Lyapunov time ≈1/1.608≈0.622\approx 1/1.608\approx 0.622. The estimated Kaplan–Yorke dimension [32] of the system is ≈13.37\approx 13.37.
+We use the collected snapshots of the observables to compute two-time correlation function up to a lag t=10t=10, as shown in Fig. 3. Then, we apply Algorithm 1 to the the numerically computed 𝐂⁡(t){\bf C}\left(t\right) to extract the continuous-time Markov matrix
+𝐌=[0.00.00.00.00.01.0−0.052−0.4160.215−0.1750.6520.3720.099−0.7950.047−2.333−0.0660.787−0.0680.3420.3380.1710.043−0.3780.021],{\bf M}=\begin{bmatrix}0.0&0.0&0.0&0.0&0.0\\
+1.0&-0.052&-0.416&0.215&-0.175\\
+0.652&0.372&0.099&-0.795&0.047\\
+-2.333&-0.066&0.787&-0.068&0.342\\
+0.338&0.171&0.043&-0.378&0.021\end{bmatrix},
+(54)
+and the memory kernel 𝐊⁡(t){\bf K}(t), illustrated in Fig. 4. With the the calculated kernel 𝐊{\bf K}, Algorithm 1 also quantifies the orthogonal dynamics, 𝐅⁡(t,𝚽⁡(s)){\bf F}\left(t,{\bf\Phi}\left(s\right)\right) for t≥st\geq s, which allows us to calculate the right-hand side of the Generalized Fluctuation-Dissipation relationship (32). The GFD, which servers as a stringent self-consistent condition, is numerically verified and presented in Fig. 4.
+Figure 4: The memory kernel 𝐊⁡(t){\bf K}(t) is illustrated as the solid line. To verify the Generalized Fluctuation-Dissipation (GFD) relationship, the right-hand-side of Eq. (32), GFDi​j:=[⟨𝐅⁡(t)⋅𝐅T​(0)⟩⋅𝐂−1​(0)]i​j\text{GFD}_{ij}:=\left[\left\langle{\bf F}\left(t\right)\cdot{\bf F}^{T}\left(0\right)\right\rangle\cdot{\bf C}^{-1}\left(0\right)\right]_{ij}, is calculated and plotted as the discrete dots, which perfectly align with the memory kernel 𝐊{\bf K}. The timescale of nontrivial memory kernel exceeds the estimated Lyapunov time ≈0.622\approx 0.622.
+We also applied the Algorithm 2 to extract the discrete-time operators 𝛀Δ(ℓ){\bf\Omega}_{\Delta}^{(\ell)}. We first fix Δ=30​δ\Delta=30\delta and identify the lowest order 𝛀Δ(0){\bf\Omega}^{(0)}_{\Delta} which serves like the Markov transition matrix in the discrete-time formulation:
+𝛀Δ(0)=[1.00.00.00.00.01.8270.294−0.0620.036−0.0531.3780.1730.332−0.1080.0160.925−0.0150.270.2840.0641.7710.0260.012−0.1050.311],{\bf\Omega}_{\Delta}^{(0)}=\begin{bmatrix}1.0&0.0&0.0&0.0&0.0\\
+1.827&0.294&-0.062&0.036&-0.053\\
+1.378&0.173&0.332&-0.108&0.016\\
+0.925&-0.015&0.27&0.284&0.064\\
+1.771&0.026&0.012&-0.105&0.311\\
+\end{bmatrix},
+(55)
+We present the higher-order operators, 𝛀Δ(ℓ){\bf\Omega}_{\Delta}^{(\ell)} in Fig. 5. Algorithm 2 also quantifies the discrete-time orthogonal dynamics 𝐖k{\bf W}_{k}, which we used to evaluate the right-hand side of the discrete-time GFD relationship (89). Again, the stringent self-consistent GFD illustrates that our numerical analysis quantifies the operators accurately.
+Figure 5: We present the extracted higher-order discrete-time operators 𝛀Δ(ℓ){\bf\Omega}_{\Delta}^{(\ell)}, ℓ≥1\ell\geq 1 in discrete dots. To verify the discrete-time Generalized Fluctuation-Dissipation (GFD) relationship, the right-hand-side of Eq. (89), GFDi​j:=[⟨𝐖ℓ⋅𝐖0T⟩⋅𝐂−1​(−Δ)]i​j\text{GFD}_{ij}:=\left[\left\langle{\bf W}_{\ell}\cdot{\bf W}_{0}^{T}\right\rangle\cdot{\bf C}^{-1}\left(-\Delta\right)\right]_{ij}, is calculated and plotted as the discrete pluses, which align with the memory kernel 𝛀Δ(ℓ){\bf\Omega}^{(\ell)}_{\Delta}. 
+For a comparison between the continuous-time and discrete-time operators, we compute the propagator exp⁡(Δ×𝐌)\exp(\Delta\times{\bf M}) using the continuous-time Markov operator 𝐌{\bf M} computed in 54:
+exp⁡(Δ×𝐌)=[1.00.00.00.00.00.2560.976−0.1170.08−0.0490.2960.1140.995−0.234−0.001−0.658−0.0030.2360.9460.1030.1490.052−0.004−0.1110.999].\exp\left(\Delta\times{\bf M}\right)=\begin{bmatrix}1.0&0.0&0.0&0.0&0.0\\
+0.256&0.976&-0.117&0.08&-0.049\\
+0.296&0.114&0.995&-0.234&-0.001\\
+-0.658&-0.003&0.236&0.946&0.103\\
+0.149&0.052&-0.004&-0.111&0.999\\
+\end{bmatrix}.
+(56)
+The difference between the lowest-order Markov operators, Eqs. (55) and (56), illustrate the difference between the continuous-time and the discrete-time formulation. The discrete Markov operator 𝛀Δ(0){\bf\Omega}^{(0)}_{\Delta} is identical to the approximate Koopman operator if one would carry out the EDMD [47] with a time separation Δ=30​δ=0.3\Delta=30\delta=0.3. Nevertheless, as pointed out in Sec. 4, although the operator 𝛀Δ(0){\bf\Omega}^{(0)}_{\Delta} can always be estimated by data (using Algorithm 2) and is optimal to predict one-step Δ\Delta into the future, it cannot be approximated by exponentiating the instantaneous Markov operator of the continuous-time formulation, exp⁡(Δ×𝐌)\exp\left(\Delta\times{\bf M}\right). Our analysis in Appendix B.1 shows that 𝛀Δ(0){\bf\Omega}^{(0)}_{\Delta} contains not only the effect of continuous-time Markov operator 𝐌{\bf M} which is the exact Koopman operator of the dynamics, but also the effect of the continuous-time memory kernel 𝐊⁡(s){\bf K}(s), 0≤s≤Δ0\leq s\leq\Delta.
+The continuous-time and discrete-time memory kernels shown in Figs. 4 and 5 show similar behavior. Note that in the GLE (22), it is conventional that the memory kernel 𝐊{\bf K} comes with an overall negative sign in front, but in the discrete formulation (Eq. (41)), it is more natural not to put the −1-1 only in front of the ℓ≥1\ell\geq 1 terms. Thus, to make comparison between Figs. 4 and 5, one of them shall be flipped upside-down. We point out a few important observations in these numerical estimations of the memory kernels. First, it shows that in both formulations, the memory kernels decay to zero at a finite timescale. The finite timescale of the memory kernel indicates that operationally, we do not necessarily need the full history of the system from t=0t=0 until the current time to make prediction—the trajectory with the finite timescale is sufficient. Secondly, the analysis shows that the memory kernels could behave very non-trivially, and the kernels are not likely captured by simple models. Thirdly, the discrete-time memory kernel seems to be a coarse-grained and smoothed-out picture of the continuous-time kernel.
+To investigate further into the Δ\Delta-dependence smoothing of the discrete memory operators, we calculate 𝛀Δ(ℓ){\bf\Omega}_{\Delta}^{(\ell)}, ℓ≥1\ell\geq 1 with Δ=0.01\Delta=0.01, 0.10.1, and 0.20.2. Note that the smallest Δ=0.01\Delta=0.01 corresponds to the smallest time resolution δ=0.01\delta=0.01, which we used to compute the continuous-time operators. To properly scale and compare their behavior, we need to scale the discrete operators by Δ−2\Delta^{-2}. The first scaling Δ\Delta comes from the fact that for a fixed physical memory timescale, a larger Δ\Delta comes with fewer snapshots in the discrete sum of the past history. Another way to understand this scaling is that 𝛀{\bf\Omega} in Eq. (41) is analogous to −𝐊⁡(s)​ d​s-{\bf K}(s)\text{\,d}s in Eq. (22), and the scaling comes from Δ∼ d​s\Delta\sim\text{\,d}s. The second scaling comes from the fact that the discrete operators map the system forward to Δ\Delta. We present the scaled operators, Δ−2​𝛀Δ(ℓ)\Delta^{-2}{\bf\Omega}^{(\ell)}_{\Delta} on the same figure 6, which shows that when Δ=δ=0.01\Delta=\delta=0.01, the calculated discrete-time operator by Algorithm 2 converges to the continuous-time kernel calculated using continuous-time Algorithm 1. The smoothing as we increase Δ\Delta can also be observed. With this comparison, we recommend the discrete-time formulation as it requires less inputs but achieves comparable results of the continuous-time formulation which needs estimation of 𝐂˙​(0)\dot{{\bf C}}(0) and 𝐂¨​(0)\ddot{{\bf C}}(0), when the time separation Δ\Delta is set equal to the fine discretization δ\delta of the continuous-time model.
+Figure 6: Comparisons between the discrete-time memory operators 𝛀Δ(ℓ){\bf\Omega}_{\Delta}^{(\ell)}, ℓ≥1\ell\geq 1 with various Δ\Delta and the continuous-time memory kernel −𝐊⁡(t)-{\bf K}(t). Note that the continuous-time memory kernel in the generalized Langevin equation (22) has a sign difference to the discrete-time formulation (41). To make comparable visualization, we compare the discrete-time operators to the negative of continuous-time memory kernel, −𝐊-{\bf K}.
+6.2 Advantage of the Mori–Zwanzig formalism in prediction
+In this section, we compare different numerical procedures for making prediction to illustrate the advantage of the Mori–Zwanzig formalism over plain Koopman analysis when the set of basis functions is not complete. Specifically, we consider the following problem setup. Suppose we obtain snapshots of a set of observables along a long trajectory. These snapshots, separated by a fine time resolution δ\delta, were used to compute either the approximate Koopman operator (cf. Sec. 4) or the Mori–Zwanzig operators (cf. Algorithm 2). Next, suppose we were given the snapshots of the observables along a segment of trajectory of length ζ=m​δ\zeta=m\delta, m∈ℕm\in\mathbb{N}. We denote the snapshots by {𝐠⁡(k​δ)}k=1m\left\{{\bf g}(k\delta)\right\}_{k=1}^{m}, noting that 𝐠{\bf g} is an M×1M\times 1 column vector. We are interested in using the given snapshots to predict the observables η=n​δ\eta=n\delta, n∈ℕn\in\mathbb{N} in the future. Specifically, we are interested in comparing the prediction errors of Koopman and discrete-time Mori–Zwanzig formulations:
+1. The recursive Koopman computation: With this approach, we use the EDMD [47] to compute the approximate Koopman operator 𝐊ΔKoop{\bf K}_{\Delta}^{\rm Koop} with a time separation Δ=k​δ\Delta=k\delta. Because the aim is to predict n​δn\delta into the future, kk is restricted to the set of divisors of nn. When k=1k=1, the learned approximate Koopman operator would be closest to the true Markov operator in the Mori–Zwanzig formalism. When k=nk=n, the time separation is chosen to be exactly the predictive horizon. We then apply n/kn/k times the learned Koopman operator to advance the last known observables to make prediction, i.e., 𝐠⁡((m+n)​δ)≈(𝐊ΔKoop)n/k⋅𝐠⁡(m​δ){\bf g}\left(\left(m+n\right)\delta\right)\approx\left({\bf K}_{\Delta}^{\rm Koop}\right)^{n/k}\cdot{\bf g}\left(m\delta\right). 
+2. The recursive discrete-time Mori–Zwanzig computation: With this approach, we use Algorithm 2 to compute the Mori–Zwanzig operators 𝛀Δ(ℓ){\bf\Omega}^{(\ell)}_{\Delta}. We are interested in different magnitudes of Δ\Delta, noting a restriction that they must be multiples of the finest time resolution δ\delta. We chose Δ=0.01\Delta=0.01, 0.020.02, 0.050.05, 0.10.1, and 0.20.2. We are also interested in the predictive error as a function of the memory length, which is restricted as multiples of Δ\Delta. We will integrate Eq. (41) to advance 𝐠⁡(t){\bf g}(t) to 𝐠⁡(t+Δ){\bf g}(t+\Delta), noting that it is not possible to estimate the exact noise 𝐖k{\bf W}_{k}. Instead of injecting artificially generated samples from a noise model, we set 𝐖k{\bf W}_{k}’s to zero. Note that the steps needed for such integration is also Δ\Delta-dependent. For example, when Δ\Delta matches the predictive horizon (Δ=n​δ\Delta=n\delta), we only need to integrate Eq. (41) once; when Δ\Delta is the finest time resolution (Δ=δ\Delta=\delta), we need to interatively integrate Eq. (41) nn times and accumulate the prediction 𝐠⁡((m+k)​δ){\bf g}\left(\left(m+k\right)\delta\right), 1≤k<n1\leq k<n as past history until the horizon is met.
+We remark that when the memory length is set to zero in the recursive discrete-time Mori–Zwanzig approach, the method converges to the recursive Koopman approach because 𝐊ΔKoop≡𝛀Δ(0){\bf K}^{\rm Koop}_{\Delta}\equiv{\bf\Omega}^{(0)}_{\Delta}. Thus, the second family of numerical procedures (with different settings of Δ\Delta and memory length) is a superset of the first one.
+We adopt the L2L^{2}-norm as the measure to compare errors between different methods. That is, suppose a method made a prediction 𝐠pred{\bf g}^{\text{pred}} and suppose the ground truth is 𝐠GT{\bf g}^{\text{GT}}, the error is computed by
+ε2:=‖𝐠pred−𝐠GT‖22≡∑i=1M(gipred−giGT)2.\varepsilon^{2}:=\left\|{\bf g}^{\text{pred}}-{\bf g}^{\text{GT}}\right\|_{2}^{2}\equiv\sum_{i=1}^{M}(g_{i}^{\text{pred}}-g_{i}^{\text{GT}})^{2}.
+(57)
+To collect the statistics of the prediction error, we generate 2×1042\times 10^{4} samples of segments, each of which contains m=500m=500 snapshots (separated by δ=0.01\delta=0.01), sampled from a long (t=105t=10^{5}) test trajectory. Because we are interested in out-of-sample prediction, the long test trajectory used to generate test samples is different from the one we used to compute the correlation matrix (and the operators). Both trajectories were generated by integrating the same evolutionary equation (53) with two randomized initial conditions; the procedure ensures a consistent inner-product space which is defined by the long-time statistics.
+Figure 7: Comparison of the prediction error of different numerical procedures. (a) The mean error of the Mori–Zwanzig formulation for predicting the observable n​δ=0.2n\delta=0.2 into the future. (b) The mean error of the Mori–Zwanzig formulation for predicting the observable n​δ=0.8n\delta=0.8 into the future. (c) We compare the statistics of the prediction error as the function of the prediction horizon n​δn\delta from (1) the approximate Koopman operator 𝐊δ{\bf K}_{\delta}, (2) the approximate Koopman operator 𝐊n​δ{\bf K}_{n\delta}, and (3) recursive Mori–Zwanzig computation. For the reader’s reference, the estimated Lyapunov time ≈0.622\approx 0.622.
+We present the error statistics from the Mori–Zwanzig with different memory and prediction horizon in Fig. 7. In Fig. 7 (a) and (b), we present the average error over 2×1042\times 10^{4} samples when the prediction horizon is chosen as n​δ=0.2n\delta=0.2 and 0.80.8 (2020 and 8080 finest time steps, δ=0.01\delta=0.01), respectively. The recursive Koopman computation corresponds to those points with the zero memory length. A few important observations can be made. First, for approximate Koopman computation, the most accurate way is to match the time separation Δ\Delta to the prediction horizon n​δn\delta. This observation is consistent to our reasoning in Sec. 3.5, that the optimal prediction n​δn\delta into the future is 𝐂​(n​δ)⋅𝐂−1​(0){\bf C}(n\delta)\cdot{\bf C}^{-1}(0), which is the approximate Koopman operator 𝐊n​δKoop{\bf K}^{\text{Koop}}_{n\delta} (cf. Sec. 4). Secondly, as the length of the past history is increased, the error decreases but levels off at a finite timescale which depends on the choice of Δ\Delta. The improvement comes from an important fact that the given segment of trajectory 𝐠⁡(k​δ){\bf g}(k\delta), k=1​…​mk=1\ldots m, contains information in both the parallel and orthogonal spaces; see decomposition Eqs. (23) and (24). By integrating GLE forward in time with the segment of trajectory, we can evolve both the parallel and orthogonal dynamics beyond t=m​δt=m\delta, despite the fact that we cannot access the unknown orthogonal dynamics 𝐅⁡(t≥m​δ){\bf F}(t\geq m\delta), which is thus set to be zero operationally for making predictions. In contrast, the Koopman approach always predicts from the last snapshot at t=m​δt=m\delta and can only optimally predict in the parallel space by Eq. (23) and misses out more orthogonal contributions. Interestingly, the optimal choice of Δ\Delta, the separation between snapshots for learning, depends nontrivially on the memory length and the prediction horizon in the Mori–Zwanzig formulation. For a prediction horizon 0.20.2 (Fig. 7 (a)), it is optimal to match Δ=0.2\Delta=0.2 regardless of the memory length; however, for a prediction horizon 0.80.8 (Fig. 7 (b)), it is more advantageous to adapt a mismatched Δ=0.4\Delta=0.4 in the long-memory kernel regime. Regardless, in all cases, we found that including the memory contribution improves the prediction, compared to the memory-less Koopman prediction. Finally, we observed that the memory length does not need to be long before the accuracy levels off.
+Consistent with these results, it is not expensive to improve the accuracy using the discrete-time Mori–Zwanzig formulation: we only need to store a finite length of snapshots to carry out the discrete sum in (41). In Fig. 7 (c), we present the error as a function of the prediction horizon n​δn\delta. In addition to the average error, we also visualize the standard deviation of the ε2\varepsilon^{2} in 2×1042\times 10^{4} sample segments. We compare three methods: Koopman with the smallest time separation Δ=δ\Delta=\delta, with the matched time separation Δ=n​δ\Delta=n\delta, and discrete Mori–Zwanzig with Δ=n​δ\Delta=n\delta with a fixed memory length 0.240.24. We conclude that, the Mori–Zwanzig formulation is consistently more accurate in making predictions into the future, and if one must carry out the approximate Koopman analysis, it is best to match the time separation Δ\Delta to that of the prediction horizon—learning an approximate Koopman operator with a short time separation Δ\Delta and recursively applying 𝐊Δ<n​δKoop{\bf K}^{\text{Koop}}_{\Delta<n\delta} invokes more error.
+Finally, it is worth pointing out that similar to the Koopman analysis, the quality of the prediction crucially depends on the selection of the observables. In our test problems above, we only considered five simple observables {1,ϕ1,ϕ4,ϕ8,ϕ14}\left\{1,\phi_{1},\phi_{4},\phi_{8},\phi_{14}\right\} and performed apples-to-apples comparison between the Koopman and Mori–Zwanzig predictions. We emphasize on the result that the Mori–Zwanzig, with the same functional basis, improves the prediction of the plain Koopman analysis, despite that the absolute error of the Mori–Zwanzig prediction is still large (see Fig. 7 (a) and (b)). To further improve the prediction, one then needs to optimize a set of observables, which is an important procedure but not the focus of this article.
+7 Discussion
+In this article, we showed that the Mori–Zwanzig formalism with Mori’s projector [29] is not only consistent with but also a generalization of the existing Koopman learning procedures, such as the extended dynamic mode decomposition (EDMD, [47]). The propagator of the projected image 𝐂​(Δ)⋅𝐂−1​(0){\bf C}\left(\Delta\right)\cdot{\bf C}^{-1}\left(0\right) for any time separation Δ\Delta is identified as the discrete-time approximate Koopman operator 𝐊ΔKoop{\bf K}^{\text{Koop}}_{\Delta}. We identify that the propagator does not only contain the effect of the instantaneous Markov transition matrix 𝐌≡𝐂˙​(0)⋅𝐂−1​(0){\bf M}\equiv\dot{{\bf C}}\left(0\right)\cdot{\bf C}^{-1}\left(0\right), but also the memory effect from the trajectory between t=0t=0 to t=Δt=\Delta (Lemma 1). Such a history dependence emerged because of the dynamics is not fully resolved—that is, the dynamics does not evolves invariantly in functional subspace ℋ𝐠\mathcal{H}_{\bf g} spanned by the selected observables. Although the Markov transition matrix 𝐌{\bf M} is the instantaneous Koopman operator, the finite-time propagator is exp⁡(Δ​𝐌)\exp\left(\Delta{\bf M}\right) only when the dynamical system is fully resolved. In those partially observed cases, there always emerge a history-dependent term and the orthogonal dynamics from the unresolved degrees of freedom of the dynamics.
+Motivated by the data-driven Koopman learning methods, we constructed two numerical algorithms which extract key operators in the Mori–Zwanzig formalism, specifically, with Mori’s projection operator. One of our algorithms extracts the continuous-time operators, and the other the discrete-time ones. To the lowest order, the algorithms are operationally identical to the EDMD and they compute the continuous-time Markov matrix 𝐌{\bf M} and the discrete-time approximate Koopman operator 𝛀Δ(0){\bf\Omega}^{(0)}_{\Delta}. The novelty of our algorithms is that they go beyond the lowest order and proceed with a recursive procedure which uses further two-time correlations to extract the memory kernels (continuous-time 𝐊⁡(s){\bf K}(s) and discrete-time 𝛀Δ(ℓ){\bf\Omega}^{(\ell)}_{\Delta}, ℓ≥1\ell\geq 1). The orthogonal dynamics can be computed after the Markov transition matrix and the memory kernel are obtained.
+Our proposed algorithms provide an alternative data-driven way of applying the Mori–Zwanzig formalism to study dynamical systems. Our approach bypasses the conventional need of modeling the memory kernel and the orthogonal dynamics. The numerical analysis on the test problem shows the complex behavior of the memory kernel which is not likely to be modeled by simple mathematical models. Importantly, we numerically verified that the extracted memory kernel and orthogonal noise satisfy the self-consistent Generalized Fluctuation-Dissipation relationship. To our knowledge, it is the first time that the GFD is numerically verified on a nontrivial model whose analytic solution is not known. We are confident with the validity of the extracted memory kernel because of the rather stringent GFD relationship.
+We showed that the Mori–Zwanzig formalism with the numerically extracted memory kernel and the past history can significantly improve the accuracy of the prediction of the Extended Dynamic Mode Decomposition [47]. The reason is that the past history contains partial information of the orthogonal dynamics, 𝐠⟂​(t){\bf g}_{\perp}(t), and the prediction can be improved by incorporating the information. We remark that such a memory-dependent learning is fundamentally different from the recently proposed time-embedded Koopman learning methods [12, 4, 5, 20, 15, 46, 24] which include the past history in the set of the observables. These methods, motivated by the famous Takens’ embedding theorem [41], requires to expand the number in the set of variables by hh times, where hh is the number of the past snapshots and hh has to be specified before the computation. With such a construction, the subspace that functions are projected to is span​({𝐠⁡((h−1)​Δ)​…​𝐠​(Δ),𝐠⁡(0)})\text{span}(\left\{{\bf g}\left(\left(h-1\right)\Delta\right)\ldots{\bf g}(\Delta),{\bf g}(0)\right\}) which is larger than ℋ𝐠\mathcal{H}_{\bf g}. Despite the one-step projection using the past history seems to be mapped by a memory kernel, a more proper way to interpret the operation is to regard the augmented configuration mapped by the Markov transition matrix to that at the next discrete time, i.e. [𝐠⁡(h​Δ)​…​𝐠​(2​Δ),𝐠⁡(Δ)]T=𝐌⋅[𝐠⁡(h​Δ)​…​𝐠​(2​Δ),𝐠⁡(Δ)]T+𝐖\left[{\bf g}\left(h\Delta\right)\ldots{\bf g}(2\Delta),{\bf g}(\Delta)\right]^{T}={\bf M}\cdot\left[{\bf g}\left(h\Delta\right)\ldots{\bf g}(2\Delta),{\bf g}(\Delta)\right]^{T}+{\bf W} where 𝐖0{\bf W}_{0} is the orthogonal noise. Note that with a finite (h<∞h<\infty) past history, the Mori–Zwanzig memory kernel would emerge if a history is longer than hh steps are given and if the past hh-step observables do not linearly span an invariant manifold. Time-embedded analysis requires a more expensive inversion of the larger 𝐂⁡(0)∈ℝM​h×M​h{\bf C}(0)\in\mathbb{R}^{Mh\times Mh} matrix. In comparison, the memory kernel of the Mori–Zwanzig construction requires a single inversion of the 𝐂⁡(0)∈ℝM×M{\bf C}(0)\in\mathbb{R}^{M\times M} and the memory kernel is constructed by other two-time correlations 𝐂⁡(k​Δ){\bf C}(k\Delta).
+Our approach here is close to but different from the method presented by Lin and Lu [24], and it merits a more careful and detailed comparison. At the very high level, we share the same formal construction of the discrete-time GLE. Our approaches diverged as soon as the projection operator is chosen: we chose Mori’s projection (referred to as the finite-rank projection in [24]) and Lin an Lu chose the Wiener projection. Formally, choosing Wiener projection is identical to the time-embedding technique: as pointed out in [24], the subspace to which Wiener projection projects is spanned by the past trajectory, and there is no Mori–Zwanzig memory kernel for a single prediction. Lin and Lu had to impose a “decaying memory condition”, by which they meant the Markov transition weight of distant past configuration must decay. In our case, the Mori–Zwanzig memory kernel naturally decays and no such a constraint is imposed. Computationally, our operations are always linear operations with explicit solution of the linear optimizer, and nonlinear optimization is needed in [24] because they invoke the rational approximations after the zz-transformation. In this manuscript, we did not propose practical ways to model the orthogonal dynamics 𝐖k{\bf W}_{k}, but Lin and Lu provided a practical way forward using multivariate Gaussian process model to match the power spectrum. As time-embedded analysis are much more expensive to fit but have the benefit of having smaller prediction error [data not shown], it remains an interesting future research direction to objectively evaluate these two methods: under the same computational budget, which one has a higher accuracy and with what metric (e.g. error in prediction, error in estimated Koopman spectrum, etc.)? Which one converge faster with the same finite data set?
+Although the mathematical construction of the Mori–Zwanzig formalism and Koopman theory is general for any set of observables, the accuracy of the prediction crucially depends on the selection of the observables. In practice, it is preferable to adopt a set of observables which invoke smaller orthogonal dynamics 𝐅⁡(t){\bf F}(t). Our algorithms, which are first to our knowledge, extract the exact orthogonal dynamics from the data and thus they provide an opportunity for us to study the statistics from the extracted orthogonal dynamics. One possibility in the future is to treat the orthogonal dynamics, 𝐅⁡(t){\bf F}(t), as another dynamical system and recursively perform Mori–Zwanzig learning to telescope into the residual dynamics. We propose another possibility, analogous to Gram–Schmidt process, to use the numerically extracted 𝐅⁡(t){\bf F}(t) for identifying those predominant observables orthogonal to the existing set of observables. We expect by including these orthogonal observables, the predictive accuracy of the model can be improved. We remark that it is much cheaper to extract the memory kernel 𝐊⁡(s){\bf K}(s) than the orthogonal dynamics 𝐅⁡(t){\bf F}(t). Since the memory kernel is related to the two-time correlation function of the orthogonal dynamics by the Generalized Fluctuation-Dissipation relationship, it will be an interesting research direction to identify those properties of the memory kernel that can be directly used for optimizing the observables, potentially combining the recent development of using deep neural networks as approximate functions by Yeung et al. [50]. The extracted operators provides multiple angles for such an optimization: For example, should the objective be minimizing the magnitude of the memory kernel (which ∝⟨𝐅⁡(t),𝐅T​(0)⟩\propto\left\langle{\bf F}(t),{\bf F}^{T}(0)\right\rangle by Eq. (32)), or the timescale of the memory kernel as one would like to achieve in the Markov State Models?
+We are currently working on generalizing the proposed methods to partially observed Markov stochastic systems with a focus on spectral analysis on the Mori–Zwanzig operators. In terms of applications, we are applying the proposed data-driven learning algorithm to study the modeling of turbulent flows [42] and molecular dynamical systems, both which are extremely challenging engineering applications.
+Acknowledgments
+This work has been authored by employees of Triad National Security, LLC which operates Los Alamos National Laboratory (LANL) under Contract No. 89233218CNA000001 with the U.S. Department of Energy/National Nuclear Security Administration.
+The work has been supported by LDRD (Laboratory Directed Research and Development) program at LANL under project 20190059DR (Machine Learning for Turbulence). YTL was partially supported by project LDRD-20190034ER (Massively Parallel Acceleration of the Dynamics of Complex Systems: a Data-Driven Approach) for finalizing the manuscript. YTL sincerely appreciates many insightful discussions with Danny Perez.
+References
+[1]
+R. Abraham, J. E. Marsden, and J. E. Marsden, Foundations of
+Mechanics, vol. 36, Benjamin/Cummings Publishing Company Reading,
+Massachusetts, 1978.
+[2]
+A. Ale, P. Kirk, and M. P. H. Stumpf, A general moment expansion
+method for stochastic kinetic models, The Journal of Chemical Physics, 138
+(2013), p. 174101, https://doi.org/10.1063/1.4802475,
+https://doi.org/10.1063/1.4802475.
+[3]
+Alexandre J. Chorin, O. H. Hald, R. Kupferman, A. J. Chorin, O. H. Hald,
+and R. Kupferman, Optimal prediction with memory, Physica D:
+Nonlinear Phenomena, 166 (2002), pp. 239–257,
+https://doi.org/10.1016/S0167-2789(02)00446-3,
+https://www.sciencedirect.com/science/article/pii/S0167278902004463.
+[4]
+H. Arbabi and I. Mezić, Ergodic theory, dynamic mode decomposition,
+and computation of spectral properties of the koopman operator, SIAM Journal
+on Applied Dynamical Systems, 16 (2017), pp. 2096–2126,
+https://doi.org/10.1137/17M1125236,
+https://doi.org/10.1137/17M1125236,
+https://arxiv.org/abs/https://doi.org/10.1137/17M1125236.
+[5]
+S. L. Brunton, B. W. Brunton, J. L. Proctor, E. Kaiser, and J. N. Kutz,
+Chaos as an intermittently forced linear system, Nature communications,
+8 (2017), pp. 1–9.
+[6]
+T. Carleman, Application de la théorie des équations intégrales
+linéaires aux systèmes d’équations différentielles non linéaires, Acta
+Math., 59 (1932), pp. 63–87, https://doi.org/10.1007/BF02546499,
+https://doi.org/10.1007/BF02546499.
+[7]
+M. Chen, X. Li, and C. Liu, Computation of the memory functions in
+the generalized langevin models for collective dynamics of macromolecules,
+The Journal of Chemical Physics, 141 (2014), p. 064112,
+https://doi.org/10.1063/1.4892412,
+https://doi.org/10.1063/1.4892412.
+[8]
+A. J. Chorin, O. H. Hald, and R. Kupferman, Optimal prediction and
+the mori–zwanzig representation of irreversible processes,
+Proceedings of the National Academy of Sciences, 97 (2000), pp. 2968–2973,
+https://doi.org/10.1073/pnas.97.7.2968,
+https://www.pnas.org/content/97/7/2968.
+[9]
+D. J. Evans and G. P. Morriss, Statistical Mechanics of
+Nonequilibrium Liquids, Cambridge University Press, Cambridge, 2nd
+ed ed., 2008.
+[10]
+S. K. J. Falkena, C. Quinn, J. Sieber, J. Frank, and H. A. Dijkstra, Derivation of delay equation climate models using the Mori-Zwanzig
+formalism, Proceedings of the Royal Society A: Mathematical, Physical and
+Engineering Sciences, 475 (2019), p. 20190075,
+https://doi.org/10.1098/rspa.2019.0075.
+[11]
+G. A. Gottwald, D. T. Crommelin, and C. L. E. Franzke, Stochastic
+Climate Theory, Cambridge University Press, 2017, p. 209–240,
+https://doi.org/10.1017/9781316339251.009.
+[12]
+I. Horenko, C. Hartmann, C. Schütte, and F. Noe, Data-based
+parameter estimation of generalized multidimensional langevin processes,
+Phys. Rev. E, 76 (2007), p. 016706,
+https://doi.org/10.1103/PhysRevE.76.016706,
+https://link.aps.org/doi/10.1103/PhysRevE.76.016706.
+[13]
+T. Hudson and X. H. Li, Coarse-graining of overdamped langevin
+dynamics via the mori–zwanzig formalism, Multiscale Modeling & Simulation,
+18 (2020), pp. 1113–1135, https://doi.org/10.1137/18M1222533,
+https://doi.org/10.1137/18M1222533.
+[14]
+D. J Evans and G. P Morriss, Statistical Mechanics of Nonequilbrium
+Liquids, ANU Press, 2007.
+[15]
+M. Kamb, E. Kaiser, S. L. Brunton, and J. N. Kutz, Time-delay
+observables for koopman: Theory and applications, SIAM Journal on Applied
+Dynamical Systems, 19 (2020), pp. 886–917,
+https://doi.org/10.1137/18M1216572,
+https://doi.org/10.1137/18M1216572.
+[16]
+S. Klus, F. Nüske, P. Koltai, H. Wu, I. Kevrekidis, C. Schütte,
+and F. Noé, Data-Driven Model Reduction and Transfer Operator
+Approximation, Journal of Nonlinear Science, 28 (2018), pp. 985–1010,
+https://doi.org/10.1007/s00332-017-9437-7.
+[17]
+B. O. Koopman, Hamiltonian systems and transformation in Hilbert
+space, Proceedings of the National Academy of Sciences, 17 (1931),
+pp. 315–318, https://doi.org/10.1073/pnas.17.5.315,
+https://www.pnas.org/content/17/5/315.
+[18]
+B. O. Koopman and J. v. Neumann, Dynamical systems of continuous
+spectra, Proceedings of the National Academy of Sciences, 18 (1932),
+pp. 255–263, https://doi.org/10.1073/pnas.18.3.255,
+https://www.pnas.org/content/18/3/255.
+[19]
+K. Kowalski and W.-H. Steeb, Nonlinear Dynamical Systems and
+Carleman Linearization, WORLD SCIENTIFIC, 1991,
+https://doi.org/10.1142/1347,
+https://www.worldscientific.com/doi/abs/10.1142/1347,
+https://arxiv.org/abs/https://www.worldscientific.com/doi/pdf/10.1142/1347.
+[20]
+S. Le Clainche and J. M. Vega, Higher order dynamic mode
+decomposition, SIAM Journal on Applied Dynamical Systems, 16 (2017),
+pp. 882–925, https://doi.org/10.1137/15M1054924,
+https://doi.org/10.1137/15M1054924.
+[21]
+H. Lei, N. A. Baker, and X. Li, Data-driven parameterization of the
+generalized langevin equation, Proceedings of the National Academy of
+Sciences, 113 (2016), pp. 14183–14188,
+https://doi.org/10.1073/pnas.1609587113,
+https://www.pnas.org/content/113/50/14183,
+https://arxiv.org/abs/https://www.pnas.org/content/113/50/14183.full.pdf.
+[22]
+Z. Li, X. Bian, X. Li, and G. E. Karniadakis, Incorporation of
+memory effects in coarse-grained modeling via the mori-zwanzig formalism,
+The Journal of Chemical Physics, 143 (2015), p. 243128,
+https://doi.org/10.1063/1.4935490,
+https://doi.org/10.1063/1.4935490,
+https://arxiv.org/abs/https://doi.org/10.1063/1.4935490.
+[23]
+Z. Li, H. S. Lee, E. Darve, and G. E. Karniadakis, Computing the
+non-markovian coarse-grained interactions derived from the mori–zwanzig
+formalism in molecular systems: Application to polymer melts, The Journal of
+Chemical Physics, 146 (2017), p. 014104,
+https://doi.org/10.1063/1.4973347,
+https://doi.org/10.1063/1.4973347,
+https://arxiv.org/abs/https://doi.org/10.1063/1.4973347.
+[24]
+K. K. Lin and F. Lu, Data-driven model reduction, wiener
+projections, and the koopman-mori-zwanzig formalism, Journal of
+Computational Physics, 424 (2021), p. 109864,
+https://doi.org/https://doi.org/10.1016/j.jcp.2020.109864,
+http://www.sciencedirect.com/science/article/pii/S0021999120306380.
+[25]
+E. N. Lorenz, Predictability: A problem partly solved, in Proc.
+Seminar on predictability, vol. 1, 1996.
+[26]
+A. Mauroy and I. Mezic, Global Stability Analysis Using the
+Eigenfunctions of the Koopman Operator, IEEE Transactions on
+Automatic Control, 61 (2016), pp. 3356–3369,
+https://doi.org/10.1109/TAC.2016.2518918.
+[27]
+I. Mezic, Spectral properties of dynamical systems, model reduction
+and decompositions, Nonlinear Dynamics, 41 (2005), pp. 309–325.
+[28]
+L. Molgedey and H. Schuster, Separation of a Mixture of
+Independent Signals Using Time Delayed Correlations, Phys. Rev. Lett.,
+72 (1994), pp. 3634–3638.
+[29]
+H. Mori, Transport, collective motion, and Brownian motion,
+Progress of theoretical physics, 33 (1965), pp. 423–455.
+[30]
+F. Noé and F. Nüske, A Variational Approach to
+Modeling Slow Processes in Stochastic Dynamical Systems, Multiscale
+Modeling & Simulation, 11 (2013), pp. 635–655,
+https://doi.org/10.1137/110858616.
+[31]
+F. Nüske, B. G. Keller, G. Pérez-Hernández, A. S. J. S. Mey,
+and F. Noé, Variational Approach to Molecular Kinetics,
+Journal of Chemical Theory and Computation, 10 (2014), pp. 1739–1752,
+https://doi.org/10.1021/ct4009156.
+[32]
+P. Frederickson, J. L. Kaplan, E. D. Yorke, and J. A. Yorke, The
+Lyapunov dimension of strange attractors, Journal of Differential
+Equations, 49 (1983), pp. 185–207,
+https://doi.org/10.1016/0022-0396(83)90011-6.
+[33]
+E. J. Parish and K. Duraisamy, Non-markovian closure models for
+large eddy simulations using the mori-zwanzig formalism, Phys. Rev. Fluids,
+2 (2017), p. 014604, https://doi.org/10.1103/PhysRevFluids.2.014604,
+https://link.aps.org/doi/10.1103/PhysRevFluids.2.014604.
+[34]
+G. Pérez-Hernández, F. Paul, T. Giorgino, G. De Fabritiis, and
+F. Noé, Identification of slow molecular order parameters for
+Markov model construction, The Journal of Chemical Physics, 139 (2013),
+p. 015102, https://doi.org/10.1063/1.4811489.
+[35]
+C. W. ROWLEY, I. MEZIĆ, S. BAGHERI, P. SCHLATTER, and D. S.
+HENNINGSON, Spectral analysis of nonlinear flows, Journal of Fluid
+Mechanics, 641 (2009), pp. 115–127,
+https://doi.org/10.1017/S0022112009992059.
+[36]
+P. J. SCHMID, Dynamic mode decomposition of numerical and
+experimental data, Journal of Fluid Mechanics, 656 (2010), p. 5–28,
+https://doi.org/10.1017/S0022112010001217.
+[37]
+P. J. Schmid, L. Li, M. P. Juniper, and O. Pust, Applications of the
+dynamic mode decomposition, Theoretical and Computational Fluid Dynamics, 25
+(2011), pp. 249–259.
+[38]
+D. Schnoerr, G. Sanguinetti, and R. Grima, Comparison of different
+moment-closure approximations for stochastic chemical kinetics, The Journal
+of Chemical Physics, 143 (2015), p. 185101,
+https://doi.org/10.1063/1.4934990,
+https://doi.org/10.1063/1.4934990.
+[39]
+P. Stinis, Stochastic optimal prediction for the
+kuramoto–sivashinsky equation, Multiscale Modeling & Simulation, 2 (2004),
+pp. 580–612, https://doi.org/10.1137/030600424,
+https://doi.org/10.1137/030600424,
+https://arxiv.org/abs/https://doi.org/10.1137/030600424.
+[40]
+S. H. Strogatz, Nonlinear Dynamics And Chaos: With Applications To
+Physics, Biology, Chemistry, And Engineering, CRC press, 1 ed., 2000.
+[41]
+F. Takens, Detecting strange attractors in turbulence, in Dynamical
+Systems and Turbulence, Warwick 1980, D. Rand and L.-S. Young, eds., Berlin,
+Heidelberg, 1981, Springer Berlin Heidelberg, pp. 366–381.
+[42]
+Y. Tian, Y. T. Lin, M. Anghel, and D. Livescu, Data-driven learning
+of Mori–Zwanzig formalism for isotropic turbulence (in final preparation
+for submission), (2021).
+[43]
+L. Tong, V. Soon, Y. Huang, and R. Liu, AMUSE: A new blind
+identification algorithm, in IEEE International Symposium on
+Circuits and Systems, New Orleans, LA, USA, 1990, IEEE,
+pp. 1784–1787, https://doi.org/10.1109/ISCAS.1990.111981.
+[44]
+J. v. Neumann, Zur Operatorenmethode In Der Klassischen
+Mechanik, Annals of Mathematics, 33 (1932), pp. 587–642,
+https://doi.org/10.2307/1968537.
+[45]
+S. Wang, Z. Li, and W. Pan, Implicit-solvent coarse-grained modeling
+for polymer solutions via mori-zwanzig formalism, Soft Matter, 15 (2019),
+pp. 7567–7582, https://doi.org/10.1039/C9SM01211G,
+http://dx.doi.org/10.1039/C9SM01211G.
+[46]
+M. Wanner and I. Mezić, Robust approximation of the stochastic
+koopman operator, arXiv preprint arXiv:2011.00078, (2020).
+[47]
+M. O. Williams, I. G. Kevrekidis, and C. W. Rowley, A data–driven
+approximation of the koopman operator: Extending dynamic mode decomposition,
+Journal of Nonlinear Science, 25 (2015), pp. 1307–1346.
+[48]
+H. Wu and F. Noé, Variational Approach for Learning Markov
+Processes from Time Series Data, Journal of Nonlinear Science, 30
+(2020), pp. 23–66, https://doi.org/10.1007/s00332-019-09567-y.
+[49]
+H. Wu, F. Nüske, F. Paul, S. Klus, P. Koltai, and F. Noé, Variational Koopman models: Slow collective variables and molecular
+kinetics from short off-equilibrium simulations, The Journal of Chemical
+Physics, 146 (2017), p. 154104, https://doi.org/10.1063/1.4979344.
+[50]
+E. Yeung, S. Kundu, and N. Hodas, Learning deep neural network
+representations for koopman operators of nonlinear dynamical systems, in
+2019 American Control Conference (ACC), 2019, pp. 4832–4839,
+https://doi.org/10.23919/ACC.2019.8815339.
+[51]
+R. Zwanzig, Nonlinear generalized Langevin equations, Journal of
+Statistical Physics, 9 (1973), pp. 215–220.
+[52]
+R. Zwanzig, Nonequilibrium statistical mechanics, Oxford University
+Press, 2001.
+Appendix A Solution of the orthogonal component
+It is straightforward to check that (31),
+𝐠⟂​(t)=∫0t𝐂⁡(t−s)⋅𝐂−1​(0)⋅𝐅⁡(s)​ d​s{\bf g}_{\perp}(t)=\int_{0}^{t}{\bf C}(t-s)\cdot{\bf C}^{-1}\left(0\right)\cdot{\bf F}(s)\text{\,d}s
+(58)
+is the solution to (24):
+ d d​t​𝐠⟂​(t)=\displaystyle\frac{\text{\,d}}{\text{\,d}t}{\bf g}_{\perp}(t)={}
+ d d​t​[∫0t𝐂⁡(t−s)⋅𝐂−1​(0)⋅𝐅⁡(s)​ d​s]\displaystyle\frac{\text{\,d}}{\text{\,d}t}\left[\int_{0}^{t}{\bf C}(t-s)\cdot{\bf C}^{-1}\left(0\right)\cdot{\bf F}(s)\text{\,d}s\right]
+(59)
+=\displaystyle={}
+𝐅⁡(t)+∫0t d​𝐂​(t−s) d​t⋅𝐂−1​(0)⋅𝐅⁡(s)​ d​s,\displaystyle{\bf F}(t)+\int_{0}^{t}\frac{\text{\,d}{\bf C}\left(t-s\right)}{\text{\,d}t}\cdot{\bf C}^{-1}\left(0\right)\cdot{\bf F}(s)\text{\,d}s,
+and by Eq. (28),
+ d d​t​𝐠⟂​(t)=\displaystyle\frac{\text{\,d}}{\text{\,d}t}{\bf g}_{\perp}(t)={}
+𝐅⁡(t)+∫0t𝐌⋅𝐂⁡(t−s)⋅𝐂−1​(0)⋅𝐅⁡(s)​ d​s\displaystyle{\bf F}(t)+\int_{0}^{t}{\bf M}\cdot{\bf C}\left(t-s\right)\cdot{\bf C}^{-1}\left(0\right)\cdot{\bf F}(s)\text{\,d}s
+(60)
+−∫0t∫0t−s𝐊(w)⋅𝐂(t−s−w)⋅𝐂−1(0)⋅𝐅(s) dw ds.\displaystyle-\int_{0}^{t}\int_{0}^{t-s}{\bf K}\left(w\right)\cdot{\bf C}\left(t-s-w\right)\cdot{\bf C}^{-1}\left(0\right)\cdot{\bf F}(s)\text{\,d}w\text{\,d}s.
+We assume that the integrand satisfies the conditions which allow the change of the order of integrations:
+ d d​t​𝐠⟂​(t)=\displaystyle\frac{\text{\,d}}{\text{\,d}t}{\bf g}_{\perp}(t)={}
+𝐅⁡(t)+𝐌⋅∫0t𝐂⁡(t−s)⋅𝐂−1​(0)⋅𝐅⁡(s)​ d​s\displaystyle{\bf F}(t)+{\bf M}\cdot\int_{0}^{t}{\bf C}\left(t-s\right)\cdot{\bf C}^{-1}\left(0\right)\cdot{\bf F}(s)\text{\,d}s
+(61)
+−∫0t𝐊(w)[∫0t−w⋅𝐂(t−w−s)⋅𝐂−1(0)⋅𝐅(s) ds] dw\displaystyle-\int_{0}^{t}{\bf K}\left(w\right)\left[\int_{0}^{t-w}\cdot{\bf C}\left(t-w-s\right)\cdot{\bf C}^{-1}\left(0\right)\cdot{\bf F}(s)\text{\,d}s\right]\text{\,d}w
+=\displaystyle={}
+𝐅⁡(t)+𝐌⋅𝐠⟂​(t)−∫0t𝐊⁡(w)​𝐠⟂​(t−w)​ d​w,\displaystyle{\bf F}(t)+{\bf M}\cdot{\bf g}_{\perp}\left(t\right)-\int_{0}^{t}{\bf K}\left(w\right){\bf g}_{\perp}\left(t-w\right)\text{\,d}w,
+which is Eq. (31). In addition, 𝐠⟂​(t)=0{\bf g}_{\perp}(t)=0 satisfies the initial condition in (24).
+Appendix B Derivation of the discrete-time Mori–Zwanzig formalism from continuous-time
+We present two independent derivations of the discrete-time Mori–Zwanzig formalism, assuming the underlying process is a continuous-time and deterministic dynamics. In the first approach presented in B.1, we begin with the continuous-time equations (22), (28), and (30), solving for the quantities evaluated on a temporally evenly sampled time grid t=0,Δ,2​Δ​…t=0,\Delta,2\Delta\ldots, and identify the recursive relationship between the solutions. In the second approach presented in B.2, we consider to discretize the dynamics first by transforming the continuous-time operator to a abstract discrete-time map, and re-derive the Mori–Zwanzig equations (analogous to (22), (28), and (30)) to the discrete-time map. Importantly, in both approaches, we do not impose infinitesimal constraint on Δ\Delta, and it can be any finite number.
+Interestingly, the two constructs delivers the same recursive relationship that resembles the continuous-time Mori–Zwanzig equations. We shall refer to these relationships as the discrete-time Mori–Zwanzig equations. However, there exists a subtle difference that the same discrete-time Mori–Zwanzig equations link different mathematical objects in the two approaches. We discuss this subtle difference between the two approaches, and a sufficient condition that the two descriptions agree, in B.3. The generalized fluctuation-dissipation relationship in the discrete-time formulation is discussed in B.4.
+B.1 Discretization of the continuous-time Mori–Zwanzig equations
+The Generalized Langevin Equation (22), the evolutaionary equations for the correlation matrix 𝐂⁡(t){\bf C}(t) (Eq. (28)) and the projected image 𝒫​𝐠​(t)=𝐠∥​(t)\mathcal{P}{\bf g}(t)={\bf g}_{\parallel}(t) (Eq. (30)) exhibit a similar evoluationary operator which involves the Markov matrix 𝐌{\bf M} and the memory kernel 𝐊⁡(t){\bf K}(t). Thus, here we consider the evolutionary operator applied on a test matrix 𝐓⁡(t){\bf T}(t), which is M×PM\times P where MM is the number of the observables serving as our basis functions spanning ℋ𝐠\mathcal{H}_{\bf g}. In the case of Eqs. (22) and (28), P=1P=1, and in the case of Eq. (28), P=MP=M. Suppose the evolutionary equation of the test matrix 𝐓⁡(t){\bf T}(t) satisfies
+ d d​t​𝐓​(t)=𝐌⋅𝐓⁡(t)−∫0t𝐊⁡(t−s)⋅𝐓⁡(s)​ d​s,\frac{\text{\,d}}{\text{\,d}t}{\bf T}(t)={\bf M}\cdot{\bf T}(t)-\int_{0}^{t}{\bf K}\left(t-s\right)\cdot{\bf T}\left(s\right)\text{\,d}s,
+(62)
+and suppose we only measure the snapshots of the observables at times on a evenly spaced grid t=[0,Δ,2​Δ​…]t=\left[0,\Delta,2\Delta\ldots\right] with a not necessary small separation Δ\Delta. We also assume that we know the initial value 𝐓⁡(0){\bf T}(0). The central aim of this section is to prove that the solution T⁡(k​Δ)T(k\Delta), k∈ℤ+k\in\mathbb{Z}_{+}, can be written as
+𝐓⁡((k+1)​Δ)=∑ℓ=0k𝛀(k)⋅𝐓⁡((k−ℓ)​Δ),{\bf T}\left(\left(k+1\right)\Delta\right)=\sum_{\ell=0}^{k}{\bf\Omega}^{\left(k\right)}\cdot{\bf T}\left(\left(k-\ell\right)\Delta\right),
+(63)
+where 𝛀(k){\bf\Omega}^{\left(k\right)} are prescribed M×MM\times M matrices. We break down the proof into a few separate Lemmas.
+Lemma 1.
+Given the evolutionary equation (62) with an initial condition 𝐓⁡(0){\bf T}(0) and the continuous-time kernel 𝐊⁡(s){\bf K}(s), for any t≥0t\geq 0, the solution 𝐓⁡(t){\bf T}(t) can be expressed as a linear operator 𝛀t{\bf\Omega}_{t} parametrized by the continuous-time tt operated on the initial condition 𝐓⁡(0){\bf T}(0):
+𝐓⁡(t)=𝛀t(0)⋅𝐓⁡(0).{\bf T}\left(t\right)={\bf\Omega}_{t}^{(0)}\cdot{\bf T}\left(0\right).
+(64)
+Proof.
+We observe that the correlation matrix 𝐂⁡(t){\bf C}(t) satisfies Eq. (28), which has a similar form to Eq. (62). It is easy to check that 𝛀t0:=𝐂⁡(t)⋅𝐂−1​(0){\bf\Omega}^{0}_{t}:={\bf C}(t)\cdot{\bf C}^{-1}(0) is the solution:
+ d d​t​𝐓​(t)=\displaystyle\frac{\text{\,d}}{\text{\,d}t}{\bf T}(t)={}
+ d d​t​[𝐂⁡(t)⋅𝐂−1​(0)⋅𝐓⁡(0)]\displaystyle\frac{\text{\,d}}{\text{\,d}t}\left[{\bf C}(t)\cdot{\bf C}^{-1}(0)\cdot{\bf T}(0)\right]
+(65)
+=\displaystyle={}
+[ d d​t​𝐂​(t)]⋅𝐂−1​(0)⋅𝐓⁡(0)\displaystyle\left[\frac{\text{\,d}}{\text{\,d}t}{\bf C}(t)\right]\cdot{\bf C}^{-1}(0)\cdot{\bf T}(0)
+=\displaystyle={}
+[𝐌⋅𝐂⁡(t)−∫0t𝐊⁡(t−s)⋅𝐂⁡(s)​ d​s]⋅𝐂−1​(0)⋅𝐓⁡(0)\displaystyle\left[{\bf M}\cdot{\bf C}(t)-\int_{0}^{t}{\bf K}\left(t-s\right)\cdot{\bf C}\left(s\right)\text{\,d}s\right]\cdot{\bf C}^{-1}(0)\cdot{\bf T}(0)
+=\displaystyle={}
+𝐌⋅𝐓⁡(t)−∫0t𝐊⁡(t−s)⋅𝐓⁡(s)​ d​s.\displaystyle{\bf M}\cdot{\bf T}(t)-\int_{0}^{t}{\bf K}\left(t-s\right)\cdot{\bf T}\left(s\right)\text{\,d}s.
+∎
+Theorem 1.
+Given (1) the evolutionary equation (62), (2) the continuous-time memory kernel 𝐊⁡(s){\bf K}(s), s≥0s\geq 0, (3) a non-negative integer k∈ℤ+k\in\mathbb{Z}_{+}, and (4) snapshots of past history at discrete times 𝐓⁡(j​Δ){\bf T}(j\Delta), j=0,1,…≤kj=0,1,\ldots\leq k, we can express 𝐓{\bf T} at a future time k​Δ+τk\Delta+\tau, 0<τ≤Δ0<\tau\leq\Delta in terms of linear superpositions of the past snapshots:
+𝐓⁡(τ+k​Δ)=∑ℓ=0k𝛀τ(ℓ)⋅𝐓⁡((k−ℓ)​Δ),{\bf T}\left(\tau+k\Delta\right)=\sum_{\ell=0}^{k}{\bf\Omega}_{\tau}^{\left(\ell\right)}\cdot{\bf T}\left(\left(k-\ell\right)\Delta\right),
+(66)
+where the higher order operators 𝛀τ(k){\bf\Omega}_{\tau}^{\left(k\right)}, k∈ℕ+k\in\mathbb{N}_{+} are recursively defined by
+𝛀τ(k)=𝛀τ+k​Δ(0)−∑ℓ=0k−1𝛀τ(ℓ)​𝛀(k−ℓ)​Δ(0).{\bf\Omega}_{\tau}^{\left(k\right)}={\bf\Omega}_{\tau+k\Delta}^{\left(0\right)}-\sum_{\ell=0}^{k-1}{\bf\Omega}_{\tau}^{\left(\ell\right)}{\bf\Omega}_{\left(k-\ell\right)\Delta}^{\left(0\right)}.
+(67)
+Proof.
+From Lemma 1,
+𝐓⁡(τ+k​Δ)=Ωτ+k​Δ(0)​𝐓​(0),{\bf T}(\tau+k\Delta)=\Omega_{\tau+k\Delta}^{\left(0\right)}{\bf T}(0),
+(68)
+and the recursive relationship (67) states
+𝛀τ+k​Δ(0)=∑ℓ=0k𝛀τ(ℓ)​𝛀(k−ℓ)​Δ(0),{\bf\Omega}_{\tau+k\Delta}^{\left(0\right)}=\sum_{\ell=0}^{k}{\bf\Omega}_{\tau}^{\left(\ell\right)}{\bf\Omega}_{\left(k-\ell\right)\Delta}^{\left(0\right)},
+(69)
+and thus,
+𝐓⁡(τ+k​Δ)=∑ℓ=0k𝛀τ(ℓ)​𝛀(k−ℓ)​Δ(0)​𝐓​(0)=∑ℓ=0k𝛀τ(ℓ)​𝐓​((k−ℓ)​Δ).{\bf T}(\tau+k\Delta)=\sum_{\ell=0}^{k}{\bf\Omega}_{\tau}^{\left(\ell\right)}{\bf\Omega}_{\left(k-\ell\right)\Delta}^{\left(0\right)}{\bf T}(0)=\sum_{\ell=0}^{k}{\bf\Omega}_{\tau}^{\left(\ell\right)}{\bf T}(\left(k-\ell\right)\Delta).
+(70)
+∎
+Corollary 1.
+Given the operators (67), 𝐓⁡((k+1)​Δ){\bf T}\left(\left(k+1\right)\Delta\right) can be expressed as linear combination of the past snapshots 𝐓⁡(ℓ​Δ){\bf T}\left(\ell\Delta\right), ℓ=0,1,…​k\ell=0,1,\ldots k:
+𝐓⁡((k+1)​Δ)=∑ℓ=0k𝛀Δ(ℓ)​𝐓​((k−ℓ)​Δ).{\bf T}\left(\left(k+1\right)\Delta\right)=\sum_{\ell=0}^{k}{\bf\Omega}_{\Delta}^{\left(\ell\right)}{\bf T}(\left(k-\ell\right)\Delta).
+(71)
+Corollary 2.
+Because the correlation matrix 𝐂⁡(t){\bf C}(t) satisfies Eq. (28) which is of the form (62), given the operators (67), the snapshots of the correlation matrix at discrete times satisfy
+𝐂⁡((k+1)​Δ)=∑ℓ=0k𝛀Δ(ℓ)​𝐂​((k−ℓ)​Δ).{\bf C}\left(\left(k+1\right)\Delta\right)=\sum_{\ell=0}^{k}{\bf\Omega}_{\Delta}^{\left(\ell\right)}{\bf C}(\left(k-\ell\right)\Delta).
+(72)
+Corollary 3.
+Because the projected image 𝒫​𝐠​(t)\mathcal{P}{\bf g}(t) satisfies Eq. (30) which is of the form (62), given the operators (67), the snapshots of the projected image at discrete times satisfy
+𝒫​𝐠​((k+1)​Δ)=∑ℓ=0k𝛀Δ(ℓ)​𝒫​𝐠​((k−ℓ)​Δ).\mathcal{P}{\bf g}\left(\left(k+1\right)\Delta\right)=\sum_{\ell=0}^{k}{\bf\Omega}_{\Delta}^{\left(\ell\right)}\mathcal{P}{\bf g}(\left(k-\ell\right)\Delta).
+(73)
+Theorem 2.
+Discretized Generalized Langiven Equation. Given the GLE (22) and the associated operators (67), the snapshots 𝐠⁡(t){\bf g}(t) at discrete times (k+1)​Δ(k+1)\Delta, k∈ℕk\in\mathbb{N}, satisfy
+𝐠⁡((k+1)​Δ)=∑ℓ=0k𝛀Δ(ℓ)​𝐠​((k−ℓ)​Δ)+𝐖k.{\bf g}\left(\left(k+1\right)\Delta\right)=\sum_{\ell=0}^{k}{\bf\Omega}_{\Delta}^{\left(\ell\right)}{\bf g}(\left(k-\ell\right)\Delta)+{\bf W}_{k}.
+(74)
+where 𝐖k{\bf W}_{k} is the discrete-time orthogonal dynamics, which is a linear function of the orthogonal dynamics 𝐅⁡(t){\bf F}(t), t≤(k+1)​Δt\leq(k+1)\Delta and 𝐖k+1{\bf W}_{k+1} is orthogonal to ℋ𝐠\mathcal{H}_{\bf g}.
+Proof.
+As illustrated in Sec. 3.3, the solution of GLE can be written as a general solution 𝐠∥​(t){\bf g}_{\parallel}(t) and a particular solution 𝐠⟂​(t){\bf g}_{\perp}(t) satisfying Eqs. (23) and (24) respectively. Note that 𝐠∥​(t){\bf g}_{\parallel}(t) is just the projected image 𝒫​𝐠​(t)\mathcal{P}{\bf g}(t), and from Corollary 3, we conclude that
+𝐠∥​((k+1)​Δ)=∑ℓ=0k𝛀Δ(ℓ)⋅𝐠∥​((k−ℓ)​Δ).{\bf g}_{\parallel}\left(\left(k+1\right)\Delta\right)=\sum_{\ell=0}^{k}{\bf\Omega}^{\left(\ell\right)}_{\Delta}\cdot{\bf g}_{\parallel}\left(\left(k-\ell\right)\Delta\right).
+(75)
+Because 𝐠⁡(t)=𝐠∥​(t)+𝐠⟂​(t){\bf g}(t)={\bf g}_{\parallel}(t)+{\bf g}_{\perp}(t), ∀t≥0\forall t\geq 0, at time t=(k+1)​Δt=\left(k+1\right)\Delta, we can equate
+𝐠⁡((k+1)​Δ)=\displaystyle{\bf g}\left(\left(k+1\right)\Delta\right)={}
+𝐠∥​((k+1)​Δ)+𝐠⟂​((k+1)​Δ)\displaystyle{\bf g}_{\parallel}\left(\left(k+1\right)\Delta\right)+{\bf g}_{\perp}\left(\left(k+1\right)\Delta\right)
+(76)
+=\displaystyle={}
+∑ℓ=0kΩΔ(ℓ)⋅𝐠∥​((k−ℓ)​Δ)+𝐠⟂​((k+1)​Δ)\displaystyle\sum_{\ell=0}^{k}\Omega^{\left(\ell\right)}_{\Delta}\cdot{\bf g}_{\parallel}\left(\left(k-\ell\right)\Delta\right)+{\bf g}_{\perp}\left(\left(k+1\right)\Delta\right)
+=\displaystyle={}
+∑ℓ=0kΩΔ(ℓ)⋅[𝐠∥​((k−ℓ)​Δ)+𝐠⟂​((k−ℓ)​Δ)]+𝐠⟂​((k+1)​Δ)\displaystyle\sum_{\ell=0}^{k}\Omega^{\left(\ell\right)}_{\Delta}\cdot\left[{\bf g}_{\parallel}\left(\left(k-\ell\right)\Delta\right)+{\bf g}_{\perp}\left(\left(k-\ell\right)\Delta\right)\right]+{\bf g}_{\perp}\left(\left(k+1\right)\Delta\right)
+−∑ℓ=0kΩΔ(ℓ)⋅𝐠⟂((k−ℓ)Δ)\displaystyle-\sum_{\ell=0}^{k}\Omega^{\left(\ell\right)}_{\Delta}\cdot{\bf g}_{\perp}\left(\left(k-\ell\right)\Delta\right)
+=\displaystyle={}
+∑ℓ=0kΩΔ(ℓ)⋅𝐠⁡((k−ℓ)​Δ)\displaystyle\sum_{\ell=0}^{k}\Omega^{\left(\ell\right)}_{\Delta}\cdot{\bf g}\left(\left(k-\ell\right)\Delta\right)
++[𝐠⟂​((k+1)​Δ)−∑ℓ=0kΩΔ(ℓ)⋅𝐠⟂​((k−ℓ)​Δ)].\displaystyle+\left[{\bf g}_{\perp}\left(\left(k+1\right)\Delta\right)-\sum_{\ell=0}^{k}\Omega^{\left(\ell\right)}_{\Delta}\cdot{\bf g}_{\perp}\left(\left(k-\ell\right)\Delta\right)\right].
+We identify
+𝐖k=𝐠⟂​((k+1)​Δ)−∑ℓ=0kΩΔ(k−ℓ)​𝐠⟂​(ℓ​Δ).{\bf W}_{k}={\bf g}_{\perp}\left(\left(k+1\right)\Delta\right)-\sum_{\ell=0}^{k}\Omega^{\left(k-\ell\right)}_{\Delta}{\bf g}_{\perp}\left(\ell\Delta\right).
+(77)
+Note that 𝐖k{\bf W}_{k} is a linear function of the snapshots of 𝐠⟂{\bf g}_{\perp}, which are linear functions of 𝐅⁡(s){\bf F}(s), t≤(k+1)​Δt\leq\left(k+1\right)\Delta, and thus 𝐖k{\bf W}_{k} is orthogonal to ℋ𝐠\mathcal{H}_{\bf g}.
+∎
+B.2 Mori–Zwanzig equations of the generic discrete-time dynamics
+We present an intuitive derivation of that is analogous to Sec. 3.2, noting that a more general derivation can be found in reference [24]. We begin with Eq. (19), and integrate the equation to the discrete time grid t=0,Δ,2​Δ,…t=0,\Delta,2\Delta,\ldots to obtain the discrete mapping in the full Hilbert space ℋ\mathcal{H}:
+[𝐠ℳ​(t+Δ)𝐠ℳ¯​(t+Δ)]=eΔ​𝐋⋅[𝐠ℳ​(t)𝐠ℳ¯​(t)]:=[𝐔ℳ​ℳ𝐔ℳ​ℳ¯𝐔ℳ¯​ℳ𝐔ℳ¯​ℳ¯]⋅[𝐠ℳ​(t)𝐠ℳ¯​(t)].\begin{bmatrix}{\bf g}_{\mathcal{M}}(t+\Delta)\\
+{\bf g}_{\bar{\mathcal{M}}}(t+\Delta)\end{bmatrix}=e^{\Delta{\bf L}}\cdot\begin{bmatrix}{\bf g}_{\mathcal{M}}(t)\\
+{\bf g}_{\bar{\mathcal{M}}}(t)\end{bmatrix}:=\begin{bmatrix}{\bf U}_{{\mathcal{M}}{\mathcal{M}}}&{\bf U}_{{\mathcal{M}}{\bar{\mathcal{M}}}}\\
+{\bf U}_{{\bar{\mathcal{M}}}{\mathcal{M}}}&{\bf U}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}\end{bmatrix}\cdot\begin{bmatrix}{\bf g}_{\mathcal{M}}(t)\\
+{\bf g}_{\bar{\mathcal{M}}}(t)\end{bmatrix}.
+(78)
+Given the initial condition 𝐠ℳ​(0){\bf g}_{\mathcal{M}}\left(0\right) and 𝐠ℳ¯​(0){\bf g}_{\bar{\mathcal{M}}}\left(0\right), the solution of the orthogonal component at the discrete times, 𝐠ℳ¯​(k​Δ){\bf g}_{\bar{\mathcal{M}}}\left(k\Delta\right), can be expressed in terms of the historical snapshots of the resolved components, 𝐠ℳ​(ℓ​Δ){\bf g}_{\mathcal{M}}\left(\ell\Delta\right), ℓ=0,1,…​k\ell=0,1,\ldots k, and the initial condition 𝐠ℳ¯​(0){\bf g}_{\bar{\mathcal{M}}}\left(0\right):
+𝐠ℳ¯​((k+1)​Δ)=∑ℓ=0k𝐔ℳ¯​ℳ¯ℓ​𝐔ℳ¯​ℳ​𝐠ℳ​((k−ℓ)​Δ)+𝐔ℳ¯​ℳ¯k​𝐠ℳ¯​(0),{\bf g}_{\bar{\mathcal{M}}}\left(\left(k+1\right)\Delta\right)=\sum_{\ell=0}^{k}{\bf U}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}^{\ell}{\bf U}_{{\bar{\mathcal{M}}}{\mathcal{M}}}{\bf g}_{\mathcal{M}}\left(\left(k-\ell\right)\Delta\right)+{\bf U}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}^{k}{\bf g}_{\bar{\mathcal{M}}}\left(0\right),
+(79)
+thus,
+𝐠ℳ​((k+1)​Δ)=\displaystyle{\bf g}_{\mathcal{M}}(\left(k+1\right)\Delta)={}
+𝐔ℳ​ℳ​𝐠ℳ​(k​Δ)+𝐔ℳ​ℳ¯​𝐠ℳ¯​(k​Δ)\displaystyle{\bf U}_{{\mathcal{M}}{\mathcal{M}}}{\bf g}_{\mathcal{M}}(k\Delta)+{\bf U}_{{\mathcal{M}}{\bar{\mathcal{M}}}}{\bf g}_{\bar{\mathcal{M}}}(k\Delta)
+(80)
+=\displaystyle={}
+𝐔ℳ​ℳ​𝐠ℳ​(k​Δ)+𝐔ℳ​ℳ¯​𝐔ℳ¯​ℳ¯k​𝐠ℳ¯​(0)\displaystyle{\bf U}_{{\mathcal{M}}{\mathcal{M}}}{\bf g}_{\mathcal{M}}(k\Delta)+{\bf U}_{{\mathcal{M}}{\bar{\mathcal{M}}}}{\bf U}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}^{k}{\bf g}_{\bar{\mathcal{M}}}\left(0\right)
++𝐔ℳ​ℳ¯∑ℓ=0k−1𝐔ℳ¯​ℳ¯ℓ𝐔ℳ¯​ℳ𝐠ℳ((k−ℓ−1)Δ).\displaystyle+{\bf U}_{{\mathcal{M}}{\bar{\mathcal{M}}}}\sum_{\ell=0}^{k-1}{\bf U}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}^{\ell}{\bf U}_{{\bar{\mathcal{M}}}{\mathcal{M}}}{\bf g}_{\mathcal{M}}\left(\left(k-\ell-1\right)\Delta\right).
+Now we define 𝚲Δ(0):=𝐔ℳ​ℳ{\bf\Lambda}_{\Delta}^{\left(0\right)}:={\bf U}_{{\mathcal{M}}{\mathcal{M}}}, 𝚲Δ(ℓ):=𝐔ℳ​ℳ¯​𝐔ℳ¯​ℳ¯(ℓ−1)​𝐔ℳ¯​ℳ{\bf\Lambda}_{\Delta}^{\left(\ell\right)}:={\bf U}_{{\mathcal{M}}{\bar{\mathcal{M}}}}{\bf U}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}^{(\ell-1)}{\bf U}_{{\bar{\mathcal{M}}}{\mathcal{M}}}, ℓ=1,2,…\ell=1,2,\ldots, and 𝐕k:=𝐔ℳ​ℳ¯​𝐔ℳ¯​ℳ¯k​𝐠ℳ¯​(0){\bf V}_{k}:={\bf U}_{{\mathcal{M}}{\bar{\mathcal{M}}}}{\bf U}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}^{k}{\bf g}_{\bar{\mathcal{M}}}\left(0\right) and obtain the discrete-time generalized Langevin equation
+𝐠⁡((k+1)​Δ)=∑ℓ=0k𝚲Δ(ℓ)​𝐠​((k−ℓ)​Δ)+𝐕k.{\bf g}\left(\left(k+1\right)\Delta\right)=\sum_{\ell=0}^{k}{\bf\Lambda}_{\Delta}^{\left(\ell\right)}{\bf g}(\left(k-\ell\right)\Delta)+{\bf V}_{k}.
+(81)
+A more general derivation first transforms the dynamics Eq. (1) to a discrete map of the solutions evaluated at t=0,Δ,2​Δ​…t=0,\Delta,2\Delta\ldots,
+𝚽⁡(t+Δ)=𝐔Δ​(𝚽⁡(t)){\bf\Phi}(t+\Delta)={\bf U}_{\Delta}\left({\bf\Phi}(t)\right)
+(82)
+Here, 𝐔Δ{\bf U}_{\Delta} is the nonlinear operator defined as the solution of the continuous-time equation:
+𝐔Δ​(𝚽0):=∫0Δ𝐑⁡(𝚽⁡(t))​ d​t+𝚽0.{\bf U}_{\Delta}\left({\bf\Phi}_{0}\right):=\int_{0}^{\Delta}{\bf R}\left({\bf\Phi}\left(t\right)\right)\text{\,d}t+{\bf\Phi}_{0}.
+(83)
+With the transformed discrete-time map, 𝐔Δ{\bf U}_{\Delta}, we apply the generic Mori–Zwanzig formulation for the discrete-time dynamics [24] to obtain the discrete-time GLE (81).
+Because the samples collected from this picture involves only discrete-time snapshots separated by a finite time Δ\Delta, we need to replace the inner product from averaging over a continuous-time trajectory (Eq. (27)) by a discrete-time sum:
+⟨f,h⟩Δ:=limN→∞1N​∑i=1N∫Ωf⁡(𝚽0)​h​(𝚽0)​ d​μ​(𝚽0).\left\langle f,h\right\rangle_{\Delta}:=\lim_{N\rightarrow\infty}\frac{1}{N}\sum_{i=1}^{N}\int_{\Omega}f\left({\bf\Phi}_{0}\right)h\left({\bf\Phi}_{0}\right)\text{\,d}\mu\left({\bf\Phi}_{0}\right).
+(84)
+We put a subscript under the inner product ⟨⋅,⋅⟩Δ\left\langle\cdot,\cdot\right\rangle_{\Delta} to denote the difference between (84) and its continuous-time counterpart (27).
+Finally, a similar analysis to the one we presented in Sec. 3.5 results in the discrete-time recursive relationship between the correlation matrix 𝐂Δ​(k​Δ){\bf C}_{\Delta}\left(k\Delta\right) and the projected image 𝒫Δ​𝐠​(k​Δ)\mathcal{P}_{\Delta}{\bf g}\left(k\Delta\right), k=0,1,2​…k=0,1,2\ldots,
+𝐂Δ​((k+1)​Δ)=\displaystyle{\bf C}_{\Delta}\left(\left(k+1\right)\Delta\right)={}
+∑ℓ=0k𝚲Δ(ℓ)​𝐂Δ​((k−ℓ)​Δ),\displaystyle\sum_{\ell=0}^{k}{\bf\Lambda}_{\Delta}^{\left(\ell\right)}{\bf C}_{\Delta}(\left(k-\ell\right)\Delta),
+(85)
+𝒫Δ​𝐠​((k+1)​Δ)=\displaystyle\mathcal{P}_{\Delta}{\bf g}\left(\left(k+1\right)\Delta\right)={}
+∑ℓ=0k𝚲Δ(ℓ)​𝒫Δ​𝐠​((k−ℓ)​Δ).\displaystyle\sum_{\ell=0}^{k}{\bf\Lambda}_{\Delta}^{\left(\ell\right)}\mathcal{P}_{\Delta}{\bf g}\left(\left(k-\ell\right)\Delta\right).
+(86)
+Again, we put the subscript to the correlation matrix 𝐂Δ{\bf C}_{\Delta} and the projection operator 𝒫Δ\mathcal{P}_{\Delta} to differentiate them from their counterparts computed with continuous-time inner product, Eq. (27).
+B.3 Difference between the two formulations
+The discrete-time dynamics in the above two formulations coincide, and it is tempting to equate the operators 𝛀Δ(ℓ){\bf\Omega}_{\Delta}^{\left(\ell\right)} to 𝚲Δ(ℓ){\bf\Lambda}_{\Delta}^{\left(\ell\right)}, and the discrete-time noise 𝐖k{\bf W}_{k} to 𝐕k{\bf V}_{k}. Nevertheless, there is a subtle difference between these two formulation, and in general, they do not have to be the same. The subtlety is that the inner product is defined by integrating over a continuous domain of time in the first formulation, but by summing over a discrete domain of the time in the second derivation. The invariant measure of the former does not have to be equal to the latter. Consequently, the projection operator, which depends on the definition inner product, Eq. (25), does not have to be identical in these two formulation.
+In our proposed algorithm 2, the discrete-time operators (either 𝛀Δ(ℓ){\bf\Omega}_{\Delta}^{\left(\ell\right)} or 𝚲Δ(ℓ){\bf\Lambda}_{\Delta}^{\left(\ell\right)}) and noise (either 𝐖k{\bf W}_{k} or 𝐕k{\bf V}_{k}) are extracted from the correlation matrices. In the first formulation, the correlation matrix was computed with the inner product Eq. (27),
+𝐂⁡(k​Δ):=limT→∞1T​∫0k​Δ𝐠∘𝚽⁡(k​Δ+s)⋅𝐠T∘𝚽⁡(s)​ d​s,{\bf C}\left(k\Delta\right):=\lim_{T\rightarrow\infty}\frac{1}{T}\int_{0}^{k\Delta}{\bf g}\circ{\bf\Phi}\left(k\Delta+s\right)\cdot{\bf g}^{T}\circ{\bf\Phi}\left(s\right)\text{\,d}s,
+(87)
+and in the second approach, it is computed by with the inner product Eq. (84),
+𝐂Δ​(k​Δ):=\displaystyle{\bf C}_{\Delta}\left(k\Delta\right):={}
+limN→∞1N​∑i=0N−1𝐠∘𝚽⁡((k+i)​Δ)⋅𝐠T∘𝚽⁡(i​Δ).\displaystyle\lim_{N\rightarrow\infty}\frac{1}{N}\sum_{i=0}^{N-1}{\bf g}\circ{\bf\Phi}\left(\left(k+i\right)\Delta\right)\cdot{\bf g}^{T}\circ{\bf\Phi}\left(i\Delta\right).
+(88)
+Our analysis shows that a sufficient condition for 𝛀Δ(ℓ)=𝚲Δ(ℓ){\bf\Omega}_{\Delta}^{\left(\ell\right)}={\bf\Lambda}_{\Delta}^{\left(\ell\right)} and 𝐖k=𝐕k{\bf W}_{k}={\bf V}_{k} is 𝐂⁡(k​Δ)=𝐂Δ​(k​Δ){\bf C}\left(k\Delta\right)={\bf C}_{\Delta}\left(k\Delta\right). The correlation matrices computed by two approaches are not necessarily identical. A simple harmonic oscillator x˙=p\dot{x}=p and p˙=−x\dot{p}=-x with a unit amplitude x2​(t)+p2​(t)=1x^{2}(t)+p^{2}(t)=1 can be a counterexample. It has a period 2​π2\pi, and if we choose Δ\Delta is 2​π/32\pi/3, these two formulations can be quite different: the continuous correlation matrix (Eqs. (87)) has ⟨x,x⟩=π\left\langle x,x\right\rangle=\pi, but the discrete correlation matrix ((88)) has ⟨x,x⟩=1+cos2⁡(2​π/3)+cos2⁡(4​π/3)=3/2\left\langle x,x\right\rangle=1+\cos^{2}\left(2\pi/3\right)+\cos^{2}\left(4\pi/3\right)=3/2 if x⁡(0)=1x(0)=1. Note that in prediction (cf. Sec. 6.2), the correlation matrix obtained from the first approach can be used to project any configuration satisfying x2​(0)+p2​(0)=1x^{2}(0)+p^{2}(0)=1, but the correlation matrix obtained from the second approach can be only used to a subset of possible initial conditions: x⁡(0)∈{0,2​π/3,4​π/3}x(0)\in\left\{0,2\pi/3,4\pi/3\right\}.
+The subtlety between the two formulations serves as a caution to the practitioners to pay attention to formulating what we aim to learn. On the one hand, the first formulation presented in B.1 learns the discrete-time operators 𝛀Δ(ℓ){\bf\Omega}_{\Delta}^{(\ell)}, which have direct connection to the continuous-time operators because they are defined in terms of the continuous-time Markov transition 𝐌{\bf M} and the memory kernel 𝐊⁡(t){\bf K}(t). Despite the fact that the correlation matrix is discretized and stored with a coarser resolution, the overall learned operators 𝛀Δ(ℓ){\bf\Omega}_{\Delta}^{(\ell)} serve a similar role to the continuous-time Mori–Zwanzig operators. For example, the operators predict the same 𝒫​𝐠​(t)\mathcal{P}{\bf g}(t) in ℋ𝐠\mathcal{H}_{\bf g}. Thus, if one aims to learn about the continuous-time operators, the first approach is more desirable. The cost of the first approach is that even though the discretization Δ\Delta can be finite, one still needs a very finely sampled temporal grid to evaluate the continuous-time correlation matrix 𝐂⁡(t){\bf C}(t), if an analytical expression of 𝐂⁡(t){\bf C}(t) is not possible. We remark that an additional online computation of 𝐂{\bf C} in the fine-scale simulation can make computations efficient. On the other hand, a discretization with a finite Δ\Delta is beneficial because it provides another coarser resolution in which the correlation matrix is stored. The second formulation presented in B.2 learns the Mori–Zwanzig operators of the generic discrete maps. In those cases where the inner product defined by the discrete-time statistics ((88)) is not identical to the continuous-time statistics ((87)), the projection operator in the second formulation is not the same as the one in the continuous-formulation. Consequently, the operators would predict a different projected image 𝒫Δ​𝐠​(t)\mathcal{P}_{\Delta}{\bf g}(t) in ℋ𝐠\mathcal{H}_{\bf g}. The above simple harmonic oscillator provides an intuitive example.
+Finally, we point out that despite the subtle differences, if the two measures (statistics from discrete-time snapshots and continuous-time dynamics) are identical, these two formulations converge. In this scenario, there is no difference between the formulations in the theoretical sense. Nevertheless, computationally, the first approach—choosing a small δ\delta to collect the snapshot data, computing the correlation matrix 𝐂{\bf C}, and then discretizing 𝐂{\bf C} to multiples of δ\delta—possesses two advantages. First, because the computation of the correlation matrix is agnostic to the discretization parameter Δ\Delta, one does not need to re-simulate the discrete-time simulation when we change Δ\Delta. Secondly, recall that we need to compute the correlation matrix from the snapshots, which were recorded from a high-fidelity simulation which is generally computationally expensive. Thus, given a fixed amount of computational resource, there is generally an upper bound of the physical time which we are allowed to simulate. Because the first approach uses an equal or finer temporal resolution in comparison to the second (δ≤Δ\delta\leq\Delta), we will collect more snapshots before the high-fidelity simulation ends. Thus, computationally, the convergence of the correlation matrix is generally better due to more samples.
+B.4 Generalized Fluctuation–Dissipation Relationship in the discrete-time formulations
+In each of the frameworks presented in Appendices B.1 and B.2, with respect to the corresponding inner product (see discussion in B.3), there exists a Generalized Fluctuation-Dissipation relationship between the discrete-time noise (𝐖k{\bf W}_{k} or 𝐕k{\bf V}_{k}) and the discrete time operators (𝛀Δ(ℓ){\bf\Omega}_{\Delta}^{(\ell)} or 𝚲Δ(ℓ){\bf\Lambda}_{\Delta}^{(\ell)}):
+𝛀Δ(k)=\displaystyle{\bf\Omega}^{\left(k\right)}_{\Delta}={}
+−⟨𝐖k,𝐖0T⟩⋅𝐂−1(−Δ),k∈ℕ,\displaystyle-\left\langle{\bf W}_{k},{\bf W}_{0}^{T}\right\rangle\cdot{\bf C}^{-1}\left(-\Delta\right),\quad k\in\mathbb{N},
+(89)
+𝚲Δ(k)=\displaystyle{\bf\Lambda}^{\left(k\right)}_{\Delta}={}
+−⟨𝐕k,𝐕0T⟩Δ⋅𝐂Δ−1(−Δ),k∈ℕ.\displaystyle-\left\langle{\bf V}_{k},{\bf V}_{0}^{T}\right\rangle_{\Delta}\cdot{\bf C}_{\Delta}^{-1}\left(-\Delta\right),\quad k\in\mathbb{N}.
+(90)
+Here, the first inner product in Eq. (89) is an integration against the continuous-time trajectory (e.g., Eq. (27)), and the second inner product in Eq. (90) is a discrete sum over the snapshots (e.g., Eq. (84)). Note that 𝐂⁡(−Δ)≡𝐂T​(Δ){\bf C}(-\Delta)\equiv{\bf C}^{T}(\Delta) and 𝐂Δ​(−Δ)=𝐂ΔT​(Δ){\bf C}_{\Delta}\left(-\Delta\right)={\bf C}_{\Delta}^{T}\left(\Delta\right) by definitions (87) and (88).
+In this section, we present the proof to the generalized fluctuation-dissipation relationship, Eqs. (89) and (90).
+B.4.1 Discretization of the continuous-time Mori–Zwanzig framework
+From Eq. (77) and noting that 𝐠⟂​(0)=0{\bf g}_{\perp}\left(0\right)=0 (because 𝐠​(0)=𝐠∥​(0){\bf g}(0)={\bf g}_{\parallel}(0)),
+⟨𝐖k,𝐖0T⟩=\displaystyle\left\langle{\bf W}_{k},{\bf W}_{0}^{T}\right\rangle={}
+⟨𝐠⟂​((k+1)​Δ)−∑ℓ=0kΩΔ(k−ℓ)​𝐠⟂​(ℓ​Δ),𝐠⟂T​(Δ)⟩\displaystyle\left\langle{\bf g}_{\perp}\left(\left(k+1\right)\Delta\right)-\sum_{\ell=0}^{k}\Omega^{\left(k-\ell\right)}_{\Delta}{\bf g}_{\perp}\left(\ell\Delta\right),{\bf g}^{T}_{\perp}(\Delta)\right\rangle
+(91)
+=\displaystyle={}
+⟨𝐠⁡((k+1)​Δ)−𝐠∥​((k+1)​Δ),𝐠T​(Δ)−𝐠∥T​(Δ)⟩\displaystyle\left\langle{\bf g}\left(\left(k+1\right)\Delta\right)-{\bf g}_{\parallel}\left(\left(k+1\right)\Delta\right),{\bf g}^{T}(\Delta)-{\bf g}^{T}_{\parallel}\left(\Delta\right)\right\rangle
+−⟨∑ℓ=0kΩΔ(k−ℓ)​[𝐠⁡(ℓ​Δ)−𝐠∥​(ℓ​Δ)],𝐠T​(Δ)−𝐠∥T​(Δ)⟩.\displaystyle-\left\langle\sum_{\ell=0}^{k}\Omega^{\left(k-\ell\right)}_{\Delta}\left[{\bf g}\left(\ell\Delta\right)-{\bf g}_{\parallel}\left(\ell\Delta\right)\right],{\bf g}^{T}(\Delta)-{\bf g}^{T}_{\parallel}\left(\Delta\right)\right\rangle.
+This is because 𝐠⟂​(t)=𝐠⁡(t)−𝐠∥{\bf g}_{\perp}(t)={\bf g}(t)-{\bf g}_{\parallel}. Then, we can express ⟨𝐖k,𝐖0T⟩\left\langle{\bf W}_{k},{\bf W}_{0}^{T}\right\rangle in terms of pairs of observables,
+⟨𝐖k,𝐖0T⟩=\displaystyle\left\langle{\bf W}_{k},{\bf W}_{0}^{T}\right\rangle={}
+⟨𝐠⁡((k+1)​Δ),𝐠T​(Δ)⟩−⟨𝐠⁡((k+1)​Δ),𝐠∥T​(Δ)⟩\displaystyle\left\langle{\bf g}\left(\left(k+1\right)\Delta\right),{\bf g}^{T}(\Delta)\right\rangle-\left\langle{\bf g}\left(\left(k+1\right)\Delta\right),{\bf g}^{T}_{\parallel}\left(\Delta\right)\right\rangle
+−⟨𝐠∥​((k+1)​Δ),𝐠T​(Δ)⟩+⟨𝐠∥​((k+1)​Δ),𝐠∥T​(Δ)⟩\displaystyle-\left\langle{\bf g}_{\parallel}\left(\left(k+1\right)\Delta\right),{\bf g}^{T}(\Delta)\right\rangle+\left\langle{\bf g}_{\parallel}\left(\left(k+1\right)\Delta\right),{\bf g}^{T}_{\parallel}\left(\Delta\right)\right\rangle
+−∑ℓ=0kΩΔ(k−ℓ)⟨𝐠(ℓΔ),𝐠T(Δ)⟩+∑ℓ=0kΩΔ(k−ℓ)⟨𝐠(ℓΔ),𝐠∥T(Δ)⟩\displaystyle-\sum_{\ell=0}^{k}\Omega^{\left(k-\ell\right)}_{\Delta}\left\langle{\bf g}\left(\ell\Delta\right),{\bf g}^{T}(\Delta)\right\rangle+\sum_{\ell=0}^{k}\Omega^{\left(k-\ell\right)}_{\Delta}\left\langle{\bf g}\left(\ell\Delta\right),{\bf g}^{T}_{\parallel}\left(\Delta\right)\right\rangle
++∑ℓ=0kΩΔ(k−ℓ)⟨𝐠∥(ℓΔ),𝐠T(Δ)⟩−∑ℓ=0kΩΔ(k−ℓ)⟨𝐠∥(ℓΔ),𝐠∥T(Δ)⟩.\displaystyle+\sum_{\ell=0}^{k}\Omega^{\left(k-\ell\right)}_{\Delta}\left\langle{\bf g}_{\parallel}\left(\ell\Delta\right),{\bf g}^{T}(\Delta)\right\rangle-\sum_{\ell=0}^{k}\Omega^{\left(k-\ell\right)}_{\Delta}\left\langle{\bf g}_{\parallel}\left(\ell\Delta\right),{\bf g}^{T}_{\parallel}\left(\Delta\right)\right\rangle.
+(92)
+The above expression can be simplified by
+⟨𝐠⁡(t),𝐠∥T​(s)⟩=⟨𝐠∥​(t),𝐠∥T​(s)⟩=⟨𝐠∥​(t),𝐠T​(s)⟩,\left\langle{\bf g}(t),{\bf g}^{T}_{\parallel}(s)\right\rangle=\left\langle{\bf g}_{\parallel}(t),{\bf g}^{T}_{\parallel}(s)\right\rangle=\left\langle{\bf g}_{\parallel}(t),{\bf g}^{T}(s)\right\rangle,
+(93)
+which leads to
+⟨𝐖k,𝐖0T⟩=\displaystyle\left\langle{\bf W}_{k},{\bf W}_{0}^{T}\right\rangle={}
+⟨𝐠⁡((k+1)​Δ),𝐠T​(Δ)⟩−⟨𝐠∥​((k+1)​Δ),𝐠∥T​(Δ)⟩\displaystyle\left\langle{\bf g}\left(\left(k+1\right)\Delta\right),{\bf g}^{T}(\Delta)\right\rangle-\left\langle{\bf g}_{\parallel}\left(\left(k+1\right)\Delta\right),{\bf g}^{T}_{\parallel}\left(\Delta\right)\right\rangle
+−∑ℓ=0kΩΔ(k−ℓ)⟨𝐠(ℓΔ),𝐠T(Δ)⟩+∑ℓ=0kΩΔ(k−ℓ)⟨𝐠∥(ℓΔ),𝐠∥T(Δ)⟩\displaystyle-\sum_{\ell=0}^{k}\Omega^{\left(k-\ell\right)}_{\Delta}\left\langle{\bf g}\left(\ell\Delta\right),{\bf g}^{T}(\Delta)\right\rangle+\sum_{\ell=0}^{k}\Omega^{\left(k-\ell\right)}_{\Delta}\left\langle{\bf g}_{\parallel}\left(\ell\Delta\right),{\bf g}^{T}_{\parallel}\left(\Delta\right)\right\rangle
+=\displaystyle={}
+⟨𝐠⁡((k+1)​Δ),𝐠T​(Δ)⟩−∑ℓ=0kΩΔ(k−ℓ)​⟨𝐠⁡(ℓ​Δ),𝐠T​(Δ)⟩,\displaystyle\left\langle{\bf g}\left(\left(k+1\right)\Delta\right),{\bf g}^{T}(\Delta)\right\rangle-\sum_{\ell=0}^{k}\Omega^{\left(k-\ell\right)}_{\Delta}\left\langle{\bf g}\left(\ell\Delta\right),{\bf g}^{T}(\Delta)\right\rangle,
+(94)
+The last equality comes from Eq. (73), that
+𝐠∥​((k+1)​Δ)−∑ℓ=0kΩΔ(k−ℓ)​𝐠∥​(ℓ​Δ)=0\displaystyle{\bf g}_{\parallel}\left(\left(k+1\right)\Delta\right)-\sum_{\ell=0}^{k}\Omega^{\left(k-\ell\right)}_{\Delta}{\bf g}_{\parallel}\left(\ell\Delta\right)=0
+⇒⟨𝐠∥​((k+1)​Δ)−∑ℓ=0kΩΔ(k−ℓ)​𝐠∥​(ℓ​Δ),𝐠∥T​(Δ)⟩=0.\displaystyle\Rightarrow\left\langle{\bf g}_{\parallel}\left(\left(k+1\right)\Delta\right)-\sum_{\ell=0}^{k}\Omega^{\left(k-\ell\right)}_{\Delta}{\bf g}_{\parallel}\left(\ell\Delta\right),{\bf g}_{\parallel}^{T}\left(\Delta\right)\right\rangle=0.
+(95)
+By definition, ⟨𝐠⁡((k+1)​Δ),𝐠T​(Δ)⟩=𝐂⁡(k​Δ)\left\langle{\bf g}\left(\left(k+1\right)\Delta\right),{\bf g}^{T}(\Delta)\right\rangle={\bf C}(k\Delta) and ⟨𝐠⁡(ℓ​Δ),𝐠T​(Δ)⟩=𝐂⁡((ℓ−1)​Δ)\left\langle{\bf g}\left(\ell\Delta\right),{\bf g}^{T}(\Delta)\right\rangle={\bf C}\left(\left(\ell-1\right)\Delta\right). Using Eq. (72), we can further simplify the two-time correlation of the discrete-time noise 𝐖{\bf W}:
+⟨𝐖k,𝐖0T⟩=\displaystyle\left\langle{\bf W}_{k},{\bf W}_{0}^{T}\right\rangle={}
+𝐂⁡(k​Δ)−∑ℓ=0kΩΔ(k−ℓ)​𝐂​((ℓ−1)​Δ)\displaystyle{\bf C}\left(k\Delta\right)-\sum_{\ell=0}^{k}\Omega^{\left(k-\ell\right)}_{\Delta}{\bf C}\left(\left(\ell-1\right)\Delta\right)
+=\displaystyle={}
+∑ℓ=0k−1ΩΔ(k−1−ℓ)​𝐂​(ℓ​Δ)−∑ℓ=0kΩΔ(k−ℓ)​𝐂​((ℓ−1)​Δ)\displaystyle\sum_{\ell=0}^{k-1}\Omega^{\left(k-1-\ell\right)}_{\Delta}{\bf C}\left(\ell\Delta\right)-\sum_{\ell=0}^{k}\Omega^{\left(k-\ell\right)}_{\Delta}{\bf C}\left(\left(\ell-1\right)\Delta\right)
+=\displaystyle={}
+∑ℓ=0k−1ΩΔ(k−1−ℓ)​𝐂​(ℓ​Δ)−∑ℓ′=−1k−1ΩΔ(k−1−ℓ′)​𝐂​(ℓ′​Δ)\displaystyle\sum_{\ell=0}^{k-1}\Omega^{\left(k-1-\ell\right)}_{\Delta}{\bf C}\left(\ell\Delta\right)-\sum_{\ell^{\prime}=-1}^{k-1}\Omega^{\left(k-1-\ell^{\prime}\right)}_{\Delta}{\bf C}\left(\ell^{\prime}\Delta\right)
+=\displaystyle={}
+−ΩΔ(k)​𝐂​(Δ),\displaystyle-\Omega_{\Delta}^{(k)}{\bf C}(\Delta),
+(96)
+and establish Eq. (89) by multiplying 𝐂−1​(−Δ){\bf C}^{-1}\left(-\Delta\right) to both sides of the above equation.
+B.4.2 Generalized Fluctuation–Dissipation Relationship in the time-discretized dynamics
+A parallel analysis to the one presented in the above section B.4 can be carried out to prove Eq. (90) with the inner product (e.g., Eq. (88)), the Generalized Langevin Equation (81), and the evolutionary equations of the correlation matrix Eq. (85) and projected image Eq. (86).
+An alternative derivation, parallel to the derivation in Sec. 3.6, can be carried out. We use the intuitive notation presented in B.2. By definition, the discrete-time noise after kk snapshots, starting at the ithi^{\text{th}} snapshot along the long trajectory is 𝐕k|i:=𝐔ℳ​ℳ¯​𝐔ℳ¯​ℳ¯k​𝐠ℳ¯​(i​Δ){\bf V}_{k|i}:={\bf U}_{{\mathcal{M}}{\bar{\mathcal{M}}}}{\bf U}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}^{k}{\bf g}_{\bar{\mathcal{M}}}\left(i\Delta\right). Then, the two-time correlation between the noise with respect to the inner product is
+⟨𝐕k,𝐕0T⟩=limN→∞1N​∑i=1N𝐔ℳ​ℳ¯​𝐔ℳ¯​ℳ¯k​𝐠ℳ¯​(i​Δ)​𝐠ℳ¯T​(i​Δ)​𝐔ℳ​ℳ¯T.\left\langle{\bf V}_{k},{\bf V}_{0}^{T}\right\rangle=\lim_{N\rightarrow\infty}\frac{1}{N}\sum_{i=1}^{N}{\bf U}_{{\mathcal{M}}{\bar{\mathcal{M}}}}{\bf U}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}^{k}{\bf g}_{\bar{\mathcal{M}}}\left(i\Delta\right){\bf g}^{T}_{\bar{\mathcal{M}}}\left(i\Delta\right){\bf U}^{T}_{{\mathcal{M}}{\bar{\mathcal{M}}}}.
+(97)
+From the discrete-time mapping Eq. (78),
+𝐔ℳ​ℳ¯​𝐠ℳ¯​(i​Δ)=𝐠ℳ​((i+1)​Δ)−𝐔ℳ​ℳ​𝐠ℳ​(i​Δ),{\bf U}_{{\mathcal{M}}{\bar{\mathcal{M}}}}{\bf g}_{\bar{\mathcal{M}}}\left(i\Delta\right)={\bf g}_{\mathcal{M}}\left(\left(i+1\right)\Delta\right)-{\bf U}_{{\mathcal{M}}{\mathcal{M}}}{\bf g}_{\mathcal{M}}\left(i\Delta\right),
+(98)
+and thus,
+⟨𝐕k,𝐕0T⟩=\displaystyle\left\langle{\bf V}_{k},{\bf V}_{0}^{T}\right\rangle={}
+limN→∞1N​∑i=1N𝐔ℳ​ℳ¯​𝐔ℳ¯​ℳ¯k​𝐠ℳ¯​(i​Δ)​[𝐠ℳT​((i+1)​Δ)−𝐠ℳT​(i​Δ)​𝐔ℳ​ℳT]\displaystyle\lim_{N\rightarrow\infty}\frac{1}{N}\sum_{i=1}^{N}{\bf U}_{{\mathcal{M}}{\bar{\mathcal{M}}}}{\bf U}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}^{k}{\bf g}_{\bar{\mathcal{M}}}\left(i\Delta\right)\left[{\bf g}^{T}_{\mathcal{M}}\left(\left(i+1\right)\Delta\right)-{\bf g}^{T}_{\mathcal{M}}\left(i\Delta\right){\bf U}^{T}_{{\mathcal{M}}{\mathcal{M}}}\right]
+=\displaystyle={}
+limN→∞1N​∑i=1N𝐔ℳ​ℳ¯​𝐔ℳ¯​ℳ¯k​𝐠ℳ¯​(i​Δ)​𝐠ℳT​((i+1)​Δ)\displaystyle\lim_{N\rightarrow\infty}\frac{1}{N}\sum_{i=1}^{N}{\bf U}_{{\mathcal{M}}{\bar{\mathcal{M}}}}{\bf U}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}^{k}{\bf g}_{\bar{\mathcal{M}}}\left(i\Delta\right){\bf g}^{T}_{\mathcal{M}}\left(\left(i+1\right)\Delta\right)
+−𝐔ℳ​ℳ¯​𝐔ℳ¯​ℳ¯k​⟨𝐠ℳ,𝐠ℳ¯T⟩​𝐔ℳ​ℳT\displaystyle-{\bf U}_{{\mathcal{M}}{\bar{\mathcal{M}}}}{\bf U}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}^{k}\left\langle{\bf g}_{\mathcal{M}},{\bf g}^{T}_{\bar{\mathcal{M}}}\right\rangle{\bf U}^{T}_{{\mathcal{M}}{\mathcal{M}}}
+=\displaystyle={}
+limN→∞1N​∑i=1N𝐔ℳ​ℳ¯​𝐔ℳ¯​ℳ¯k​𝐠ℳ¯​(i​Δ)​𝐠ℳT​((i+1)​Δ),\displaystyle\lim_{N\rightarrow\infty}\frac{1}{N}\sum_{i=1}^{N}{\bf U}_{{\mathcal{M}}{\bar{\mathcal{M}}}}{\bf U}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}^{k}{\bf g}_{\bar{\mathcal{M}}}\left(i\Delta\right){\bf g}^{T}_{\mathcal{M}}\left(\left(i+1\right)\Delta\right),
+(99)
+because by construction, ⟨𝐠ℳ,𝐠ℳ¯T⟩=0\left\langle{\bf g}_{\mathcal{M}},{\bf g}^{T}_{\bar{\mathcal{M}}}\right\rangle=0. Again, using Eq. (78), 𝐔ℳ¯​ℳ¯​𝐠ℳ¯​(i​Δ)=𝐠ℳ¯​((i+1)​Δ)−𝐔ℳ​ℳ​𝐠ℳ​(i​Δ){\bf U}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}{\bf g}_{\bar{\mathcal{M}}}\left(i\Delta\right)={\bf g}_{\bar{\mathcal{M}}}\left(\left(i+1\right)\Delta\right)-{\bf U}_{{\mathcal{M}}{\mathcal{M}}}{\bf g}_{\mathcal{M}}\left(i\Delta\right),
+⟨𝐕k,𝐕0T⟩=\displaystyle\left\langle{\bf V}_{k},{\bf V}_{0}^{T}\right\rangle={}
+limN→∞1N​∑i=1N𝐔ℳ​ℳ¯​𝐔ℳ¯​ℳ¯k−1​𝐠ℳ¯​((i+1)​Δ)​𝐠ℳT​((i+1)​Δ)\displaystyle\lim_{N\rightarrow\infty}\frac{1}{N}\sum_{i=1}^{N}{\bf U}_{{\mathcal{M}}{\bar{\mathcal{M}}}}{\bf U}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}^{k-1}{\bf g}_{\bar{\mathcal{M}}}\left(\left(i+1\right)\Delta\right){\bf g}^{T}_{\mathcal{M}}\left(\left(i+1\right)\Delta\right)
+−limN→∞1N∑i=1N𝐔ℳ​ℳ¯𝐔ℳ¯​ℳ¯k−1𝐔ℳ​ℳ𝐠ℳ(iΔ)𝐠ℳT((i+1)Δ)\displaystyle-\lim_{N\rightarrow\infty}\frac{1}{N}\sum_{i=1}^{N}{\bf U}_{{\mathcal{M}}{\bar{\mathcal{M}}}}{\bf U}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}^{k-1}{\bf U}_{{\mathcal{M}}{\mathcal{M}}}{\bf g}_{\mathcal{M}}\left(i\Delta\right){\bf g}^{T}_{\mathcal{M}}\left(\left(i+1\right)\Delta\right)
+=\displaystyle={}
+𝐔ℳ​ℳ¯​𝐔ℳ¯​ℳ¯k−1​⟨𝐠ℳ¯,𝐠ℳT⟩\displaystyle{\bf U}_{{\mathcal{M}}{\bar{\mathcal{M}}}}{\bf U}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}^{k-1}\left\langle{\bf g}_{\bar{\mathcal{M}}},{\bf g}^{T}_{\mathcal{M}}\right\rangle
+−limN→∞1N∑i=1N𝐔ℳ​ℳ¯𝐔ℳ¯​ℳ¯k−1𝐔ℳ​ℳ𝐠ℳ(iΔ)𝐠ℳT((i+1)Δ)\displaystyle-\lim_{N\rightarrow\infty}\frac{1}{N}\sum_{i=1}^{N}{\bf U}_{{\mathcal{M}}{\bar{\mathcal{M}}}}{\bf U}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}^{k-1}{\bf U}_{{\mathcal{M}}{\mathcal{M}}}{\bf g}_{\mathcal{M}}\left(i\Delta\right){\bf g}^{T}_{\mathcal{M}}\left(\left(i+1\right)\Delta\right)
+=\displaystyle={}
+−𝐔ℳ​ℳ¯​𝐔ℳ¯​ℳ¯k−1​𝐔ℳ​ℳ​𝐂Δ​(−Δ).\displaystyle-{\bf U}_{{\mathcal{M}}{\bar{\mathcal{M}}}}{\bf U}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}^{k-1}{\bf U}_{{\mathcal{M}}{\mathcal{M}}}{\bf C}_{\Delta}\left(-\Delta\right).
+(100)
+By definition, 𝐔ℳ​ℳ¯​𝐔ℳ¯​ℳ¯k−1​𝐔ℳ​ℳ=𝚲Δ(k){\bf U}_{{\mathcal{M}}{\bar{\mathcal{M}}}}{\bf U}_{{\bar{\mathcal{M}}}{\bar{\mathcal{M}}}}^{k-1}{\bf U}_{{\mathcal{M}}{\mathcal{M}}}={\bf\Lambda}_{\Delta}^{\left(k\right)}, and thus, we prove Eq. (90):
+⟨𝐕k,𝐕0T⟩=−𝚲Δ(k)​𝐂Δ​(−Δ)⇒𝚲Δ(k)=⟨𝐕k,𝐕0T⟩​𝐂Δ−1​(−Δ).\left\langle{\bf V}_{k},{\bf V}_{0}^{T}\right\rangle=-{\bf\Lambda}_{\Delta}^{\left(k\right)}{\bf C}_{\Delta}\left(-\Delta\right)\Rightarrow{\bf\Lambda}_{\Delta}^{\left(k\right)}=\left\langle{\bf V}_{k},{\bf V}_{0}^{T}\right\rangle{\bf C}^{-1}_{\Delta}\left(-\Delta\right).
+(101)
+ Experimental support, please
+ view the build logs
+ for errors. Generated by
+ L
+ A
+ T
+ E
+ xml
+ .
+Instructions for reporting errors
+We are continuing to improve HTML versions of papers, and your feedback helps enhance accessibility and mobile
+ support. To report errors in the HTML that will help us improve conversion and rendering, choose any of the
+ methods listed below:
+Click the "Report Issue" (
+ ) button, located in the page header.
+Tip: You can select the relevant text first, to include it in your report.
+Our team has already identified the following issues. We appreciate your time reviewing and reporting rendering errors we
+ may not have found yet. Your efforts will help us improve the HTML versions for all readers, because disability
+ should not be a barrier to accessing research. Thank you for your continued support in championing open access for
+ all.
+Have a free development cycle? Help support accessibility at arXiv! Our collaborators at LaTeXML maintain a list of packages that need conversion, and welcome developer contributions.
+ We gratefully acknowledge support from our major funders,
+ member institutions, ,
+ and all contributors.

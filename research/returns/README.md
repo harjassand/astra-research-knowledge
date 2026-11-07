@@ -160,6 +160,7 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| Collective information: internally reviewed return | [Collective kinetics, local conserved transport and nonlinear closure limits; broad service open](2026-11-08-collective-information/README.md) |
 | P1 final own-depth B: full endpoint | [Specified-product-input polynomial-accuracy prediction across2D fixed positive noise; root90–94](2026-11-07-p1-final-own-depth-case-b/README.md) |
 | P3 causal local-state control | [Complete law-to-state preparation, reference erasure and paid refresh/transport regimes](2026-11-07-p3-causal-local-state-control/README.md) |
 | P2 second/final B peer arm | [Sharp jump criterion/complete late-time mixing/paid finite residual and actual donor-Cayley reuse; full B unresolved](2026-11-07-p2-case-b-stage-two/README.md) |

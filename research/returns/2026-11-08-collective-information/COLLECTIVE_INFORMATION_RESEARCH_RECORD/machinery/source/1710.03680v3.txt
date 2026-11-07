@@ -1,0 +1,1240 @@
+
+Computing diffusivities from particle models out of equilibrium
+Skip to main content
+Report GitHub Issue
+ ×
+ Title:
+Content selection saved. Describe the issue below:
+ Description:
+ Submit without GitHub
+ Submit in GitHub
+ Why HTML?
+ Report Issue
+ Back to Abstract
+ Download PDF
+ Contents
+ Reading mode
+ Colour theme
+ License: arXiv.org perpetual non-exclusive license
+arXiv:1710.03680v3 [cond-mat.stat-mech] 14 Mar 2018
+Computing diffusivities from particle models out of equilibrium
+Peter Embacher
+Nicolas Dirr
+Johannes Zimmer
+Celia Reina
+Affiliation: School of Mathematics, Cardiff University, Cardiff CF24 4AG, UK
+Affiliation: Department of Mathematical Sciences, University of Bath, Bath BA2 7AY, UK
+Affiliation: Department of Mechanical Engineering and Applied Mechanics, University of Pennsylvania, Philadelphia PA 19104, USA 
+Abstract
+A new method is proposed to numerically extract the diffusivity of a (typically nonlinear) diffusion equation from underlying
+stochastic particle systems. The proposed strategy requires the system to be in local equilibrium and have Gaussian
+fluctuations but is otherwise allowed to undergo arbitrary out of equilibrium evolutions. This could be potentially relevant for
+particle data obtained from experimental applications. The key idea underlying the method is that finite, yet large, particle
+systems formally obey stochastic partial differential equations of gradient flow type satisfying a fluctuation-dissipation
+relation. The strategy is here applied to three classic particle models, namely independent random walkers, a zero range
+process and a symmetric simple exclusion process in one space dimension, to allow the comparison with analytic solutions.
+1 Introduction
+Diffusive processes are ubiquitous in natural and man-made materials and devices, ranging from mass transport in cells over ion
+diffusion in batteries to diffusion of pollutants in oceans and the atmosphere. They can often be described on a fine scale via
+particles, and on a coarser (continuum) scale by partial differential equations. While the former typically provides higher
+physical fidelity, the computational efficiency of the latter enables us to reach the length and time scales required in many
+applications.
+Yet, simulations at the continuum level require the knowledge of correct material parameters or transport coefficients, such as
+the diffusivity for mass transport processes. These can be determined from lower scale models or experimental observations, which
+is precisely the problem we study here. In particular, we consider diffusive systems described by evolution equations of the form
+∂tρ=div(D(ρ)∇ρ),\partial_{t}\rho=\mathop{\mathrm{div}}\left(D(\rho)\nabla\rho\right),
+where ρ=ρ⁡(t,x)\rho=\rho(t,x) is the density and D⁡(ρ)D(\rho) is the diffusion coefficient.
+Existing methods to compute diffusivities include equilibrium strategies based on linear response theory, e.g., Green-Kubo or mean
+square displacement methods (see, for example, [1, Section 4.4.1] and [2]), and non-equilibrium
+molecular dynamic techniques (see, for example, [3, Chapters 2 and 8], [4, Chapter 13]
+or [5]). Although these methods have been proven very successful, they require the system to be in special
+configurations, such as macroscopic equilibrium or steady state, or the simulation of modified equations of motion. This may pose
+challenges for a range of problems where transport coefficients should be inferred from experimental data, where the special
+configurations required by these methods might not always be easily achievable experimentally.
+In this article, we develop a new computational strategy to determine diffusivity coefficients from quite general non-equilibrium
+particle evolutions: the primary assumptions are local equilibrium and Gaussian nature of the fluctuations of the density (see
+Subsection 2.1.1 for further details). The key idea is that the evolution of a finite, yet large, number of
+particles can formally be described by a stochastic partial differential equation (SPDE) satisfying a fluctuation-dissipation
+relation. In particular, when the deterministic part of the SPDE is written as a gradient flow of the entropy functional, the
+density evolves in the direction of steepest ascent of the entropy (while compatible with the constraint of conservation of mass)
+at a speed that is characterized by a mobility coefficient [6, 7]. This mobility is also encoded in the
+noise term of the SPDE, by the fluctuation-dissipation relation, and it may be directly related to the diffusivity through the
+knowledge of the entropy. We extend in this study a classic approach for the computation of the noise term of a stochastic
+ordinary differential equation to the infinite-dimensional setting of SPDEs, which allows us to compute the mobility from the
+fluctuations observed in particle evolution data.
+There are various interesting features of this approach. Firstly, the particle evolution data is allowed to be in or out of
+equilibrium, which provides great flexibility for the input data that can be considered. Furthermore, it allows us to recover the
+function D⁡(ρ)D(\rho) within the range of densities covered by the particle data — we chose here a sinusoidal shape for the initial
+density to demonstrate this feature. This is in contrast to common equilibrium techniques, which only deliver the diffusivity at
+the simulated density. Secondly, the particles’ mean square displacement (MSD) is not assumed to be linear in time, as it would
+be in conventional calculations of the diffusivity using Einstein’s relation. Rather, the diffusivity is directly computed from
+the fluctuations, without assuming a specific form of the temporal evolution. This versatility of the method is demonstrated by
+considering a symmetric nearest neighbour exclusion process in one space dimension, for which MSD ∼t1/2\sim t^{1/2}, thus rendering
+the conventional method inapplicable; the method determines the diffusivity correctly for this case. Lastly, we note that,
+although we restrict the analysis to nonlinear diffusion problems, which in itself exhibit a wide variety of interesting phenomena
+and applications, the potential applicability is much larger. Indeed, we only use a gradient flow structure of the thermodynamic
+evolution and the fluctuation-dissipation relation; this setting comprises a much wider range of dissipative
+phenomena [8, 9].
+In this article we demonstrate the methodology for stochastic particle problems on lattices with analytic solutions to their
+macroscopic evolution equation, so that the errors can be exactly determined. In particular, we study independent random walkers,
+a zero range process with quadratic jump rates and a symmetric simple exclusion process. We could not find the analytic
+description of the continuum limit for the second of these processes in the literature, and the derivation of the analytic
+expression is sketched in Subsection 4.1. In all of these cases, the input to the method is obtained from
+kinetic Monte Carlo simulations of these processes. However, the input data can also be, in principle, obtained from experiments;
+the applicability of the method in experimental settings will be investigated in future studies.
+The structure of the paper is as follows. In Section 2, we describe the thermodynamic formulation of
+diffusion processes, both in deterministic and stochastic form, in Subsection 2.1, and develop the
+computational strategy in Subsection 2.2. Section 3 provides details on the numerical
+implementation. Next, in Section 4 we describe the particle processes used as test cases, and present the
+computational results in Section 5. Finally, some conclusions are drawn in
+Section 6, where also an outlook to an application of the proposed method to particles experiencing
+Kawasaki dynamics is given.
+2 Thermodynamics metric: theory and computational method
+2.1 Diffusive processes and fluctuating hydrodynamics: thermodynamic entropy and metric
+As sketched in the introduction, we consider diffusive systems of the form
+∂tρ=div(D(ρ)∇ρ)\partial_{t}\rho=\mathop{\mathrm{div}}(D(\rho)\nabla\rho)
+(1)
+(complemented with initial and boundary conditions) and develop a computational strategy to determine the diffusivity
+D⁡(ρ)D(\rho) from non-equilibrium evolutions of the underlying particle models.
+The proposed methodology starts by reformulating the differential equation (1) in a form that reveals the
+thermodynamic nature of the equation. Namely, equation (1) can be cast as
+∂tρ=div(D(ρ)∇ρ)=−div(m(ρ)∇δ​𝒮δ​ρ(ρ)),\partial_{t}\rho=\mathop{\mathrm{div}}(D(\rho)\nabla\rho)=-\mathop{\mathrm{div}}\left(m(\rho)\nabla\frac{\delta\mathcal{S}}{\delta\rho}(\rho)\right),
+(2)
+where δ​𝒮δ​ρ\frac{\delta\mathcal{S}}{\delta\rho} is the variational derivative of the entropy 𝒮⁡(ρ)=∫s⁡(ρ⁡(x))​𝑑x\mathcal{S}(\rho)=\int s(\rho(x))\,\mathrm{d}x, (δ​𝒮δ​ρ)′=s′′​(ρ)\left(\frac{\delta\mathcal{S}}{\delta\rho}\right)^{\prime}=s^{\prime\prime}(\rho)
+represents its derivative with respect to ρ\rho and
+m⁡(ρ)=−D⁡(ρ)(δ​𝒮δ​ρ)′≥0m(\rho)=-\frac{D(\rho)}{\left(\frac{\delta\mathcal{S}}{\delta\rho}\right)^{\prime}}\geq 0
+(3)
+is the mobility. As an example, the linear diffusion problem (i.e., constant D⁡(ρ)≡DD(\rho)\equiv D), satisfies
+equation (2) with the Boltzmann entropy 𝒮(ρ)=−∫ρlog(ρ)dx\mathcal{S}(\rho)=-\int\rho\log(\rho)\,\mathrm{d}x (in dimensionless
+form) and mobility m⁡(ρ)=D​ρm(\rho)=D\rho. Although the second equality in (2) is straightforward to verify
+from (3), the associated thermodynamic formulation of the evolution,
+∂tρ=−div(m(ρ)∇δ​𝒮δ​ρ(ρ))=:𝒦δ​𝒮δ​ρ\partial_{t}\rho=-\mathop{\mathrm{div}}\left(m(\rho)\nabla\frac{\delta\mathcal{S}}{\delta\rho}(\rho)\right)=:\mathcal{K}\frac{\delta\mathcal{S}}{\delta\rho}, has a much deeper meaning. Specifically, the operator
+𝒦(ρ)ξ=−div(Dρ∇ξ)\mathcal{K}(\rho)\xi=-\mathop{\mathrm{div}}(D\rho\nabla\xi) defines a geometry, the so-called Wasserstein geometry, in which the entropy 𝒮\mathcal{S}
+experiences a steepest ascent. This fundamental insight by Jordan, Kinderlehrer and Otto [6] has triggered much
+activity in the past two decades; we sketch a few key results in Appendix A.
+Equation (2) arises as the limit, the so-called hydrodynamic limit, of infinitely many particles under
+parabolic scaling of space and time. We refer the reader to Sections 3 and 4 for a
+concise description of this limit in the context of lattice systems. Key to the proposed method is that the evolution of the
+density ρL\rho^{L} describing the evolution of large, yet finite number of particles is formally given by a stochastic
+partial differential equation. For instance, the motion of finitely many random walkers satisfies approximately the equation
+∂tρL\displaystyle\partial_{t}\rho^{L}
+=div(D∇ρL)+1Lddiv(2​D​ρLW˙x,t),\displaystyle=\mathop{\mathrm{div}}(D\nabla\rho^{L})+\frac{1}{\sqrt{L^{d}}}\mathop{\mathrm{div}}(\sqrt{2D\rho^{L}}\dot{W}_{x,t}),
+(4)
+where the diffusivity DD depends on the jump rate of the walkers, while in the limit of infinite number of particles the density
+satisfies (2). Here, W˙x,t\dot{W}_{x,t} is a space-time white noise, 1/L1/L is the lattice spacing and dd is
+the dimension of space. We note that (4), which is also satisfied for the collective motion of finitely many Brownian
+particles [10], is an example of fluctuating hydrodynamics [11, 12, 13], see
+also [14] for a different derivation. The existence of a solution is an open mathematical problem, even for
+constant DD, though equations of fluctuating hydrodynamics are widely used for simulations.
+In general, the fluctuations of finitely many particles around the hydrodynamic limit, cf. (2), are
+therefore described by a stochastic partial differential equation (SPDE) and they encode the diffusivity DD that we wish to
+identify. More precisely, as will be described in the next subsection, the fluctuations are directly related to the mobility
+m⁡(ρ)m(\rho), from which D⁡(ρ)D(\rho) can be computed by means of equation (3). For the processes we consider, the
+entropy 𝒮\mathcal{S} is well-known. Yet, more generally, only entropy differences δ​𝒮\delta\mathcal{S} are additionally required and these can be
+computed with standard techniques [1, Chapter 7].
+We remark that the proposed method is in principle much more widely applicable, i.e., beyond the realm of diffusion, and this
+extension to a wider class of problems will be sketched in the conclusions in Section 6.
+2.1.1 Key assumptions of the method
+The method requires three key ingredients: a diffusive stochastic particle model, Gaussian fluctuations of the density and local
+equilibrium. Roughly speaking, local equilibrium can be understood as follows. In equilibrium, the probability distribution of
+the particles defines a unique invariant measure for each macroscopic density and discretisation level LL. For fixed LL, one can
+thus think of a family of invariant measures parametrised by the total mass, or equivalently by the density ρ\rho. Then, assuming
+that we know the associated macroscopic density ρ⁡(t,x)\rho(t,x) at each xx at a time tt, we define for the given discretisation
+level LL a measure by piecing together the invariant measures defined in equilibrium corresponding to the value of ρ\rho. The
+resulting measure is itself not invariant; yet one expects it to be “almost invariant”, in the sense that its evolution under
+the adjoint of the generator of the process does not vanish, but is small in a well-controlled way. For the precise definition of
+local equilibrium, we refer to the book of Kipnis and Landim [15, Chapter 3].
+2.2 Computational strategy
+We now consider particle processes leading, in general, to a nonlinear diffusion as their hydrodynamic limit. We rewrite these
+equations as
+∂tρ=div(D(ρ)∇ρ)=−div(m(ρ)∇δ​𝒮δ​ρ)=12Δ(Φ(ρ)),\partial_{t}\rho=\mathop{\mathrm{div}}(D(\rho)\nabla\rho)=-\mathop{\mathrm{div}}\left(m(\rho)\nabla\frac{\delta\mathcal{S}}{\delta\rho}\right)=\frac{1}{2}\Delta(\Phi(\rho)),
+(5)
+where Φ′​(ρ)/2=D⁡(ρ)\Phi^{\prime}(\rho)/2=D(\rho) as defined by the equality above. The density for a large but finite number of particles,
+ρL\rho^{L}, can be approximated to leading order by the hydrodynamic limit given in (5). The next order, the
+fluctuations, can be measured via YL​(t,x):=Ld​(ρL​(t,x)−ρ⁡(t,x))Y^{L}(t,x):=\sqrt{L^{d}}\left(\rho^{L}(t,x)-\rho(t,x)\right), where the scaling Ld\sqrt{L^{d}}
+guarantees a finite non-zero value as L→∞L\to\infty. In this limit, the fluctuations solve a linear stochastic partial
+differential equation (see [16] for the zero range process discussed in Subsection 4.1
+and [17] for the simple exclusion process of Subsection 4.2). This therefore allows to
+formally approximate the evolution of ρL\rho^{L} by the SPDE
+∂tρL=12​Δ​(Φ⁡(ρL))+1Ld​div(2​m​(ρL)​W˙x,t).\partial_{t}\rho^{L}=\frac{1}{2}\Delta(\Phi(\rho^{L}))+\frac{1}{\sqrt{L^{d}}}\mathop{\mathrm{div}}\left(\sqrt{2m(\rho^{L})}\dot{W}_{x,t}\right).
+(6)
+We further define the weak form of the fluctuations as
+YγL​(t):=Ld​⟨γ,ρL​(t,⋅)−ρ⁡(t,⋅)⟩,Y^{L}_{\gamma}(t):=\sqrt{L^{d}}\left\langle\gamma,\rho^{L}(t,\cdot)-\rho(t,\cdot)\right\rangle,
+(7)
+where γ∈C02​(Ω,ℝ)\gamma\in C^{2}_{0}(\Omega,\mathbb{R}) is a test function and ⟨,⟩\left\langle,\right\rangle denotes the L2L^{2} inner product defined on the domain
+Ω\Omega. For our purposes, γ\gamma will be chosen to have local support so as to measure the fluctuations in the neighbourhood
+of a given point x0∈Ωx_{0}\in\Omega.
+The limit of the stochastic processes YLY^{L} and YγLY^{L}_{\gamma} are here denoted YY and YγY_{\gamma}, respectively, and they
+satisfy Yγ=⟨Y,γ⟩Y_{\gamma}=\left\langle Y,\gamma\right\rangle. Formally, YγL=⟨Y,γ⟩+O⁡(1/Ld)=Yγ+O⁡(1/Ld)Y^{L}_{\gamma}=\langle Y,\gamma\rangle+O(1/L^{d})=Y_{\gamma}+O(1/L^{d}), where YY
+and YγY_{\gamma} obey the Ornstein-Uhlenbeck processes defined by
+d​Y\displaystyle\,\mathrm{d}Y
+=12​Δ​(Φ′​(ρ)​Y)​d​t+div(2​m​(ρ)​d​Wx,t)\displaystyle=\frac{1}{2}\Delta(\Phi^{\prime}(\rho)Y)\,\mathrm{d}t+\mathop{\mathrm{div}}(\sqrt{2m(\rho)}\,\mathrm{d}W_{x,t})
+(8)
+and
+d​Yγ​(t)\displaystyle\,\mathrm{d}Y_{\gamma}(t)
+=12⟨Δγ,Φ′(ρ(t,.))Y(t,⋅)⟩dt−⟨∇γ,2​m​(ρ⁡(t,⋅))dWx,t⟩,\displaystyle=\frac{1}{2}\left\langle\Delta\gamma,\Phi^{\prime}(\rho(t,.))Y(t,\cdot)\right\rangle\,\mathrm{d}t-\left\langle\nabla\gamma,\sqrt{2m(\rho(t,\cdot))}\,\mathrm{d}W_{x,t}\right\rangle,
+(9)
+respectively.
+Structurally, (9) is an infinite-dimensional analogue of the finite-dimensional stochastic ordinary differential
+equation
+d​X=f​d​t+σ​d​W,\mathrm{d}X=f\,\mathrm{d}t+\sqrt{\sigma}\,\mathrm{d}W,
+(10)
+for which one can easily compute the strength of the noise σ\sigma as
+limh↘01h​𝔼​[[X⁡(t0+h)−X⁡(t0)]2]=d​σ,\lim_{h\searrow 0}\frac{1}{h}\mathbb{E}\left[\left[X(t_{0}+h)-X(t_{0})\right]^{2}\right]=d\sigma,
+(11)
+where limh↘0\lim_{h\searrow 0} indicates the limit of hh to 00 from above. Here the left-hand side can be approximated by computer
+simulations.
+We claim that an analogous statement holds for the infinite-dimensional case (9) as well, namely
+12​h𝔼[[Yγ(t0+h)−Yγ(t0)]2]=⟨m(ρ(t0,⋅))∇γ,∇γ⟩,\frac{1}{2h}\mathbb{E}\left[\left[Y_{\gamma}(t_{0}+h)-Y_{\gamma}(t_{0})\right]^{2}\right]=\left\langle m(\rho(t_{0},\cdot))\nabla\gamma,\nabla\gamma\right\rangle,
+(12)
+where a sufficiently localised function γ\gamma around a given point x0∈Ωx_{0}\in\Omega, delivers an approximation of
+m⁡(ρ⁡(t0,x0))m(\rho(t_{0},x_{0})) as
+m⁡(ρ⁡(t0,x0))≃limh↘01h​𝔼​[[Yγ​(t0+h)−Yγ​(t0)]2]2​⟨∇γ,∇γ⟩.m(\rho(t_{0},x_{0}))\simeq\frac{\lim_{h\searrow 0}\frac{1}{h}\mathbb{E}\left[\left[Y_{\gamma}(t_{0}+h)-Y_{\gamma}(t_{0})\right]^{2}\right]}{2\left\langle\nabla\gamma,\nabla\gamma\right\rangle}.
+(13)
+This relation will allow us to extract mm and hence the diffusivity DD, via (3), from the fluctuations of the
+system, for large enough particle numbers. Further details on its numerical implementation will be given in
+Section 3.
+To establish (12), we separate the so-called quadratic variation of the process (9) from the
+rest (this is a standard problem in financial mathematics, see, e.g., [18]). More precisely, we consider
+a new random variable F⁡(Yγ)F(Y_{\gamma}), with F∈C2​(ℝ,ℝ)F\in C^{2}(\mathbb{R},\mathbb{R}). By Itô’s formula (see [19, Chapter 4]), this
+new variable satisfies
+d​F​(Yγ)​(t)\displaystyle\,\mathrm{d}F(Y_{\gamma})(t)
+=F′(Yγ(t))dYγ(t)+F′′​(Yγ​(t))2⟨2m(ρ(t0,⋅))∇γ,∇γ⟩dt,\displaystyle=F^{\prime}(Y_{\gamma}(t))\,\mathrm{d}Y_{\gamma}(t)+\frac{F^{\prime\prime}(Y_{\gamma}(t))}{2}\left\langle 2m(\rho(t_{0},\cdot))\nabla\gamma,\nabla\gamma\right\rangle\,\mathrm{d}t,
+(14)
+where for the last term of (9) we have made use of the fact that W˙x,t\dot{W}_{x,t} is a space-time white noise. We
+choose
+F⁡(x):=(x−Yγ​(t0))2,F(x):=(x-Y_{\gamma}(t_{0}))^{2},
+(15)
+where t0≥0t_{0}\geq 0 is an arbitrary initial time and write (having in mind the left-hand side of (12))
+𝔼⁡[[Yγ​(t0+h)−Yγ​(t0)]2]=𝔼⁡[F⁡(Yγ​(t0+h))]=𝔼⁡[∫t0t0+hd​F​(Yγ​(t))].\mathbb{E}\left[\left[Y_{\gamma}(t_{0}+h)-Y_{\gamma}(t_{0})\right]^{2}\right]=\mathbb{E}\left[F(Y_{\gamma}(t_{0}+h))\right]=\mathbb{E}\left[\int_{t_{0}}^{t_{0}+h}\,\mathrm{d}F(Y_{\gamma}(t))\right].
+(16)
+Using equations (14)–(15), we can rewrite this identity as
+𝔼⁡[[Yγ​(t0+h)−Yγ​(t0)]2]=𝔼[∫t0t0+hF′(Yγ(t))dYγ(t)]+12𝔼[∫t0t0+hF′′(Yγ(t))⟨2m(ρ(t0,⋅))∇γ,∇γ⟩dt]=2𝔼[∫t0t0+h(Yγ(t)−Yγ(t0))dYγ(t)]+∫t0t0+h⟨2m(ρ(t0,⋅))∇γ,∇γ⟩dt.\begin{split}&\mathbb{E}\left[\left[Y_{\gamma}(t_{0}+h)-Y_{\gamma}(t_{0})\right]^{2}\right]\\
+&=\mathbb{E}\left[\int_{t_{0}}^{t_{0}+h}F^{\prime}(Y_{\gamma}(t))\,\mathrm{d}Y_{\gamma}(t)\right]+\frac{1}{2}\mathbb{E}\left[\int_{t_{0}}^{t_{0}+h}F^{\prime\prime}(Y_{\gamma}(t))\left\langle 2m(\rho(t_{0},\cdot))\nabla\gamma,\nabla\gamma\right\rangle\,\mathrm{d}t\right]\\
+&=2\mathbb{E}\left[\int_{t_{0}}^{t_{0}+h}(Y_{\gamma}(t)-Y_{\gamma}(t_{0}))\,\mathrm{d}Y_{\gamma}(t)\right]+\int_{t_{0}}^{t_{0}+h}\left\langle 2m(\rho(t_{0},\cdot))\nabla\gamma,\nabla\gamma\right\rangle\,\mathrm{d}t.\end{split}
+(17)
+Hence
+limh↘01h​𝔼​[[Yγ​(t0+h)−Yγ​(t0)]2]=limh↘02h𝔼[∫t0t0+h(Yγ(t)−Yγ(t0))dYγ(t)]+⟨2m(ρ(t0,⋅))∇γ,∇γ⟩.\lim_{h\searrow 0}\frac{1}{h}\mathbb{E}\left[\left[Y_{\gamma}(t_{0}+h)-Y_{\gamma}(t_{0})\right]^{2}\right]\\
+=\lim_{h\searrow 0}\frac{2}{h}\mathbb{E}\left[\int_{t_{0}}^{t_{0}+h}(Y_{\gamma}(t)-Y_{\gamma}(t_{0}))\,\mathrm{d}Y_{\gamma}(t)\right]+\left\langle 2m(\rho(t_{0},\cdot))\nabla\gamma,\nabla\gamma\right\rangle.
+(18)
+To prove (12), we show that the first term on the right-hand side vanishes,
+limh↘02h​𝔼​[∫t0t0+h(Yγ​(t)−Yγ​(t0))​d​Yγ​(t)]=0.\lim_{h\searrow 0}\frac{2}{h}\mathbb{E}\left[\int_{t_{0}}^{t_{0}+h}(Y_{\gamma}(t)-Y_{\gamma}(t_{0}))\,\mathrm{d}Y_{\gamma}(t)\right]=0.
+(19)
+This results follows from (9) and Hölder’s inequality followed by Young’s inequality, namely
+𝔼⁡[∫t0t0+h(Yγ​(t)−Yγ​(t0))​d​Yγ​(t)]=𝔼⁡[∫t0t0+h(Yγ​(t)−Yγ​(t0))​⟨Δ​γ,12​Φ′​(ρ⁡(t,⋅))​Y​(t,⋅)⟩​dt]≤𝔼⁡[∫t0t0+h(Yγ​(t)−Yγ​(t0))2​𝑑t]⋅𝔼⁡[∫t0t0+h⟨Δ​γ,12​Φ′​(ρ⁡(t,⋅))​Y​(t,⋅)⟩2​𝑑t]=∫t0t0+h𝔼⁡[(Yγ​(t)−Yγ​(t0))2]​𝑑t⋅∫t0t0+h𝔼⁡[⟨Δ​γ,12​Φ′​(ρ⁡(t,⋅))​Y​(t,⋅)⟩2]​𝑑t≤12​∫t0t0+h𝔼⁡[(Yγ​(t)−Yγ​(t0))2]​dt+12​∫t0t0+h𝔼⁡[⟨Δ​γ,12​Φ′​(ρ⁡(t,⋅))​Y​(t,⋅)⟩2]​dt.\begin{split}\ &\mathbb{E}\left[\int_{t_{0}}^{t_{0}+h}(Y_{\gamma}(t)-Y_{\gamma}(t_{0}))\,\mathrm{d}Y_{\gamma}(t)\right]\\
+&=\mathbb{E}\left[\int_{t_{0}}^{t_{0}+h}\left(Y_{\gamma}(t)-Y_{\gamma}(t_{0})\right)\left\langle\Delta\gamma,\frac{1}{2}\Phi^{\prime}(\rho(t,\cdot))Y(t,\cdot)\right\rangle\,\mathrm{d}t\right]\\
+&\leq\sqrt{\mathbb{E}\left[\int_{t_{0}}^{t_{0}+h}\left(Y_{\gamma}(t)-Y_{\gamma}(t_{0})\right)^{2}\,\mathrm{d}t\right]\cdot\mathbb{E}\left[\int_{t_{0}}^{t_{0}+h}\left\langle\Delta\gamma,\frac{1}{2}\Phi^{\prime}(\rho(t,\cdot))Y(t,\cdot)\right\rangle^{2}\,\mathrm{d}t\right]}\\
+&=\sqrt{\int_{t_{0}}^{t_{0}+h}\mathbb{E}\left[\left(Y_{\gamma}(t)-Y_{\gamma}(t_{0})\right)^{2}\right]\,\mathrm{d}t\cdot\int_{t_{0}}^{t_{0}+h}\mathbb{E}\left[\left\langle\Delta\gamma,\frac{1}{2}\Phi^{\prime}(\rho(t,\cdot))Y(t,\cdot)\right\rangle^{2}\right]\,\mathrm{d}t}\\
+&\leq\frac{1}{2}\int_{t_{0}}^{t_{0}+h}\mathbb{E}\left[\left(Y_{\gamma}(t)-Y_{\gamma}(t_{0})\right)^{2}\right]\,\mathrm{d}t+\frac{1}{2}\int_{t_{0}}^{t_{0}+h}\mathbb{E}\left[\left\langle\Delta\gamma,\frac{1}{2}\Phi^{\prime}(\rho(t,\cdot))Y(t,\cdot)\right\rangle^{2}\right]\,\mathrm{d}t.\end{split}
+(20)
+We can see from (17) and (20) that with
+Z⁡(t)\displaystyle Z(t)
+:=∫t0t𝔼⁡[[Yγ​(s)−Yγ​(t0)]2]​𝑑s\displaystyle:=\int_{t_{0}}^{t}\mathbb{E}\left[\left[Y_{\gamma}(s)-Y_{\gamma}(t_{0})\right]^{2}\right]\,\mathrm{d}s
+and
+R⁡(t)\displaystyle R\left(t\right)
+:=∫t0t𝔼[⟨Δγ,12Φ′(ρ(t,⋅))Y(t,⋅)⟩2]dt+∫t0t⟨2m(ρ(t0,⋅))∇γ,∇γ⟩dt\displaystyle:=\int_{t_{0}}^{t}\mathbb{E}\left[\left\langle\Delta\gamma,\frac{1}{2}\Phi^{\prime}(\rho(t,\cdot))Y(t,\cdot)\right\rangle^{2}\right]\,\mathrm{d}t+\int_{t_{0}}^{t}\left\langle 2m(\rho(t_{0},\cdot))\nabla\gamma,\nabla\gamma\right\rangle\,\mathrm{d}t
+it holds that
+Z˙​(t)≤Z⁡(t)+R⁡(t),\dot{Z}(t)\leq Z(t)+R(t),
+where RR is bounded and continuous. Thus, by Gronwall’s lemma (e.g., [20, Lemma 4.1.2])
+Z⁡(t)≤e(t−t0)​∫t0te−(s−t0)​R​(s)​𝑑s,Z(t)\leq e^{(t-t_{0})}\int_{t_{0}}^{t}e^{-(s-t_{0})}R(s)\,\mathrm{d}s,
+and hence Z⁡(t0+h)=O⁡(h2)Z(t_{0}+h)=O(h^{2}), as R⁡(t0+h)=O⁡(h)R(t_{0}+h)=O(h). Inserting this in the second but last line in (20), we find that
+𝔼⁡[∫t0t0+h(Yγ​(t)−Yγ​(t0))​d​Yγ​(t)]=O⁡(h32),\mathbb{E}\left[\int_{t_{0}}^{t_{0}+h}(Y_{\gamma}(t)-Y_{\gamma}(t_{0}))\,\mathrm{d}Y_{\gamma}(t)\right]=O(h^{\frac{3}{2}}),
+since the first product under the square root is O⁡(h2)O(h^{2}) and the second is O⁡(h)O(h).
+Thus (19) is established.
+3 Numerical implementation
+We first describe the general particle setting studied here (specific examples will be described in detail in
+Section 4), and then discuss the numerical implementation for this class of systems.
+We always consider NN particles distributed on a periodic lattice Λ=ℤd/(L​ℤ)d\Lambda=\mathbb{Z}^{d}/(L\mathbb{Z})^{d}, that is, the torus in ℤd\mathbb{Z}^{d} of
+length LL in each direction. We denote lattice coordinates by capital Latin letters, while η\eta stands for a lattice
+configuration. Thus, η⁡(T,X)\eta(T,X) is the number of particles at site X∈ΛX\in\Lambda and time TT. Together with the particle
+systems, we consider their hydrodynamic limit (both the stochastic/fluctuating form (6) and the deterministic
+limit (5)), which is on what we call the macroscopic or continuum scale. The macroscopic spatial and
+temporal coordinates will be denoted by xx and tt, respectively, in accordance with the notation used for the partial
+differential equations in Section 2. These coordinates are related to the microscopic
+coordinates XX and TT via the parabolic scaling, x=X/Lx=X/L and t=T/L2t=T/L^{2}, thus x∈Ω:=(0,1)dx\in\Omega:=(0,1)^{d}, the
+dd-dimensional unit cube. The limit passage N→∞N\to\infty and L→∞L\to\infty is such that N/LdN/L^{d} is kept constant. Also, the
+microscopic mass of each particle is rescaled in the limit procedure by 1/Ld1/L^{d}, thus keeping the total mass at the macroscopic
+scale constant, see Figure 1. This interpretation endows the empirical measure ρL\rho^{L} with the physical meaning
+of the density of the system.
+X=1X=1X=6X=6x=0x=0x=1x=1X=1X=1X=12X=12x=0x=0x=1x=1X→X/Ld=xX\to X/L^{d}=xM→M/Ld=mM\to M/L^{d}=m
+Figure 1: Visualisation of the hydrodynamic limit procedure in microscopic coordinates X∈ΛX\in\Lambda (left panel) and the
+macroscopic space x∈Ωx\in\Omega (right panel); here the space dimension is d=1d=1. The top figures correspond to L=6L=6 and the
+bottom ones to L=12{L=12}. The particles on the left have mass M=1M=1, and in the hydrodynamic limit procedure space and mass are
+both rescaled by a factor 1/Ld1/L^{d}, giving rise to the macroscopic space variable xx and macroscopic mass mm. Thus, all four
+configurations have the same density and the total macroscopic mass is kept constant. We note that the balls on the right are
+imaginary and plotted only to guide the construction of the limit function ρ⁡(t,x)\rho(t,x), represented with a solid line.
+With this notation regarding the micro- and macro-scale, we are now ready to provide further details on the implementation
+of (13). In particular, the integrals and derivatives in such equation are approximated by finite differences on
+the lattice scale. The deterministic states ρ\rho are substituted by averages over RR realisations of their stochastic
+counterparts and approximated in the following fashion. At the rescaled positions x=XLx=\frac{X}{L} with
+X∈{1,…,L}dX\in\{1,\dots,L\}^{d}, the density ρ\rho is approximated as
+ρ⁡(t,x)≈1R​∑r=1Rηr​(t​L2,x​L).\rho(t,x)\approx\frac{1}{R}\sum_{r=1}^{R}\eta_{r}(tL^{2},xL).
+(21)
+All these realisations originate from an initial configuration η⁡(tini​L2)\eta(t_{\text{ini}}L^{2}) at time tini<t0t_{\text{ini}}<t_{0}, which is
+set up beforehand. Starting from such a configuration, one typically first needs to overcome a transient regime, before a local
+equilibrium is reached. In computations, we therefore wait for a relatively long time t0−tinit_{0}-t_{\mathrm{ini}} and then start the actual
+measurement. As this waiting time is relatively costly from a computational perspective and many realisations RR are needed for
+accurate estimates of the expectations, the following compromise is made, visualised in Figure 2. We choose a time
+tprept_{\mathrm{prep}} with tprep<t0t_{\mathrm{prep}}<t_{0} and t0−tprep≪t0−tinit_{0}-t_{\mathrm{prep}}\ll t_{0}-t_{\mathrm{ini}} sufficient for attaining local equilibrium. Then,
+between t=tini{t=t_{\mathrm{ini}}} and t=tprept=t_{\mathrm{prep}}, R1R_{1} samples are simulated. For each of these R1R_{1} realisations, R2R_{2} realisations
+are launched at time t=tprept=t_{\mathrm{prep}} from the data obtained at tprept_{\mathrm{prep}}. This procedure gives rise to a total of R=R1​R2R=R_{1}R_{2}
+random initial conditions at t=t0t=t_{0}, which are all associated to the same macroscopic state. In the subsequent evaluations of
+the trajectories in the time period [t0,t0+h][t_{0},t_{0}+h] all RR, realisations are treated equally.
+tinit_{\mathrm{ini}}tprept_{\mathrm{prep}}t0t_{0}Hamt0+ht_{0}+hState space
+Figure 2: Structure of the RR realisations (for simplicity symbolised as scalar) as a function of time. Between t=tinit=t_{\mathrm{ini}} and
+t=tprept=t_{\mathrm{prep}}, R1R_{1} samples are simulated, and each of them gives rise to R2R_{2} realisations from time tprept_{\mathrm{prep}} on. Thus
+in total there are R=R1⋅R2R=R_{1}\cdot R_{2} realisations, which are evaluated in the time interval [t0,t0+h][t_{0},t_{0}+h]. In the sketch of
+the figure R1=2R_{1}=2 and R2=3R_{2}=3.
+Finally, the test function γ\gamma in the definition of YγLY_{\gamma}^{L} in (7) is chosen as
+x↦γ⁡(x)=a0​∏j=1d(max⁡(0,1−(a1​|x(j)−x0(j)|)a2))a2,x\mapsto\gamma(x)=a_{0}~\prod_{j=1}^{d}\left(\max\left(0,1-\left(a_{1}\left\lvert x^{(j)}-x_{0}^{(j)}\right\rvert\right)^{a_{2}}\right)\right)^{a_{2}},
+(22)
+with independent parameters a0,a1>0a_{0},a_{1}>0, a2≥1a_{2}\geq 1, and where x(j)x^{(j)} denotes the jthj^{\text{th}} Cartesian component of the
+vector xx. The graph of this function resembles a smoothed hat function centred at x0∈Ωx_{0}\in\Omega and symmetric with respect to
+that point (see Figure 3), where the height is given by a0a_{0}, the support is of length 2a1\frac{2}{a_{1}} in each
+dimension; a2a_{2} scales the smoothness: a2=1a_{2}=1 would correspond to a piecewise linear wedge-shaped graph in one dimension, while
+a2=2a_{2}=2 gives a smoother function. The dependence of the measured transport coefficients on these parameters will be discussed in
+Subsection 5.3. In practice, the same simulation data is post-processed with test functions
+concentrated at multiple points x0x_{0}. This allows to obtain simultaneously the value of the transport coefficients at different
+densities in the case of non-equilibrium evolutions or to increase the efficiency in measurements gathered from equilibrium data.
+ -
+ 0.2
+ 0
+ 0.2
+ 0.4
+ 0.6
+ 0.8
+ 1
+ 0.3
+ 0.4
+ 0.5
+ γ
+Figure 3: Sketch of the test function γ\gamma defined in (22) in one dimension, for two values of the
+smoothing parameter a2a_{2}.
+We note that we are using the same realisations for finding the deterministic states, ρ⁡(t0,⋅)\rho(t_{0},\cdot) and
+ρ⁡(t0+h,⋅)\rho(t_{0}+h,\cdot), as well as for the expectation of the quadratic variation on the left-hand side
+of (12). This can lead to an underestimation of ⟨(∇γ)2,m⁡(ρ⁡(t0,⋅))⟩\left\langle(\nabla\gamma)^{2},m(\rho(t_{0},\cdot))\right\rangle. Thanks to
+the choice of FF in (15) as a quadratic function, this error can be compensated the same way as for the sample
+standard deviation, i.e., by multiplying the left-hand-side of (12) with a factor of
+RR−1\frac{R}{R-1} [21, Chapter 2]. The method is summarised in Algorithm 2.
+The actual measurements based on (13) give the quantity mm. To obtain the diffusivity DD, we
+use (3) in combination with the analytical expressions for the entropy 𝒮\mathcal{S} given in
+Section 4 for each of the three examples studied. We remark that the use of the analytic form of the
+entropy is only for simplicity; in principle it could also be approximated from the particle data.
+In addition to the measurement of the transport data mm and DD, we also estimate the error bars of such measurement based on the
+standard error of the expectation, associated to the RR samples. To focus on the key approximation errors, we neglect the error
+arising from evaluating the deterministic state ρ\rho via the law of large numbers from the same realisations. We further ignore
+this source of error when converting between mm and DD. In principle, this leads to an underestimation of the statistical
+error.
+The particle processes described in the next section are modelled by a Lattice Kinetic Monte Carlo approach (L-KMC), and are
+evolved according to the Bortz-Kalos-Lebowitz algorithm [22]. Both the process and the proposed method to compute
+the diffusivities are implemented in C.
+// Set lattice domain and scaling: 
+δ​x=1L\delta x=\frac{1}{L}, xi=XiLx_{i}=\frac{X_{i}}{L} ; // Spatial discretisation; XiX_{i} is the lattice coordinate
+// Generate particle data from initial profile η⁡(tini​L2,Xi)\eta\left(t_{\mathrm{ini}}L^{2},X_{i}\right) 
+:
+for all R1R_{1} realisations starting from tinit_{\mathrm{ini}} do
+ 3
+ ηr​(tprep​L2,Xi)=stochastic-evolution​([tini,tprep],η⁡(tini​L2,Xi))\eta_{r}\left(t_{\mathrm{prep}}L^{2},X_{i}\right)=\text{stochastic-evolution}\left(\left[t_{\mathrm{ini}},t_{\mathrm{prep}}\right],\eta\left(t_{\mathrm{ini}}L^{2},X_{i}\right)\right) ;
+ 4
+ for all R2R_{2} realisations starting from tprept_{\mathrm{prep}} do
+ 5
+ ηr​(t0​L2,Xi)=stochastic-evolution​([tprep,t0],ηr​(tprep​L2,Xi))\eta_{r}\left(t_{0}L^{2},X_{i}\right)=\text{stochastic-evolution}\left(\left[t_{\mathrm{prep}},t_{0}\right],\eta_{r}\left(t_{\mathrm{prep}}L^{2},X_{i}\right)\right) ;
+ 6
+ ηr​((t0+h)​L2,Xi)=stochastic-evolution​([t0,t0+h],ηr​(t0​L2,Xi))\eta_{r}\left(\left(t_{0}+h\right)L^{2},X_{i}\right)=\text{stochastic-evolution}\left(\left[t_{0},t_{0}+h\right],\eta_{r}\left(t_{0}L^{2},X_{i}\right)\right) ;
+ 8
+ R=R1⋅R2R=R_{1}\cdot R_{2} ; // Total number of realisations in [t0,t0+h]\left[t_{0},t_{0}+h\right]ρ⁡(t0,xi)=1R⋅∑r(ηr​(t0​L2,Xi))\rho\left(t_{0},x_{i}\right)=\frac{1}{R}\cdot\sum_{r}\left(\eta_{r}\left(t_{0}L^{2},X_{i}\right)\right)
+ 9
+ ; // Approx. deterministic stateρ⁡(t0+h,xi)=1R⋅∑r(ηr​((t0+h)​L2,Xi))\rho\left(t_{0}+h,x_{i}\right)=\frac{1}{R}\cdot\sum_{r}\left(\eta_{r}\left(\left(t_{0}+h\right)L^{2},X_{i}\right)\right)
+ 10
+ ;
+// Test function γ\gamma with parameters a0a_{0}, a1a_{1}, a2a_{2}, x0x_{0}: 
+ 11
+ Function γ⁡(xi)\gamma\left(x_{i}\right)
+ 12
+ γ⁡(xi)=a0​∏j=1d(max⁡(0,1−(a1​|xi(j)−x0(j)|)a2))a2\gamma\left(x_{i}\right)=a_{0}\prod_{j=1}^{d}\left(\max\left(0,1-\left(a_{1}\left\lvert x_{i}^{\left(j\right)}-x_{0}^{\left(j\right)}\right\rvert\right)^{a_{2}}\right)\right)^{a_{2}} ;
+; // jj is spatial index
+ 13
+ return γ⁡(xi)\gamma\left(x_{i}\right) ;
+// Compute denominator of Equation (13): 
+ 14
+ for all lattice positions Xi∈ΛX_{i}\in\Lambda do
+ 16
+ 15
+ Gi=∑j=1d(γ⁡(xi+δ​x​e(j))−γ⁡(xi−δ​x​e(j))2​δ​x)2G_{i}=\sum_{j=1}^{d}\left(\frac{\gamma\left(x_{i}+\delta x\,e^{\left(j\right)}\right)-\gamma\left(x_{i}-\delta x\,e^{\left(j\right)}\right)}{2\delta x}\right)^{2} ; // e(j)e^{\left(j\right)} is jj-th Cartesian unit vector
+ 17
+ G=2​(δ​x)d​∑i(Gi)G=2\left(\delta x\right)^{d}~\sum_{i}\left(G_{i}\right)
+; // 2​‖∇γ‖L222\left\lVert\nabla\gamma\right\rVert_{L^{2}}^{2}// Compute numerator of Equation (13): 
+ 18
+ for all RR realisations rr do
+ 19
+ for all microscopic positions Xi∈ΛX_{i}\in\Lambda do
+ 20
+ Yr​(t0,xi)=Ld​(ηr​(t0​L2,Xi)−ρ⁡(t0,xi))Y_{r}\left(t_{0},x_{i}\right)=\sqrt{L^{d}}\left(\eta_{r}\left(t_{0}L^{2},X_{i}\right)-\rho\left(t_{0},x_{i}\right)\right) ;
+ 21
+ Yr​(t0+h,xi)=Ld​(ηr​((t0+h)​L2,Xi)−ρ⁡(t0+h,xi))Y_{r}\left(t_{0}+h,x_{i}\right)=\sqrt{L^{d}}\left(\eta_{r}\left(\left(t_{0}+h\right)L^{2},X_{i}\right)-\rho\left(t_{0}+h,x_{i}\right)\right) ;
+ 22
+ Mr=(δ​x)d​∑i(γ⁡(xi)​(Yr​(t0+h,xi)−Yr​(t0,xi)))M_{r}=(\delta x)^{d}\sum_{i}\left(\gamma\left(x_{i}\right)\left(Y_{r}\left(t_{0}+h,x_{i}\right)-Y_{r}\left(t_{0},x_{i}\right)\right)\right) ;
+ 23
+ M=1h​1R−1​∑r(Mr2)M=\frac{1}{h}\frac{1}{R-1}\sum_{r}\left(M_{r}^{2}\right)
+; // 1h​𝔼​[[Yγ​(t0+h)−Yγ​(t0)]2]\frac{1}{h}\mathbb{E}\left[\left[Y_{\gamma}(t_{0}+h)-Y_{\gamma}(t_{0})\right]^{2}\right]// Result: m=MGm=\frac{M}{G}
+ 24
+ ; // Mobility
+Algorithm 1 Pseudo-code describing the method in algorithmic form.
+4 Particle models studied
+In this section, we describe the two types of particle processes studied here. These processes have been chosen since they allow
+for a comparison with analytic solutions, for the chosen parameters. They are Markovian, composed of indistinguishable particles
+and have a hydrodynamic limit of the form (5). Specifically, we consider two zero range processes (one of them
+being the special case of Brownian particles) and a simple exclusion process.
+4.1 Zero range process
+Zero range processes (ZRPs) are particle processes on a lattice, where finitely many particles (possibly none) are located
+on each lattice site. The jump rate at which one particle leaves a site XX depends only on the total number k⁡(X)k(X) of particles
+at this site XX and it is described by the (local) jump rate function g:ℕ0→ℝ0+g\colon\mathbb{N}_{0}\to\mathbb{R}^{+}_{0}. We consider two cases:
+g⁡(k)=kg(k)=k, which corresponds to independent Brownian particles (i.e., linear diffusion equation as its hydrodynamic limit), and
+g⁡(k)=k2g(k)=k^{2}, which also has an analytic expression for the diffusivity.
+The process starts at some initial configuration η\eta. The system waits an exponential microscopic time drawn from a Poisson
+distribution with rate λ⁡(η):=∑X∈Λg⁡(η⁡(X))\lambda(\eta):=\sum_{X\in\Lambda}g(\eta(X)), at which time one particle is moved from XX to X~\tilde{X}
+with probability g⁡(η⁡(X))λ⁡(η)​p​(X~−X)\frac{g(\eta(X))}{\lambda(\eta)}p(\tilde{X}-X); here we choose for simplicity
+p⁡(X~−X)={12dif ​|X~−X|=10otherwise;p(\tilde{X}-X)=\begin{cases}\frac{1}{2^{d}}&\text{if }\left|\tilde{X}-X\right|=1\\
+0&\text{otherwise}\end{cases};
+(23)
+so particles jump to their nearest neighbour only, with equal probability. After this jump, the process starts again from
+ηX,X~\eta^{X,\tilde{X}}, which is the configuration where one particle has changed its position from XX to X~\tilde{X}.
+The hydrodynamic limit of ZRPs is in general a nonlinear diffusion equation (5). Namely, let ρL\rho^{L} denote the
+diffusively rescaled density representing the particle process. That is, for positions x=X/Lx=X/L with X∈ΛX\in\Lambda, we set
+ρL​(t,x):=η⁡(t​L2,x​L)\rho^{L}(t,x):=\eta(tL^{2},xL) and interpolate in a piecewise constant manner in between. Then formally, in a suitable weak sense,
+ρL​(t,x)→ρ⁡(t,x)\rho^{L}(t,x)\to\rho(t,x)
+and ρ\rho solves (5) (for the precise formulation in a measure setting see [15]).
+The thermodynamic entropy of the zero range process, in dimensionless units, is [23]
+𝒮⁡(ρ)=∫Ω[−ρ​log⁡(2​m​(ρ))+log⁡Z⁡(2​m​(ρ))]​𝑑x,\mathcal{S}(\rho)=\int_{\Omega}\left[-\rho\log(2m(\rho))+\log Z(2m(\rho))\right]\,\mathrm{d}x,
+(24)
+with the partition function ZZ
+defined as Z⁡(φ):=∑k∈ℕ0φkg!​(k)Z(\varphi):=\sum_{k\in\mathbb{N}_{0}}\frac{\varphi^{k}}{g!(k)}; here g!​(k):=g⁡(1)⋅g⁡(2)⋅…⋅g⁡(k)g!(k):=g(1)\cdot g(2)\cdot\ldots\cdot g(k).
+In general, this formula does not lead to explicit expressions for mm. Yet, here we consider two cases for which analytic
+expressions are available. The first case considered is the linear one, g⁡(k)=kg(k)=k, which corresponds to Brownian particles, and
+for which m⁡(ρ)≡12​ρm(\rho)\equiv\frac{1}{2}\rho. The second case is g⁡(k)=k2g(k)=k^{2}, where m⁡(ρ)m(\rho) is implicitly given as the inverse
+of ρ⁡(m2)=m⋅I1​(2​m)I0​(2​m)\rho\left(\frac{m}{2}\right)=\sqrt{m}\cdot\frac{I_{1}(2\sqrt{m})}{I_{0}(2\sqrt{m})}, with IiI_{i} being the modified
+Bessel-function of the first kind. This can be derived directly from the definition of these Bessel functions in combination with
+the equilibrium measure
+ν¯m2​(η⁡(T,Xi)=k)=1Z⁡(m)⋅mkg!​(k)\bar{\nu}_{\frac{m}{2}}\left(\eta\left(T,X_{i}\right)=k\right)=\frac{1}{Z\left(m\right)}\cdot\frac{m^{k}}{g!\left(k\right)}
+and ρ⁡(m)=𝔼ν¯m​[η⁡(T,Xi)]\rho\left(m\right)=\mathbb{E}_{\bar{\nu}_{m}}\left[\eta\left(T,X_{i}\right)\right]. Indeed,
+ρ⁡(m2)=𝔼ν¯m2​[η⁡(T,Xi)]=∑k=0∞k​mkg!​(k)∑k=0∞mkg!​(k)|g!​(k)=(k!)2=∑k=1∞(2​m2)2​k(k−1)!⋅k!∑k=0∞(2​m2)2​kk!⋅k!=m⋅2​m2∑k=1∞(2​m2)2​(k−1)(k−1)!⋅k!∑k=0∞(2​m2)2​kk!⋅k!=m​I1​(2​m)I0​(2​m),\rho\left(\frac{m}{2}\right)=\mathbb{E}_{\bar{\nu}_{\frac{m}{2}}}\left[\eta(T,X_{i})\right]=\left.\frac{\sum_{k=0}^{\infty}k\frac{m^{k}}{g!(k)}}{\sum_{k=0}^{\infty}\frac{m^{k}}{g!(k)}}\right|_{g!(k)=(k!)^{2}}\\
+=\frac{\sum_{k=1}^{\infty}\frac{\left(\frac{2\sqrt{m}}{2}\right)^{2k}}{(k-1)!\cdot k!}}{\sum_{k=0}^{\infty}\frac{\left(\frac{2\sqrt{m}}{2}\right)^{2k}}{k!\cdot k!}}=\frac{\sqrt{m}\cdot\frac{2\sqrt{m}}{2}\sum_{k=1}^{\infty}\frac{\left(\frac{2\sqrt{m}}{2}\right)^{2(k-1)}}{(k-1)!\cdot k!}}{\sum_{k=0}^{\infty}\frac{\left(\frac{2\sqrt{m}}{2}\right)^{2k}}{k!\cdot k!}}=\sqrt{m}\frac{I_{1}\left(2\sqrt{m}\right)}{I_{0}\left(2\sqrt{m}\right)},
+where the last equality may be found in [24, (9.6.10)]. It then follows with a short calculation
+from (24) and (5) that the hydrodynamic limit can be written as a nonlinear diffusion equation
+of the form
+∂tρ=𝒦(ρ)δ​𝒮δ​ρ(ρ)=−div(m(ρ)∇δ​𝒮δ​ρ(ρ))=Δ(m(ρ)).\partial_{t}\rho=\mathcal{K}(\rho)\frac{\delta\mathcal{S}}{\delta\rho}(\rho)=-\mathop{\mathrm{div}}(m(\rho)\nabla\frac{\delta\mathcal{S}}{\delta\rho}(\rho))=\Delta(m(\rho)).
+For the zero range process, 12​Φ​(ρ)=m⁡(ρ)\frac{1}{2}\Phi(\rho)=m(\rho) [15, Chapter 5, Theorem 1.1]. Thus, the jump rate gg
+determines mm (normally implicitly, with two explicit examples given above); mm and Φ\Phi are identical up to a
+prefactor. This defines all parameters in (8) and (9) for the zero range process.
+4.2 Simple exclusion process
+In the simple exclusion process (SEP), particles attempt to jump to neighbouring sites with a constant rate one. However,
+if the destination site is already occupied, the jump is abandoned and the particle stays at its current location. Consequently,
+all sites are occupied by at most one particle. The jump rate from site XX to neighbouring site X~\tilde{X} is
+gX→X~​(η):=12d​η​(X)​(1−η⁡(X~))g_{X\rightarrow\tilde{X}}(\eta):=\frac{1}{2^{d}}\eta(X)(1-\eta(\tilde{X})). For further details,
+see [15, Section 2.2]. For the simple exclusion process, m⁡(ρ)=12​ρ​(1−ρ)m(\rho)=\frac{1}{2}\rho(1-\rho) [25] and
+Φ⁡(ρ)=ρ\Phi(\rho)=\rho [15, Chapter 4, Theorem 2.1]. We remark, however, that in the one-dimensional setting studied
+numerically in Section 5 the individual particles themselves are not following a Brownian motion on a
+microscopical level [26]. The entropy of the simple exclusion process is the mixing entropy, i.e.,
+𝒮(ρ)=−∫[ρlogρ+(1−ρ)log(1−ρ)]dx\mathcal{S}(\rho)=-\int\left[\rho\log\rho+(1-\rho)\log(1-\rho)\right]\,\mathrm{d}x in dimensionless form. This defines all quantities
+in (8) and (9) for the simple exclusion process.
+5 Computational results
+We show simulation results in one space dimension for each of the three processes discussed in Section 4,
+namely two zero range processes, one with g⁡(k)=kg(k)=k, i.e., random walkers, and one with g⁡(k)=k2g(k)=k^{2}, and a simple exclusion
+process. All results shown are given for non-equilibrium situations, i.e., starting from non-constant initial profiles
+η⁡(tini​L2,X)\eta(t_{\mathrm{ini}}L^{2},X). This allows us to obtain diffusivity information for a wide range of densities within a single set of
+simulations, by choosing different concentration points x0x_{0} for the test functions γ\gamma. Note, however, that, if these
+x0x_{0} are chosen too close to each other, their results might not be statistically independent anymore. This can be addressed,
+by monitoring the correlations and suitable post-processing.
+5.1 Default choice of parameters
+For better comparability, the following default settings are used, unless stated otherwise. The initial profile is taken as
+η⁡(tini​L2,X)=25​sin⁡(π​XL)\eta(t_{\mathrm{ini}}L^{2},X)=25\sin\left(\pi\frac{X}{L}\right) for the zero range processes, and
+η⁡(tini​L2,X)=0.95​sin⁡(π​XL)\eta(t_{\mathrm{ini}}L^{2},X)=0.95\sin\left(\pi\frac{X}{L}\right) for the simple exclusion process. The lattice length is L=5 000L=5\,000,
+and the chosen time parameters are such that tprep−tini=4⋅10−6t_{\mathrm{prep}}-t_{\mathrm{ini}}=4\cdot 10^{-6} and t0−tprep=4⋅10−9t_{0}-t_{\mathrm{prep}}=4\cdot 10^{-9}, and the
+measurement time is h=4⋅10−11h=4\cdot 10^{-11}. We take R1=50R_{1}=50 and R2=2 000R_{2}=2\,000, so in total R=100 000R=100\,000 realisations are
+simulated. The parameters chosen for the test functions are a0=1a_{0}=1, a1=160a_{1}=160, a2=2a_{2}=2. Further, 3939 points uniformly
+distributed over the unit interval are chosen as concentration points x0x_{0}. Furthermore, given the symmetry of both the chosen
+profile and the concentration points for the test functions γ\gamma, we will average results for similar densities obtained from
+the left and right half of the sin\sin profile, to make the plots more readable.
+ 0
+ 0.1
+ 0.2
+ 0.3
+ 0.4
+ 0.5
+ 0
+ 5
+ 10
+ 15
+ 20
+ 25
+ 0
+ 5
+ 10
+ D
+ -
+ 2
+ -
+ 1.5
+ -
+ 1
+ -
+ 0.5
+ 0
+ 0.5
+ 1
+ 1.5
+ 2
+ 0
+ 5
+ 10
+ 15
+ 20
+ 25
+ rel. error of in %
+ D
+ 0
+ 5
+ 10
+ 15
+ 20
+ 25
+ 0
+ 5
+ 10
+ 15
+ 20
+ 25
+ 0
+ 50
+ 100
+ 150
+ 200
+ 250
+ 300
+ D
+ -
+ 2
+ -
+ 1.5
+ -
+ 1
+ -
+ 0.5
+ 0
+ 0.5
+ 1
+ 1.5
+ 2
+ 0
+ 5
+ 10
+ 15
+ 20
+ 25
+ rel. error of in %
+ D
+ 0
+ 0.1
+ 0.2
+ 0.3
+ 0.4
+ 0.5
+ 0.6
+ 0
+ 0.2
+ 0.4
+ 0.6
+ 0.8
+ 1
+ 0
+ 0.1
+ 0.2
+ D
+ -
+ 20
+ -
+ 15
+ -
+ 10
+ -
+ 5
+ 0
+ 5
+ 10
+ 15
+ 20
+ 0
+ 0.2
+ 0.4
+ 0.6
+ 0.8
+ 1
+ rel. error of in %
+ D
+Figure 4: Measurements of the transport coefficients from non-equilibrium evolutions corresponding to a random walk (top row), a
+ZRP with g⁡(k)=k2g(k)=k^{2} (middle row) and a SEP (bottom row). Shown are the diffusivity DD and the mobility mm (left panel)
+and the relative errors as compared to the analytical results (right panel). The choice of parameters is the default one,
+described in Subsection 5.1. 
+5.2 Results and comparison to the analytical solutions
+Figure 4 displays, for each process, the diffusivity DD and mobility mm, where the former is computed from the
+latter via (3) (see Section 4 for the expressions of the entropy for each process), i.e.,
+D⁡(ρ)={m⁡(ρ)ρfor the ZRP with ​g​(k)=k,m⁡(ρ)Φ⁡(ρ)−ρ2for the ZRP with ​g​(k)=k2,m⁡(ρ)ρ⁡(1−ρ)for the SEP.D(\rho)=\begin{cases}\dfrac{m\left(\rho\right)}{\rho}&\text{for the ZRP with }g\left(k\right)=k,\\
+\dfrac{m\left(\rho\right)}{\Phi\left(\rho\right)-\rho^{2}}&\text{for the ZRP with }g\left(k\right)=k^{2},\\
+\dfrac{m\left(\rho\right)}{\rho\left(1-\rho\right)}&\text{for the SEP}.\end{cases}
+(25)
+To better assess the accuracy of the method, the right panels show the relative error of DD, i.e., (D−Danalytic)/Danalytic(D-D_{\mathrm{analytic}})/{D_{\mathrm{analytic}}},
+which coincides with that of mm. We find the agreement between simulation and analytic solution very strong: the relative errors
+for the zero range processes are mostly below the single percentage range. Relative errors for the simple exclusion process are
+about one order of magnitude larger for the same choice of the parameters. This is to be expected, as an untypical behaviour of a
+single particle can block other particles for long times. Thus, simulations of the simple exclusion process require finer
+discretisation in order to obtain the same accuracy as for the zero range process. Yet, for better comparison, the parameters have
+been chosen uniformly for all the processes.
+5.3 Parameter dependence
+In Figures 5 to 7 we show the dependence of the results on the choice of the parameters LL,
+hh and RR for all three processes. In each figure, we depict the errors associated with a representative low and high value of
+the density, as well as the average error over the multiple densities considered (namely, over the results of the different
+concentration points x0∈{0.1,0.2,…,0.9}x_{0}\in\{0.1,0.2,\dots,0.9\} chosen for the test function γ\gamma). Regarding LL, the proposed numerical
+strategy relies on having a large enough system size, as only then we can expect the evolution of fluctuations YLY^{L} to be well
+approximated by an Ornstein-Uhlenbeck-process (8). This convergence is depicted in Figure 5,
+where the errors are shown to decrease with increasing values of LL, as anticipated. Also, the method requires the measurement
+time hh to be short enough, so that the limit on the left-hand-side of (12) is well approximated. For the
+simple exclusion process, systematic deviations become visible just at around h≈4⋅10−7h\approx 4\cdot 10^{-7}, whereas for the zero range
+process with g⁡(k)=k2g(k)=k^{2} aberrations already start at h≈4⋅10−9h\approx 4\cdot 10^{-9}. We remark that for too small values of hh,
+artificial errors are also to be expected, since too few particles might jump and the system might not yet exhibit its diffusive
+behaviour, i.e., the limit h→0h\to 0 might not commute with the limits R→∞R\to\infty or L→∞{L\to\infty}. Finally, good estimates of
+the expectation (both the left-hand-side of (12) and the deterministic states ρ\rho) require by the Law of
+Large Numbers large sample sizes RR. This convergence is depicted in Figure 7, where both the errors and the
+error bars tend to zero with increasing values of RR. We note that the error bars exhibit an almost perfect power law behaviour
+of the form cR−1/2cR^{-1/2} with some constant cc, as expected from the Central Limit Theorem. No clear power-law behaviour is
+observed for the errors themselves as a function of RR.
+ -
+ 50
+ -
+ 40
+ -
+ 30
+ -
+ 20
+ -
+ 10
+ 0
+ 10
+ 20
+ 500
+ 1000
+ 2000
+ 5000
+ 10000
+ rel. error of in %
+ D
+ -
+ 60
+ -
+ 50
+ -
+ 40
+ -
+ 30
+ -
+ 20
+ -
+ 10
+ 0
+ 10
+ 20
+ 30
+ 200
+ 500
+ 1000
+ 2000
+ 5000
+ 10000
+ rel. error of in %
+ D
+ -
+ 50
+ -
+ 40
+ -
+ 30
+ -
+ 20
+ -
+ 10
+ 0
+ 10
+ 20
+ 30
+ 10000
+ rel. error of in %
+ D
+Figure 5: Relative errors in the diffusivity calculation with respect to the sample size LL for the ZRP with g⁡(k)=kg(k)=k (top left),
+the ZRP with g⁡(k)=k2g(k)=k^{2} (top right) and the SEP (bottom). For the parameters and non-equilibrium initial profile we refer to
+Subsection 5.1.
+ -
+ 50
+ -
+ 40
+ -
+ 30
+ -
+ 20
+ -
+ 10
+ 0
+ 10
+ ⋅
+ 4
+ 10
+ -
+ 13
+ ⋅
+ 4
+ 10
+ -
+ 11
+ ⋅
+ 4
+ 10
+ -
+ 9
+ ⋅
+ 4
+ 10
+ -
+ 7
+ rel. error of in %
+ D
+ -
+ 25
+ -
+ 20
+ -
+ 15
+ -
+ 10
+ -
+ 5
+ 0
+ 5
+ ⋅
+ 4
+ 10
+ -
+ 13
+ ⋅
+ 4
+ 10
+ -
+ 11
+ ⋅
+ 4
+ 10
+ -
+ 9
+ rel. error of in %
+ D
+ -
+ 60
+ -
+ 40
+ -
+ 20
+ 0
+ 20
+ 40
+ 60
+ 80
+ 100
+ 120
+ ⋅
+ 4
+ 10
+ -
+ 13
+ ⋅
+ 4
+ 10
+ -
+ 11
+ ⋅
+ 4
+ 10
+ -
+ 9
+ ⋅
+ 4
+ 10
+ -
+ 7
+ rel. error of in %
+ D
+Figure 6: Relative errors in the diffusivity calculation with respect to the measurement time hh for the ZRP with g⁡(k)=kg(k)=k (top
+left), the ZRP with g⁡(k)=k2g(k)=k^{2} (top right) and the SEP (bottom). The parameters are the default ones described in
+Subsection 5.1.
+ -
+ 25
+ -
+ 20
+ -
+ 15
+ -
+ 10
+ -
+ 5
+ 0
+ 5
+ 1000
+ 10000
+ 100000
+ rel. error of in %
+ D
+ -
+ 15
+ -
+ 10
+ -
+ 5
+ 0
+ 5
+ 10
+ 15
+ 1000
+ 10000
+ 100000
+ rel. error of in %
+ D
+ -
+ 100
+ -
+ 50
+ 0
+ 50
+ 100
+ 1000
+ 10000
+ 100000
+ rel. error of in %
+ D
+Figure 7: Relative errors in the diffusivity calculation with respect to the sample size RR for ZRP with g⁡(k)=kg(k)=k (top left),
+ZRP with g⁡(k)=k2g(k)=k^{2} (top right) and SEP (bottom). Here R1=50R_{1}=50 and R2R_{2} was varied to achieve the different values of R=R1⋅R2R=R_{1}\cdot R_{2}. For all other parameters, the default settings of Subsection 5.1 apply.
+We further study in Figure 8 the dependence of the measurement errors on the initial profile
+η⁡(tini​L2,X)\eta(t_{\mathrm{ini}}L^{2},X) and the parameters of the test function γ\gamma of (22). Of particular interest is
+the interplay of the parameter a1a_{1}, which is inversely related to the support of the test function γ\gamma, and the local
+slope ∇ρ\nabla\rho of the initial profile at the point of measurement, which serves to quantify how far the system is from
+equilibrium. To demonstrate this, we consider various initial profiles so as to measure the transport coefficient at a point of
+constant density and varying slope. More specifically, we consider
+η⁡(tini​L2,X)=5+5​sin⁡(2​πA​(XL−12))\eta\left({t_{\mathrm{ini}}}L^{2},X\right)=5+5\sin\left(\frac{2\pi}{A}\left(\frac{X}{L}-\frac{1}{2}\right)\right) for case
+of the ZRPs and
+η⁡(tini​L2,X)=12+12​sin⁡(2​πA​(XL−12))\eta\left({t_{\mathrm{ini}}}L^{2},X\right)=\frac{1}{2}+\frac{1}{2}\sin\left(\frac{2\pi}{A}\left(\frac{X}{L}-\frac{1}{2}\right)\right)
+for the SEP, where A≠0A\neq 0 is the parameter that controls the slope at the chosen point of measurement, here
+x0=12x_{0}=\frac{1}{2}. As shown in the figure, being far from equilibrium can have an impact on the outcome, where the precise
+value of the error depends on the process. In all cases, however, this (unwanted) dependence can be cured by choosing a more
+narrowly supported test-function (i.e., larger a1a_{1}). We note that for a fixed finite system size LL, the support of the test
+function γ\gamma can only be narrowed until a limit determined by the lattice spacing is reached, unless the expression
+⟨∇γ,∇γ⟩\left\langle\nabla\gamma,\nabla\gamma\right\rangle is evaluated analytically.
+Regarding the other two parameters of the test function γ\gamma, we remark that the derivation of the algorithm assumed
+γ∈C02\gamma\in C^{2}_{0}, which is satisfied for the choice a2>2a_{2}>2. Yet, simulations for a2=2a_{2}=2 or even a2=1a_{2}=1 still delivered
+good results, with slightly reduced accuracy for a2=1a_{2}=1. Finally, a0a_{0} does not play any role, as it drops out algebraically
+in (12).
+ -
+ 5
+ 0
+ 5
+ 10
+ 15
+ 20
+ 25
+ 30
+ 35
+ 40
+ 45
+ 0.31
+ 3.1
+ 31
+ 126
+ 314
+ relative error of in %
+ D
+ -
+ 60
+ -
+ 50
+ -
+ 40
+ -
+ 30
+ -
+ 20
+ -
+ 10
+ 0
+ 10
+ 20
+ 0.031
+ 0.31
+ 3.1
+ 12.6
+ 31
+ relative error of in %
+ D
+Figure 8: Relative errors in the diffusivity calculation with respect to the slope of the density profile ∇ρ\nabla\rho and the
+test function parameter a1a_{1}, for the ZRP with g⁡(k)=k2g(k)=k^{2} (left) and the SEP (right). The non-equilibrium profiles
+considered are described in Subsection 5.3, and all other parameters are set to their default
+values of Subsection 5.1.
+5.4 Alternative method for sequence of consecutive measurements
+One drawback of the method described above is that one must be able to prepare the same initial state η⁡(t0​L2,X)\eta\left(t_{0}L^{2},X\right)
+numerous times to obtain a good estimate of the deterministic ρ\rho in (12). This may be difficult in some
+experimental settings, where it could be advantageous to observe the system over only one, longer, period of time. In such a
+scenario, one would take measurements at snapshots, say at times h,2​h,3​h,…,P⋅hh,2h,3h,\dots,P\cdot h with P∈ℕP\in\mathbb{N}, instead of analysing
+multiple realisations at times t0t_{0} and t0+ht_{0}+h. We sketch here how this alternative strategy might be adopted in the
+experimental setting described. Towards this purpose, we deviate from the approach described in Subsection 2.2
+by substituting YγLY^{L}_{\gamma} from (7) with
+Y~γL​(t):=Ld​⟨γ,ρL​(t,⋅)⟩.\tilde{Y}^{L}_{\gamma}(t):=\sqrt{L^{d}}\left\langle\gamma,\rho^{L}(t,\cdot)\right\rangle.
+That is, we suppress the deterministic states entirely. Note that YγLY^{L}_{\gamma} only appears in the function FF
+in (15). To use Y~γL​(t)\tilde{Y}^{L}_{\gamma}(t), one would require the difference ρ⁡(t0+h)−ρ⁡(t0)\rho\left(t_{0}+h\right)-\rho\left(t_{0}\right) to be negligible for h→0h\to 0, when compared to the difference of their stochastic
+counterparts. Obviously, if the deterministic state is differentiable, then this difference is 𝒪⁡(h)\mathcal{O}(h), which should be
+of lower order. Yet, it is not clear that this is preserved in the second limit L→∞L\rightarrow\infty. This makes the version
+sketched in this subsection more speculative, and a detailed investigation will be the topic of a separate investigation. Yet,
+initial computational results indicate a good agreement of the original approach of Subsection 2.2 and the
+modification discussed in this subsection. We call the former method parallel and the latter sequential. When
+measuring in equilibrium, the sequential and the parallel method gave equivalent results. Figure 9 shows the
+diffusivity DD computed with the sequential method for non-equilibrium data. The relative errors are found to be in good
+agreement with those of the parallel method.
+ -
+ 2
+ -
+ 1.5
+ -
+ 1
+ -
+ 0.5
+ 0
+ 0.5
+ 1
+ 1.5
+ 2
+ 0
+ 5
+ 10
+ 15
+ 20
+ 25
+ -20-15-10-50510152000.20.40.60.81rel. error of in % for ZRPs
+ D
+Figure 9: Results for the diffusivity DD for all three processes (a random walk, a ZRP with g⁡(k)=k2g(k)=k^{2} and a SEP), based on
+one sequence of snapshot measurements as described in Subsection 5.4. Here P=100 000P=100\,000 measurements
+were made and for all other parameters the default choices in Subsection 5.1 are used.
+5.5 Discussion
+While the simulations deliberately had a sinusoidal initial profile to probe the method out of equilibrium, the errors on the
+diffusivities are even lower for constant initial profiles. In such a setting, equilibrium methods are applicable, such as mean
+square displacement (MSD). We here compare the performance of both approaches (MSD and the parallel method proposed in this
+article) for the zero range process with g⁡(k)=kg(k)=k (the random walk) and g⁡(k)=k2g(k)=k^{2}. We remark that in the standard mean square displacement method, particles are tagged and the diffusivity is computed from the slope of the temporal
+evolution of the mean square displacement. The standard setting assumes that the evolution of a tagged particles scales as
+X⁡(t)∼tX(t)\sim\sqrt{t}. Since the SEP in one space dimension scales as X⁡(t)∼t1/4X(t)\sim t^{1/4} and is thus inaccessible for this method,
+the results for the method we propose cannot be compared. It is noteworthy that the method proposed here does compute the
+diffusivity accurately also for this process.
+To achieve a fair comparison between MSD and the proposed methodology, the algorithms of both methods have been implemented in
+serial on the same machine, for systems of equal size L=5 000L=5\,000, and with equal equilibration times. Also, the computation
+time for the equilibration was ignored for the performance comparison, and we only generated new samples for our method with
+t0−tprep=4⋅10−9t_{0}-t_{\mathrm{prep}}=4\cdot 10^{-9}, i.e., we set R1=1R_{1}=1. Additionally, we assumed that the measurements can be repeated
+independently arbitrarily often, leading to a scaling of the standard error of mm proportional to
+1/computation time\nicefrac{{1}}{{\sqrt{\text{computation time}}}}. For the same computation time, it turns out that the particle-tagging has a lower
+error by a factor of about 1717 for the random walk and 22 for the zero range process with g⁡(k)=k2g(k)=k^{2}, when compared to the
+method proposed here. This effect is largely due to the relatively long preparation time t0−tprept_{0}-t_{\mathrm{prep}}, as well as the extra
+effort required for storing the measured states to compute the averages of both the deterministic states and the quadratic
+variation. For t0−tprep=0t_{0}-t_{\mathrm{prep}}=0 (i.e., all initial states are microscopically identical), the factors reduce to 1212 and
+0.70.7, respectively; i.e., the proposed parallel method is slightly faster than the established mean square displacement for the
+ZRP with g⁡(k)=k2g(k)=k^{2}, but slower for the random walk. When using the sequential method proposed in
+Subsection 5.4, these factors reduce to 33 and 0.20.2, respectively. Note that the proposed approach is
+trivially parallelisable, and taking advantage of this feature would dramatically accelerate the calculations.
+We also emphasise that the method presented here applies to non-equilibrium evolutions, and that it enables the simultaneous
+measurement of diffusivities over the range of densities present in the simulations (in contrast, equilibrium measurements deliver
+the value of the transport coefficient at the single density simulated). Furthermore, we point out that our new approach does not
+depend on any microscopic information, but only requires the macroscopic states. This makes it applicable in cases like the simple
+exclusion process, where the individual particles are not exhibiting a diffusive behaviour, and could be particularly beneficial
+in physical experiments or in social sciences, where microscopic data is less accessible. Finally, we note that the proposed
+strategy only requires the initial and final data (at times t0t_{0} and t0+ht_{0}+h), while other methods, such as Green-Kubo or mean
+square displacement, require the full temporal evolution in the simulated time interval.
+6 Conclusions and outlook
+This article considers macroscopically diffusive systems and presents a novel strategy for computing the diffusivity from
+fluctuations in underlying stochastic particle systems. The method works in a wide range of out of equilibrium scenarios;
+specifically, it only requires that the system is in local equilibrium and that it exhibits Gaussian fluctuations. As paradigm for
+out of equilibrium evolution, sinusoidal initial profiles are simulated for particle models for which analytic expressions for the
+diffusivity exist, and an excellent accuracy is observed. In addition, in equilibrium, the method compares well in terms of
+computational cost with mean square displacement, when tested with the same processes, both in serial. The algorithm is trivially
+parallelisable, and taking of advantage of this feature could offer dramatic speedup.
+The method introduced in this article can in principle be extended to an even wider range of problems. The thermodynamic setting
+of Section 2 generalises as follows to purely diffusive systems of the form
+∂tρ=𝒦⁡(ρ)​δ​𝒮δ​ρ​(ρ),\partial_{t}\rho=\mathcal{K}(\rho)\frac{\delta\mathcal{S}}{\delta\rho}(\rho),
+(26)
+where 𝒦\mathcal{K} is a positive semidefinite operator and 𝒮\mathcal{S} is the entropy; (2) is a special case of this
+form. The extension of (4) (or more generally (6)) reads
+∂tρL=𝒦⁡(ρL)​δ​𝒮δ​ρL​(ρL)+1Ld​2​𝒦​(ρL)​W˙x,t;\partial_{t}\rho^{L}=\mathcal{K}(\rho^{L})\frac{\delta\mathcal{S}}{\delta\rho^{L}}(\rho^{L})+\frac{1}{\sqrt{L^{d}}}\sqrt{2\mathcal{K}(\rho^{L})}\dot{W}_{x,t};
+see [27, Eq. (160)], or [8, Eqs. (1.56)–(1.57)]. The fluctuation-dissipation relation establishes
+that the fluctuation operator is directly linked to the dissipative operator 𝒦\mathcal{K}, via a square root operation [7].
+We remark that in this general setting, ρ\rho is a state variable, not necessarily a density. This shows the potential generality
+of the approach, as (26) is the dissipative (non-conservative) part of the GENERIC setting (General
+Equations for Non-Equilibrium Reversible-Irreversible Coupling) [8].
+The feasibility study presented here opens the door to many future investigations. In particular, the method could be extended to
+more complex situations, including, multi-component systems or other transport phenomena. Furthermore, the sequential version,
+sketched in Subsection 5.4, is potentially promising for experimental data and deserves further
+analysis. Establishing a rigorous theory is likely to be a demanding task, as for other methods for the determination of transport
+coefficients. Indeed, in general key assumptions are known rigorously only in few cases. For example, mean square displacement
+methods rely on the observation that a tagged particle behaves under diffusive rescaling like a Brownian motion with diffusion
+matrix σ\sigma. While this proves very successful in a wide variety of cases, rigorous proofs are known only either in some
+equilibrium situations or for the zero-range process out of equilibrium [28], one of test cases studied with the
+method proposed here.
+To conclude, we note that the method can provide insight in the continuum behaviour of particle systems whose
+coarse-grained description is currently unknown, as shown in the following example.
+6.1 Outlook: Kawasaki dynamics
+Kawasaki dynamics is a stochastic process used to model the evolution of surfaces, where the total mass of the substance
+surrounded by the surface is conserved (see, for example, [29, Chapter 18]). One version of this process can be
+described as follows. We assume the surface can be described as a graph, such that the height at lattice position XX is
+η⁡(X)\eta(X). The following dynamics is a modification of the nearest neighbour Ising model with Kawasaki dynamics, which, unlike the
+original model, preserves the graph property under evolution. Several particles can occupy a site and jump to a neighbouring
+position with the rate based on the overall “energy” HH of the system, given by
+H⁡(η)=12​∑X∑|X−X~|=1(η⁡(X~)−η⁡(X))2.H(\eta)=\frac{1}{2}\sum_{X}\sum_{\left\lvert X-\tilde{X}\right\rvert=1}(\eta(\tilde{X})-\eta(X))^{2}.
+(27)
+The rate for a particle at site XX to jump to X~\tilde{X}, thus changing the state from η\eta to ηX,X~\eta^{X,\tilde{X}}, is
+gX→X~​(η):={eH⁡(ηX,X~)eH⁡(ηX,X~)+eH⁡(η)if ​η​(X)>0​ and ​|X~−X|=10otherwise.g_{X\rightarrow\tilde{X}}(\eta):=\begin{cases}\frac{e^{H(\eta^{X,\tilde{X}})}}{e^{H(\eta^{X,\tilde{X}})}+e^{H(\eta)}}&\text{if }\eta(X)>0\text{ and }\left\lvert\tilde{X}-X\right\rvert=1\\
+0&\text{otherwise}\end{cases}.
+Note that although HH depends on the whole state, the jump rate at a site only depends on the occupation numbers at the two sites
+involved in the jump, and their neighbours. To our knowledge, neither the entropy 𝒮\mathcal{S} nor the hydrodynamic limit have been
+rigorously established for this version of Kawasaki dynamics (for a related, simpler, model, the hydrodynamic limit can be
+established [30]). The application of our method to this process is thus speculative. Yet, the governing metric
+is expected to be an H−1H^{-1} metric [31, 30].
+While in principle the entropy 𝒮\mathcal{S} and the mobility mm could depend on ρ\rho and ∇ρ\nabla\rho, a dependency of mm on ρ\rho
+is not expected. Such a conclusion is drawn from the fact that the Hamiltonian (27) is invariant under additions to
+η\eta, and ρ\rho is the expectation of η\eta. We show in Figure 10 supporting evidence for this independence,
+thus suggesting that the macroscopic evolution is governed by a norm independent of ρ\rho, such as the H−1H^{-1} norm. We point
+out that while the independence on ρ\rho is easily observed for high densities, the computational method presented here fails for
+low densities in this test case. This is not surprising, as one would expect the constant profile (in ρ\rho) to appear as a
+result of cancellations, which might not be captured correctly in the numerical computations for small values of ρ\rho. This
+error is somewhat artificial, as only large densities are a good representation of the graph of the surface whose evolution
+Kawasaki dynamics aims to study.
+ 0
+ 0.01
+ 0.02
+ 0.03
+ 0.04
+ 0.05
+ 0.06
+ 0.07
+ 0.08
+ 1
+ 2
+ 3
+ 5
+ 10
+ 15
+ 20
+ 25
+ m
+Figure 10: Results for the Kawasaki type dynamics. Depicted is only the mobility mm, as the diffusivity DD would require the
+knowledge of the entropy of this process. The black, horizontal line at about 0.0770.077 is the mean of the data for large
+ρ\rho. The measurement is based on a1=40a_{1}=40, and an initial profile
+η⁡(tini​L2,X)=12.5⋅(1−cos⁡(2​π​XL))\eta(t_{\mathrm{ini}}L^{2},X)=12.5\cdot\left(1-\cos\left(2\pi\frac{X}{L}\right)\right) is chosen, to better capture the
+non-constant behaviour close to ρ=0\rho=0. The other parameters are the default ones described in
+Subsection 5.1.
+Appendix A Entropy gradient flow and the Wasserstein metric
+The linear diffusion equation can be written as
+∂tρ=Δρ=−div(ρ∇δ​𝒮δ​ρ(ρ))=:𝒦(ρ)δ​𝒮δ​ρ(ρ),\partial_{t}\rho=\Delta\rho=-\mathop{\mathrm{div}}(\rho\nabla\frac{\delta\mathcal{S}}{\delta\rho}(\rho))=:\mathcal{K}(\rho)\frac{\delta\mathcal{S}}{\delta\rho}(\rho),
+(28)
+where 𝒮(ρ)=−∫ρlog(ρ)dx\mathcal{S}(\rho)=-\int\rho\log(\rho)\,\mathrm{d}x is the Boltzmann entropy in dimensionless units; 𝒦\mathcal{K} is the operator
+𝒦(ρ)ξ=−div(ρ∇ξ)\mathcal{K}(\rho)\xi=-\mathop{\mathrm{div}}(\rho\nabla\xi); and δ​𝒮δ​ρ\frac{\delta\mathcal{S}}{\delta\rho} is the variational derivative, δ​𝒮δ​ρ=−log⁡(ρ)−1\frac{\delta\mathcal{S}}{\delta\rho}=-\log(\rho)-1. While the previous
+identity is trivial to verify, the meaning of the term on the right-hand side goes much deeper. Namely, it can be shown that
+𝒦⁡(ρ)​δ​𝒮δ​ρ​(ρ)\mathcal{K}(\rho)\frac{\delta\mathcal{S}}{\delta\rho}(\rho) is the steepest ascent of the entropy in a geometry associated to 𝒦\mathcal{K}, the so-called Wasserstein
+geometry [6]. We sketch some core results forming the background of this article, in particular the gradient
+ascent in the Wasserstein geometry, for (28) on ℝd\mathbb{R}^{d}. It can be seen that natural setting
+for (28) is ρ∈P2​(ℝd)\rho\in P_{2}(\mathbb{R}^{d}), the space of probability measures with finite second moments. This space can
+be equipped with the so-called Wasserstein metric; a result by Benamou and Brenier [32] characterises this
+metric in variational form,
+d​(ρ0,ρ1)2=inf∫01∫ℝdρ⁡(x,t)​|v⁡(x,t)|2​𝑑x​𝑑t,d(\rho_{0},\rho_{1})^{2}=\inf\int_{0}^{1}\int_{\mathbb{R}^{d}}\rho(x,t)\left\lvert v(x,t)\right\rvert^{2}\,\mathrm{d}x\,\mathrm{d}t,
+(29)
+with (pathwise) minimisation over densities ρ\rho and velocities vv satisfying
+∂tρ+div(ρ​v)=0.\partial_{t}\rho+\mathop{\mathrm{div}}(\rho v)=0.
+(30)
+Note that (29) is a problem of optimal transport. Indeed, one can visualise (29) as the cost of moving mass from
+ρ0\rho_{0} to ρ1\rho_{1}. The continuity equation ensures that mass is conserved along the transport; the distance is the optimal one,
+i.e., the one that minimises the cost functional on the right-hand side of (29). Benamou and Brenier also show that the
+velocity field is in fact a gradient, v=∇Ψv=\nabla\Psi. Then, the norm (29) gives formally rise to an inner product,
+(s1,s2)𝒦−1:=∫ρ∇Ψ1∇Ψ2dx,(s_{1},s_{2})_{\mathcal{K}^{-1}}:=\int\rho\nabla\Psi_{1}\nabla\Psi_{2}\,\mathrm{d}x,
+(31)
+where sj=−div(ρ∇Ψj)s_{j}=-\mathop{\mathrm{div}}(\rho\nabla\Psi_{j}) for j=1,2j=1,2.
+We are now in a position to see the Wasserstein gradient flow structure. Namely, a gradient flow of a functional 𝒮\mathcal{S} in a
+geometry given by an inner product is by definition an evolution of the kind that
+(∂tρ,s2)𝒦−1=∫δ​𝒮δ​ρ​s2​𝑑x(\partial_{t}\rho,s_{2})_{\mathcal{K}^{-1}}=\int\frac{\delta\mathcal{S}}{\delta\rho}s_{2}\,\mathrm{d}x
+(32)
+for all suitable test functions s2s_{2} with s2=−div(ρ∇Ψ2)s_{2}=-\mathop{\mathrm{div}}(\rho\nabla\Psi_{2}). Here, this gives
+∫ℝdρ∇Ψ1∇Ψ2dx\displaystyle\int_{\mathbb{R}^{d}}\rho\nabla\Psi_{1}\nabla\Psi_{2}\,\mathrm{d}x
+=−∫ℝd(log(ρ)+1)s2dx\displaystyle=-\int_{\mathbb{R}^{d}}(\log(\rho)+1)s_{2}\,\mathrm{d}x
+with ∂tρ=−div(ρ∇Ψ1)\partial_{t}\rho=-\mathop{\mathrm{div}}(\rho\nabla\Psi_{1}) and s2=−div(ρ∇Ψ2)s_{2}=-\mathop{\mathrm{div}}(\rho\nabla\Psi_{2}). An integration by parts gives
+∫ℝd(div)−1(∂tρ)∇Ψ2dx\displaystyle\int_{\mathbb{R}^{d}}(\mathop{\mathrm{div}})^{-1}(\partial_{t}\rho)\nabla\Psi_{2}\,\mathrm{d}x
+=∫ℝd∇ρ∇Ψ2dx,\displaystyle=\int_{\mathbb{R}^{d}}\nabla\rho\nabla\Psi_{2}\,\mathrm{d}x,
+from which we obtain by integrating by parts once more
+∫ℝd∂tρ​Ψ2​𝑑x\displaystyle\int_{\mathbb{R}^{d}}\partial_{t}\rho\Psi_{2}\,\mathrm{d}x
+=∫ℝdΔ​ρ​Ψ2​𝑑x.\displaystyle=\int_{\mathbb{R}^{d}}\Delta\rho\Psi_{2}\,\mathrm{d}x.
+This is the weak form of the diffusion equation (28).
+For the zero range process discussed in Subsection 4.1, one can analogously define a gradient flow
+structure. We refer the reader to [33].
+Acknowledgements
+All authors thank the Leverhulme Trust for its support via grant RPG-2013-261. JZ gratefully
+acknowledges funding by a Royal Society Wolfson Research Merit Award. ND gratefully acknowledges funding by the EPSRC through
+project EP/M028607/1. PE thanks Cardiff University through the International Collaboration Seedcorn Fund to visit CR. CR further
+thanks the University Research Foundation at Penn. We thank Rob L. Jack and Tim Rogers for helpful discussions and the reviewers
+for their comments.
+References
+[1]
+Frenkel D, Smit B. 2002 Understanding Molecular Simulation vol. 1Computational Science Series.
+Orlando, FL, USA: Academic Press, Inc. second edition.
+[2]
+Keffer DJ, Gao CY, Edwards BJ. 2005 On the Relationship between Fickian
+Diffusivities at the Continuum and Molecular Levels. J. Phys. Chem. B
+109, 5279–5288.
+PMID: 16863195.
+[3]
+Allen MP, Tildesley DJ. 1989 Computer Simulation of Liquids.
+New York, NY, USA: Clarendon Press.
+[4]
+Tuckerman ME. 2010 Statistical mechanics: theory and molecular
+simulation.
+Oxford Graduate Texts. Oxford University Press, Oxford.
+[5]
+Evans DJ, Morriss GP. 2007 Statistical Mechanics of Nonequilibrium
+Liquids.
+ANU Press.
+[6]
+Jordan R, Kinderlehrer D, Otto F. 1998 The variational formulation of the
+Fokker-Planck equation. SIAM J. Math. Anal. 29, 1–17
+(electronic).
+[7]
+Reina C, Zimmer J. 2015 Entropy production and the geometry of dissipative
+evolution equations. Phys. Rev. E 92, 052117, 7.
+[8]
+Öttinger HC. 2005 Beyond equilibrium thermodynamics.
+Wiley Online Library.
+[9]
+Mielke A. 2011 Formulation of thermoelastic dissipative material behavior
+using GENERIC. Contin. Mech. Thermodyn. 23, 233–256.
+[10]
+Dean DS. 1996 Langevin equation for the density of a system of interacting
+Langevin processes. Journal of Physics A: Mathematical and General
+29, L613.
+[11]
+Eyink GL, Lebowitz JL, Spohn H. 1996 Hydrodynamics and fluctuations outside of
+local equilibrium: driven diffusive systems. J. Statist. Phys.
+83, 385–472.
+[12]
+Jack RL, Zimmer J. 2014 Geometrical interpretation of fluctuating
+hydrodynamics in diffusive systems. J. Phys. A 47, 485001, 17.
+[13]
+Hurtado PI, Lasanta A, Prados A. 2013 Typical and rare fluctuations in
+nonlinear driven diffusive systems with dissipation. Phys. Rev. E
+88, 022110.
+[14]
+von Renesse MK, Sturm KT. 2009 Entropic measure and Wasserstein diffusion.
+Ann. Probab. 37, 1114–1191.
+[15]
+Kipnis C, Landim C. 1999 Scaling limits of interacting particle systems
+vol. 320Grundlehren der Mathematischen Wissenschaften [Fundamental
+Principles of Mathematical Sciences].
+Berlin: Springer-Verlag.
+[16]
+Ferrari PA, Presutti E, Vares ME. 1988 Non equilibrium fluctuations for a zero
+range process. Ann. Inst. H. Poincaré Probab. Statist. 24,
+237–268.
+[17]
+Landim C, Milanés A, Olla S. 2008 Stationary and nonequilibrium
+fluctuations in boundary driven exclusion processes. Markov Process.
+Related Fields 14, 165–184.
+[18]
+Barndorff-Nielsen OE, Shephard N. 2002 Econometric analysis of realized
+volatility and its use in estimating stochastic volatility models. J. R.
+Stat. Soc. Ser. B Stat. Methodol. 64, 253–280.
+[19]
+Øksendal B. 2003 Stochastic differential equations.
+Universitext. Springer-Verlag, Berlin sixth edition.
+An introduction with applications.
+[20]
+Guckenheimer J, Holmes P. 1990 Nonlinear oscillations, dynamical systems,
+and bifurcations of vector fields vol. 42Applied Mathematical
+Sciences.
+Springer-Verlag, New York.
+Revised and corrected reprint of the 1983 original.
+[21]
+Dixit UJ. 2016 Examples in parametric inference with R.
+Springer, Singapore.
+[22]
+Bortz AB, Kalos MH, Lebowitz JL. 1975 A new algorithm for Monte Carlo
+simulation of Ising spin systems. J. Computational Phys. 17,
+10–18.
+[23]
+Grosskinsky S, Schütz GM, Spohn H. 2003 Condensation in the zero range
+process: stationary and dynamical properties. J. Statist. Phys.
+113, 389–410.
+[24]
+Abramowitz M, Stegun IA. 1964 Handbook of mathematical functions with
+formulas, graphs, and mathematical tables vol. 55National Bureau of
+Standards Applied Mathematics Series.
+For sale by the Superintendent of Documents, U.S. Government Printing Office,
+Washington, D.C.
+[25]
+Adams S, Dirr N, Peletier M, Zimmer J. 2013 Large deviations and gradient
+flows. Philos. Trans. R. Soc. Lond. Ser. A Math. Phys. Eng. Sci.
+371, 20120341, 17.
+[26]
+Arratia R. 1983 The motion of a tagged particle in the simple symmetric
+exclusion system on 𝐙{\bf Z}. Ann. Probab. 11, 362–373.
+[27]
+Eyink GL. 1990 Dissipation and large thermodynamic fluctuations. J.
+Statist. Phys. 61, 533–572.
+[28]
+Jara M, Landim C, Sethuraman S. 2013 Nonequilibrium fluctuations for a tagged
+particle in one-dimensional sublinear zero-range processes. Ann. Inst.
+Henri Poincaré Probab. Stat. 49, 611–637.
+[29]
+Bovier A, den Hollander F. 2015 Metastability vol. 351Grundlehren
+der Mathematischen Wissenschaften [Fundamental Principles of Mathematical
+Sciences].
+Springer, Cham.
+A potential-theoretic approach.
+[30]
+Nishikawa T. 2017 Hydrodynamic limit for the Ginzburg-Landau
+∇ϕ\nabla\phi interface model with a conservation law and Dirichlet
+boundary conditions. Stochastic Process. Appl. 127, 228–272.
+[31]
+Grunewald N, Otto F, Villani C, Westdickenberg MG. 2009 A two-scale approach
+to logarithmic Sobolev inequalities and the hydrodynamic limit. Ann.
+Inst. Henri Poincaré Probab. Stat. 45, 302–351.
+[32]
+Benamou JD, Brenier Y. 2000 A computational fluid mechanics solution to the
+Monge-Kantorovich mass transfer problem. Numer. Math. 84,
+375–393.
+[33]
+Dirr N, Stamatakis M, Zimmer J. 2016 Entropic and gradient flow formulations
+for nonlinear diffusion. J. Math. Phys. 57, 081505, 13.
+ Experimental support, please
+ view the build logs
+ for errors. Generated by
+ L
+ A
+ T
+ E
+ xml
+ .
+Instructions for reporting errors
+We are continuing to improve HTML versions of papers, and your feedback helps enhance accessibility and mobile
+ support. To report errors in the HTML that will help us improve conversion and rendering, choose any of the
+ methods listed below:
+Click the "Report Issue" (
+ ) button, located in the page header.
+Tip: You can select the relevant text first, to include it in your report.
+Our team has already identified the following issues. We appreciate your time reviewing and reporting rendering errors we
+ may not have found yet. Your efforts will help us improve the HTML versions for all readers, because disability
+ should not be a barrier to accessing research. Thank you for your continued support in championing open access for
+ all.
+Have a free development cycle? Help support accessibility at arXiv! Our collaborators at LaTeXML maintain a list of packages that need conversion, and welcome developer contributions.
+ We gratefully acknowledge support from our major funders,
+ member institutions, ,
+ and all contributors.

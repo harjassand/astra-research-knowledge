@@ -1,0 +1,1896 @@
+
+Perturbation theory for Markov chains via Wasserstein distance
+ // Restore the saved color scheme preference, or
+ // enact the browser preference if "automatic", 
+ // without expecting DOM load to have completed.
+ //
+ // Also restore any saved readingmode and ToC display preferences.
+ function initializeReadingPreferences() {
+ let saved_theme = localStorage.getItem("ar5iv_theme") || "automatic";
+ if (saved_theme === "automatic") {
+ if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+ saved_theme = "dark";
+ }
+ }
+ if (saved_theme == "dark") {
+ document.documentElement.setAttribute("data-theme", "dark");
+ } else {
+ document.documentElement.setAttribute("data-theme", "light");
+ }
+ const tocDisplay = localStorage.getItem('arxiv_html_paper_toc_display');
+ if (tocDisplay) {
+ document.documentElement.setAttribute("data-toc-display", tocDisplay);
+ }
+ const readingMode = localStorage.getItem('arxiv_html_paper_reading_mode');
+ if (readingMode) {
+ document.documentElement.setAttribute("data-reading-mode", readingMode);
+ }
+ }
+ // Run as soon as JS starts, to minimize repainting
+ initializeReadingPreferences();
+ /* Reading mode hides the chrome and the empty .arxiv-html-header marker: the pinned JS reads
+ the marker's display to know which way to toggle. The marker draws no box. */
+ .arxiv-html-header { display: contents; }
+ html[data-reading-mode="enabled"] :is(.arxiv-html-site-chrome, .arxiv-html-header, .ds-site-footer) { display: none; }
+ /* The paper controls' icons are blocks, so they sit centred (the pinned JS shows the theme
+ icon by making its span a block). */
+ .arxiv-html-site-chrome .ds-site-header-tools svg { display: block; width: 18px; height: 18px; flex-shrink: 0; fill: currentColor; }
+ /* ar5iv dims every image in dark mode and puts it on a white wash, for paper figures;
+ arXiv's own render as they are (the logo on the bar, the funder logos on their white
+ chips). Important: ar5iv's dark rules are unlayered, as specific as
+ :root:not([data-theme]) img:not(.ltx_no_dark_filter). */
+ :is(.ds-site-header, .ds-site-footer) img { filter: none !important; }
+ .ds-site-header img { background-color: transparent !important; }
+ /* Wide (the theme's 1280px): the theme lays the body out as a grid whose full-width top rows
+ were the band's and its sticky reader bar's. The band takes the first and scrolls away; the
+ header, the paper's bar (no site navigation, the paper's controls), takes the second and
+ stays in view, the one sticky bar, with the anchor clearance that requires (DESIGN-POLICIES).
+ The controls show their names. */
+ @media (min-width: 1280px) {
+ html { scroll-padding-top: 80px; }
+ .arxiv-html-site-chrome { display: contents; }
+ .arxiv-html-site-chrome > #ds-announcement { grid-area: announce; }
+ .arxiv-html-site-chrome > .ds-site-header { grid-area: header; position: sticky; top: 0; z-index: 3; }
+ .arxiv-html-site-chrome .tool-icon { display: none; }
+ }
+ /* Narrow: the header scrolls away, and the controls show icons (names kept for screen
+ readers; Why HTML? goes). The theme's contents panel is fixed below where its old sticky
+ bar was, and hidden only once the reader has closed it, so until then it is an invisible box
+ over the header and the paper: it shows only while open, under the chrome, in its place in
+ the page. The paper's footer (build logs, reporting instructions) keeps the text's side
+ inset; the theme gives it none, so it met the screen edges. */
+ @media (max-width: 1279px) {
+ .arxiv-html-site-chrome .tool-wide { display: none; }
+ .arxiv-html-site-chrome .tool-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+ html:not([data-toc-display="block"]) .ltx_page_navbar { display: none; }
+ .ltx_page_navbar { position: absolute; top: auto; }
+ .arxiv-html-footer { padding-inline: 1rem; }
+ }
+Skip to main content
+Report GitHub Issue
+ ×
+ Title:
+Content selection saved. Describe the issue below:
+ Description:
+ Submit without GitHub
+ Submit in GitHub
+ Why HTML?
+ Report Issue
+ Back to Abstract
+ Download PDF
+ Contents
+ Reading mode
+ Colour theme
+Abstract
+1 Introduction
+1.1 Related literature
+2 Wasserstein ergodicity
+3 Perturbation bounds
+3.1 Wasserstein perturbation bound
+3.2 Perturbation bounds for geometrically ergodic Markov chains
+4 Applications
+4.1 Autoregressive process
+4.2 Approximate Metropolis-Hastings algorithms
+4.3 Noisy Langevin algorithm for Gibbs random fields
+References
+ License: arXiv.org perpetual non-exclusive license
+arXiv:1503.04123v3 [stat.CO] 23 Feb 2017
+Perturbation theory for Markov chains via Wasserstein distance
+Daniel Rudolf??
+Nikolaus Schweizer??
+Perturbation theory for Markov chains addresses the question of
+how small differences in the transition probabilities
+of Markov chains are reflected in differences between their distributions.
+We prove powerful and flexible bounds on the distance of
+the nnth step distributions
+of two Markov chains when one of them satisfies
+a Wasserstein ergodicity condition.
+Our work is motivated by the recent interest in
+approximate
+Markov chain Monte Carlo (MCMC) methods
+in the analysis of
+big data sets.
+By using an approach based on Lyapunov functions, we
+provide estimates for geometrically ergodic Markov chains
+under
+weak assumptions.
+In an autoregressive model, our bounds cannot be improved in general.
+We illustrate our theory by showing quantitative estimates
+for approximate
+versions of two prominent MCMC algorithms,
+the Metropolis-Hastings
+and stochastic Langevin algorithms.
+keywords
+perturbations
+, Markov chains
+, Wasserstein distance
+, MCMC
+, big data
+fourierlargesymbols147
+and
+??Institut für Mathematische Stochastik, Universität Göttingen,
+Goldschmidtstraße 7, 37077
+Göttingen, Germany.
+??
+??Department of Econometrics & OR, Tilburg University,
+P.O.box 90153, 5000 LE Tilburg, The Netherlands.
+??
+1 Introduction
+Markov chain Monte Carlo (MCMC) algorithms
+are one of the key tools in computational statistics.
+They are used for the approximation of expectations
+with respect to probability measures given by unnormalized
+densities. For almost all classical MCMC methods
+it is essential to evaluate
+the target density. In many cases,
+this requirement is not an issue, but there are also
+important applications where it is a problem.
+This includes applications where the density is not available in closed form, see
+[27],
+or where an exact evaluation is computationally too demanding, see [2].
+Problems of this kind lead to the approximation of Markov chains and
+to the question of
+how small differences in the transitions
+of two Markov chains affect the differences between their distributions.
+In Bayesian inference when big data sets are
+involved an exact evaluation of the target density
+is typically
+very expensive.
+For instance, in each step of a Metropolis-Hastings algorithm
+the likelihood of a proposed
+state
+must be computed.
+Every observation in the underlying data set contributes
+to the likelihood and must be taken into account in the calculation.
+This may result in evaluating
+several terabytes of data in each step of the algorithm.
+These are the reasons for the recent
+interest in numerically cheaper approximations of
+classical MCMC methods, see
+[3, 4, 23, 42, 47].
+A reduction of the computational costs can, e.g., be achieved
+by relying on a moderately sized random subsample of the
+data in each step of the algorithm. The function value of the
+target density is thus replaced by an approximation. Naturally, subsampling
+and alternative attempts at “cutting the Metropolis-Hastings budget”
+[23] induce additional biases.
+These biases can lead to dramatic changes in
+the properties of the algorithms as discussed in [6].
+We thus need a better theoretical understanding of the behavior of such approximate MCMC methods.
+Indeed, a number of recent papers prove estimates of these biases,
+see [2, 3, 19, 24, 29, 35].
+A key tool
+in these papers are perturbation bounds for Markov chains.
+One such result for uniformly ergodic Markov chains due to Mitrophanov [33]
+is used
+in [2].
+A similar perturbation estimate implicitly appears in [3]. The focus on uniformly ergodic Markov chains
+is rather restrictive, especially for high-dimensional, non-compact state spaces such as ℝm\mathbb{R}^{m}.
+Working
+with Wasserstein distances has recently
+turned out to be a fruitful alternative in several contributions on high-dimensional
+MCMC algorithms, see [11, 12, 14, 18, 25].
+We provide perturbation bounds based
+on Wasserstein distances, which
+lead to flexible quantitative estimates of the biases of approximate
+MCMC methods.
+Our first main result is the Wasserstein perturbation
+bound of Theorem 3.1. Under a Wasserstein ergodicity
+assumption, explained in Section 2, it provides
+an upper bound on the distance of the nnth step distribution between
+an ideal and an approximating Markov chain in terms of
+the difference between their one-step transition probabilities.
+The result is well-suited for applications
+on a non-compact state space, since the difference of the one-step transition probabilities
+is measured
+by a weighted supremum with respect to a suitable Lyapunov function.
+For an autoregressive model,
+we show in Section 4.1
+that the resulting perturbation bound cannot be improved in general.
+As a consequence of the Wasserstein approach we also obtain
+perturbation estimates for geometrically ergodic Markov chains.
+We first adapt our Wasserstein perturbation bound to this setting.
+Then, as a second main result, Theorem 3.2,
+we prove a refined
+estimate
+for geometrically ergodic chains where the perturbation
+is measured by a weighted total variation distance.
+Our perturbation bounds,
+and earlier ones in [32, 33], establish a direct
+connection between an exponential convergence property for Markov chains and their
+robustness to perturbations. In particular, fast convergence
+to stationarity implies insensitivity to perturbations in the transition probabilities.
+Geometric ergodicity has been studied extensively in the
+MCMC literature. Thus, our estimates can be used in combination with many existing convergence
+results for MCMC algorithms. In Section 4,
+we illustrate the applicability of both theorems
+by generalizing recent
+findings on
+approximate Metropolis-Hastings algorithms from [3]
+and on noisy Langevin algorithms
+for Gibbs random fields
+from [2].
+1.1 Related literature
+We refer to [20, 21] for an overview of the
+classical literature on perturbation theory for Markov chains.
+However, as Stuart and Shardlow observed in [41], the classical assumptions on the
+perturbation
+might be too restrictive for many interesting applications.
+As a consequence,
+they develop a perturbation theory for geometrically ergodic Markov chains [41]
+which requires to control perturbations
+of iterated transition kernels in a weaker sense.
+In our bounds for geometrically ergodic Markov chains,
+we have similar flexibility in the perturbation due to the Lyapunov-type stability condition,
+and require only a control on the errors of one-step transition kernels.
+Mitrophanov, in [33], considers uniformly ergodic
+Markov chains
+and provides
+the best estimates in those settings.
+In the geometrically ergodic case, there are further
+related results, see [13]
+and the references therein.
+Compared to [13], our
+focus is on non-asymptotic
+estimates
+with explicit constants,
+while their main focus is on qualitative results such as
+inheritance of geometric ergodicity by the perturbation.
+Earlier related results on perturbations induced by floating-point
+roundoff errors are shown in [7, 38].
+Finally, let us point out that our paper
+is complementary to
+the work of
+Pillai and Smith [35]
+who also present Wasserstein perturbation bounds for Markov chains.
+When moving beyond the uniformly ergodic Markov chain case,
+an important challenge is to handle the issue that
+in many applications suprema of relevant quantities
+over the whole state space are infinite.
+The authors of [35] guarantee finiteness
+of supremum norms by restricting attention
+to subsets of the state space.
+Their bounds thus involve exit probabilities from these subsets.
+Our approach circumvents these issues by relying on
+Lyapunov-type stability conditions for the approximate algorithm.
+2 Wasserstein ergodicity
+Let GG be a Polish space
+and ℬ⁡(G)\mathcal{B}(G) be the corresponding Borel σ\sigma-algebra.
+Let dd be a metric, possibly different from the one which makes the space Polish,
+which is assumed to be lower semi-continuous with respect to the product topology of GG.
+Let 𝒫\mathcal{P} be the set of all Borel probability measures on (G,ℬ⁡(G))(G,\mathcal{B}(G)).
+Then, we define
+the Wasserstein distance of ν,μ∈𝒫\nu,\mu\in\mathcal{P} by
+W⁡(ν,μ)=infξ∈M⁡(ν,μ)∫G∫Gd⁡(x,y)​𝑑ξ​(x,y),W(\nu,\mu)=\inf_{\xi\in M(\nu,\mu)}\int_{G}\int_{G}d(x,y)\,{\rm d}\xi(x,y),
+where M⁡(ν,μ)M(\nu,\mu) is the set of all couplings of ν\nu and μ\mu,
+that is, all probability measures ξ\xi on G×GG\times G with marginals ν\nu and μ\mu.
+Indeed, on 𝒫\mathcal{P} the Wasserstein distance satisfies
+the properties of a metric but is not necessarily finite, see [46, Chapter 6]. For a measurable function f:G→ℝf\colon G\to{\mathbb{R}} we define
+‖f‖Lip=supx,y∈G,x≠y|f⁡(x)−f⁡(y)|d⁡(x,y),\left\|f\right\|_{\rm Lip}=\sup_{x,y\in G,x\neq y}\frac{\left|f(x)-f(y)\right|}{d(x,y)},
+which leads to the well-known duality formula
+W⁡(ν,μ)=sup‖f‖Lip≤1|∫Gf⁡(x)​(d​ν​(x)−d​μ​(x))|.W(\nu,\mu)=\sup_{\left\|f\right\|_{\rm Lip}\leq 1}\left|\int_{G}f(x)({\rm d}\nu(x)-{\rm d}\mu(x))\right|.
+(2.1)
+For details we refer to [45, Chapter 1.2].
+By δx\delta_{x} we denote the probability measure concentrated at xx. Hence
+W⁡(δx,δy)=d⁡(x,y)W(\delta_{x},\delta_{y})=d(x,y) is finite for x,y∈Gx,y\in G.
+Let PP be a transition kernel on (G,ℬ⁡(G))(G,\mathcal{B}(G))
+which defines a linear operator P:𝒫→𝒫P\colon\mathcal{P}\to\mathcal{P} given by
+μ​P​(A)=∫GP⁡(x,A)​𝑑μ​(x),μ∈𝒫,A∈ℬ⁡(G).\mu P(A)=\int_{G}P(x,A)\,{\rm d}\mu(x),\quad\mu\in\mathcal{P},\,A\in\mathcal{B}(G).
+With this notation we have δx​P​(A)=P⁡(x,A)\delta_{x}P(A)=P(x,A).
+Further, for a measurable function f:G→ℝf\colon G\to{\mathbb{R}}
+and μ∈𝒫\mu\in\mathcal{P} we have
+∫Gf⁡(x)​d​(μ​P)​(x)=∫GP​f​(x)​𝑑μ​(x),\int_{G}f(x)\,{\rm d}(\mu P)(x)=\int_{G}Pf(x)\,{\rm d}\mu(x),
+with P​f​(x)=∫Gf⁡(y)​P​(x,𝑑y)Pf(x)=\int_{G}f(y)P(x,{\rm d}y) whenever one of the integrals exist,
+see for example [40, Lemma 3.6].
+Now, by
+τ⁡(P):=supx,y∈G,x≠yW⁡(δx​P,δy​P)d⁡(x,y)\tau(P):=\sup_{x,y\in G,x\neq y}\frac{W(\delta_{x}P,\delta_{y}P)}{d(x,y)}
+we define the generalized ergodicity coefficient
+of
+transition kernel PP.
+This coefficient can be understood as a
+generalized Dobrushin ergodicity coefficient, see [8, 9].
+Dobrushin himself called τ⁡(P)\tau(P) the Kantorovich norm of PP,
+see [10, formula (14.34)]. Finally, τ⁡(P)\tau(P) also provides a lower bound of the coarse Ricci curvature of PP introduced
+in [34].
+Two essential properties of the ergodicity coefficient are submultiplicativity
+and contractivity, see [10, Proposition 14.3 and Proposition 14.4].
+Proposition 2.1.
+For two transition kernels PP and P~\widetilde{P} on (G,ℬ⁡(G))(G,\mathcal{B}(G)) and μ,ν∈𝒫\mu,\nu\in\mathcal{P}, we have
+τ⁡(P​P~)\displaystyle\tau(P\widetilde{P})
+≤τ(P)τ(P~)(Submultiplicativity),\displaystyle\leq\tau(P)\tau(\widetilde{P})\qquad\text{(Submultiplicativity)},
+and W⁡(ν​P,μ​P)\displaystyle\text{ and }\quad W(\nu P,\mu P)
+≤τ(P)W(ν,μ)(Contractivity).\displaystyle\leq\tau(P)\,W(\nu,\mu)\qquad\text{(Contractivity)}.
+As an immediate consequence of this contractivity, we obtain the following corollary.
+Corollary 2.1.
+Let PP be a transition kernel with stationary distribution π\pi, i.e. π​P=π\pi P=\pi,
+and assume
+for some (and hence any) x0∈Gx_{0}\in G it holds that ∫Gd⁡(x0,x)​𝑑π​(x)<∞\int_{G}d(x_{0},x)\,{\rm d}\pi(x)<\infty.
+Then
+supx∈GW⁡(δx​P,π)W⁡(δx,π)≤τ⁡(P).\sup_{x\in G}\frac{W(\delta_{x}P,\pi)}{W(\delta_{x},\pi)}\leq\tau(P).
+(2.2)
+Because of the assumption ∫Gd⁡(x0,x)​𝑑π​(x)<∞\int_{G}d(x_{0},x)\,{\rm d}\pi(x)<\infty we have
+that W⁡(δx,π)W(\delta_{x},\pi) is finite for any x∈Gx\in G.
+Thus, the assertion follows by Proposition 2.1
+and stationarity of π\pi.
+∎
+Remark 2.1.
+For some special cases one also has an estimate of the form (2.2)
+in the other direction.
+To this end, consider the trivial metric
+d⁡(x,y)=2⋅𝟏x≠yd(x,y)=2\cdot\mathbf{1}_{x\not=y} with
+indicator function
+𝟏x≠y={1x≠y0x=y.\mathbf{1}_{x\not=y}=\begin{cases}1&x\not=y\\
+0&x=y.\end{cases}
+Further,
+let
+‖q‖tv:=sup‖f‖∞≤1|∫Gf⁡(y)​𝑑q​(y)|=2​supA∈ℬ⁡(G)|q⁡(A)|\left\|q\right\|_{\text{tv}}:=\sup_{\left\|f\right\|_{\infty}\leq 1}\left|\int_{G}f(y)\,{\rm d}q(y)\right|=2\sup_{A\in\mathcal{B}(G)}\left|q(A)\right|
+be the total variation norm of a signed measure qq on GG.
+In this setting W⁡(μ,ν)=‖μ−ν‖tvW(\mu,\nu)=\left\|\mu-\nu\right\|_{\text{tv}}.
+For x,y∈Gx,y\in G with x≠yx\not=y we have
+‖δx−δy‖tv=d⁡(x,y)=2\left\|\delta_{x}-\delta_{y}\right\|_{\text{tv}}=d(x,y)=2
+so that
+τ1​(P)=12​supx,y∈G,x≠y‖δx​P−δy​P‖tv.\tau_{1}(P)=\frac{1}{2}\sup_{x,y\in G,x\not=y}\left\|\delta_{x}P-\delta_{y}P\right\|_{\text{tv}}.
+(2.3)
+The “11” in the subscript of τ1​(P)\tau_{1}(P)
+indicates that we use the trivial metric.
+By applying the triangle inequality of the total variation
+norm we obtain τ1​(P)≤supx∈G‖δx​P−π‖tv\tau_{1}(P)\leq\sup_{x\in G}\left\|\delta_{x}P-\pi\right\|_{\text{tv}}.
+If additionally π\pi is atom-free, i.e., π⁡({y})=0\pi(\{y\})=0 for all y∈Gy\in G,
+we have
+‖δy−π‖tv=2.\left\|\delta_{y}-\pi\right\|_{\text{tv}}=2.
+Then, the previous consideration and (2.2)
+lead to
+12​supx∈G‖δx​P−π‖tv≤τ1​(P)≤supx∈G‖δx​P−π‖tv.\frac{1}{2}\sup_{x\in G}\left\|\delta_{x}P-\pi\right\|_{\text{tv}}\leq\tau_{1}(P)\leq\sup_{x\in G}\left\|\delta_{x}P-\pi\right\|_{\text{tv}}.
+For the moment, let us
+assume that PP is uniformly ergodic, that is, there exist numbers ρ∈[0,1)\rho\in[0,1) and C∈(0,∞)C\in(0,\infty)
+such that
+supx∈G‖δx​Pn−π‖tv≤C​ρn,n∈ℕ.\sup_{x\in G}\left\|\delta_{x}P^{n}-\pi\right\|_{\text{tv}}\leq C\rho^{n},\quad n\in\mathbb{N}.
+An immediate consequence of the uniform ergodicity
+is that
+τ1​(Pn)≤C​ρn\tau_{1}(P^{n})\leq C\rho^{n}.
+Also note that if
+there is an n0∈ℕn_{0}\in\mathbb{N} for which τ⁡(Pn0)<1\tau(P^{n_{0}})<1
+we have by
+the submultiplicativity, see Proposition 2.1, that τ⁡(Pn)\tau(P^{n}) converges exponentially to zero.
+This motivates to impose
+the following assumption which contains the idea
+to measure convergence of δx​Pn\delta_{x}P^{n} to π\pi in terms of τ⁡(Pn)\tau(P^{n}).
+Assumption 2.1 (Wasserstein ergodicity).
+For the transition kernel PP
+there exist
+numbers ρ∈[0,1)\rho\in[0,1) and C∈(0,∞)C\in(0,\infty) such that
+τ⁡(Pn)=supx,y∈G,x≠yW⁡(Pn​(x,⋅),Pn​(y,⋅))d⁡(x,y)≤C​ρn,n∈ℕ.\tau(P^{n})=\sup_{x,y\in G,x\not=y}\frac{W(P^{n}(x,\cdot),P^{n}(y,\cdot))}{d(x,y)}\leq C\rho^{n},\quad n\in\mathbb{N}.
+(2.4)
+For any probability measure p0∈𝒫p_{0}\in\mathcal{P}, a transition kernel PP
+with stationary distribution π\pi
+and pn=p0​Pnp_{n}=p_{0}P^{n}
+we have under the Wasserstein ergodicity condition that
+W⁡(pn,π)≤C​ρn​W​(p0,π).W(p_{n},\pi)\leq C\rho^{n}W(p_{0},\pi).
+3 Perturbation bounds
+By ℕ0={0,1,2,…}\mathbb{N}_{0}=\{0,1,2,\dots\} we denote
+the non-negative integers and assume that
+all random variables are defined on a common probability
+space (Ω,ℱ,ℙ)(\Omega,\mathcal{F},\mathbb{P})
+mapping to a Polish space GG equipped with a lower semi-continuous metric dd.
+Let the sequence of random variables (Xn)n∈ℕ0(X_{n})_{n\in\mathbb{N}_{0}}
+be a Markov chain with transition kernel PP and initial distribution p0p_{0}, i.e.,
+we have almost surely
+ℙ⁡(Xn∈A∣X0,…,Xn−1)=ℙ⁡(Xn∈A∣Xn−1)=P⁡(Xn−1,A),n∈ℕ\mathbb{P}(X_{n}\in A\mid X_{0},\dots,X_{n-1})=\mathbb{P}(X_{n}\in A\mid X_{n-1})=P(X_{n-1},A),\qquad n\in\mathbb{N}
+and p0​(A)=ℙ⁡(X0∈A)p_{0}(A)=\mathbb{P}(X_{0}\in A) for any measurable set A⊆GA\subseteq G.
+Assume that (X~n)n∈ℕ0(\widetilde{X}_{n})_{n\in\mathbb{N}_{0}}
+is another Markov chain with transition kernel P~\widetilde{P}
+and initial distribution p~0\widetilde{p}_{0}.
+We denote by pnp_{n} the distribution of XnX_{n} and by p~n\widetilde{p}_{n}
+the distribution of X~n\widetilde{X}_{n}.
+Throughout the paper, (Xn)n∈ℕ(X_{n})_{n\in\mathbb{N}} is considered to be the ideal,
+unperturbed Markov chain
+we would like to simulate while (X~n)n∈ℕ0(\widetilde{X}_{n})_{n\in\mathbb{N}_{0}}
+is the perturbed Markov chain that we actually implement.
+3.1 Wasserstein perturbation bound
+Similar as in
+[33, Theorem 3.1],
+we show quantitative bounds on the difference of pnp_{n} and p~n\widetilde{p}_{n}, but use the
+Wasserstein distance instead of total variation.
+Besides Assumption 2.1,
+the bounds depend on the difference of
+the initial distributions and on a suitably
+weighted one-step difference between PP and P~\widetilde{P}.
+Theorem 3.1 (Wasserstein perturbation bound).
+Let Assumption 2.1 be satisfied
+with the numbers C∈(0,∞)C\in(0,\infty)
+and ρ∈[0,1)\rho\in[0,1), i.e., τ⁡(Pn)≤C​ρn\tau(P^{n})\leq C\rho^{n}.
+Assume that there are numbers δ∈(0,1)\delta\in(0,1)
+and L∈(0,∞)L\in(0,\infty) and a
+measurable
+Lyapunov function V~:G→[1,∞)\widetilde{V}:G\rightarrow[1,\infty) of P~\widetilde{P} such that
+(P~​V~)​(x)≤δ​V~​(x)+L.(\widetilde{P}\widetilde{V})(x)\leq\delta\widetilde{V}(x)+L.
+(3.1)
+Let
+γ=supx∈GW⁡(δx​P,δx​P~)V~​(x)andκ=max⁡{p~0​(V~),L1−δ}\gamma=\sup_{x\in G}\frac{W(\delta_{x}P,\delta_{x}\widetilde{P})}{\widetilde{V}(x)}\qquad\mbox{and}\qquad\kappa=\max\left\{\widetilde{p}_{0}(\widetilde{V}),\frac{L}{1-\delta}\right\}
+with p~0​(V~)=∫GV~​(x)​d​p~0​(x){\widetilde{p}_{0}}(\widetilde{V})=\int_{G}\widetilde{V}(x)\,{\rm d}{\widetilde{p}_{0}}(x).
+Then
+W⁡(pn,p~n)≤C⁡(ρn​W​(p0,p~0)+(1−ρn)​γ​κ1−ρ).W(p_{n},\widetilde{p}_{n})\leq C\left(\rho^{n}W(p_{0},\widetilde{p}_{0})+(1-\rho^{n})\frac{\gamma\kappa}{1-\rho}\right).
+(3.2)
+By induction one can show that
+p~n−pn=(p~0−p0)​Pn+∑i=0n−1p~i​(P~−P)​Pn−i−1,n∈ℕ.\widetilde{p}_{n}-p_{n}=(\widetilde{p}_{0}-p_{0})P^{n}+\sum_{i=0}^{n-1}\widetilde{p}_{i}(\widetilde{P}-P)P^{n-i-1},\quad n\in\mathbb{N}.
+(3.3)
+We have
+W⁡(p~i​P,p~i​P~)≤∫GW⁡(δx​P,δx​P~)​d​p~i​(x)\displaystyle W(\widetilde{p}_{i}P,\widetilde{p}_{i}\widetilde{P})\leq\int_{G}W(\delta_{x}P,\delta_{x}\widetilde{P})\,{\rm d}\widetilde{p}_{i}(x)
+≤γ​∫GV~​(x)​d​p~i​(x).\displaystyle\leq\gamma\int_{G}\widetilde{V}(x)\,{\rm d}\widetilde{p}_{i}(x).
+Moreover, for i≥0i\geq 0 we have
+∫GV~​(x)​d​p~i​(x)=∫GP~i​V~​(x)​d​p~0​(x)≤δi​p~0​(V~)+L⁡(1−δi)(1−δ)≤max⁡{p~0​(V~),L1−δ}\displaystyle\int_{G}\widetilde{V}(x)\,{\rm d}\widetilde{p}_{i}(x)=\int_{G}\widetilde{P}^{i}\widetilde{V}(x)\,{\rm d}\widetilde{p}_{0}(x)\leq\delta^{i}\widetilde{p}_{0}(\widetilde{V})+\frac{L(1-\delta^{i})}{(1-\delta)}\leq\max\left\{\widetilde{p}_{0}(\widetilde{V}),\frac{L}{1-\delta}\right\}
+so that we obtain W⁡(p~i​P,p~i​P~)≤γ​κW(\widetilde{p}_{i}P,\widetilde{p}_{i}\widetilde{P})\leq\gamma\kappa.
+By this fact
+we have
+W⁡(p~i​P~​Pn−i−1,p~i​P​Pn−i−1)≤γ​κ⋅τ⁡(Pn−i−1).W(\widetilde{p}_{i}\widetilde{P}P^{n-i-1},\widetilde{p}_{i}PP^{n-i-1})\leq\gamma\kappa\cdot\tau(P^{n-i-1}).
+(3.4)
+Then, by (3.3), (3.4) and
+the triangle inequality of the Wasserstein distance we have
+W⁡(pn,p~n)\displaystyle W(p_{n},\widetilde{p}_{n})
+≤W⁡(p0​Pn,p~0​Pn)+∑i=0n−1W⁡(p~i​P~​Pn−i−1,p~i​P​Pn−i−1)\displaystyle\leq W(p_{0}P^{n},\widetilde{p}_{0}P^{n})+\sum_{i=0}^{n-1}W(\widetilde{p}_{i}\widetilde{P}P^{n-i-1},\widetilde{p}_{i}PP^{n-i-1})
+≤W⁡(p0,p~0)​τ​(Pn)+γ​κ​∑i=0n−1τ⁡(Pi).\displaystyle\leq W(p_{0},\widetilde{p}_{0})\tau(P^{n})+\gamma\kappa\sum_{i=0}^{n-1}\tau(P^{i}).
+Finally, by (2.4)
+we obtain
+∑i=0n−1τ⁡(Pi)≤C⁡(1−ρn)1−ρ,\sum_{i=0}^{n-1}\tau(P^{i})\leq\frac{C(1-\rho^{n})}{1-\rho},
+which allows us to complete the proof.
+∎
+Remark 3.1.
+The parameter κ\kappa is an upper bound on p~i​(V~)\widetilde{p}_{i}(\widetilde{V}).
+It can be interpreted as a measure for the stability of the perturbed Markov chain.
+The parameter γ\gamma
+quantifies
+with a weighted supremum norm the one-step difference between
+PP and P~\widetilde{P}.
+The use of the Lyapunov function
+increases the flexibility of the resulting estimate, since
+larger values of V~\widetilde{V} compensate larger
+values of the Wasserstein distance between the kernels.
+Notice that the existence of a Lyapunov function satisfying
+(3.1) is
+weaker than assuming V~\widetilde{V}-uniform ergodicity of P~\widetilde{P} since
+it is not associated with a small set condition. In particular,
+the condition is satisfied for any P~\widetilde{P} with the trivial choice
+V~​(x)=1\widetilde{V}(x)=1 for all x∈Gx\in G, see Corollary 3.2.
+As we will see in Section 4,
+allowing for non-trivial choices of V~\widetilde{V} considerably increases the applicability of our results.
+If P~\widetilde{P} has a stationary distribution, say π~∈𝒫\widetilde{\pi}\in\mathcal{P}, as a consequence
+of the previous theorem,
+we obtain bounds on the difference between π\pi and π~\widetilde{\pi}.
+Corollary 3.1.
+Let the assumptions of Theorem 3.2 be satisfied.
+Assume that P~\widetilde{P} has a stationary distribution π~∈𝒫\widetilde{\pi}\in\mathcal{P} and let
+W⁡(π,π~)W(\pi,\widetilde{\pi}) be finite. Then
+W⁡(π,π~)≤γ​C1−ρ⋅L1−δ.W(\pi,\widetilde{\pi})\leq\frac{\gamma C}{1-\rho}\cdot\frac{L}{1-\delta}.
+(3.5)
+By Theorem 3.2 we obtain with
+p0=πp_{0}=\pi, p~0=π~\widetilde{p}_{0}=\widetilde{\pi}, the stationarity of the distributions π\pi, π~\widetilde{\pi}
+and by letting n→∞n\to\infty
+that
+W⁡(π,π~)≤C​γ​κ1−ρ.W(\pi,\widetilde{\pi})\leq\frac{C\gamma\kappa}{1-\rho}.
+By the Lyapunov condition and [16, Proposition 4.24], it holds that
+π~​(V~)=∫GV~​(x)​𝑑π~​(x)≤L1−δ\widetilde{\pi}(\widetilde{V})=\int_{G}\widetilde{V}(x){\rm d}\widetilde{\pi}(x)\leq\frac{L}{1-\delta}
+which leads to κ≤L/(1−δ)\kappa\leq L/(1-\delta) and finishes the proof.
+∎
+Remark 3.2.
+It may seem artificial to assume W⁡(π,π~)<∞W(\pi,\widetilde{\pi})<\infty but this is needed for the limit argument in the proof.
+This condition is often satisfied a priori. For example, it holds if
+the metric is bounded, i.e., supx,y∈Gd⁡(x,y)\sup_{x,y\in G}d(x,y) is finite, or, more generally, if
+the distributions π\pi and π~\widetilde{\pi} possess a first moment in the sense that
+there exist x0,x~0∈Gx_{0},\widetilde{x}_{0}\in G such that
+∫Gd⁡(x0,x)​𝑑π​(x)<∞,∫Gd⁡(x~0,x)​𝑑π~​(x)<∞.\int_{G}d(x_{0},x)\,{\rm d}\pi(x)<\infty,\qquad\int_{G}d(\widetilde{x}_{0},x)\,{\rm d}\widetilde{\pi}(x)<\infty.
+As pointed out in Remark 3.1, we do not need to impose condition (3.1)
+to obtain a non-trivial perturbation bound:
+Corollary 3.2.
+Assume that Assumption 2.1
+holds with the numbers C∈(0,∞)C\in(0,\infty)
+and ρ∈[0,1)\rho\in[0,1), i.e., τ⁡(Pn)≤C​ρn\tau(P^{n})\leq C\rho^{n}, and
+let
+γ:=supx∈GW⁡(δx​P,δx​P~).\gamma:=\sup_{x\in G}W(\delta_{x}P,\delta_{x}\widetilde{P}).
+Then
+W⁡(pn,p~n)≤C⁡(ρn​W​(p0,p~0)+(1−ρn)​γ1−ρ).W(p_{n},\widetilde{p}_{n})\leq C\left(\rho^{n}W(p_{0},\widetilde{p}_{0})+(1-\rho^{n})\frac{\gamma}{1-\rho}\right).
+(3.6)
+The statement follows by Theorem 3.1 with V~​(x)=1\widetilde{V}(x)=1
+and L=1−δL=1-\delta.
+∎
+Remark 3.3.
+For the trivial metric d⁡(x,y)=2⋅𝟏x≠yd(x,y)=2\cdot\mathbf{1}_{x\not=y}
+the last corollary states essentially the result of [33, Theorem 3.1],
+where instead of the general Wasserstein distance
+the total variation distance is used. There, the bound’s
+dependence on CC and ρ\rho can be further improved
+by using the a priori bound τ1​(Pn)≤1\tau_{1}(P^{n})\leq 1 in addition
+to uniform ergodicity.
+For another metric dd such an a priori bound is in general not available.
+Remark 3.4.
+Table 1 provides
+a detailed comparison between our
+Theorem 3.1 and the related
+Wasserstein perturbation result of Pillai and
+Smith, [35, Lemma 3.3]. An important
+ingredient in their estimate is a set G^⊆G\widehat{G}\subseteq G
+which can be interpreted as the part of GG where
+both Markov chains remain with high probability.
+When a good uniform upper bound on
+W⁡(δx​P,δx​P~)W(\delta_{x}P,\delta_{x}\widetilde{P}) for all x∈Gx\in G is available,
+we can choose G^=G\widehat{G}=G in [35, Lemma 3.3] and V~​(x)=1\widetilde{V}(x)=1
+in Theorem 3.1. In that case,
+both results essentially simplify to Corollary 3.2.
+The results become entirely different when such a
+bound is not available or too rough.
+In our estimate, one then needs a non-trivial Lyapunov
+function for P~\widetilde{P} and a uniform upper bound
+on W⁡(δx​P,δx​P~)/V~​(x)W(\delta_{x}P,\delta_{x}\widetilde{P})/\widetilde{V}(x).
+To apply their estimate, one needs a uniform
+bound on W⁡(δx​P,δx​P~)W(\delta_{x}P,\delta_{x}\widetilde{P}) for all x∈G^x\in\widehat{G}.
+In addition, a bound on π⁡(G∖G^)\pi(G\setminus\widehat{G}),
+Lyapunov functions and estimates of the exit probabilities
+from G^\widehat{G} of both Markov chains need to be available.
+Finally, while [35, Lemma 3.3]
+requires slightly more regularity on the Lyapunov function,
+contractivity of the unperturbed
+transition kernel
+PP (with C=1C=1) is not
+needed on the whole state space but only on G^\widehat{G}.
+Table 1.: Comparison of the Wasserstein perturbation
+bound of [35, Lemma 3.3] and Theorem 3.1.
+Here ρ,δ∈[0,1)\rho,\delta\in[0,1), L,cp,C,D∈(0,∞)L,c_{p},C,D\in(0,\infty),
+V:G→[0,∞)V\colon G\to[0,\infty), V~:G→[1,∞)\widetilde{V}\colon G\to[1,\infty) and
+E⁡(x)=∫Gd⁡(x,y)​𝑑π​(y).E(x)=\int_{G}d(x,y){\rm d}\pi(y).
+Assumptions of
+[35, Lemma 3.3]
+Assumptions of
+Theorem 3.1
+Convergence
+property
+∃G^⊆Gs.t.supx,y∈G^W⁡(δx​P,δy​P)d⁡(x,y)≤ρ{\displaystyle\exists\widehat{G}\subseteq G\quad\text{s.t.}\quad\sup_{x,y\in\widehat{G}}\frac{W(\delta_{x}P,\delta_{y}P)}{d(x,y)}\leq\rho}
+τ⁡(Pn)≤C​ρn\tau(P^{n})\leq C\rho^{n}
+Lyapunov function
+P​V​(x)≤δ​V​(x)+LPV(x)\leq\delta V(x)+L
+P~​V​(x)≤δ​V​(x)+L\widetilde{P}V(x)\leq\delta V(x)+L
+P~​V~​(x)≤δ​V~​(x)+L\widetilde{P}\widetilde{V}(x)\leq\delta\widetilde{V}(x)+L
+Drift regularity
+𝔼⁡[V⁡(Xn+1∣Xn=x,Xn+1∉G^)]≤C\mathbb{E}[V(X_{n+1}\mid X_{n}=x,X_{n+1}\not\in\widehat{G})]\leq C
+𝔼⁡[V⁡(X~n+1∣X~n=x,X~n+1∉G^)]≤C\mathbb{E}[V(\widetilde{X}_{n+1}\mid\widetilde{X}_{n}=x,\widetilde{X}_{n+1}\not\in\widehat{G})]\leq C
+∃p∈G^s.t.d⁡(x,p)≤V⁡(x)+cp\exists p\in\widehat{G}\quad\text{s.t.}\quad d(x,p)\leq V(x)+c_{p}
+—
+Perturbation error
+γ^:=supx∈G^W⁡(δx​P,δx​P~){\displaystyle\widehat{\gamma}:=\sup_{x\in\widehat{G}}W(\delta_{x}P,\delta_{x}\widetilde{P})}
+γ:=supx∈GW⁡(δx​P,δx​P~)V~​(x){\displaystyle\gamma:=\sup_{x\in G}\frac{W(\delta_{x}P,\delta_{x}\widetilde{P})}{\widetilde{V}(x)}}
+Regularity of π\pi
+∫G∖G^V⁡(x)​𝑑π​(x)≤D\int_{G\setminus\widehat{G}}V(x){\rm d}\pi(x)\leq D
+π⁡(G∖G^)\pi(G\setminus\widehat{G}) small
+—
+Conclusion:
+Upper bound of
+W⁡(δx​P~n,π)W(\delta_{x}\widetilde{P}^{n},\pi)
+ρn​E​(x)+γ^1−ρ+\rho^{n}E(x)+\frac{\widehat{\gamma}}{1-\rho}+
+(2​L1−δ+δn​(V⁡(x)+D)+cp)​π​(G∖G^)\left(\frac{2L}{1-\delta}+\delta^{n}(V(x)+D)+c_{p}\right)\pi(G\setminus\widehat{G}) +
+2(1−ℙ[{Xj}j=1n−1∪{X~j}j=1n−1⊆G^])(C+L1−δ+cp)2(1-\mathbb{P}[\{X_{j}\}_{j=1}^{n-1}\cup\{\widetilde{X}_{j}\}_{j=1}^{n-1}\subseteq\widehat{G}])(C+\frac{L}{1-\delta}+c_{p})
+C​ρn​E​(x)+C\rho^{n}E(x)+
+C​γ1−ρ​max⁡{V~​(x),L1−δ}\frac{C\gamma}{1-\rho}\max\{\widetilde{V}(x),\frac{L}{1-\delta}\}
+3.2 Perturbation bounds for geometrically ergodic Markov chains
+In this section, we derive
+general perturbation bounds
+for
+geometrically ergodic Markov chains.
+First, we recall some results from [17], [26]
+and [36] which are helpful
+to apply our Wasserstein perturbation bounds in the geometrically ergodic case.
+Then we present the new estimates:
+• 
+Corollary 3.3 is an application of Theorem 3.1
+with Wasserstein distances replaced by VV-norms of differences between measures.
+• 
+In Corollary 3.4, we show that having a Lyapunov function VV for PP is sufficient
+for our bounds if the transition kernels PP and P~\widetilde{P} are sufficiently close (in a suitable sense).
+• 
+In Theorem 3.2, we provide a quantitative perturbation bound which still applies
+if we can only control the total variation distance between P⁡(x,⋅)P(x,\cdot) and P~​(x,⋅)\widetilde{P}(x,\cdot).
+To measure the perturbation in such a weak sense is new for geometrically ergodic Markov chains.
+A transition kernel PP
+with stationary distribution π\pi
+is called geometrically ergodic if there is a constant ρ∈[0,1)\rho\in[0,1)
+and a measurable function C:G→(0,∞)C\colon G\to(0,\infty)
+such that for π\pi-a.e. x∈Gx\in G we have
+‖Pn​(x,⋅)−π‖tv≤C⁡(x)​ρn.\left\|P^{n}(x,\cdot)-\pi\right\|_{\text{tv}}\leq C(x)\rho^{n}.
+For ϕ\phi-irreducible and aperiodic Markov chains, it is well known
+that
+geometric ergodicity is equivalent to VV-uniform ergodicity, see [36, Proposition 2.1].
+Namely, if PP is geometrically ergodic, then
+there exists a π\pi-a.e. finite measurable function V:G→[1,∞]V\colon G\to[1,\infty]
+with finite moments with respect to π\pi and there are constants ρ∈[0,1)\rho\in[0,1)
+and C∈(0,∞)C\in(0,\infty) such that
+‖Pn​(x,⋅)−π‖V:=sup|f|≤V|∫Gf⁡(y)​(Pn​(x,𝑑y)−π⁡(𝑑y))|≤C​V​(x)​ρn,x∈G,n∈ℕ.\left\|P^{n}(x,\cdot)-\pi\right\|_{V}:=\sup_{\left|f\right|\leq V}\left|\int_{G}f(y)(P^{n}(x,{\rm d}y)-\pi({\rm d}y))\right|\leq CV(x)\rho^{n},\quad x\in G,n\in\mathbb{N}.
+Thus
+supx∈G‖Pn​(x,⋅)−π‖VV⁡(x)≤C​ρn.\sup_{x\in G}\frac{\left\|P^{n}(x,\cdot)-\pi\right\|_{V}}{V(x)}\leq C\rho^{n}.
+(3.7)
+The following result establishes
+the connection between VV-norms and certain Wasserstein distances.
+It is basically due to Hairer and Mattingly [17],
+see also
+[26].
+Lemma 3.1.
+Assume that VV is lower semi-continuous on GG.
+For x,y∈Gx,y\in G, let us define the metric
+dV​(x,y)=(V⁡(x)+V⁡(y))​𝟏x≠y={V⁡(x)+V⁡(y)x≠y0x=y.d_{V}(x,y)=(V(x)+V(y))\mathbf{1}_{x\not=y}=\begin{cases}V(x)+V(y)&x\not=y\\
+0&x=y.\end{cases}
+Then, for any μ,ν∈𝒫\mu,\nu\in\mathcal{P}
+we have
+‖μ−ν‖V=WdV​(μ,ν),\left\|\mu-\nu\right\|_{V}=W_{d_{V}}(\mu,\nu),
+(3.8)
+where WdVW_{d_{V}} denotes the Wasserstein distance based on the metric dVd_{V}.
+Lower semi-continuity of VV implies lower semi-continuity of dVd_{V},
+which leads to the duality formula (2.1)
+by [45, Theorem 1.14].
+We thus impose the standing assumption of
+lower semi-continuity of VV whenever we speak of VV-uniform ergodicity in the following.
+In principle, this requirement can be removed and (3.8) remains true,
+but we do not go into further detail in that direction. In applications, this is typically not restrictive since VV is continuous anyway.
+By similar arguments as in the proof of [26, Theorem 1.1]
+we observe that (3.7) implies
+a suitable upper bound on
+τV​(P)=supx,y∈G,x≠yWdV​(δx​P,δy​P)dV​(x,y)=supx,y∈G,x≠y‖P⁡(x,⋅)−P⁡(y,⋅)‖VV⁡(x)+V⁡(y).\tau_{V}(P)=\sup_{x,y\in G,\,x\not=y}\frac{W_{d_{V}}(\delta_{x}P,\delta_{y}P)}{d_{V}(x,y)}=\sup_{x,y\in G,\,x\not=y}\frac{\left\|P(x,\cdot)-P(y,\cdot)\right\|_{V}}{V(x)+V(y)}.
+Lemma 3.2.
+If (3.7) is satisfied for the transition kernel PP, then
+τV​(Pn)≤C​ρn.\tau_{V}(P^{n})\leq C\rho^{n}.
+For any positive real numbers a1,a2,b1,b2a_{1},a_{2},b_{1},b_{2} we have the following elementary inequality
+a1+a2b1+b2≤max⁡{a1b1,a2b2}.\frac{a_{1}+a_{2}}{b_{1}+b_{2}}\leq\max\left\{\frac{a_{1}}{b_{1}},\frac{a_{2}}{b_{2}}\right\}.
+(3.9)
+By (3.9) we obtain
+τV​(Pn)\displaystyle\tau_{V}(P^{n})
+=supx,y∈G,x≠yWdV​(δx​Pn,δy​Pn)dV​(x,y)≤supx,y∈G,x≠y‖Pn​(x,⋅)−π‖V+‖Pn​(y,⋅)−π‖VV⁡(x)+V⁡(y)\displaystyle=\sup_{x,y\in G,\,x\neq y}\frac{W_{d_{V}}(\delta_{x}P^{n},\delta_{y}P^{n})}{d_{V}(x,y)}\leq\sup_{x,y\in G,\,x\neq y}\frac{\|P^{n}(x,\cdot)-\pi\|_{V}+\|P^{n}(y,\cdot)-\pi\|_{V}}{V(x)+V(y)}
+≤supx,y∈Gmax⁡{‖Pn​(x,⋅)−π‖VV⁡(x),‖Pn​(y,⋅)−π‖VV⁡(y)}=supx∈G‖Pn​(x,⋅)−π‖VV⁡(x).\displaystyle\leq\sup_{x,y\in G}\max\left\{\frac{\|P^{n}(x,\cdot)-\pi\|_{V}}{V(x)},\frac{\|P^{n}(y,\cdot)-\pi\|_{V}}{V(y)}\right\}=\sup_{x\in G}\frac{\|P^{n}(x,\cdot)-\pi\|_{V}}{V(x)}.
+Now, by using (3.7) we obtain the assertion.
+∎The lemmas above and Theorem 3.1 lead to the following new
+perturbation bound for geometrically ergodic Markov chains.
+Corollary 3.3.
+Let PP be VV-uniformly ergodic, i.e.,
+there are constants ρ∈[0,1)\rho\in[0,1)
+and C∈(0,∞)C\in(0,\infty) such that
+‖Pn​(x,⋅)−π‖V≤C​V​(x)​ρn,x∈G,n∈ℕ.\left\|P^{n}(x,\cdot)-\pi\right\|_{V}\leq CV(x)\rho^{n},\quad x\in G,n\in\mathbb{N}.
+We also assume that there are numbers δ∈(0,1)\delta\in(0,1)
+and L∈(0,∞)L\in(0,\infty) and a
+measurable Lyapunov function V~:G→[1,∞)\widetilde{V}:G\rightarrow[1,\infty) of P~\widetilde{P}
+such that
+(P~​V~)​(x)≤δ​V~​(x)+L.(\widetilde{P}\widetilde{V})(x)\leq\delta\widetilde{V}(x)+L.
+(3.10)
+Let
+γ=supx∈G‖P⁡(x,⋅)−P~​(x,⋅)‖VV~​(x)andκ=max⁡{p~0​(V~),L1−δ}\gamma=\sup_{x\in G}\frac{\left\|P(x,\cdot)-\widetilde{P}(x,\cdot)\right\|_{V}}{\widetilde{V}(x)}\qquad\mbox{and}\qquad\kappa=\max\left\{\widetilde{p}_{0}(\widetilde{V}),\frac{L}{1-\delta}\right\}
+with p0~​(V~)=∫GV~​(x)​d​p~0​(x)\widetilde{p_{0}}(\widetilde{V})=\int_{G}\widetilde{V}(x)\,{\rm d}{\widetilde{p}_{0}}(x).
+Then
+‖pn−p~n‖V≤C⁡(ρn​‖p0−p~0‖V+(1−ρn)​γ​κ1−ρ).\left\|p_{n}-\widetilde{p}_{n}\right\|_{V}\leq C\left(\rho^{n}\left\|p_{0}-\widetilde{p}_{0}\right\|_{V}+(1-\rho^{n})\frac{\gamma\kappa}{1-\rho}\right).
+(3.11)
+Remark 3.5.
+In [41, Theorem 3.1], a related perturbation bound is proven.
+The convergence property of the unperturbed transition kernel
+is slightly weaker than our VV-uniform ergodicity, but
+also based on a kind of Lyapunov function.
+More restrictively, there it is assumed that the difference of PnP^{n} and P~n\widetilde{P}^{n}
+for all n>0n>0 can be controlled. In addition,
+the perturbation error is measured with a weight given
+by the same Lyapunov function as in the convergence property of PP,
+but by taking a supremum over a subset of test functions.
+With our approach we can take the supremum over all test functions and obtain
+similar estimates by setting p0=πp_{0}=\pi.
+The next corollary demonstrates how the Lyapunov function of P~\widetilde{P}
+can be replaced by a Lyapunov function of PP,
+provided that the distance between the transition kernels is sufficiently small.
+Notice that assuming the existence of
+a Lyapunov function of PP
+in addition to the VV-uniform ergodicity
+is a definition of constants rather than an additional requirement,
+see, e.g., [5].
+Corollary 3.4.
+Let PP be VV-uniformly ergodic, i.e.,
+there are constants ρ∈[0,1)\rho\in[0,1)
+and C∈(0,∞)C\in(0,\infty) such that
+‖Pn​(x,⋅)−π‖V≤C​V​(x)​ρn,x∈G,n∈ℕ.\left\|P^{n}(x,\cdot)-\pi\right\|_{V}\leq CV(x)\rho^{n},\quad x\in G,n\in\mathbb{N}.
+Moreover, V:G→[1,∞)V\colon G\to[1,\infty) is a measurable Lyapunov function of PP, such that
+(P​V)​(x)≤δ​V​(x)+L(PV)(x)\leq\delta V(x)+L
+(3.12)
+with constants δ∈(0,1)\delta\in(0,1) and L∈(0,∞)L\in(0,\infty).
+Let
+γ=supx∈G‖P⁡(x,⋅)−P~​(x,⋅)‖VV⁡(x)andκ=max⁡{p~0​(V),L1−δ−γ}\gamma=\sup_{x\in G}\frac{\left\|P(x,\cdot)-\widetilde{P}(x,\cdot)\right\|_{V}}{V(x)}\qquad\mbox{and}\qquad\kappa=\max\left\{\widetilde{p}_{0}(V),\frac{L}{1-\delta-\gamma}\right\}
+with p0~​(V)=∫GV⁡(x)​d​p~0​(x)\widetilde{p_{0}}(V)=\int_{G}V(x)\,{\rm d}{\widetilde{p}_{0}}(x).
+If γ+δ<1\gamma+\delta<1, then
+‖pn−p~n‖V≤C⁡(ρn​‖p0−p~0‖V+(1−ρn)​γ​κ1−ρ).\left\|p_{n}-\widetilde{p}_{n}\right\|_{V}\leq C\left(\rho^{n}\left\|p_{0}-\widetilde{p}_{0}\right\|_{V}+(1-\rho^{n})\frac{\gamma\kappa}{1-\rho}\right).
+(3.13)
+It suffices to show that
+(P~​V)​(x)≤(δ+γ)​V​(x)+L(\widetilde{P}V)(x)\leq(\delta+\gamma)V(x)+L
+(3.14)
+and then to apply Corollary 3.3. We have
+((P~−P)​V)​(x)≤|((P~−P)​V)​(x)|≤‖P~​(x,⋅)−P⁡(x,⋅)‖V≤γ​V​(x)((\widetilde{P}-P)V)(x)\leq|((\widetilde{P}-P)V)(x)|\leq\left\|\widetilde{P}(x,\cdot)-P(x,\cdot)\right\|_{V}\leq\gamma\,V(x)
+which implies (3.14).
+The assertion follows by the assumption that δ+γ<1\delta+\gamma<1 and an application of Corollary 3.3.
+∎
+Remark 3.6.
+For discrete state spaces and under the requirement p0=p~0p_{0}=\widetilde{p}_{0},
+a result similar to the previous corollary is obtained in
+[21, Theorem 3, Corollary 3].
+The authors of [21] replace our constant κ\kappa by max0≤i≤n⁡p~i​(V)\max_{0\leq i\leq n}\widetilde{p}_{i}(V).
+This we could do as well, see the proof of Theorem 3.1.
+In the perturbation bound of Corollary 3.3, the function VV plays two roles.
+In its first role, VV appears in the VV-uniform ergodicity condition
+and thus is used to quantify convergence of PP.
+In its second role, VV appears in the constant γ\gamma, with which we compare PP and P~\widetilde{P}, as well as
+in the definition of the distance between
+pnp_{n} and p~n\widetilde{p}_{n}.
+We can interpret γ\gamma of Corollary 3.3
+as an operator norm of P−P~P-\widetilde{P}.
+To this end, let BVB_{V} be the set of all
+measurable functions f:G→ℝf\colon G\to{\mathbb{R}}
+with finite
+|f|V:=supx∈G|f⁡(x)|V⁡(x),\left|f\right|_{V}:=\sup_{x\in G}\frac{\left|f(x)\right|}{V(x)},
+(3.15)
+which means
+BV={f:G→ℝ∣|f|V<∞}.B_{V}=\left\{f\colon G\to{\mathbb{R}}\mid\left|f\right|_{V}<\infty\right\}.
+It is easily seen that (BV,|⋅|V)(B_{V},\left|\cdot\right|_{V}) is a normed linear space.
+In the setting of Corollary 3.3, we have
+\VERT​P−P~​\VERTBV→BV~:=sup|f|V≤1|(P−P~)​f|V~=γ.\left\VERT P-\widetilde{P}\right\VERT_{B_{V}\to B_{\widetilde{V}}}:=\sup_{\left|f\right|_{V}\leq 1}\left|(P-\widetilde{P})f\right|_{\widetilde{V}}=\gamma.
+(3.16)
+In Corollary 3.4, the more restrictive case
+V=V~V=\widetilde{V} is considered.
+The corresponding operator norm \VERT​P−P~​\VERTBV→BV\VERT P-\widetilde{P}\VERT_{B_{V}\to B_{V}}
+appears in classical perturbation theory for Markov chains,
+see [20, 21].
+But as discussed in [41, p. 1126] and [13] it might be too restrictive
+to measure the perturbation with this operator norm for V=V~V=\widetilde{V}.
+By relying, e.g., on [28, Proposition 2] we have some flexibility in the choice of VV.
+There it is shown that, for r∈(0,1)r\in(0,1), VV-uniform ergodicity implies VrV^{r}-uniform ergodicity.
+This leads to less favorable constants in the VrV^{r}-uniform ergodicity of PP,
+but can relax the requirements on the similarity of PP and P~\widetilde{P}.
+Namely, with a Lyapunov function V~\widetilde{V} of P~\widetilde{P} we can apply
+Corollary 3.3
+with a VrV^{r}-uniformly ergodic PP and γ=\VERT​P−P~​\VERTBVr→BV~\gamma=\VERT P-\widetilde{P}\VERT_{B_{V^{r}}\to B_{\widetilde{V}}}.
+Unfortunately, this approach breaks down for r=0r=0. To see this, notice that VrV^{r}-uniform ergodicity
+with r=0r=0 is just uniform ergodicity which is not implied by geometric ergodicity.
+The next theorem overcomes this limitation by separating the two roles of the function VV
+in the previous perturbation bounds. Roughly,
+we set V=1V=1 in the sense that we measure the
+distances between PP
+and P~\widetilde{P} as well as between pnp_{n} and p~n\widetilde{p}_{n} in the total variation distance.
+At the same time,
+we set V=V~V=\widetilde{V} in the sense that
+we assume PP is V~\widetilde{V}-uniformly ergodic with
+Lyapunov function V~\widetilde{V}.
+Theorem 3.2.
+Let PP be V~\widetilde{V}-uniformly ergodic, i.e.,
+there are constants ρ∈[0,1)\rho\in[0,1)
+and
+C∈(0,∞)C\in(0,\infty)
+such that
+‖Pn​(x,⋅)−π‖V~≤C​V~​(x)​ρn,x∈G,n∈ℕ.\left\|P^{n}(x,\cdot)-\pi\right\|_{\widetilde{V}}\leq C\widetilde{V}(x)\rho^{n},\quad x\in G,n\in\mathbb{N}.
+Moreover, V~:G→[1,∞)\widetilde{V}\colon G\to[1,\infty)
+is a measurable Lyapunov function of P~\widetilde{P} and PP, such that
+(P~​V~)​(x)≤δ​V~​(x)+L,and(P​V~)​(x)≤V~​(x)+L,(\widetilde{P}\widetilde{V})(x)\leq\delta\widetilde{V}(x)+L,\qquad\text{and}\qquad(P\widetilde{V})(x)\leq\widetilde{V}(x)+L,
+with constants δ∈(0,1)\delta\in(0,1) and L∈(0,∞)L\in(0,\infty).
+Let
+γ=supx∈G‖P⁡(x,⋅)−P~​(x,⋅)‖tvV~​(x)andκ=max⁡{p~0​(V~),L1−δ}\gamma=\sup_{x\in G}\frac{\left\|P(x,\cdot)-\widetilde{P}(x,\cdot)\right\|_{{\rm tv}}}{\widetilde{V}(x)}\qquad\mbox{and}\qquad\kappa=\max\left\{\widetilde{p}_{0}(\widetilde{V}),\frac{L}{1-\delta}\right\}
+(3.17)
+with p0~​(V~)=∫GV~​(x)​d​p~0​(x)\widetilde{p_{0}}(\widetilde{V})=\int_{G}\widetilde{V}(x)\,{\rm d}{\widetilde{p}_{0}}(x).
+Then, for γ∈(0,exp⁡(−1))\gamma\in(0,\exp(-1)) we have
+‖pn−p~n‖tv≤C​ρn​‖p0−p~0‖V~+κ​exp⁡(1)1−ρ​(2​C​(L+1))log⁡(γ−1)−1​γ​log⁡(γ−1).\left\|p_{n}-\widetilde{p}_{n}\right\|_{{\rm tv}}\leq C\rho^{n}\left\|p_{0}-\widetilde{p}_{0}\right\|_{\widetilde{V}}+\frac{\kappa\,\exp(1)}{1-\rho}\,(2C(L+1))^{\log(\gamma^{-1})^{-1}}\,\gamma\log(\gamma^{-1}).
+(3.18)
+From the proof of Theorem 3.2 we know that
+‖p~n−pn‖tv≤‖(p~0−p0)​Pn‖tv+∑i=0n−1‖p~i​(P~−P)​Pn−i−1‖tv,n∈ℕ.\left\|\widetilde{p}_{n}-p_{n}\right\|_{\text{tv}}\leq\left\|(\widetilde{p}_{0}-p_{0})P^{n}\right\|_{\text{tv}}+\sum_{i=0}^{n-1}\left\|\widetilde{p}_{i}(\widetilde{P}-P)P^{n-i-1}\right\|_{\text{tv}},\quad n\in\mathbb{N}.
+By Lemma 3.2, we have
+‖(p~0−p0)​Pn‖tv≤‖(p~0−p0)​Pn‖V~≤C​ρn​‖p~0−p0‖V~.\left\|(\widetilde{p}_{0}-p_{0})P^{n}\right\|_{\text{tv}}\leq\left\|(\widetilde{p}_{0}-p_{0})P^{n}\right\|_{\widetilde{V}}\leq C\rho^{n}\left\|\widetilde{p}_{0}-p_{0}\right\|_{\widetilde{V}}.
+Fix a real number r∈(0,1)r\in(0,1) and let s=1−rs=1-r.
+By considering (2.3) one can see that
+τ1​(P)≤1\tau_{1}(P)\leq 1.
+This leads to
+‖p~i​(P~−P)​Pn−i−1‖tv\displaystyle\left\|\widetilde{p}_{i}(\widetilde{P}-P)P^{n-i-1}\right\|_{\text{tv}}
+≤‖p~i​(P~−P)​Pn−i−1‖tvr​‖p~i​(P~−P)​Pn−i−1‖V~s\displaystyle\leq\left\|\widetilde{p}_{i}(\widetilde{P}-P)P^{n-i-1}\right\|_{\text{tv}}^{r}\left\|\widetilde{p}_{i}(\widetilde{P}-P)P^{n-i-1}\right\|_{\widetilde{V}}^{s}
+≤‖p~i​(P~−P)‖tvr​‖p~i​(P~−P)‖V~s​τV~​(Pn−i−1)s.\displaystyle\leq\left\|\widetilde{p}_{i}(\widetilde{P}-P)\right\|_{\text{tv}}^{r}\left\|\widetilde{p}_{i}(\widetilde{P}-P)\right\|_{\widetilde{V}}^{s}\tau_{\widetilde{V}}(P^{n-i-1})^{s}.
+We also have
+‖p~i​(P~−P)‖tv\displaystyle\left\|\widetilde{p}_{i}(\widetilde{P}-P)\right\|_{\text{tv}}
+≤∫G‖δx​P−δx​P~‖tv​d​p~i​(x)≤γ​∫GV~​(x)​d​p~i​(x),\displaystyle\leq\int_{G}\left\|\delta_{x}P-\delta_{x}\widetilde{P}\right\|_{\text{tv}}{\rm d}\widetilde{p}_{i}(x)\leq\gamma\int_{G}\widetilde{V}(x)\,{\rm d}\widetilde{p}_{i}(x),
+‖p~i​(P~−P)‖V~\displaystyle\left\|\widetilde{p}_{i}(\widetilde{P}-P)\right\|_{\widetilde{V}}
+≤∫GWdV~​(δx​P,δx​P~)​d​p~i​(x)≤supx∈GWdV~​(δx​P,δx​P~)V~​(x)​∫GV~​(x)​d​p~i​(x).\displaystyle\leq\int_{G}W_{d_{\widetilde{V}}}(\delta_{x}P,\delta_{x}\widetilde{P})\,{\rm d}\widetilde{p}_{i}(x)\leq\sup_{x\in G}\frac{W_{d_{\widetilde{V}}}(\delta_{x}P,\delta_{x}\widetilde{P})}{\widetilde{V}(x)}\int_{G}\widetilde{V}(x)\,{\rm d}\widetilde{p}_{i}(x).
+Moreover, for i≥0i\geq 0 we obtain
+∫GV~​(x)​d​p~i​(x)=∫GP~i​V~​(x)​d​p~0​(x)≤δi​p~0​(V~)+L⁡(1−δi)(1−δ)≤κ,\displaystyle\int_{G}\widetilde{V}(x)\,{\rm d}\widetilde{p}_{i}(x)=\int_{G}\widetilde{P}^{i}\widetilde{V}(x)\,{\rm d}\widetilde{p}_{0}(x)\leq\delta^{i}\widetilde{p}_{0}(\widetilde{V})+\frac{L(1-\delta^{i})}{(1-\delta)}\leq\kappa,
+and, by
+WdV~​(δx​P,δx​P~)\displaystyle W_{d_{\widetilde{V}}}(\delta_{x}P,\delta_{x}\widetilde{P})
+=infξ∈M⁡(δx​P,δx​P~)∫G∫G(V~​(z)+V~​(y))​𝟏z≠y​𝑑ξ​(y,z)\displaystyle=\inf_{\xi\in M(\delta_{x}P,\delta_{x}\widetilde{P})}\int_{G}\int_{G}(\widetilde{V}(z)+\widetilde{V}(y))\mathbf{1}_{z\not=y}\,{\rm d}\xi(y,z)
+≤P​V~​(x)+P~​V~​(x)≤(1+δ)​V~​(x)+2​L,\displaystyle\leq P\widetilde{V}(x)+\widetilde{P}\widetilde{V}(x)\leq(1+\delta)\widetilde{V}(x)+2L,
+we have
+supx∈GWdV~​(δx​P,δx​P~)V~​(x)≤2​(L+1).\displaystyle\sup_{x\in G}\frac{W_{d_{\widetilde{V}}}(\delta_{x}P,\delta_{x}\widetilde{P})}{\widetilde{V}(x)}\leq 2(L+1).
+Then
+‖p~n−pn‖tv\displaystyle\left\|\widetilde{p}_{n}-p_{n}\right\|_{\text{tv}}
+≤C​ρn​‖p~0−p0‖V~+2s​(L+1)s​γr​κ​∑i=0n−1τV~​(Pi)s.\displaystyle\leq C\rho^{n}\left\|\widetilde{p}_{0}-p_{0}\right\|_{\widetilde{V}}+2^{s}(L+1)^{s}\gamma^{r}\kappa\sum_{i=0}^{n-1}\tau_{\widetilde{V}}(P^{i})^{s}.
+Finally, by Lemma 3.2
+we obtain
+∑i=0n−1τV~​(Pi)s≤Cs​(1−ρn​s)1−ρs≤Cs1−ρs≤Css⁡(1−ρ).\sum_{i=0}^{n-1}\tau_{\widetilde{V}}(P^{i})^{s}\leq\frac{C^{s}(1-\rho^{ns})}{1-\rho^{s}}\leq\frac{C^{s}}{1-\rho^{s}}\leq\frac{C^{s}}{s(1-\rho)}.
+For γ∈(0,exp⁡(−1))\gamma\in(0,\exp(-1)),
+we can choose the numbers r=1+log⁡(γ)−1r=1+\log(\gamma)^{-1}
+and s=log⁡(γ−1)−1s=\log(\gamma^{-1})^{-1}.
+This yields γr=exp⁡(1)​γ\gamma^{r}=\exp(1)\gamma and the proof is complete.
+∎
+Remark 3.7.
+Let π~∈𝒫\widetilde{\pi}\in\mathcal{P} be a stationary distribution of P~\widetilde{P}.
+Notice that by the assumption that V~\widetilde{V} is Lyapunov function of P~\widetilde{P}
+and [16, Proposition 4.24] it follows that π~​(V~)≤L/(1−δ)\widetilde{\pi}(\widetilde{V})\leq L/(1-\delta).
+Further, by the V~\widetilde{V}-uniform ergodicity of PP we also know that π⁡(V~)\pi(\widetilde{V})
+is finite. Thus,
+‖π−π~‖V~≤π⁡(V~)+π~​(V~)<∞.\left\|\pi-\widetilde{\pi}\right\|_{\widetilde{V}}\leq\pi(\widetilde{V})+\widetilde{\pi}(\widetilde{V})<\infty.
+Now, by Theorem 3.2 we can bound ‖π−π~‖tv\left\|\pi-\widetilde{\pi}\right\|_{\text{tv}}
+with p0=πp_{0}=\pi, p~0=π~\widetilde{p}_{0}=\widetilde{\pi} and by letting n→∞n\to\infty.
+We obtain
+‖π−π~‖tv≤L​(2​C​(L+1))log⁡(γ−1)−1(1−δ)​(1−ρ)​exp⁡(1)​γ​log⁡(γ−1).\left\|\pi-\widetilde{\pi}\right\|_{\text{tv}}\leq\frac{L\,(2C(L+1))^{\log(\gamma^{-1})^{-1}}}{(1-\delta)(1-\rho)}\,\exp(1)\,\gamma\log(\gamma^{-1}).
+(3.19)
+Remark 3.8.
+Let us comment on the dependence of γ\gamma.
+In Section 4.3, we apply Theorem 3.2
+combined with (3.19)
+in a setting
+where we have γ≤K⋅log⁡(N)/N\gamma\leq K\cdot\log(N)/N for a constant K≥1K\geq 1 and
+some parameter N∈ℕN\in\mathbb{N} of the perturbed transition kernel.
+For ε∈(0,1)\varepsilon\in(0,1) and any N>(K/ε)1/(1−ε)N>(K/\varepsilon)^{1/(1-\varepsilon)} we have γ<exp⁡(−1)\gamma<\exp(-1).
+Then, with some simple calculations, we obtain for p0=p~0p_{0}=\widetilde{p}_{0} and N>6​K3/2N>6K^{3/2}
+the bound
+max⁡{‖pn−p~n‖tv,‖π−π~‖tv}≤3​κ​(2​C​(L+1))2/log⁡(N)1−ρ⋅K​log⁡(N)2N.\max\{\left\|p_{n}-\widetilde{p}_{n}\right\|_{\text{tv}},\left\|\pi-\widetilde{\pi}\right\|_{\text{tv}}\}\leq\frac{3\kappa\,(2C(L+1))^{2/\log(N)}}{1-\rho}\cdot\frac{K\log(N)^{2}}{N}.
+Remark 3.9.
+In the setting of Theorem 3.2,
+we can also interpret γ\gamma as an operator norm.
+Namely,
+\VERT​P−P~​\VERTB1→BV~=sup|f|1≤1|(P−P~)​f|V~=γ.\left\VERT P-\widetilde{P}\right\VERT_{B_{1}\to B_{\widetilde{V}}}=\sup_{\left|f\right|_{1}\leq 1}\left|(P-\widetilde{P})f\right|_{\widetilde{V}}=\gamma.
+(3.20)
+Here the subscript “11” in |f|1\left|f\right|_{1} indicates V⁡(x)=1V(x)=1 for all x∈Gx\in G, see (3.15).
+For ε0>0\varepsilon_{0}>0 and a family of perturbations (P~ε)|ε|≤ε0(\widetilde{P}_{\varepsilon})_{\left|\varepsilon\right|\leq\varepsilon_{0}} let
+γ=\VERT​P−P~ε​\VERTB1→BV~→0\gamma=\VERT P-\widetilde{P}_{\varepsilon}\VERT_{B_{1}\to B_{\widetilde{V}}}\to 0
+for ε→0\varepsilon\to 0.
+This condition appears in [13, Theorem 1, condition (2)] and is
+an assumption introduced by Keller and Liverani, see [22].
+4 Applications
+We illustrate our perturbation bounds in three different settings.
+We begin with studying an autoregressive process also
+considered in [13].
+After this, we show quantitative perturbation
+bounds for approximate versions of two prominent MCMC algorithms, namely
+the Metropolis-Hastings
+and stochastic Langevin algorithms.
+4.1 Autoregressive process
+Let G=ℝG={\mathbb{R}} and assume that (Xn)n∈ℕ0(X_{n})_{n\in\mathbb{N}_{0}} is the autoregressive
+model defined by
+Xn=α​Xn−1+Zn,n∈ℕ.X_{n}=\alpha X_{n-1}+Z_{n},\quad n\in\mathbb{N}.
+(4.1)
+Here X0X_{0} is an ℝ{\mathbb{R}}-valued random variable, α∈(−1,1)\alpha\in(-1,1) and
+(Zn)n∈ℕ(Z_{n})_{n\in\mathbb{N}} is an i.i.d. sequence of random variables, independent of X0X_{0}.
+We also assume that the distribution of Z1Z_{1}, say μ\mu,
+admits a first moment.
+It is easily seen that (Xn)n∈ℕ0(X_{n})_{n\in\mathbb{N}_{0}} is a Markov chain with
+transition kernel
+Pα​(x,A)=∫ℝ𝟏A​(α​x+y)​𝑑μ​(y),P_{\alpha}(x,A)=\int_{{\mathbb{R}}}\mathbf{1}_{A}(\alpha x+y)\,{\rm d}\mu(y),
+and it is well known that there exists a stationary distribution, say πα\pi_{\alpha},
+of PαP_{\alpha}.
+Now, let the transition kernel Pα~P_{\widetilde{\alpha}} with α~∈(−1,1)\widetilde{\alpha}\in(-1,1)
+be an approximation of PαP_{\alpha}.
+For x,y∈Gx,y\in G, let us consider
+the metric which is given by the absolute difference, i.e.,
+d⁡(x,y)=|x−y|d(x,y)=\left|x-y\right|.
+We assume that
+|α−α~|\left|\alpha-\widetilde{\alpha}\right| is small and
+study the Wasserstein distance, based on dd, of p0​Pαnp_{0}P_{\alpha}^{n}
+and p~0​Pα~n\widetilde{p}_{0}P_{\widetilde{\alpha}}^{n} with two probability measures
+p0p_{0} and p~0\widetilde{p}_{0} on (ℝ,ℬ⁡(ℝ))({\mathbb{R}},\mathcal{B}({\mathbb{R}})).
+We intend to apply Theorem 3.1. Notice that
+for
+V~:ℝ→[1,∞)\widetilde{V}\colon{\mathbb{R}}\to[1,\infty) with V~​(x)=1+|x|\widetilde{V}(x)=1+\left|x\right| we have
+Pα~​V~​(x)\displaystyle P_{\widetilde{\alpha}}\widetilde{V}(x)
+≤|α~|​V~​(x)+1−|α~|+𝔼​|Z1|\displaystyle\leq\left|\widetilde{\alpha}\right|\widetilde{V}(x)+1-\left|\widetilde{\alpha}\right|+\mathbb{E}\left|Z_{1}\right|
+which guarantees that condition (3.1) is satisfied with
+δ=|α~|\delta=\left|\widetilde{\alpha}\right| and L=1−|α~|+𝔼​|Z1|L=1-\left|\widetilde{\alpha}\right|+\mathbb{E}\left|Z_{1}\right|.
+Furthermore
+W⁡(δx​Pα,δy​Pα)≤∫ℝ|α​x−z−α​y+z|​𝑑μ​(z)≤|α|​|x−y|=|α|​d​(x,y),\displaystyle W(\delta_{x}P_{\alpha},\delta_{y}P_{\alpha})\leq\int_{{\mathbb{R}}}\left|\alpha x-z-\alpha y+z\right|\,{\rm d}\mu(z)\leq\left|\alpha\right|\left|x-y\right|=\left|\alpha\right|d(x,y),
+leads to τ⁡(Pαn)≤|α|n\tau(P_{\alpha}^{n})\leq\left|\alpha\right|^{n}.
+Similarly,
+one obtains
+W⁡(δx​Pα,δx​Pα~)≤∫ℝ|α​x−z−α~​x+z|​𝑑μ​(z)≤|x|​|α−α~|W(\delta_{x}P_{\alpha},\delta_{x}P_{\widetilde{\alpha}})\leq\int_{{\mathbb{R}}}\left|\alpha x-z-\widetilde{\alpha}x+z\right|\,{\rm d}\mu(z)\leq\left|x\right|\left|\alpha-\widetilde{\alpha}\right|
+which implies that
+supx∈ℝW⁡(δx​Pα,δx​Pα~)V~​(x)≤|α−α~|.\sup_{x\in{\mathbb{R}}}\frac{W(\delta_{x}P_{\alpha},\delta_{x}P_{\widetilde{\alpha}})}{\widetilde{V}(x)}\leq\left|\alpha-\widetilde{\alpha}\right|.
+We set
+κ=1+max⁡{∫ℝ|x|​d​p~0​(x),𝔼​|Z1|1−|α~|}\kappa=1+\max\left\{\int_{{\mathbb{R}}}\left|x\right|{\rm d}\widetilde{p}_{0}(x),\frac{\mathbb{E}\left|Z_{1}\right|}{1-\left|\widetilde{\alpha}\right|}\right\}
+and pα,n=p0​Pαnp_{\alpha,n}=p_{0}P^{n}_{\alpha}, p~α~,n=p~0​Pα~n\widetilde{p}_{\widetilde{\alpha},n}=\widetilde{p}_{0}P^{n}_{\widetilde{\alpha}}.
+Then, inequality (3.2) of Theorem 3.1
+gives
+W⁡(pα,n,p~α~,n)≤|α|n​W​(p0,p~0)+|α−α~|​(1−|α|n)​κ1−|α|,W(p_{\alpha,n},\widetilde{p}_{\widetilde{\alpha},n})\leq\left|\alpha\right|^{n}W(p_{0},\widetilde{p}_{0})+\left|\alpha-\widetilde{\alpha}\right|\frac{(1-\left|\alpha\right|^{n})\,\kappa}{1-\left|\alpha\right|},
+(4.2)
+and for p0=p~0p_{0}=\widetilde{p}_{0} we have
+W⁡(pα,n,p~α~,n)≤|α−α~|​(1−|α|n)​κ1−|α|.W(p_{\alpha,n},\widetilde{p}_{\widetilde{\alpha},n})\leq\left|\alpha-\widetilde{\alpha}\right|\frac{(1-\left|\alpha\right|^{n})\,\kappa}{1-\left|\alpha\right|}.
+(4.3)
+From the previous two inequalities one can see that
+if α~\widetilde{\alpha} is sufficiently close to α\alpha, then the distance of the distribution pα,np_{\alpha,n}
+and p~α~,n\widetilde{p}_{\widetilde{\alpha},n} is small.
+Let us emphasize here that
+we provide an explicit estimate rather than an asymptotic statement.
+Note that
+by [16, Proposition 4.24]
+and the fact that Pβ​g​(x)≤|β|​g​(x)+𝔼​|Z1|P_{\beta}g(x)\leq\left|\beta\right|g(x)+\mathbb{E}\left|Z_{1}\right| with g⁡(x)=|x|g(x)=\left|x\right| and β∈{α,α~}\beta\in\{\alpha,\widetilde{\alpha}\} we obtain
+∫ℝ|x|​d​πβ​(x)<∞,\int_{\mathbb{R}}\left|x\right|\,{\rm d}\pi_{\beta}(x)<\infty,
+which leads to a finite W⁡(πα,πα~)W(\pi_{\alpha},\pi_{\widetilde{\alpha}}).
+As a consequence we obtain
+for the stationary distributions of PαP_{\alpha} and Pα~P_{\widetilde{\alpha}}
+by estimate (3.5) that
+W⁡(πα,πα~)≤|α−α~|​1−|α~|+𝔼​|Z1|(1−|α|)​(1−|α~|).W(\pi_{\alpha},\pi_{\widetilde{\alpha}})\leq\left|\alpha-\widetilde{\alpha}\right|\frac{1-\left|\widetilde{\alpha}\right|+\mathbb{E}\left|Z_{1}\right|}{(1-\left|\alpha\right|)(1-\left|\widetilde{\alpha}\right|)}.
+(4.4)
+The dependence on
+|α−α~|\left|\alpha-\widetilde{\alpha}\right| in the previous inequality cannot be improved in general.
+To see this, let us assume that
+X0,αX_{0,\alpha} and X0,α~X_{0,\widetilde{\alpha}} are real-valued random variables
+with distribution πα\pi_{\alpha} and πα~\pi_{\widetilde{\alpha}}, respectively. Then, because of the stationarity
+we have that X1,α=α​X0,α+Z1X_{1,\alpha}=\alpha X_{0,\alpha}+Z_{1}
+and X1,α~=α~​X0,α~+Z1X_{1,\widetilde{\alpha}}=\widetilde{\alpha}X_{0,\widetilde{\alpha}}+Z_{1}
+are also distributed according to πα\pi_{\alpha} and πα~\pi_{\widetilde{\alpha}}, respectively.
+Thus
+𝔼​X0,α=𝔼​Z11−α,𝔼​X0,α~=𝔼​Z11−α~.\mathbb{E}X_{0,\alpha}=\frac{\mathbb{E}Z_{1}}{1-\alpha},\qquad\mathbb{E}X_{0,\widetilde{\alpha}}=\frac{\mathbb{E}Z_{1}}{1-\widetilde{\alpha}}.
+Now, for g:ℝ→ℝg\colon{\mathbb{R}}\to{\mathbb{R}} with g⁡(x)=xg(x)=x, we have ‖g‖Lip≤1\left\|g\right\|_{\text{Lip}}\leq 1
+and thus
+W⁡(πα,πα~)\displaystyle W(\pi_{\alpha},\pi_{\widetilde{\alpha}})
+=sup‖f‖Lip≤1|∫Gf⁡(x)​(d​πα​(x)−d​πα~​(x))|\displaystyle=\sup_{\left\|f\right\|_{\text{Lip}}\leq 1}\left|\int_{G}f(x)({\rm d}\pi_{\alpha}(x)-{\rm d}\pi_{\widetilde{\alpha}}(x))\right|
+≥|∫Gx⁡(d​πα​(x)−d​πα~​(x))|=|𝔼​X0,α−𝔼​X0,α~|\displaystyle\geq\left|\int_{G}x\,({\rm d}\pi_{\alpha}(x)-{\rm d}\pi_{\widetilde{\alpha}}(x))\right|=\left|\mathbb{E}X_{0,\alpha}-\mathbb{E}X_{0,\widetilde{\alpha}}\right|
+=|α−α~|​|𝔼​Z1||1−α|​|1−α~|.\displaystyle=\left|\alpha-\widetilde{\alpha}\right|\frac{\left|\mathbb{E}Z_{1}\right|}{\left|1-\alpha\right|\left|1-\widetilde{\alpha}\right|}.
+Hence, whenever 𝔼​Z1≠0\mathbb{E}Z_{1}\not=0
+we have a non-trivial lower bound with the same dependence on
+|α−α~|\left|\alpha-\widetilde{\alpha}\right| as in the upper bound of (4.4).
+This fact shows that we cannot improve the upper bound.
+Let us now discuss the application of Corollary 3.4 and Theorem 3.2.
+Under the additional assumption that μ\mu, the distribution of Z1Z_{1},
+has a Lebesgue density hh, it is shown in
+[15, Section 4]
+that the autoregressive model (4.1) is also V~\widetilde{V}-uniformly
+ergodic.
+Precisely, there is a constant C≥1C\geq 1 such that
+‖Pαn​(x,⋅)−πα‖tv≤C​|α|n​V~​(x).\left\|P_{\alpha}^{n}(x,\cdot)-\pi_{\alpha}\right\|_{\rm tv}\leq C\left|\alpha\right|^{n}\widetilde{V}(x).
+Moreover, from [13, Example 1]
+we know that
+supx∈ℝ‖Pα​(x,⋅)−Pα~​(x,⋅)‖V~V~​(x)\sup_{x\in\mathbb{R}}\frac{\left\|P_{\alpha}(x,\cdot)-P_{\widetilde{\alpha}}(x,\cdot)\right\|_{\widetilde{V}}}{\widetilde{V}(x)}
+does not go to 00 when α~↓α\widetilde{\alpha}\downarrow\alpha. Hence,
+Corollary 3.4 cannot quantify for small |α~−α||\widetilde{\alpha}-\alpha|
+whether the nnth step distributions are close to each other.
+However, also in [13, Example 1] it is proven that
+supx∈ℝ‖Pα​(x,⋅)−Pα~​(x,⋅)‖tvV~​(x)→0ifα~→α.\sup_{x\in\mathbb{R}}\frac{\left\|P_{\alpha}(x,\cdot)-P_{\widetilde{\alpha}}(x,\cdot)\right\|_{\rm tv}}{\widetilde{V}(x)}\to 0\qquad\text{if}\qquad\widetilde{\alpha}\to\alpha.
+This indicates that Theorem 3.2 is applicable.
+By assuming in addition that hh is weakly unimodal11
+ 1
+ The function h:ℝ→[0,∞)h\colon\mathbb{R}\to[0,\infty)
+is called weakly unimodal if there exists s∈ℝs\in\mathbb{R} such that h⁡(x)h(x) is nondecreasing for x∈(−∞,s)x\in(-\infty,s) and nonincreasing for x∈(s,∞)x\in(s,\infty). and bounded from above by hmaxh_{\max}, we can quantify the result. Namely,
+supx∈ℝ‖Pα​(x,⋅)−Pα~​(x,⋅)‖tvV~​(x)\displaystyle\sup_{x\in\mathbb{R}}\frac{\left\|P_{\alpha}(x,\cdot)-P_{\widetilde{\alpha}}(x,\cdot)\right\|_{\rm tv}}{\widetilde{V}(x)}
+=supx∈ℝ‖μ(⋅−αx)−μ(⋅−α~x)‖tv1+|x|\displaystyle=\sup_{x\in\mathbb{R}}\frac{\left\|\mu(\cdot-\alpha x)-\mu(\cdot-\widetilde{\alpha}x)\right\|_{\rm tv}}{1+\left|x\right|}
+=supx∈ℝ∫ℝ|h⁡(z−α​x)−h⁡(z−α~​x)|​𝑑z1+|x|≤2​|α−α~|​hmax.\displaystyle=\sup_{x\in\mathbb{R}}\frac{\int_{\mathbb{R}}\left|h(z-\alpha x)-h(z-\widetilde{\alpha}x)\right|{\rm d}z}{1+\left|x\right|}\leq 2\left|\alpha-\widetilde{\alpha}\right|h_{\max}.
+To see the final estimate, define F⁡(a)=∫ℝ|h⁡(z)−h⁡(z−a)|​𝑑zF(a)=\int_{\mathbb{R}}|h(z)-h(z-a)|{\rm d}z for a∈ℝa\in\mathbb{R}. By unimodality, there exists for any fixed a≥0a\geq 0 a constant cc such that
+∫ℝ|h⁡(z)−h⁡(z−a)|𝑑z=∫−∞ch⁡(z)−h⁡(z−a)​𝑑z+∫c∞h⁡(z−a)−h⁡(z)​𝑑z.\int_{\mathbb{R}}|h(z)-h(z-a)|{\rm d}z=\int_{-\infty}^{c}h(z)-h(z-a){\rm d}z+\int_{c}^{\infty}h(z-a)-h(z){\rm d}z.
+The first summand on the right hand side we can bound by
+∫−∞ch⁡(z)​𝑑z−∫−∞ch⁡(z−a)​𝑑z=∫c−ach⁡(z)​𝑑z≤a​hmax\int_{-\infty}^{c}h(z){\rm d}z-\int_{-\infty}^{c}h(z-a){\rm d}z=\int_{c-a}^{c}h(z){\rm d}z\leq a\,h_{\max}
+and similarly for the second summand. Using that F⁡(a)=F⁡(−a)F(a)=F(-a),
+we obtain
+F⁡(a)≤2​|a|​hmaxF(a)\leq 2|a|\,h_{\max}.
+Finally, by substitution
+we can write
+supx∈ℝ∫ℝ|h⁡(z−α​x)−h⁡(z−α~​x)|​𝑑z1+|x|=|α−α~|​supa≥0F⁡(a)a+|α−α~|≤2​|α−α~|​hmax.\displaystyle\sup_{x\in\mathbb{R}}\frac{\int_{\mathbb{R}}|h(z-\alpha x)-h(z-\widetilde{\alpha}x)|{\rm d}z}{1+|x|}=|\alpha-\widetilde{\alpha}|\;\sup_{a\geq 0}\frac{F(a)}{a+|\alpha-\widetilde{\alpha}|}\leq 2|\alpha-\widetilde{\alpha}|h_{\max}.
+For simplicity set p0=p~0p_{0}=\widetilde{p}_{0} and
+assume that hmax≤1h_{\max}\leq 1 as well as |α−α~|∈(0,exp⁡(−1)/2)\left|\alpha-\widetilde{\alpha}\right|\in(0,\exp(-1)/2).
+Then, Theorem 3.2 implies
+max⁡{‖pα,n−p~α~,n‖tv,‖πα−πα~‖tv}≤κ​exp⁡(1)1−|α|​(2​C​(𝔼​|Z1|+2))​|α−α~|​log⁡(|α−α~|−1)\displaystyle\max\{\left\|p_{\alpha,n}-\widetilde{p}_{\widetilde{\alpha},n}\right\|_{\rm tv},\left\|\pi_{\alpha}-\pi_{\widetilde{\alpha}}\right\|_{\rm tv}\}\leq\frac{\kappa\exp(1)}{1-\left|\alpha\right|}(2C(\mathbb{E}\left|Z_{1}\right|+2))\left|\alpha-\widetilde{\alpha}\right|\log(\left|\alpha-\widetilde{\alpha}\right|^{-1})
+which seems to be new.
+4.2 Approximate Metropolis-Hastings algorithms
+We apply our perturbation results to
+the approximate (or noisy) Metropolis-Hastings algorithms
+analyzed in [2, 3, 4, 23, 29, 35].
+We assume either that the unperturbed
+transition kernel of the
+Metropolis-Hastings
+algorithm
+satisfies the Wasserstein ergodicity condition stated in Assumption 2.1 or
+is geometrically ergodic.
+In particular, we do not assume that
+the transition kernel is
+uniformly ergodic.
+Let π\pi be a probability distribution on (G,ℬ⁡(G))(G,\mathcal{B}(G))
+and assume that we are interested in sampling realizations from this distribution.
+Let QQ be a transition kernel which serves as the proposal for the Metropolis-Hastings
+algorithm. From [44, Proposition 1]
+we know that there exists a set S⊂G×GS\subset G\times G
+such that we can define the “acceptance ratio” for (x,y)∈G×G(x,y)\in G\times G as
+r⁡(x,y):={π⁡(d​y)​Q​(y,d​x)π⁡(d​x)​Q​(x,d​y)(x,y)∈S0otherwise.r(x,y):=\begin{cases}\frac{\pi({\rm d}y)Q(y,{\rm d}x)}{\pi({\rm d}x)Q(x,{\rm d}y)}&(x,y)\in S\\
+0&\text{otherwise}.\end{cases}
+(4.5)
+Then, let the acceptance probability be α⁡(x,y)=min⁡{1,r⁡(x,y)}\alpha(x,y)=\min\{1,r(x,y)\}.
+With this notation the Metropolis-Hastings algorithm defines a transition kernel
+Pα​(x,d​y)=Q⁡(x,d​y)​α​(x,y)+δx​(d​y)​sα​(x),P_{\alpha}(x,{\rm d}y)=Q(x,{\rm d}y)\alpha(x,y)+\delta_{x}({\rm d}y)\,s_{\alpha}(x),
+(4.6)
+with
+sα​(x)=1−∫Gα⁡(x,y)​Q​(x,𝑑y).s_{\alpha}(x)=1-\int_{G}\alpha(x,y)\,Q(x,{\rm d}y).
+We provide a step of a Markov chain (Xn)n∈ℕ0(X_{n})_{n\in\mathbb{N}_{0}}
+with transition kernel PαP_{\alpha} in algorithmic form.
+Algorithm 4.1.
+A single transition from XnX_{n} to Xn+1X_{n+1}
+of the Metropolis-Hastings algorithm works as
+follows:
+1. 
+Draw a sample Y∼Q⁡(Xn,⋅)Y\sim Q(X_{n},\cdot) and U∼Unif​[0,1]U\sim\mbox{Unif}[0,1] independently,
+call the result yy and uu;
+2. 
+Set r:=r⁡(Xn,y)r:=r(X_{n},y), with the ratio r⁡(⋅,⋅)r(\cdot,\cdot) defined in (4.5);
+3. 
+If u<ru<r, then accept the proposal, and set Xn+1:=yX_{n+1}:=y,
+else reject the proposal and set Xn+1:=XnX_{n+1}:=X_{n}.
+Now, suppose we are unable to evaluate
+r⁡(x,y)r(x,y), so that
+we are forced to work with an approximation of α⁡(x,y)\alpha(x,y).
+The key idea behind approximate Metropolis-Hastings algorithms
+is to replace r⁡(x,y)r(x,y) by a non-negative
+random variable RR with distribution, say μx,y,u\mu_{x,y,u},
+depending on x,y∈Gx,y\in G and u∈[0,1]u\in[0,1]. For concrete choices of the random variable RR
+we refer to
+[2, 3, 4, 23].
+We present a step of the corresponding Markov chain (X~n)n∈ℕ(\widetilde{X}_{n})_{n\in\mathbb{N}}
+in algorithmic form.
+Algorithm 4.2.
+A single transition from X~n\widetilde{X}_{n} to X~n+1\widetilde{X}_{n+1} works as
+follows:
+1. 
+Draw a sample Y∼Q⁡(X~n,⋅)Y\sim Q(\widetilde{X}_{n},\cdot) and U∼Unif​[0,1]U\sim\mbox{Unif}[0,1] independently,
+call the result yy and uu;
+2. 
+Draw a sample R∼μX~n,y,uR\sim\mu_{\widetilde{X}_{n},y,u},
+call the result r~\widetilde{r};
+3. 
+If u<r~u<\widetilde{r}, then accept the proposal, and set X~n+1:=y\widetilde{X}_{n+1}:=y,
+else reject the proposal and set X~n+1:=X~n\widetilde{X}_{n+1}:=\widetilde{X}_{n}.
+The algorithm has acceptance probability
+α~​(x,y)=𝔼​𝟏[0,min⁡{1,R}]​(U)=∫01∫0∞𝟏[0,min⁡{1,r~}]​(u)​d​μx,y,u​(r~)​𝑑u\widetilde{\alpha}(x,y)=\mathbb{E}\mathbf{1}_{[0,\min\{1,R\}]}(U)=\int_{0}^{1}\int_{0}^{\infty}\mathbf{1}_{[0,\min\{1,\widetilde{r}\}]}(u)\;{\rm d}\mu_{x,y,u}(\widetilde{r}){\rm d}u
+and the transition kernel of such a Markov chain
+is still of the form (4.6)
+with α⁡(x,y)\alpha(x,y) substituted by
+α~​(x,y)\widetilde{\alpha}(x,y), i.e.,
+it is given by Pα~P_{\widetilde{\alpha}}.
+The following
+results hold in the
+slightly more general case where
+α~​(x,y)\widetilde{\alpha}(x,y) is any approximation of the acceptance probability α⁡(x,y)\alpha(x,y).
+The next
+lemma provides an estimate for the Wasserstein distance
+between transition kernels of the form (4.6)
+in terms of the acceptance probabilities.
+Lemma 4.1.
+Let QQ be a transition kernel
+on (G,ℬ⁡(G))(G,\mathcal{B}(G)) and let α:G×G→[0,1]\alpha\colon G\times G\rightarrow[0,1]
+and α~:G×G→[0,1]\widetilde{\alpha}\colon G\times G\rightarrow[0,1] be measurable functions.
+By PαP_{\alpha} and Pα~P_{\widetilde{\alpha}} we denote
+the transition kernels of the form (4.6) with
+acceptance probabilities α\alpha and α~\widetilde{\alpha}.
+Then, for all x∈Gx\in G, we have
+W⁡(δx​Pα,δx​Pα~)≤∫Gd⁡(x,y)​ℰ​(x,y)​Q​(x,𝑑y)W(\delta_{x}P_{\alpha},\delta_{x}P_{\widetilde{\alpha}})\leq\int_{G}d(x,y)\,\mathcal{E}(x,y)\,Q(x,{\rm d}y)
+with ℰ⁡(x,y)=|α⁡(x,y)−α~​(x,y)|\mathcal{E}(x,y)=|\alpha(x,y)-\widetilde{\alpha}(x,y)|.
+By the use of the dual representation of
+the Wasserstein distance it follows that
+W⁡(δx​Pα,δx​Pα~)=sup‖f‖Lip≤1|∫Gf⁡(y)​(Pα​(x,𝑑y)−Pα~​(x,𝑑y))|\displaystyle W(\delta_{x}P_{\alpha},\delta_{x}P_{\widetilde{\alpha}})=\sup_{\left\|f\right\|_{\rm Lip}\leq 1}\left|\int_{G}f(y)\left(P_{\alpha}(x,{\rm d}y)-P_{\widetilde{\alpha}}(x,{\rm d}y)\right)\right|
+=sup‖f‖Lip≤1|∫G(f⁡(y)−f⁡(x))​(α⁡(x,y)−α~​(x,y))​Q​(x,𝑑y)|≤∫Gd⁡(x,y)​ℰ​(x,y)​Q​(x,𝑑y).\displaystyle=\sup_{\left\|f\right\|_{\rm Lip}\leq 1}\left|\int_{G}(f(y)-f(x))(\alpha(x,y)-\widetilde{\alpha}(x,y))Q(x,{\rm d}y)\right|\leq\int_{G}d(x,y)\mathcal{E}(x,y)Q(x,{\rm d}y).
+∎By the previous lemma
+and Theorem 3.1, we obtain the following Wasserstein
+perturbation bound for the approximate Metropolis-Hastings algorithm.
+Corollary 4.1.
+Let QQ be a transition kernel
+on (G,ℬ⁡(G))(G,\mathcal{B}(G)) and
+let α:G×G→[0,1]\alpha\colon G\times G\rightarrow[0,1]
+and α~:G×G→[0,1]\widetilde{\alpha}\colon G\times G\rightarrow[0,1] be measurable functions.
+By PαP_{\alpha} and Pα~P_{\widetilde{\alpha}} we denote
+the transition kernels of the form (4.6)
+with
+acceptance probabilities α\alpha and α~\widetilde{\alpha}.
+Let the following conditions be satisfied:
+• 
+Assumption 2.1 holds for the transition kernel PαP_{\alpha}, i.e.,
+τ⁡(Pαn)≤C​ρn\tau(P_{\alpha}^{n})\leq C\rho^{n} for ρ∈[0,1)\rho\in[0,1) and C∈(0,∞)C\in(0,\infty).
+• 
+There are numbers δ∈(0,1)\delta\in(0,1), L∈(0,∞)L\in(0,\infty)
+and a measurable Lyapunov function
+V~:G→[1,∞)\widetilde{V}:G\rightarrow[1,\infty) of Pα~P_{\widetilde{\alpha}}, i.e.,
+(Pα~​V~)​(x)≤δ​V~​(x)+L.(P_{\widetilde{\alpha}}\widetilde{V})(x)\leq\delta\widetilde{V}(x)+L.
+(4.7)
+• 
+Let ℰ⁡(x,y)=|α⁡(x,y)−α~​(x,y)|\mathcal{E}(x,y)=|\alpha(x,y)-\widetilde{\alpha}(x,y)| and assume that
+γ=supx∈G∫Gd⁡(x,y)​ℰ​(x,y)​Q​(x,𝑑y)V~​(x)<∞.\gamma=\sup_{x\in G}\frac{\int_{G}d(x,y)\,\mathcal{E}(x,y)\,Q(x,{\rm d}y)}{\widetilde{V}(x)}<\infty.
+(4.8)
+Then, for any p0∈𝒫p_{0}\in\mathcal{P}
+and finite p0​(V~)=∫GV~​(x)​d​p0​(x)p_{0}(\widetilde{V})=\int_{G}\widetilde{V}(x){\rm d}p_{0}(x)
+we have
+W⁡(p0​Pαn,p0​Pα~n)≤γ​κ​C​(1−ρn)1−ρW(p_{0}P_{\alpha}^{n},p_{0}P_{\widetilde{\alpha}}^{n})\leq\frac{\gamma\,\kappa\,C(1-\rho^{n})}{1-\rho}
+where κ=max⁡{p0​(V~),L1−δ}\kappa=\max\left\{p_{0}(\widetilde{V}),\frac{L}{1-\delta}\right\}.
+Let us point out several aspects of condition (4.7).
+Recall that (4.7) is always satisfied with V~​(x)=1\widetilde{V}(x)=1
+for all x∈Gx\in G.
+However, in this case it seems more difficult to control γ\gamma.
+If some additional knowledge in form of a Lyapunov function
+V:G→[1,∞)V\colon G\to[1,\infty) of PαP_{\alpha}, i.e., Pα​V​(x)≤δ​V​(x)+LP_{\alpha}V(x)\leq\delta V(x)+L
+for some δ∈(0,1)\delta\in(0,1) and L∈(0,∞)L\in(0,\infty), is available,
+then a non-trivial candidate for V~\widetilde{V} is VV.
+For sufficiently small
+δV=supz∈G∫G(V⁡(y)V⁡(z)+1)​ℰ​(z,y)​Q​(z,𝑑y)\delta_{V}=\sup_{z\in G}\int_{G}\left(\frac{V(y)}{V(z)}+1\right)\mathcal{E}(z,y)Q(z,{\rm d}y)
+this is indeed true. Namely, we have
+|(Pα−Pα~)​V​(x)|≤∫GV⁡(y)​ℰ​(x,y)​Q​(x,𝑑y)+V⁡(x)​∫Gℰ⁡(x,y)​Q​(x,𝑑y)≤V⁡(x)​δV.\displaystyle\left|(P_{\alpha}-P_{\widetilde{\alpha}})V(x)\right|\leq\int_{G}V(y)\mathcal{E}(x,y)Q(x,{\rm d}y)+V(x)\int_{G}\mathcal{E}(x,y)Q(x,{\rm d}y)\leq V(x)\delta_{V}.
+Then, Pα~​V​(x)≤(δ+δV)​V​(x)+LP_{\widetilde{\alpha}}V(x)\leq(\delta+\delta_{V})V(x)+L
+and whenever δ+δV<1\delta+\delta_{V}<1 it is clear that condition
+(4.7) is verified.
+To highlight the usefulness of a non-trivial Lyapunov function,
+we consider the following scenario which is related to a local perturbation
+of an independent Metropolis-Hastings algorithm.
+Example 4.1.
+Let us assume that for PαP_{\alpha}
+Assumption 2.1, as formulated in Corollary 4.1, is satisfied.
+For some probability measure μ\mu on (G,ℬ⁡(G))(G,\mathcal{B}(G)) define Q⁡(x,⋅)=μQ(x,\cdot)=\mu and
+p0=p~0=μp_{0}=\widetilde{p}_{0}=\mu.
+For G~⊆G\widetilde{G}\subseteq G
+let
+α~​(x,y)=min⁡{1,α⁡(x,y)+𝟏G~​(x)}.\widetilde{\alpha}(x,y)=\min\{1,\alpha(x,y)+\mathbf{1}_{\widetilde{G}}(x)\}.
+Hence, for x∈G~x\in\widetilde{G} the transition kernel Pα~​(x,⋅)P_{\widetilde{\alpha}}(x,\cdot) accepts any
+proposed state and for x∉G~x\not\in\widetilde{G}
+we have Pα~​(x,⋅)=Pα​(x,⋅)P_{\widetilde{\alpha}}(x,\cdot)=P_{\alpha}(x,\cdot).
+It is easily seen that ℰ⁡(x,y)≤𝟏G~​(x)\mathcal{E}(x,y)\leq\mathbf{1}_{\widetilde{G}}(x).
+For arbitrary R>0R>0 and r∈(0,1)r\in(0,1) set V~​(x)=1+R​𝟏G~​(x)\widetilde{V}(x)=1+R\mathbf{1}_{\widetilde{G}}(x) and note that
+Pα~​V~​(x)≤r​V~​(x)+1−r+R​Pα~​(x,G~)≤r​V~​(x)+1−r+R​μ​(G~).P_{\widetilde{\alpha}}\widetilde{V}(x)\leq r\widetilde{V}(x)+1-r+RP_{\widetilde{\alpha}}(x,\widetilde{G})\leq r\widetilde{V}(x)+1-r+R\mu(\widetilde{G}).
+The last inequality of the previous formula follows by distinguishing the cases x∈G~x\in\widetilde{G} and x∉G~x\not\in\widetilde{G}.
+Define D⁡(G~)=supx∈G~∫Gd⁡(x,y)​μ​(𝑑y)D(\widetilde{G})=\sup_{x\in\widetilde{G}}\int_{G}d(x,y)\mu({\rm d}y) and
+observe
+κ\displaystyle\kappa
+=1+R​μ​(G~)1−r,andγ≤D⁡(G~)1+R.\displaystyle=1+\frac{R\mu(\widetilde{G})}{1-r},\qquad\text{and}\qquad\gamma\leq\frac{D(\widetilde{G})}{1+R}.
+Then, Corollary 4.1 leads to
+W⁡(p0​Pαn,p0​Pα~n)≤C1−ρ​(1+R​μ​(G~)1−r)​D⁡(G~)1+RW(p_{0}P_{\alpha}^{n},p_{0}P_{\widetilde{\alpha}}^{n})\leq\frac{C}{1-\rho}\left(1+\frac{R\mu(\widetilde{G})}{1-r}\right)\frac{D(\widetilde{G})}{1+R}
+for arbitrary R∈(0,∞)R\in(0,\infty) and r∈(0,1)r\in(0,1).
+Under the assumption that D⁡(G~)D(\widetilde{G}) is finite and letting R→∞R\to\infty as well as r↓0r\downarrow 0
+we obtain
+W⁡(p0​Pαn,p0​Pα~n)≤C​μ​(G~)​D​(G~)1−ρ,W(p_{0}P_{\alpha}^{n},p_{0}P_{\widetilde{\alpha}}^{n})\leq\frac{C\mu(\widetilde{G})D(\widetilde{G})}{1-\rho},
+which tells us that basically μ⁡(G~)\mu(\widetilde{G}) measures the difference of the distributions.
+A small
+perturbation set G~\widetilde{G} with respect to μ\mu, thus implies a small bias.
+In contrast, with the trivial Lyapunov function V~=1\widetilde{V}=1, and if
+there is (x,y)∈G~×G(x,y)\in\widetilde{G}\times G such that α⁡(x,y)=0\alpha(x,y)=0, we only obtain
+γ​κ=D⁡(G~)≥infx∈G∫Gd⁡(x,y)​μ​(𝑑y).\gamma\kappa=D(\widetilde{G})\geq\inf_{x\in G}\int_{G}d(x,y)\mu({\rm d}y).
+The resulting upper bound on W⁡(p0​Pαn,p0​Pα~n)W(p_{0}P_{\alpha}^{n},p_{0}P_{\widetilde{\alpha}}^{n}) will typically be bounded away from zero regardless of the set G~\widetilde{G}.
+Remark 4.1.
+The constant γ\gamma essentially depends on
+the distance d⁡(x,y)d(x,y)
+and the difference of the acceptance probabilities ℰ⁡(x,y)\mathcal{E}(x,y).
+By applying the Cauchy-Schwarz inequality
+to the numerator of γ\gamma, we can separate the two parts, i.e.,
+∫Gd⁡(x,y)​ℰ​(x,y)​Q​(x,𝑑y)≤(∫Gd​(x,y)2​Q​(x,𝑑y)⋅∫Gℰ​(x,y)2​Q​(x,𝑑y))1/2.\int_{G}d(x,y)\,\mathcal{E}(x,y)\,Q(x,{\rm d}y)\leq\left(\int_{G}d(x,y)^{2}\,Q(x,{\rm d}y)\cdot\int_{G}\mathcal{E}(x,y)^{2}\,Q(x,{\rm d}y)\right)^{1/2}.
+If both integrals remain finite we see that
+an appropriate control of ℰ⁡(x,y)\mathcal{E}(x,y)
+suffices for making the constant γ\gamma small.
+Remark 4.2.
+By using a Hoeffding-type bound,
+in Bardenet et al. [3, Lemma 3.1.] it is shown that for their
+version of the
+approximate Metropolis-Hastings algorithm
+with adaptive subsampling
+the approximation error ℰ⁡(x,y)\mathcal{E}(x,y)
+is bounded uniformly in xx and yy by a constant s>0s>0.
+Moreover, ss can be chosen arbitrarily small for the implementation of the algorithm.
+Now we consider the case where the unperturbed transition kernel
+PαP_{\alpha} is geometrically ergodic.
+Motivated by Remark 4.2, we also
+assume that ℰ⁡(x,y)≤s\mathcal{E}(x,y)\leq s
+for a sufficiently small number s>0s>0.
+The following corollary generalizes a
+main
+result of Bardenet et al.
+[3, Proposition 3.2]
+to the geometrically ergodic case.
+Corollary 4.2.
+Let QQ be a transition kernel
+on (G,ℬ⁡(G))(G,\mathcal{B}(G)) and let α:G×G→[0,1]\alpha\colon G\times G\rightarrow[0,1]
+and α~:G×G→[0,1]\widetilde{\alpha}\colon G\times G\rightarrow[0,1] be measurable functions.
+By PαP_{\alpha} and Pα~P_{\widetilde{\alpha}} we denote the transition kernels of
+the form (4.6) with acceptance probabilities α\alpha and α~\widetilde{\alpha}.
+Let the following conditions be satisfied:
+• 
+The unperturbed transition kernel PαP_{\alpha} is VV-uniformly ergodic, that is,
+‖Pαn​(x,⋅)−π‖V≤C​V​(x)​ρn,x∈G,n∈ℕ\left\|P_{\alpha}^{n}(x,\cdot)-\pi\right\|_{V}\leq CV(x)\rho^{n},\quad x\in G,n\in\mathbb{N}
+for numbers ρ∈[0,1)\rho\in[0,1), C∈(0,∞)C\in(0,\infty) and a measurable function V:G→[1,∞)V\colon G\rightarrow[1,\infty).
+Moreover, VV is a Lyapunov function of PαP_{\alpha}, i.e.,
+(Pα​V)​(x)≤δ​V​(x)+L,(P_{\alpha}V)(x)\leq\delta V(x)+L,
+(4.9)
+for numbers δ∈(0,1)\delta\in(0,1) and L∈(0,∞)L\in(0,\infty).
+• 
+A uniform bound s>0s>0
+on the difference of the acceptance probabilities is given,
+that is, for all x,y∈Gx,y\in G, we have
+ℰ⁡(x,y)=|α⁡(x,y)−α~​(x,y)|≤s.\mathcal{E}(x,y)=|\alpha(x,y)-\widetilde{\alpha}(x,y)|\leq s.
+• 
+The constant λ\lambda satisfies
+λ=1+supx∈G∫GV⁡(y)V⁡(x)​Q​(x,𝑑y)<∞.\lambda=1+\sup_{x\in G}\int_{G}\frac{V(y)}{V(x)}Q(x,{\rm d}y)<\infty.
+If s<(1−δ)/λs<(1-\delta)/\lambda, then, for any p0∈𝒫p_{0}\in\mathcal{P} with
+finite
+κ=max⁡{p0​(V),L1−δ−λ​s}\kappa=\max\left\{p_{0}(V),\frac{L}{1-\delta-\lambda s}\right\}
+we have
+‖p0​Pαn−p0​Pα~n‖V≤λ​s​κ​C​(1−ρn)1−ρ.\|p_{0}P_{\alpha}^{n}-p_{0}P_{\widetilde{\alpha}}^{n}\|_{V}\leq\frac{\lambda\,s\,\kappa\,C\,(1-\rho^{n})}{1-\rho}.
+We consider
+the metric dVd_{V}, defined in Lemma 3.1,
+set V=V~V=\widetilde{V} and use ℰ⁡(x,y)≤s\mathcal{E}(x,y)\leq s so that it is easily seen that
+the constant γ\gamma from Corollary 4.1 satisfies
+γ≤s​λ\gamma\leq s\lambda.
+From the proof of Corollary 3.4,
+we know that VV is a Lyapunov function of Pα~P_{\widetilde{\alpha}} provided that γ+δ<1\gamma+\delta<1.
+Thus, we have
+Pα~​V​(x)≤(δ+λ​s)​V​(x)+L.P_{\widetilde{\alpha}}V(x)\leq(\delta+\lambda s)V(x)+L.
+(4.10)
+Now if s<(1−δ)/λs<(1-\delta)/\lambda, then δ+λ​s<1\delta+\lambda s<1 and the assertion
+follows from Corollary 4.1 by writing the Wasserstein distances
+in terms of VV-norms as in Section 3.2.
+∎
+Remark 4.3.
+Without V⁡(x)V(x)
+in the denominator, i.e., if we had relied on
+Corollary 3.2 instead of Theorem 3.1,
+the constant
+λ\lambda would often be infinite. Consider the following toy example:
+Let π\pi be the exponential distribution with density exp⁡(−x)\exp(-x) on G=[0,∞)G=[0,\infty)
+and assume that Q⁡(x,d​y)Q(x,{\rm d}y) is a uniform
+proposal with support [x−1,x+1][x-1,x+1]. With V⁡(x)=exp⁡(x)V(x)=\exp(x) it is well known that
+the Metropolis-Hastings algorithm is VV-uniformly ergodic,
+see [30] or [37, Example 4].
+In this example
+λ≤1+supx∈[0,∞)∫x−1x+1exp⁡(y−x)​𝑑y≤1+exp⁡(1)\displaystyle\lambda\leq 1+\sup_{x\in[0,\infty)}\int_{x-1}^{x+1}\exp(y-x){\rm d}y\leq 1+\exp(1)
+whereas ∫x−1x+1exp⁡(y)​𝑑y\int_{x-1}^{x+1}\exp(y){\rm d}y is unbounded in xx.
+Notice that λ\lambda only depends on the unperturbed
+Markov chain so that a bound on λ\lambda can
+be combined with any approximation.
+Remark 4.4.
+Let Pα~P_{\widetilde{\alpha}} and PαP_{\alpha}
+be ϕ\phi-irreducible and aperiodic.
+Then, one can prove under the assumptions
+of Corollary 4.2
+that Pα~P_{\widetilde{\alpha}}
+is VV-uniformly ergodic if ss is sufficiently small.
+To see this,
+note that by [31, Theorem 16.0.1] the
+VV-uniform ergodicity of PαP_{\alpha} implies
+that PαP_{\alpha} satisfies their drift condition (V4).
+By the arguments stated in the proof of Corollary 3.4,
+one obtains that Pα~P_{\widetilde{\alpha}} also satisfies (V4)
+for sufficiently
+small ss and this implies VV-uniform ergodicity.
+In this case, clearly Pα~P_{\widetilde{\alpha}}
+possesses a stationary distribution, say π~\widetilde{\pi},
+and
+‖π−π~‖V≤λ​s​C1−ρ⋅L1−δ−λ​s.\left\|\pi-\widetilde{\pi}\right\|_{V}\leq\frac{\lambda\,s\,C}{1-\rho}\cdot\frac{L}{1-\delta-\lambda s}.
+The previous inequality follows by (3.5) and the fact that
+‖π−π~‖V≤π⁡(V)+π~​(V)<∞.\left\|\pi-\widetilde{\pi}\right\|_{V}\leq\pi(V)+\widetilde{\pi}(V)<\infty.
+Here the finiteness of π⁡(V)\pi(V) follows by the VV-uniform ergodicity of PP
+and π~​(V)≤L/(1−δ−λ​s)\widetilde{\pi}(V)\leq L/(1-\delta-\lambda s) follows by (4.10) and [16, Proposition 4.24].
+4.3 Noisy Langevin algorithm for Gibbs random fields
+An alternative to the Metropolis-Hastings algorithm
+is the Langevin algorithm, see [39].
+Unfortunately, in its implementation
+one needs the
+gradient of the density of the target distribution.
+To overcome this problem, different approximate Langevin
+algorithms have been proposed and studied, see [1, 2, 43, 47].
+This section is mainly based on Alquier et al. [2, Section 3.4]
+where a noisy Langevin
+algorithm for Gibbs random fields is considered.
+We provide a quantitative version of [2, Theorem 3.2].
+The setting is as follows. Let 𝒴\mathcal{Y} be a finite set
+and with M∈ℕM\in\mathbb{N} let y={y1,…,yM}∈𝒴My=\{y_{1},\dots,y_{M}\}\in\mathcal{Y}^{M}
+be an observed data set on nodes {1,…,M}\{1,\dots,M\} of a certain graph.
+The likelihood of yy with parameter θ∈ℝ\theta\in{\mathbb{R}} is defined by
+ℓ⁡(y|θ)=exp⁡(θ​s​(y))∑y∈𝒴Mexp⁡(θ​s​(y)),\ell(y\,|\,\theta)=\frac{\exp(\theta\,s(y))}{\sum_{y\in\mathcal{Y}^{M}}\exp(\theta\,s(y))},
+where s:𝒴M→ℝs\colon\mathcal{Y}^{M}\to{\mathbb{R}} is a given statistic.
+The density of the posterior distribution with respect to the Lebesgue measure
+on (ℝ,ℬ⁡(ℝ))({\mathbb{R}},\mathcal{B}({\mathbb{R}}))
+given the data y∈𝒴My\in\mathcal{Y}^{M} is determined by
+πy​(θ):=π⁡(θ|y)∝ℓ⁡(y|θ)​p​(θ)\pi_{y}(\theta):=\pi(\theta\,|\,y)\propto\ell(y\,|\,\theta)\,p(\theta)
+where the prior density p⁡(θ)p(\theta) is the Lebesgue density
+of the normal distribution 𝒩⁡(0,σp2)\mathcal{N}(0,\sigma_{p}^{2})
+with σp>0\sigma_{p}>0.
+We consider the Langevin algorithm,
+a first order Euler discretization
+of the SDE of the
+Langevin diffusion, see [39].
+It is given by
+(Xn)n∈ℕ0(X_{n})_{n\in\mathbb{N}_{0}}
+with
+Xn=Xn−1+σ22∇logπy(Xn−1)+Zn,n∈ℕ.X_{n}=X_{n-1}+\frac{\sigma^{2}}{2}\nabla\log\pi_{y}(X_{n-1})+Z_{n},\qquad n\in\mathbb{N}.
+(4.11)
+Here X0X_{0} is a real-valued random variable and (Zn)n∈ℕ(Z_{n})_{n\in\mathbb{N}}
+is an i.i.d. sequence of random variables, independent of X0X_{0}, with
+Zn∼𝒩⁡(0,σ2)Z_{n}\sim\mathcal{N}(0,\sigma^{2}) for a parameter σ>0\sigma>0
+which can be interpreted as the step size in the discretization
+of the diffusion.
+It is easily seen
+that (Xn)n∈ℕ0(X_{n})_{n\in\mathbb{N}_{0}} is a Markov chain with transition kernel
+Pσ(θ,A)=∫ℝ𝟏A(θ+σ22∇logπy(θ)+z)𝒩(0,σ2)(dz),A∈ℬ(ℝ).P_{\sigma}(\theta,A)=\int_{\mathbb{R}}\mathbf{1}_{A}\left(\theta+\frac{\sigma^{2}}{2}\nabla\log\pi_{y}(\theta)+z\right)\mathcal{N}(0,\sigma^{2})({\rm d}z),\qquad A\in\mathcal{B}({\mathbb{R}}).
+In general πy\pi_{y} is not a stationary distribution of PσP_{\sigma},
+but
+there exists a stationary distribution (see Proposition 4.1 below),
+say πσ\pi_{\sigma}, which is close to πy\pi_{y} depending
+on σ\sigma.
+Let
+z⁡(θ)=∑y∈𝒴Mexp⁡(θ​s​(y))z(\theta)=\sum_{y\in\mathcal{Y}^{M}}\exp(\theta\,s(y))
+then, by the definition of πy\pi_{y} we have
+log⁡πy​(θ)\displaystyle\log\pi_{y}(\theta)
+=θ​s​(y)−log⁡z⁡(θ)+log⁡p⁡(θ)−log⁡(∫ℝℓ⁡(y|z)​p​(z)​𝑑z),\displaystyle=\theta\,s(y)-\log z(\theta)+\log p(\theta)-\log\left(\int_{\mathbb{R}}\ell(y\,|\,z)p(z){\rm d}z\right),
+∇log⁡πy​(θ)\displaystyle\nabla\log\pi_{y}(\theta)
+=s⁡(y)−z′​(θ)z⁡(θ)+∇log⁡p​(θ)\displaystyle=s(y)-\frac{z^{\prime}(\theta)}{z(\theta)}+\nabla\log p(\theta)
+=s⁡(y)−∑z∈𝒴Ms⁡(z)​exp⁡(θ​s​(z))∑z∈𝒴Mexp⁡(θ​s​(z))−θσp2\displaystyle=s(y)-\frac{\sum_{z\in\mathcal{Y}^{M}}s(z)\exp(\theta\,s(z))}{\sum_{z\in\mathcal{Y}^{M}}\exp(\theta\,s(z))}-\frac{\theta}{\sigma_{p}^{2}}
+=s(y)−𝔼ℓ(⋅∣θ)s(Y)−θσp2,\displaystyle=s(y)-\mathbb{E}_{\ell(\cdot\mid\theta)}s(Y)-\frac{\theta}{\sigma_{p}^{2}},
+where YY is a random variable on 𝒴M\mathcal{Y}^{M}
+distributed according the likelihood distribution determined by ℓ(⋅|θ)\ell(\cdot\,|\,\theta).
+We do not have access to the exact value of the mean 𝔼ℓ(⋅∣θ)s(Y)\mathbb{E}_{\ell(\cdot\mid\theta)}s(Y)
+since in general we do not know the normalizing constant of the likelihood.
+We assume that we can use a Monte Carlo estimate.
+For N∈ℕN\in\mathbb{N}
+let (Yi)1≤i≤N(Y_{i})_{1\leq i\leq N}
+be an i.i.d. sequence of random
+variables with Yi∼ℓ(⋅|θ)Y_{i}\sim\ell(\cdot\,|\,\theta) independent of (Zn)n∈ℕ(Z_{n})_{n\in\mathbb{N}} from (4.11).
+Then,
+1N​∑i=1Ns⁡(Yi)\frac{1}{N}\sum_{i=1}^{N}s(Y_{i})
+is an approximation of 𝔼ℓ(⋅∣θ)s(Y)\mathbb{E}_{\ell(\cdot\mid\theta)}s(Y)
+which leads to an estimate of ∇log⁡πy​(θ)\nabla\log\pi_{y}(\theta) given by
+∇^N​log⁡πy​(θ):=s⁡(y)−1N​∑i=1Ns⁡(Yi)−θσp2.\widehat{\nabla}^{N}\log\pi_{y}(\theta):=s(y)-\frac{1}{N}\sum_{i=1}^{N}s(Y_{i})-\frac{\theta}{\sigma_{p}^{2}}.
+We substitute ∇log⁡πy​(θ)\nabla\log\pi_{y}(\theta) by ∇^N​log⁡πy​(θ)\widehat{\nabla}^{N}\log\pi_{y}(\theta)
+in (4.11)
+and obtain a sequence of random variables (X~n)n∈ℕ0(\widetilde{X}_{n})_{n\in\mathbb{N}_{0}} defined by
+X~n\displaystyle\widetilde{X}_{n}
+=X~n−1+σ22​∇^N​log⁡πy​(X~n−1)+Zn\displaystyle=\widetilde{X}_{n-1}+\frac{\sigma^{2}}{2}\widehat{\nabla}^{N}\log\pi_{y}(\widetilde{X}_{n-1})+Z_{n}
+=(1−σ22​σp2)​X~n−1+σ22​(s⁡(y)−1N​∑i=1Ns⁡(Yi))+Zn.\displaystyle=\left(1-\frac{\sigma^{2}}{2\sigma_{p}^{2}}\right)\widetilde{X}_{n-1}+\frac{\sigma^{2}}{2}\left(s(y)-\frac{1}{N}\sum_{i=1}^{N}s(Y_{i})\right)+Z_{n}.
+The sequence (X~n)n∈ℕ0(\widetilde{X}_{n})_{n\in\mathbb{N}_{0}}
+is again a Markov chain with transition kernel
+Pσ,N​(θ,A)\displaystyle P_{\sigma,N}(\theta,A)
+=∫ℝ∑(y1′,…,yN′)∈𝒴M​N𝟏A​((1−σ22​σp2)​θ+σ22​(s⁡(y)−1N​∑i=1Ns⁡(yi′))+z)\displaystyle=\int_{\mathbb{R}}\sum_{(y^{\prime}_{1},\dots,y^{\prime}_{N})\in\mathcal{Y}^{MN}}\mathbf{1}_{A}\left(\left(1-\frac{\sigma^{2}}{2\sigma_{p}^{2}}\right)\theta+\frac{\sigma^{2}}{2}\left(s(y)-\frac{1}{N}\sum_{i=1}^{N}s(y_{i}^{\prime})\right)+z\right)
+×Πi=1N​ℓ​(θ|yi′)​𝒩​(0,σ2)​(d​z)\displaystyle\qquad\qquad\qquad\qquad\qquad\qquad\qquad\times\Pi_{i=1}^{N}\ell(\theta\,|\,y_{i}^{\prime})\,\mathcal{N}(0,\sigma^{2})({\rm d}z)
+for θ∈ℝ\theta\in{\mathbb{R}} and A∈ℬ⁡(ℝ)A\in\mathcal{B}({\mathbb{R}}).
+Let us state a transition of this noisy Langevin Markov chain
+according to Pσ,NP_{\sigma,N} in algorithmic form.
+Algorithm 4.3.
+A single transition from X~n\widetilde{X}_{n} to X~n+1\widetilde{X}_{n+1} works as follows:
+1. 
+Draw an i.i.d. sequence (Yi)1≤i≤N(Y_{i})_{1\leq i\leq N} with Yi∼ℓ(⋅|X~n)Y_{i}\sim\ell(\cdot\,|\,\widetilde{X}_{n}),
+call the result (y1′,…,yN′)(y^{\prime}_{1},\dots,y^{\prime}_{N});
+2. 
+Calculate
+∇^N​log⁡πy​(X~n):=s⁡(y)−1N​∑i=1Ns⁡(yi′)−X~nσp2;\widehat{\nabla}^{N}\log\pi_{y}(\widetilde{X}_{n}):=s(y)-\frac{1}{N}\sum_{i=1}^{N}s(y^{\prime}_{i})-\frac{\widetilde{X}_{n}}{\sigma_{p}^{2}};
+3. 
+Draw Zn∼𝒩⁡(0,σ2)Z_{n}\sim\mathcal{N}(0,\sigma^{2}),
+independent from step 1., call the result znz_{n}. Set
+X~n+1=X~n+σ22​∇^N​log⁡πy​(X~n)+zn.\widetilde{X}_{n+1}=\widetilde{X}_{n}+\frac{\sigma^{2}}{2}\widehat{\nabla}^{N}\log\pi_{y}(\widetilde{X}_{n})+z_{n}.
+From [2, Lemma 3]
+and by applying
+arguments of [39], we obtain the following
+facts about the noisy Langevin algorithm.
+Proposition 4.1.
+Let ‖s‖∞=supz∈𝒴M|s⁡(z)|\left\|s\right\|_{\infty}=\sup_{z\in\mathcal{Y}^{M}}\left|s(z)\right| be finite with ‖s‖∞>0\left\|s\right\|_{\infty}>0,
+let V:ℝ→[1,∞)V\colon{\mathbb{R}}\to[1,\infty) be given by V⁡(θ)=1+|θ|V(\theta)=1+\left|\theta\right| and assume that
+σ2<4​σp2\sigma^{2}<4\sigma^{2}_{p}. Then
+1. 
+the function VV is a Lyapunov function for PσP_{\sigma} and Pσ,NP_{\sigma,N}.
+We have
+Pσ​V​(θ)≤δ​V​(θ)+L​𝟏I​(θ),Pσ,N​V​(θ)≤δ​V​(θ)+L​𝟏I​(θ)\displaystyle P_{\sigma}V(\theta)\leq\delta V(\theta)+L\mathbf{1}_{I}(\theta),\qquad P_{\sigma,N}V(\theta)\leq\delta V(\theta)+L\mathbf{1}_{I}(\theta)
+(4.12)
+with δ=1−σ24​σp2\delta=1-\frac{\sigma^{2}}{4\sigma_{p}^{2}},
+L=σ+σ2​‖s‖∞+σ22​σp2L=\sigma+\sigma^{2}\left\|s\right\|_{\infty}+\frac{\sigma^{2}}{2\sigma_{p}^{2}}
+and the interval
+I={θ∈ℝ||θ|≤1+4σp2‖s‖∞+4​σp2σ}.I=\left\{\theta\in{\mathbb{R}}\left|\left|\theta\right|\leq 1+4\sigma_{p}^{2}\left\|s\right\|_{\infty}+\frac{4\sigma_{p}^{2}}{\sigma}\right.\right\}.
+2. 
+there are distributions πσ\pi_{\sigma} and πσ,N\pi_{\sigma,N} on (ℝ,ℬ⁡(ℝ))({\mathbb{R}},\mathcal{B}({\mathbb{R}}))
+which are stationary with respect to PσP_{\sigma} and Pσ,NP_{\sigma,N}, respectively.
+3. 
+the transition kernels PσP_{\sigma} and Pσ,NP_{\sigma,N} are VV-uniformly ergodic.
+4. 
+for N>4​max⁡{‖s‖∞2​σ4,‖s‖∞−3​σ−6}N>4\max\left\{\|s\|_{\infty}^{2}\sigma^{4},\|s\|_{\infty}^{-3}\sigma^{-6}\right\} we have
+supθ∈ℝ‖Pσ​(θ,⋅)−Pσ,N​(θ,⋅)‖tv≤6​max⁡{‖s‖∞​σ2,‖s‖∞−2​σ−4}​log⁡(N)N.\sup_{\theta\in{\mathbb{R}}}\left\|P_{\sigma}(\theta,\cdot)-P_{\sigma,N}(\theta,\cdot)\right\|_{{\rm tv}}\leq 6\max\left\{\|s\|_{\infty}\sigma^{2},\|s\|_{\infty}^{-2}\sigma^{-4}\right\}\,\frac{\log(N)}{N}.
+(4.13)
+We use the same arguments as in [39, Section 3.1].
+One can easily see that the Markov chains (Xn)n∈ℕ0(X_{n})_{n\in\mathbb{N}_{0}} and (X~n)n∈ℕ0(\widetilde{X}_{n})_{n\in\mathbb{N}_{0}} are irreducible with respect to
+the Lebesgue measure and weak Feller.
+Thus, all compact sets are petite, see [31, Proposition 6.2.8].
+Hence, for the existence of stationary distributions, say πσ\pi_{\sigma} and πσ,N\pi_{\sigma,N},
+[31, Theorem 12.3.3],
+as well as
+for the VV-uniform ergodicity [31, Theorem 16.0.1]
+it is enough to show that VV satisfies (4.12).
+With Z∼𝒩⁡(0,σ2)Z\sim\mathcal{N}(0,\sigma^{2}), we have
+Pσ​V​(θ)\displaystyle P_{\sigma}V(\theta)
+≤(1−σ22​σp2)V(θ)+σ22​σp2+σ22|s(y)−𝔼ℓ(⋅∣θ)s(Y)|+𝔼|Z|\displaystyle\leq\left(1-\frac{\sigma^{2}}{2\sigma_{p}^{2}}\right)V(\theta)+\frac{\sigma^{2}}{2\sigma^{2}_{p}}+\frac{\sigma^{2}}{2}\left|s(y)-\mathbb{E}_{\ell(\cdot\mid\theta)}s(Y)\right|+\mathbb{E}\left|Z\right|
+≤(1−σ22​σp2)​V​(θ)+σ22​σp2+σ2​‖s‖∞+σ\displaystyle\leq\left(1-\frac{\sigma^{2}}{2\sigma_{p}^{2}}\right)V(\theta)+\frac{\sigma^{2}}{2\sigma_{p}^{2}}+\sigma^{2}\left\|s\right\|_{\infty}+\sigma
+≤(1−σ22​σp2)​V​(θ)+max⁡{σ24​σp2​V​(θ),σ22​σp2+σ2​‖s‖∞+σ}\displaystyle\leq\left(1-\frac{\sigma^{2}}{2\sigma_{p}^{2}}\right)V(\theta)+\max\left\{\frac{\sigma^{2}}{4\sigma_{p}^{2}}V(\theta),\frac{\sigma^{2}}{2\sigma_{p}^{2}}+\sigma^{2}\left\|s\right\|_{\infty}+\sigma\right\}
+≤(1−σ24​σp2)​V​(θ)+(σ22​σp2+σ2​‖s‖∞+σ)⋅𝟏I​(θ).\displaystyle\leq\left(1-\frac{\sigma^{2}}{4\sigma_{p}^{2}}\right)V(\theta)+\left(\frac{\sigma^{2}}{2\sigma_{p}^{2}}+\sigma^{2}\left\|s\right\|_{\infty}+\sigma\right)\cdot\mathbf{1}_{I}(\theta).
+By the fact that
+𝔼⁡[|s⁡(y)−1N​∑i=1Ns⁡(Yi)|∣X~n=θ]≤2​‖s‖∞\mathbb{E}\left[\left|s(y)-\frac{1}{N}\sum_{i=1}^{N}s(Y_{i})\right|\mid\widetilde{X}_{n}=\theta\right]\leq 2\left\|s\right\|_{\infty}
+we obtain with the same arguments that
+Pσ,N​V​(θ)≤δ​V​(θ)+L⋅𝟏I​(θ).P_{\sigma,N}V(\theta)\leq\delta V(\theta)+L\cdot\mathbf{1}_{I}(\theta).
+Thus, the assertions from 1. to 3. are proven.
+The statement of
+4. is a consequence of [2, Lemma 3].
+There it is shown that for N>4​‖s‖∞2​σ4N>4\|s\|_{\infty}^{2}\sigma^{4} it holds that
+supθ∈ℝ‖Pσ​(θ,⋅)−Pσ,N​(θ,⋅)‖tv≤exp⁡(log⁡(N)4​N​‖s‖∞2​σ4)−1+4​π​‖s‖∞​σ2N.\sup_{\theta\in{\mathbb{R}}}\left\|P_{\sigma}(\theta,\cdot)-P_{\sigma,N}(\theta,\cdot)\right\|_{\text{tv}}\leq\exp\left(\frac{\log(N)}{4N\|s\|_{\infty}^{2}\sigma^{4}}\right)-1+\frac{4\sqrt{\pi}\|s\|_{\infty}\sigma^{2}}{N}.
+By using exp⁡(θ)−1≤θ​exp⁡(θ)\exp(\theta)-1\leq\theta\exp(\theta) and N>4N>4 we further estimate the
+right-hand side by
+(KN,s,σ4​‖s‖∞2​σ4+4​π​‖s‖∞​σ2log⁡(5))⋅log⁡(N)N with KN,s,σ=exp⁡(log⁡(N)4​N​‖s‖∞2​σ4).\left(\frac{K_{N,s,\sigma}}{4\|s\|_{\infty}^{2}\sigma^{4}}+\frac{4\sqrt{\pi}\|s\|_{\infty}\sigma^{2}}{\log(5)}\right)\cdot\frac{\log{(N)}}{N}\quad\text{ with }\quad K_{N,s,\sigma}=\exp\left(\frac{\log(N)}{4N\|s\|_{\infty}^{2}\sigma^{4}}\right).
+Since log(N)⋅N−1/3<2\log(N)\cdot N^{-1/3}<2,
+we have the bound KN,s,σ≤exp⁡(1)K_{N,s,\sigma}\leq\exp(1) provided
+that 4​N2/3​‖s‖∞2​σ4≥24N^{2/3}\|s\|_{\infty}^{2}\sigma^{4}\geq 2
+which follows from N≥‖s‖∞−3​σ−6N\geq\|s\|_{\infty}^{-3}\sigma^{-6}.
+The assertion of (4.13) follows now by a simple calculation.
+∎
+By using the facts collected in the previous proposition,
+we can apply the perturbation bound of Theorem 3.2
+and obtain a quantitative perturbation bound for the noisy Langevin algorithm.
+Corollary 4.3.
+Let p0p_{0} be a probability measure on (ℝ,ℬ⁡(ℝ))({\mathbb{R}},\mathcal{B}({\mathbb{R}}))
+and set pn=p0​Pσnp_{n}=p_{0}P_{\sigma}^{n} as well as p~n,N=p0​Pσ,Nn\widetilde{p}_{n,N}=p_{0}P_{\sigma,N}^{n}. Suppose that σ2<4​σp2\sigma^{2}<4\sigma_{p}^{2}.
+Then, there are numbers ρ∈[0,1)\rho\in[0,1) and C∈(0,∞)C\in(0,\infty), independent of n,Nn,N,
+determining
+R:=18​max⁡{‖s‖∞​σ2,‖s‖∞−2​σ−4}1−ρ⋅(2+max⁡{𝔼p0​|X|,4​σp2​(‖s‖∞+σ−1)})R:=\frac{18\max\{\left\|s\right\|_{\infty}\sigma^{2},\left\|s\right\|_{\infty}^{-2}\sigma^{-4}\}}{1-\rho}\cdot\left(2+\max\left\{\mathbb{E}_{p_{0}}\left|X\right|,4\sigma_{p}^{2}(\left\|s\right\|_{\infty}+\sigma^{-1})\right\}\right)
+with 𝔼p0​|X|=∫ℝ|θ|​d​p0​(θ)\mathbb{E}_{p_{0}}\left|X\right|=\int_{\mathbb{R}}\left|\theta\right|\,{\rm d}p_{0}(\theta),
+so that for N>90​max⁡{‖s‖∞2​σ4,‖s‖∞−3​σ−6}N>90\max\{\left\|s\right\|_{\infty}^{2}\sigma^{4},\left\|s\right\|_{\infty}^{-3}\sigma^{-6}\}
+we have
+max⁡{‖pn−p~n,N‖tv,‖πσ−πσ,N‖tv}≤R⋅(2​C​(σ+σ2​‖s‖∞+3))2/log⁡(N)​log⁡(N)2N.\max\left\{\left\|p_{n}-\widetilde{p}_{n,N}\right\|_{\text{\rm tv}},\left\|\pi_{\sigma}-\pi_{\sigma,N}\right\|_{\text{\rm tv}}\right\}\leq R\cdot\left(2C\left(\sigma+\sigma^{2}\left\|s\right\|_{\infty}+3\right)\right)^{2/\log(N)}\frac{\log(N)^{2}}{N}.
+We have by Proposition 4.1 that PσP_{\sigma} is VV-uniformly ergodic with V⁡(θ)=1+|θ|V(\theta)=1+\left|\theta\right|, i.e.,
+there are numbers ρ∈[0,1)\rho\in[0,1) and C∈(0,∞)C\in(0,\infty) such that
+supθ∈ℝ‖Pσn​(θ,⋅)−πσ‖VV⁡(θ)≤C​ρn.\sup_{\theta\in{\mathbb{R}}}\frac{\left\|P_{\sigma}^{n}(\theta,\cdot)-\pi_{\sigma}\right\|_{V}}{V(\theta)}\leq C\rho^{n}.
+Now, by combining Theorem 3.2 and Remark 3.8 with the results from Proposition 4.1
+we obtain the result.
+∎
+Remark 4.5.
+We want to point out that the assumptions imposed are the same
+as in [2, Theorem 3.2], but
+instead of the asymptotic result
+we provide an explicit estimate.
+The numbers ρ∈[0,1)\rho\in[0,1)
+and C∈(0,∞)C\in(0,\infty) are not stated in terms of the model parameters.
+In principle, these values can be
+derived from the drift condition (4.12)
+through [5, Theorem 1.1].
+Acknowledgements
+We thank Alexander Mitrophanov
+and the referees for their valuable comments which helped to improve the paper. D.R. was
+supported by the DFG Research Training Group 2088.
+References
+[1]
+Ahn, S.,
+Korattikara, A. and Welling, M.
+(2012).
+Bayesian posterior sampling via stochastic gradient Fisher scoring.
+In Proceedings of the 29th International Conference on Machine
+Learning.
+[2]
+[author]
+Alquier, P.P.,
+Friel, N.N.,
+Everitt, R.R. and Boland, A.A.
+(2016).
+Noisy Monte Carlo: Convergence of Markov chains with approximate
+transition kernels.
+Stat. Comp.
+26
+29–47.
+[3]
+Bardenet, R.,
+Doucet, A. and Holmes, C.
+(2014).
+Towards scaling up Markov chain Monte Carlo: an adaptive
+subsampling approach.
+In Proceedings of the 31st International Conference on Machine
+Learning
+405–413.
+[4]
+[author]
+Bardenet, R.R.,
+Doucet, A.A. and Holmes, C.C.
+(2015).
+On Markov chain Monte Carlo methods for tall data.
+arXiv preprint arXiv:1505.02827.
+[5]
+[author]
+Baxendale, P.P.
+(2005).
+Renewal theory and computable convergence rates for geometrically
+ergodic Markov chains.
+Ann. Appl. Probab.
+15
+700–738.
+[6]
+Betancourt, M.
+(2015).
+The Fundamental Incompatibility of Scalable Hamiltonian Monte Carlo and
+Naive Data Subsampling.
+In Proceedings of the 32nd International Conference on Machine
+Learning
+533-540.
+[7]
+[author]
+Breyer, L.L.,
+Roberts, G.G. and Rosenthal, J.J.
+(2001).
+A note on geometric ergodicity and floating-point roundoff error.
+Statist. Probab. Lett.
+53
+123–127.
+[8]
+[author]
+Dobrushin, R.R.
+(1956).
+Central limit theorem for non-stationary Markov chains. I.
+Teor. Veroyatnost. i Primenen.
+1
+72–89.
+[9]
+[author]
+Dobrushin, R.R.
+(1956).
+Central limit theorem for nonstationary Markov chains. II.
+Teor. Veroyatnost. i Primenen.
+1
+365–425.
+[10]
+[author]
+Dobrushin, R.R.
+(1996).
+Lectures on Probability Theory and Statistics: Ecole d’Eté de
+Probabilités de Saint-Flour XXIV—1994
+Perturbation methods of the theory of Gibbsian fields,
+1–66.
+Springer Berlin Heidelberg, Berlin, Heidelberg.
+[11]
+[author]
+Durmus, A.A. and Moulines, E.E.
+(2015).
+Quantitative bounds of convergence for geometrically ergodic Markov
+chain in the Wasserstein distance with application to the Metropolis
+Adjusted Langevin Algorithm.
+Stat. Comput.
+25
+5–19.
+[12]
+[author]
+Eberle, A.A.
+(2014).
+Error bounds for Metropolis-Hastings algorithms applied to
+perturbations of Gaussian measures in high dimensions.
+Ann. Appl. Probab.
+24
+337–377.
+[13]
+[author]
+Ferré, D.D.,
+Hervé, L.L. and Ledoux, J.J.
+(2013).
+Regular perturbation of VV-geometrically ergodic Markov chains.
+J. Appl. Prob.
+50
+184–194.
+[14]
+[author]
+Gibbs, A.A.
+(2004).
+Convergence in the Wasserstein metric for Markov chain Monte
+Carlo algorithms with applications to image restoration.
+Stoch. Models
+20
+473–492.
+[15]
+[author]
+Guibourg, D.D.,
+Hervé, L.L. and Ledoux, J.J.
+(2012).
+Quasi-compactness of Markov kernels on weighted-supremum spaces and
+geometrical ergodicity.
+Preprint. Available at http://arxiv.org/abs/1110.3240v5.
+[16]
+[author]
+Hairer, M.M.
+(2006).
+Ergodic properties of Markov processes.
+Lecture notes, Univ. Warwick. Available at http://www.hairer.org/notes/Markov.pdf.
+[17]
+Hairer, M. and Mattingly, J. C.
+(2011).
+Yet another look at Harris’ ergodic theorem for Markov chains.
+In Seminar on Stochastic Analysis, Random Fields and Applications
+VI
+109–117.
+Springer.
+[18]
+[author]
+Hairer, M.M.,
+Stuart, A.A. and Vollmer, S.S.
+(2014).
+Spectral gaps for a Metropolis-Hastings algorithm in infinite
+dimensions.
+Ann. Appl. Probab.
+24
+2455–2490.
+[19]
+[author]
+Johndrow, J.J.,
+Mattingly, J.J.,
+Mukherjee, S.S. and Dunson, D.D.
+(2015).
+Approximations of Markov Chains and Bayesian Inference.
+arXiv preprint arXiv:1508.03387.
+[20]
+[author]
+Kartashov, N.N.
+(1986).
+Inequalities in theorems of ergodicity and stability for Markov
+chains with a common phase space, Parts I and II.
+Theory Probab. Appl.
+30
+247–259.
+[21]
+[author]
+Kartashov, N.N. and Golomozyĭ, V.V.
+(2013).
+Maximal coupling procedure and stability of discrete Markov chains.
+I.
+Theory of Probability and Mathematical Statistics
+86
+93–104.
+[22]
+[author]
+Keller, G.G. and Liverani, C.C.
+(1999).
+Stability of the spectrum for transfer operators.
+Ann. Scuola Norm. Sup. Pisa Classe Sci.
+28
+141–152.
+[23]
+Korattikara, A.,
+Chen, Y. and Welling, M.
+(2014).
+Austerity in MCMC Land: Cutting the Metropolis-Hastings Budget.
+In Proceedings of The 31st International Conference on Machine
+Learning
+181–189.
+[24]
+[author]
+Lee, A.A.,
+Doucet, A.A. and Łatuszyński, K.K.
+(2014).
+Perfect simulation using atomic regeneration with application to
+Sequential Monte Carlo.
+arXiv preprint arXiv:1407.5770.
+[25]
+[author]
+Madras, N.N. and Sezer, D.D.
+(2010).
+Quantitative bounds for Markov chain convergence: Wasserstein and
+total variation distances.
+Bernoulli
+16
+882–908.
+[26]
+[author]
+Mao, Y.Y.,
+Zhang, M.M. and Zhang, Y.Y.
+(2013).
+A Generalization of Dobrushin coefficient.
+Chinese J. Appl. Probab. Statist.
+29
+489–494.
+[27]
+[author]
+Marin, J. M.J. M.,
+Pudlo, P.P.,
+Robert, C.C. and Ryder, R.R.
+(2012).
+Approximate Bayesian computational methods.
+Stat. Comp.
+22
+1167–1180.
+[28]
+[author]
+Mathé, P.P.
+(2004).
+Numerical integration using V-uniformly ergodic Markov chains.
+J. Appl. Probab.
+41
+1104–1112.
+[29]
+[author]
+Medina-Aguayo, J.J.,
+Lee, A.A. and Roberts, G.G.
+(2016).
+Stability of noisy Metropolis–Hastings.
+Stat. Comp.
+26
+1187–1211.
+[30]
+[author]
+Mengersen, K.K. and Tweedie, R.R.
+(1996).
+Rates of convergence of the Hastings and Metropolis algorithms.
+Ann. Statist.
+24
+101–121.
+[31]
+[author]
+Meyn, S.S. and Tweedie, R.R.
+(2009).
+Markov chains and stochastic stability,
+Second ed.
+Cambridge University Press.
+[32]
+[author]
+Mitrophanov, A.A.
+(2003).
+Stability and exponential convergence of continuous-time Markov
+chains.
+J. Appl. Probab.
+40
+970–979.
+[33]
+[author]
+Mitrophanov, A.A.
+(2005).
+Sensitivity and convergence of uniformly ergodic Markov chains.
+J. Appl. Prob.
+42
+1003–1014.
+[34]
+[author]
+Ollivier, Y.Y.
+(2009).
+Ricci curvature of Markov chains on metric spaces.
+J. Funct. Anal.
+256
+810–864.
+[35]
+[author]
+Pillai, N.N. and Smith, A.A.
+(2015).
+Ergodicity of Approximate MCMC Chains with Applications to Large Data
+Sets.
+arXiv preprint arXiv:1405.0182v2.
+[36]
+[author]
+Roberts, G.G. and Rosenthal, J.J.
+(1997).
+Geometric ergodicity and hybrid Markov chains.
+Electron. Comm. Probab.
+2
+no. 2, 13–25.
+[37]
+[author]
+Roberts, G.G. and Rosenthal, J.J.
+(2004).
+General state space Markov chains and MCMC algorithms.
+Probability Surveys
+1
+20–71.
+[38]
+[author]
+Roberts, G.G.,
+Rosenthal, J.J. and Schwartz, P.P.
+(1998).
+Convergence properties of perturbed Markov chains.
+J. Appl. Probab.
+35
+1–11.
+[39]
+[author]
+Roberts, G.G. and Tweedie, R.R.
+(1996).
+Exponential convergence of Langevin distributions and their discrete
+approximation.
+Bernoulli
+2
+341–363.
+[40]
+[author]
+Rudolf, D.D.
+(2012).
+Explicit error bounds for Markov chain Monte Carlo.
+Dissertationes Math.
+485
+93 pp.
+[41]
+[author]
+Shardlow, T.T. and Stuart, A.A.
+(2000).
+A perturbation theory for ergodic Markov chains and application to
+numerical approximations.
+SIAM J. Numer. Analysis
+37
+1120–1137.
+[42]
+Singh, S.,
+Wick, M. and McCallum, A.
+(2012).
+Monte Carlo MCMC: efficient inference by approximate sampling.
+In Proceedings of the 2012 Joint Conference on Empirical Methods in
+Natural Language Processing and Computational Natural Language Learning
+1104–1113.
+Association for Computational Linguistics.
+[43]
+[author]
+Teh, Y.Y.,
+Thiéry, A.A. and Vollmer, S.S.
+(2016).
+Consistency and fluctuations for stochastic gradient Langevin
+dynamics.
+J. Mach. Learn. Res.
+17
+1–33.
+[44]
+[author]
+Tierney, L.L.
+(1998).
+A note on the Metropolis-Hastings kernels for general state
+spaces.
+Ann. Appl. Probab.
+8
+1–9.
+[45]
+[author]
+Villani, C.C.
+(2003).
+Topics in Optimal Transportation.
+American Mathematical Society.
+[46]
+[author]
+Villani, C.C.
+(2009).
+Optimal Transport: Old and New.
+Springer Verlag, Berlin.
+Grundlehren der Mathematischen Wissenschaften, no. 338.
+[47]
+Welling, M. and Teh, Y.
+(2011).
+Bayesian learning via stochastic gradient Langevin dynamics.
+In Proceedings of the 28th International Conference on Machine
+Learning
+681–688.
+ Experimental support, please
+ view the build logs
+ for errors. Generated by
+ L
+ A
+ T
+ E
+ xml
+ .
+Instructions for reporting errors
+We are continuing to improve HTML versions of papers, and your feedback helps enhance accessibility and mobile
+ support. To report errors in the HTML that will help us improve conversion and rendering, choose any of the
+ methods listed below:
+Click the "Report Issue" (
+ ) button, located in the page header.
+Tip: You can select the relevant text first, to include it in your report.
+Our team has already identified the following issues. We appreciate your time reviewing and reporting rendering errors we
+ may not have found yet. Your efforts will help us improve the HTML versions for all readers, because disability
+ should not be a barrier to accessing research. Thank you for your continued support in championing open access for
+ all.
+Have a free development cycle? Help support accessibility at arXiv! Our collaborators at LaTeXML maintain a list of packages that need conversion, and welcome developer contributions.
+ We gratefully acknowledge support from our major funders,
+ member institutions, ,
+ and all contributors.
+ About ·
+ Help ·
+ Contact ·
+ Subscribe ·
+ Copyright ·
+ Privacy ·
+ Accessibility ·
+ Operational Status (opens in new tab)
