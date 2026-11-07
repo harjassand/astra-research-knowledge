@@ -1,6 +1,7 @@
 # First-passage laws from compressed Ising-chain relaxation
 
-**Latest lifecycle and availability, 7 November Brisbane:** P2 24c10ee2 completed its pre-experiment complete-mediation return for the supplied rational two-body/linear-Pauli Markov class. The standalone twelve-file original, full report/proofs and exact prompt/chat response are available; opening captured, expanded visible activity initially awaits staging. No new coordinator assessment or exact experiment handoff is supplied: no automatic launch. P1 4ea7de89 remains undisturbed; P3 8a187aa5 has posting/initial response only, task-specific start unconfirmed in the supplied receipt. Earlier scores/frontier, eighteen ZIP and all source/N1683/Sol/Dots/team/resource holds remain unchanged. Capital sends no scientific prompt or recovery.
+**Latest lifecycle and availability, 7 November Brisbane:** P2 24c10ee2 completed the pre-experiment complete-mediation return for the supplied rational two-body/linear-Pauli Markov class. The standalone twelve-file original, full report/proofs, exact prompt/response, expanded visible activity and prior capture are staged. No new coordinator assessment or exact experiment handoff is supplied: this return is NOT a diagnostic attempt and nothing launches automatically. P1 4ea7de89 remains undisturbed. P3 8a187aa5 now has dispatcher-confirmed task-specific activity on a pure-state boundary, local leakage/control inflow/transient fidelity/heralded-output bounds; activity only, no new result. Prior scores/frontier and all eighteen ZIP/source/N1683/Sol/Dots/team/resource holds remain. Capital sends no scientific prompt or recovery.
+
 
 
 
