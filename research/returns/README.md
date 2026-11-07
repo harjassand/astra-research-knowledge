@@ -1,12 +1,15 @@
 # Supplied research returns
 
+**Latest lifecycle and availability, 7 November Brisbane:** P2 24c10ee2 completed its pre-experiment complete-mediation return for the supplied rational two-body/linear-Pauli Markov class. The standalone twelve-file original, full report/proofs and exact prompt/chat response are available; opening captured, expanded visible activity initially awaits staging. No new coordinator assessment or exact experiment handoff is supplied: no automatic launch. P1 4ea7de89 remains undisturbed; P3 8a187aa5 has posting/initial response only, task-specific start unconfirmed in the supplied receipt. Earlier scores/frontier, eighteen ZIP and all source/N1683/Sol/Dots/team/resource holds remain unchanged. Capital sends no scientific prompt or recovery.
+
+**Latest P2 source:** [complete mediation](2026-11-07-p2-complete-mediation/README.md), with the twelve-file original, reference-assisted classification, finite approximation/optimization/witness and full costs. No new assessment or automatic experiment launch.
+
+
 **Earlier-work source completion:** [canonical programme source map](2026-11-07-research-programme-source-index/README.md) covers seven prior packages, preserving exact hashes, corrected dossier/archive versions and distinct thermal/commuting/Gibbs contracts. Existing opening and nested protected-processing sources are reused.
 
 
 **New thermal-family source:** [finite thermal collisions and warm protected service](2026-11-07-physical-cooling-thermal-service/README.md), with the complete original, readable proofs, exact-hash internal PASS reviews, inherited restricted transfers and open universal-control/resource gates. This is a distinct powered contract; earlier microscopic memory/Gibbs/autonomous-correction results retain their scopes.
 
-
-**Latest lifecycle and availability, 7 November Brisbane:** P3's selected sampling-state operation is assessed at NEW provisional correctness-assumed **70–80**, prior family/frontier **75–85** unchanged, ordinal/nonadditive/no90+; the broader programme remains UNFINISHED. Exact2191-character P3_AFTER_SAMPLING_STATE_CONTROL_20261107.txt/SHA256d888490744a812f1d4bf861ed29624aa040102e81879be3325f840e70b5b7bcf was POSTED ONCE in the same normal-web Pro, native USER-MESSAGE8a187aa5-3a8c-46a9-9fa2-1a924d1d369a, full visible body matched. Initial response will assess operations enlarging controllable physical states with source/noise/holding costs. Specific research action/final question is not yet visible: task-specific START remains UNCONFIRMED. P1/P2 work remains undisturbed; diagnostic prompts were not sent and the design is unstarted/not queued. Full original/proofs/actual prompt-response/expanded visible activity/prior capture available. All eighteen ZIP/N236/inherited source/Sol/Dots/team/resource holds retained. Capital sends no scientific prompt or recovery.
 
 
 
@@ -121,6 +124,7 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| P2 complete classical mediation | [Supplied noncommuting spin generator, complete references, finite LOCC construction and scoped cost/witness contracts](2026-11-07-p2-complete-mediation/README.md) |
 | Earlier research source map | [Seven prior families, canonical artifacts, source/version corrections and scoped dependency links](2026-11-07-research-programme-source-index/README.md) |
 | Finite cooling and warm quantum service | [Actual finite collisions, coherent-bath closure, private thermal reserve, restricted ports and paid powered implementation](2026-11-07-physical-cooling-thermal-service/README.md) |
 | P3 sampling/state control | [Fresh-observation physical commands, complete output/reference, repeated-output independence and paid finite costs; 21-file original](2026-11-07-p3-sampling-state-control/README.md) |

@@ -1,5 +1,8 @@
 # Engineered-GKSL protected thermal processing
 
+**Latest lifecycle and availability, 7 November Brisbane:** P2 24c10ee2 completed its pre-experiment complete-mediation return for the supplied rational two-body/linear-Pauli Markov class. The standalone twelve-file original, full report/proofs and exact prompt/chat response are available; opening captured, expanded visible activity initially awaits staging. No new coordinator assessment or exact experiment handoff is supplied: no automatic launch. P1 4ea7de89 remains undisturbed; P3 8a187aa5 has posting/initial response only, task-specific start unconfirmed in the supplied receipt. Earlier scores/frontier, eighteen ZIP and all source/N1683/Sol/Dots/team/resource holds remain unchanged. Capital sends no scientific prompt or recovery.
+
+
 Stable local CSS duality, two-sector energy, correlated-state basin, selected non-Clifford bursts and restricted encoded WRITE/READ. Supplied code/import, selected binary component/zero complement, retained bath, isolated independent-stochastic staging and noiseless internal classical processing remain. Ideal nominal engineered Markov cooler differs from the later finite-collision/powered service. No new microscopic recyclable cooler, native universality, economical geometry, full-cost advantage or north-star claim.
 
 The current governing dossier has SHA256 `b94faadf5e396a54566414b0889bb45286080a47512701f032795c8e10fb8c00`. Its original archive has SHA256 `57a49860263b6716e386b01a51e3720e7e39b7d4ea33733613c8b45bc3099bed`. Source identity is content-addressed; these links do not create another result or increase any capability score.

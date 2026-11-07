@@ -1,5 +1,8 @@
 # Finite thermal cooling and robust warm quantum processing
 
+**Latest lifecycle and availability, 7 November Brisbane:** P2 24c10ee2 completed its pre-experiment complete-mediation return for the supplied rational two-body/linear-Pauli Markov class. The standalone twelve-file original, full report/proofs and exact prompt/chat response are available; opening captured, expanded visible activity initially awaits staging. No new coordinator assessment or exact experiment handoff is supplied: no automatic launch. P1 4ea7de89 remains undisturbed; P3 8a187aa5 has posting/initial response only, task-specific start unconfirmed in the supplied receipt. Earlier scores/frontier, eighteen ZIP and all source/N1683/Sol/Dots/team/resource holds remain unchanged. Capital sends no scientific prompt or recovery.
+
+
 Finite-duration thermal collisions replace a previously stipulated whole-memory Markov cooler for the supplied dense-descent code family. The proved composite preserves the entire canonical logical/gauge/bath module through warm service, including bounded coherent retained-bath perturbations. **Three completed internal reviews PASS the exact final dossier at its stated scopes.** Fully noisy universal ports/control remain **NOT CLOSED**; affordable matched full-cost advantage is **NOT ACHIEVED**, historical priority **UNKNOWN**, and no north-star claim is made.
 
 | Start here | Governing source |

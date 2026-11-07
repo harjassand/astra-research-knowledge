@@ -1,5 +1,8 @@
 # Single-spin Gibbs uniqueness and soft certificates
 
+**Latest lifecycle and availability, 7 November Brisbane:** P2 24c10ee2 completed its pre-experiment complete-mediation return for the supplied rational two-body/linear-Pauli Markov class. The standalone twelve-file original, full report/proofs and exact prompt/chat response are available; opening captured, expanded visible activity initially awaits staging. No new coordinator assessment or exact experiment handoff is supplied: no automatic launch. P1 4ea7de89 remains undisturbed; P3 8a187aa5 has posting/initial response only, task-specific start unconfirmed in the supplied receipt. Earlier scores/frontier, eighteen ZIP and all source/N1683/Sol/Dots/team/resource holds remain unchanged. Capital sends no scientific prompt or recovery.
+
+
 Fixed-temperature SINGLE-SPIN uniqueness, exact integer energies/same-table temperature regime, arbitrary-Gibbs projection/lift/classification, clustering, specified-boundary convergence, pressure/computability and perturbations at their quantifiers. Hard original, soft extension and bilayer remain distinct. Literal noncomputable valid convergence modulus for a fixed unique computable model is DISPROVED; actual obstruction is family-wide nonuniformity, with a positive selected-plus exception. Infinite-volume clustering is not arbitrary-boundary strong mixing. No priority promotion.
 
 The current governing dossier has SHA256 `4451801640996c3f7dd2a1e3ff134d1c81fc174bc67d6bb212df824730838b4f`. Its original archive has SHA256 `6e335f2e978925f232846799ff04856a0df598dbf58c674097590fa4bab6189b`. Source identity is content-addressed; these links do not create another result or increase any capability score.

@@ -1,6 +1,7 @@
 # Physical nucleation: residence certificates and a waiting-time law
 
-**Latest lifecycle and availability, 7 November Brisbane:** P3's selected sampling-state operation is assessed at NEW provisional correctness-assumed **70–80**, prior family/frontier **75–85** unchanged, ordinal/nonadditive/no90+; the broader programme remains UNFINISHED. Exact2191-character P3_AFTER_SAMPLING_STATE_CONTROL_20261107.txt/SHA256d888490744a812f1d4bf861ed29624aa040102e81879be3325f840e70b5b7bcf was POSTED ONCE in the same normal-web Pro, native USER-MESSAGE8a187aa5-3a8c-46a9-9fa2-1a924d1d369a, full visible body matched. Initial response will assess operations enlarging controllable physical states with source/noise/holding costs. Specific research action/final question is not yet visible: task-specific START remains UNCONFIRMED. P1/P2 work remains undisturbed; diagnostic prompts were not sent and the design is unstarted/not queued. Full original/proofs/actual prompt-response/expanded visible activity/prior capture available. All eighteen ZIP/N236/inherited source/Sol/Dots/team/resource holds retained. Capital sends no scientific prompt or recovery.
+**Latest lifecycle and availability, 7 November Brisbane:** P2 24c10ee2 completed its pre-experiment complete-mediation return for the supplied rational two-body/linear-Pauli Markov class. The standalone twelve-file original, full report/proofs and exact prompt/chat response are available; opening captured, expanded visible activity initially awaits staging. No new coordinator assessment or exact experiment handoff is supplied: no automatic launch. P1 4ea7de89 remains undisturbed; P3 8a187aa5 has posting/initial response only, task-specific start unconfirmed in the supplied receipt. Earlier scores/frontier, eighteen ZIP and all source/N1683/Sol/Dots/team/resource holds remain unchanged. Capital sends no scientific prompt or recovery.
+
 
 
 
@@ -98,3 +99,5 @@ The exact2860-character continuation, SHA25632ae2f1c81dc389cc6c53f98ee59f9067866
 Later supplied result: [conditional block transport and direct-simulation limits](../2026-11-07-p2-nucleation-block-transport/README.md). The full physical nucleation predictor stays unresolved; this is not a general algorithmic hardness result.
 
 Later completed information question: [local thermal-response horizon and matching reconstruction](../2026-11-07-p2-thermal-local-response-horizon/README.md). This changes from supplied microscopic kinetics to an unknown-source noisy scalar observation channel; it does not solve nucleation or imply hardness when actual coefficients are supplied.
+
+Later P2 source: [complete classical mediation](../2026-11-07-p2-complete-mediation/README.md) uses a supplied microscopic generator, complete local references and paid finite LOCC/numerical-time contracts. The earlier observation/nucleation/sensitivity results retain their scopes and unresolved endpoints.

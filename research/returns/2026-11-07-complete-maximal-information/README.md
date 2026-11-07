@@ -1,5 +1,8 @@
 # Complete maximal-information profiles and canonical channels
 
+**Latest lifecycle and availability, 7 November Brisbane:** P2 24c10ee2 completed its pre-experiment complete-mediation return for the supplied rational two-body/linear-Pauli Markov class. The standalone twelve-file original, full report/proofs and exact prompt/chat response are available; opening captured, expanded visible activity initially awaits staging. No new coordinator assessment or exact experiment handoff is supplied: no automatic launch. P1 4ea7de89 remains undisturbed; P3 8a187aa5 has posting/initial response only, task-specific start unconfirmed in the supplied receipt. Earlier scores/frontier, eighteen ZIP and all source/N1683/Sol/Dots/team/resource holds remain unchanged. Capital sends no scientific prompt or recovery.
+
+
 Finite witnesses, exact versus approximate infinite-output greatestness under faithful TRACIAL hypotheses, full-support instability/acquisition costs, paid offline PBT simulation and processing-order counterexamples. Atomic/exact versus injective/approximate structural split credits Okamura–Ozawa and earlier predecessors; claimed contribution is a specific complete-profile/postprocessing bridge. No first general amenability characterization, ordinary-capacity algorithm, generic noise-stable canonicalizer or practical quantum advantage.
 
 The current governing dossier has SHA256 `4f4a4374367956818ecd93df7df830201556cbb3572f6adc8e1216ce57393036`. Its original archive has SHA256 `2f2b8608db900dd4cc289dc15a6682c8ecf7253fb8471266e27bf0f87d6e413a`. Source identity is content-addressed; these links do not create another result or increase any capability score.

@@ -1,5 +1,8 @@
 # Exact-dynamics rare-thermal-boundary quantum memory
 
+**Latest lifecycle and availability, 7 November Brisbane:** P2 24c10ee2 completed its pre-experiment complete-mediation return for the supplied rational two-body/linear-Pauli Markov class. The standalone twelve-file original, full report/proofs and exact prompt/chat response are available; opening captured, expanded visible activity initially awaits staging. No new coordinator assessment or exact experiment handoff is supplied: no automatic launch. P1 4ea7de89 remains undisturbed; P3 8a187aa5 has posting/initial response only, task-specific start unconfirmed in the supplied receipt. Earlier scores/frontier, eighteen ZIP and all source/N1683/Sol/Dots/team/resource holds remain unchanged. Capital sends no scientific prompt or recovery.
+
+
 Full-exponent entropy/KMS consumers, Bell/Weyl complete-channel bridge, admission theorems and noisy-writer obstructions at exact access/static-H/resource assumptions. N1645 is a visible report, not an acquired underlying theorem; N1694 is a distinct acquired clock construction. Generic same-microscopic-model noisy-writer-to-long-HOLD theorem and matched practical gain remain open. Powered later constructions do not close that earlier loading contract.
 
 The current governing dossier has SHA256 `71dbd54db5ffa6ae2ec369ebba4e5e871bc798abf0705c0acbe8dd34fef6fbe2`. Its original archive has SHA256 `763855dd667a272ea4a84a03b664520c2104c76f622371300516126aa1806c4e`. Source identity is content-addressed; these links do not create another result or increase any capability score.

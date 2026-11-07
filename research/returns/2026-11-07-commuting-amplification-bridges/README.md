@@ -1,5 +1,8 @@
 # Commuting amplification and reconstruction bridges
 
+**Latest lifecycle and availability, 7 November Brisbane:** P2 24c10ee2 completed its pre-experiment complete-mediation return for the supplied rational two-body/linear-Pauli Markov class. The standalone twelve-file original, full report/proofs and exact prompt/chat response are available; opening captured, expanded visible activity initially awaits staging. No new coordinator assessment or exact experiment handoff is supplied: no automatic launch. P1 4ea7de89 remains undisturbed; P3 8a187aa5 has posting/initial response only, task-specific start unconfirmed in the supplied receipt. Earlier scores/frontier, eighteen ZIP and all source/N1683/Sol/Dots/team/resource holds remain unchanged. Capital sends no scientific prompt or recovery.
+
+
 Charged coordinate reconstruction through one common target/two one-sided parents; quadratic repetition for DISJOINT-BLOCK/projection predicates; separate tensor result with its own gap; interactive noisy-channel amplification with every signal charged. Standalone operational sampler/Lin closure, arbitrary-commuting versus finite-dimensional communicating scopes and memoryless-channel restrictions retained. General quadratic arbitrary-predicate repetition, locality/Hamiltonian compilation and superior physical capability remain open.
 
 The current governing dossier has SHA256 `cd367eb1721226fd906efa8b56ea8f360cb16e523497996f95920ee17d4ea21f`. Its original archive has SHA256 `21149c65dca95b25d1fca89bd10bc5d2fd99dd8912f19c02d63c3d6793b6bb74`. Source identity is content-addressed; these links do not create another result or increase any capability score.

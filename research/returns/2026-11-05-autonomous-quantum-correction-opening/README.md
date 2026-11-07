@@ -1,5 +1,8 @@
 # Continuous-time autonomous quantum correction: the earned local service and missing global theorem
 
+**Latest lifecycle and availability, 7 November Brisbane:** P2 24c10ee2 completed its pre-experiment complete-mediation return for the supplied rational two-body/linear-Pauli Markov class. The standalone twelve-file original, full report/proofs and exact prompt/chat response are available; opening captured, expanded visible activity initially awaits staging. No new coordinator assessment or exact experiment handoff is supplied: no automatic launch. P1 4ea7de89 remains undisturbed; P3 8a187aa5 has posting/initial response only, task-specific start unconfirmed in the supplied receipt. Earlier scores/frontier, eighteen ZIP and all source/N1683/Sol/Dots/team/resource holds remain unchanged. Capital sends no scientific prompt or recovery.
+
+
 The strongest live opening in this dossier is continuous-time autonomous quantum correction with noisy local controllers. **The north star was not achieved.** A bounded local quantum-service mechanism and sparse service-failure witnesses are proved. Preserving physical quantum gate order and protected idle periods throughout noisy controller repair remains the decisive global theorem.
 
 The separate fully frequency-resolved bath obstruction is a proved limitation of a thermal model/transfer argument. It is not a fixed-microscopic-coupling impossibility theorem for physical quantum storage. Earlier Gibbs results remain unchanged and are not equated with stationarity, preparation or memory.

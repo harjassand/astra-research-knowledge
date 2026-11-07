@@ -1,5 +1,8 @@
 # Research programme: canonical sources and dependencies
 
+**Latest lifecycle and availability, 7 November Brisbane:** P2 24c10ee2 completed its pre-experiment complete-mediation return for the supplied rational two-body/linear-Pauli Markov class. The standalone twelve-file original, full report/proofs and exact prompt/chat response are available; opening captured, expanded visible activity initially awaits staging. No new coordinator assessment or exact experiment handoff is supplied: no automatic launch. P1 4ea7de89 remains undisturbed; P3 8a187aa5 has posting/initial response only, task-specific start unconfirmed in the supplied receipt. Earlier scores/frontier, eighteen ZIP and all source/N1683/Sol/Dots/team/resource holds remain unchanged. Capital sends no scientific prompt or recovery.
+
+
 Seven completed earlier research packages are retained below at their exact scopes. The newer [finite-collision warm-service composite](../2026-11-07-physical-cooling-thermal-service/README.md) has its own code/source/noise contract and exact-hash internal PASS reviews. Earlier results are not retroactively promoted by that later construction.
 
 Exact byte hashes were compared with verified prior publication manifests. The existing autonomous-correction dossier/archive/source index and the protected-processing dossier/ledger/archive already published with the cooling packet are linked at their canonical paths. Only missing files and navigation/correction/dependency links are added. The current top-level dossiers and older archive copies coexist; [SOURCES.json](SOURCES.json) records content identities, reused paths and version relationships. These source identities are not a claim that the full generated retrieval corpus was rebuilt.

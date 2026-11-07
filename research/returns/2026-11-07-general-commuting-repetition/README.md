@@ -1,5 +1,8 @@
 # General commuting repetition and entropy budgets
 
+**Latest lifecycle and availability, 7 November Brisbane:** P2 24c10ee2 completed its pre-experiment complete-mediation return for the supplied rational two-body/linear-Pauli Markov class. The standalone twelve-file original, full report/proofs and exact prompt/chat response are available; opening captured, expanded visible activity initially awaits staging. No new coordinator assessment or exact experiment handoff is supplied: no automatic launch. P1 4ea7de89 remains undisturbed; P3 8a187aa5 has posting/initial response only, task-specific start unconfirmed in the supplied receipt. Earlier scores/frontier, eighteen ZIP and all source/N1683/Sol/Dots/team/resource holds remain unchanged. Capital sends no scientific prompt or recovery.
+
+
 Heterogeneous weighted thresholds, squared-gap all-wins under charge-to-gap hypotheses, positive-filter/common-information obstruction and exact cancellation of independent nuisance entropy increments. Pinned production/sampler dependencies retained. Later amplification dossier supplies reconstruction at its scope; earlier conditional claims remain versioned rather than promoted to independent unqualified results.
 
 The current governing dossier has SHA256 `2e6c89ac4598b0d9195a0762c0d6fde1c8e50e8042d10954942ec8ae05ea257b`. Its original archive has SHA256 `f4b2cf6f2966672386d4521cbac08ffa1970dd1265b2daf0265a59ea97d0011d`. Source identity is content-addressed; these links do not create another result or increase any capability score.
