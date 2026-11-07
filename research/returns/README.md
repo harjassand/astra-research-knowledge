@@ -164,6 +164,7 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| User-supplied global product readouts | [Claimed polynomial additive arbitrary-support contraction-product readouts70–80; provenance/exposure qualified; full sampling open](2026-11-08-user-global-product-readouts/README.md) |
 | P3 paid-noise normal form | [Exact paid perturbation-to-CPTP conversion/physical fault bounds50–60; full autonomy threshold unresolved](2026-11-08-p3-paid-noise-normal-form/README.md) |
 | P1 full-output first return | [Positive full-joint TV sampler with cut cost50–60; general2D polynomial endpoint unresolved; fullB90–94 unchanged](2026-11-08-p1-full-output-cut-sampler/README.md) |
 | Three active normal programmes | [Explicit human Pro release, exact governing bodies and actual once-only task-specific starts; no new result](2026-11-08-three-active-normal-programmes/README.md) |
