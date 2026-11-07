@@ -1,0 +1,38 @@
+# Astra N33 — Softmin stochastic capture research checkpoint
+
+**Date:** 2026-10-21, Australia/Brisbane. **Record type:** additive scoped original-research continuation, not a canonical card/status/gate update. **Claim strength:** internally derived proof conditional on N33's original all-dimensional deterministic theorem, its stochastic appendix and standard stopped martingale inequalities. The proof is NOT kernel checked, externally peer reviewed or historically priority-cleared. No actual chemical/biological application or physical control system has been established.
+
+## Pinned origin and prior completed work
+
+- Astra original main at initiation of prior branch: commit `65633ec33f253deb1e8e01dd47fa91803c1916ac`; N33 original `updates/P/package/outputs/endotactic_permanence.tex`, preserved `web/pages/d-326696af15b5e02b.html`, source hash (from dossier) `bbecea61cd373a787920bb4484494114b7d616d5f20ee096cae3831487707e9c`.
+- N33 original proof dependency lines: 142–395 (finite-affine), 396–518 (strict weighted active drift), 519–737 (compact plateau, nonnested multiscale absorption), 760–807 (common-span switching), 1159–1310 (controlled stopped molecular exit). Original reviews read: `web/pages/d-3bbc07797edc024a.html`, `d-def05360aaff95aa.html`, `d-bea170628b69f941.html`.
+- Original affine input OpenAI family149 pinned `adc7f1241b42e322a6451854ab7e4b4c146bf78a`. Independent registered deterministic comparator: Michael Mislan, 9 Oct 2026, `mmislan/palomar-endotactic-permanence` commit `c72c945264565397ecc3eee779e6bd5f3f3a061d`. Comparable deterministic conclusion; novelty of new stochastic interface UNKNOWN.
+- Earlier continuation draft PR: `https://github.com/harjassand/astra-research-knowledge/pull/111`, with `REPORT.md`, `SPATIAL_STOCHASTIC_EXTENSION.md`, associated arithmetic checkers. **No old claims or files should be replaced.**
+
+## New results proved to manuscript level
+
+**C1: Controlled stochastic capture and exponential residence, all endotactic integer-complex networks.** For each compact positive initial range in a fixed stoichiometric class and molecular volume V sufficiently large (lattice compatibility required), there is a single final protected compact convex positive polytope Q, a path-independent finite T, and positive a,b,C with
+`P(X^V(t) in Q for all t in [T,T+exp(aV)]) >= 1-C(1+V)exp(-bV)`.
+Controls may be predictable and history-dependent, with each ordinary-endotactic mode having positive bounded rates. Arbitrary switching/convex mixing allowed when component stoichiometric spans are *equal*. Not stochastic infinite-time permanence or stationarity. Proof: N33 buffered affine plateaux; uniform near-active drift by finite-label compactness; log-sum-exp smoothing with Hessian `-beta Cov(slopes)` and O(beta/V) generator correction; positive stopped drift; one-sided Freedman concentration for each finite scale; N33 exponential guard; finite nonnested scale iteration and conditional union bound. Full line-by-line argument in `SOFTMIN_STOCHASTIC_CAPTURE_REPORT.md` §2–4.
+
+**C2: Complete quantifier-explicit molecular one-species example.** For `0->A, A->0`, predictable rates each in [1,2], V>=1200, initial X0 in [1/10,4] on the count lattice, first entry into G=[1/5,61/20] by T=8 obeys
+`P(tau_G>8) <= exp(-3V/578)+2exp(-3V/320)+64Vexp(-V/256)`.
+This bound uses smooth beta=20 min of `{0,x-1/4,3-x}`, exact generator drift >=3/10 on guard `[1/16,5]` outside G, and stopped boundary exponent theta=1/4. At V=10000 failure bound 6.94307368990356e-12. Restarting the guard from the inner G gives an additional explicit exponential residence bound. All scalar rational inequalities are independently rerun by `verify_softmin_capture.py`; the tail uses standard analytic Freedman + stopped exponential generator, not finite grids.
+
+**Independent deterministic scope test:** For Mislan's synthetic 6-channel 3D ordinary-endotactic non-weakly-reversible model and k_i in [.5,2], initial `[1/10,10]^3` enters `[9/20,9/4]^3` by T=37 uniformly over measurable rate histories via exact Riccati/clock comparisons; no effective full 3D finite-V capture exponent acquired.
+
+## Verified evidence and limits
+
+- `verify_softmin_capture.py` returned PASS for exact Fraction sufficient inequalities and deterministic exhaustive *finite lattice* generator scans at V=1200 and V=10000; minimum scanned generator 0.43954163915785055 and 0.43874226347734346 (> analytic certified 0.3). Saved results `softmin_reproduction.json`. Finite scans are *not* the proof.
+- General results are **conditional** on N33's original proof (internally reconstructed; separate later Lean comparator). This session did not run original Lean or independent new Lean formalization.
+- Built-in weaknesses: no effective finite-affine acquisition budget/precision; possibly huge h/softmin beta/V thresholds; physical source/sink feed and rate persistence over exponentially long time unmodeled; no stationarity; no general different-span averaged-excitation guarantee; no reaction–diffusion/mesh-independent transfer without compatible transport normals.
+- Failures/rejected routes preserved: simply applying min-affine nonsmooth F to a jump generator can incur active-face switching error; smoothing and O(beta/V) term are essential. Pure Grönwall stochastic–ODE tracking offers a weaker and potentially unusable confidence exponent in high-order/multiscale systems. Dropping compact initial-range or uniform positive rate-box hypotheses breaks class-uniform finite deadlines. Historical novelty of log-sum-exp smoothing is not claimed.
+
+## Exact next step
+
+1. Independent adversarial proof review **before upgrading status**: prove finite near-active band without hidden continuity assumptions, verify analytic Hessian bound, stopped-martingale conditional Freedman for predictable adaptation, and confirm buffer facets including rank-deficient S / lattice reachability / overshoots. Target a Lean or other kernel-checkable proof skeleton; do not claim completion beforehand.
+2. Acquire an actual finite rational high-dimensional N33 affine family and all numeric h, rho, beta, active slopes and caps with bit complexity. Test a non-weakly-reversible *coupled* network, not the decoupled textbook example, and compare against direct stochastic Lyapunov/large-deviation methods under identical hypotheses.
+3. Compare C1 against Kurtz (1978), Agazzi–Dembo–Eckmann (2018), Prodhomme (2023), and stochastic reaction-network Foster-Lyapunov work; separate what is inherited from conditional-specific new proof obligations. Formal external attribution/priority remains UNKNOWN.
+4. Apply only to a physically sourced biochemical/chemical model if measured integer-complex kinetics, bounded positive rate ranges, molecular counts, physical timescale, feed/energy and intervention costs actually fit. Otherwise **park applied capability** while retaining the mathematical interface.
+
+No process is running in the background and no unexecuted verification is counted as complete. New files are versioned separately from all N33 canonical claims and the earlier PR.
