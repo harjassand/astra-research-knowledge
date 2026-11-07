@@ -1,6 +1,8 @@
 # Supplied research returns
 
-**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P3 noisy-thermal-controld183726f is assessed NEW provisional correctness-assumed75–85, selected structural question complete/economical programme unfinished, prior frontier unchanged/no90+. Same-warm next2426-character prompt/9a28b97e was POSTED ONCE as nativef67c9f97-b996-424e-b79d-3e161fc963b6; visible2425-character body plus LF matched. Initial response only, no task-specific question/action visible; START PENDING. Prior d183 prompt was2380characters/c111865b. P2 once-only operational recovery6c7a6d3d is generating theorem/source-probability/repeated-output work, not a completed assessed return or matched single-turn control result. P1 control51cba3fa undisturbed. Root charges2planned starts+1recovery=3issued messages against the same12maximum; optional reveals reduced to fit, no new allowance/replacement/frontier/draw/outcome. All source holds remain. Capital sends no research prompt or recovery request.
+**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P2 known control was reconstructed in completed interruption recovery6c7a6d3d after censored6adedbf2; positive composition evidence, extra request/effort/exposure retained, no clean blind single-turn result/new grade. SAME-P2 exact initial frontier-B launch7683chars/100744ed was POSTED ONCE asfcfde411-6d0f-4612-8e2b-c37d3ee0457a, visible7682chars plus LF matched. Initial response only; task-specific derivation/source action START pending. Identical4222char7bf63746 common packet/exact B launch reserved for P1's scheduled first B, unchanged case3c55890e/B-before-A. P1 control51cba3fa active/uncompleted, P3f67c9f97 finite-local-certificate investigation ACTIVE/no result. Actual messages4/12=2control starts+1recovery+1B initial; initialfrontier posts1/4/completed0/4, followups0/4, no reveal/draw/extra allowance. Control-operation result1/2 is via recovery, not independent discovery. Earlier science/frontier75–85/no90+ and all18ZIP/12non-ZIP/Sol/Dots/resource holds remain. Capital dispatches no research.
+
+
 
 
 
@@ -141,6 +143,7 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| P2 known-control interruption recovery | [Reconstructed operation, full provenance, coordinator assessment and pending frontier-B handoff](2026-11-07-p2-diagnostic-control-interruption-recovery/README.md) |
 | P3 noisy thermal control | [Noncommuting1D thermal targets, complete mixing, positive noisy-actuator balance and full compilation/holding costs](2026-11-07-p3-noisy-thermal-control/README.md) |
 | P1 acquired chaotic laws | [Finite noisy state acquisition, topological orbit laws, periodic addresses and modular network certificates; full costs/limits](2026-11-07-p1-acquired-chaotic-laws/README.md) |
 | P3 physical-output limits | [Pure physical outputs, arbitrary auxiliaries, instantaneous incidence, finite delivery/yield and scoped rate comparators](2026-11-07-p3-physical-output-limits/README.md) |
