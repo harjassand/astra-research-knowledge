@@ -1,6 +1,9 @@
 # Acquired interfaces for genuinely new passive interventions
 
-**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P3 d183726f completed noisy thermal control at its supplied1D finite-temperature Hamiltonian/noise/simultaneous-native-law contract, broader economical programme unfinished. Original seventeen-file report/code/records/figures, exact prompt/response, expanded visible activity and prior capture are staged. No new coordinator assessment or exact next release supplied. P1 control51cba3fa and P2 control6adedbf2 remain undisturbed; no diagnostic outcome. All eighteen ZIP/inherited/N517/Franks source holds remain, no new holds reported. Capital sends no scientific prompt or source recovery.
+**P2 current role, 7 November Brisbane:** Complete-mediation pretrial science75–85 remains unchanged. Control6adedbf2 suffered a verified connection interruption; one authorised exact strongest-result recovery6c7a6d3d is pending. Operational censoring is not a scientific/control failure, replacement, retry or extra allowance. No completed diagnostic outcome is inferred. This page's own result and scope are recorded below.
+
+
+**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P3 noisy-thermal-controld183726f is complete at its supplied1D fixed-temperature/native-law contract, assessed NEW provisional correctness-assumed75–85; economical programme unfinished/prior frontier75–85 unchanged/no90+. Same-warm next2426-character prompt/SHA2569a28b97eae5964f7af71a10588b990bca9c5477a0930b7ce9f6560ff02be379c handed once, actual POST/START pending. P1 control51cba3fa remains active, no result. P2 control6adedbf2 had verified connection interruption; one exact strongest-result recovery6c7a6d3d is pending. This is operational censoring, not scientific/control failure or a replacement/retry/extra allowance. Root charges2planned controls+1recovery=3issued messages of12maximum, leaving8planned frontier requests and at most1conditional reveal, none released; no draw/outcome. Full source/activity/prior capture available, all holds unchanged. Capital sends no research prompt or recovery request.
 
 
 
@@ -8,7 +11,6 @@
 
 
 
-**P2 current role, 7 November Brisbane:** The complete-mediation return24c10ee2 is PRE-EXPERIMENT science, assessed NEW provisional correctness-assumed75–85; earlier thermal65–75/elliptic75–85/frontier75–85 remain unchanged. Its first known-solution control6adedbf2 is posted with initial response only; task-specific START unconfirmed and zero new-discovery credit. This page's own historical result and scope are recorded below.
 
 
 
