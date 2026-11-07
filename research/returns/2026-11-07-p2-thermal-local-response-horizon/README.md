@@ -1,13 +1,18 @@
 # Local thermal response: an information horizon and matching reconstruction
 
-**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P1 acquired-chaotic-laws70–80 is PRETRIAL science, family/frontier75–85 unchanged/no90+. The SAME frozen5972-character common control/107fa8ed was POSTED ONCE in P1 as native51cba3fa-633f-4bdc-86f4-6d8830d277c4; visible5971-character no-final-LF body/SHA2564d070a999a25cb83f076fef215119d15198abbbb16889b6f14d42daf6f2140d8 matches the authorised/P2 body. Initial response uses frozen native/factory premises, no specific derivation visible: task-specific START PENDING. No completed solution is reported in visible history, but actual full prior/Personal Context/retrieval exposure is UNKNOWN, not blind. Both control posts2/2, completions0/2, issued2/12maximum; no frontier/reveal/random draw or conclusion. P2 control6adedbf2 and P3 d183726f controlled-restoration activity remain undisturbed. All eighteen ZIP/source/N517/Franks/Sol/Dots/team/resource holds remain. Capital sends no research prompt or recovery.
+**P2 current role, 7 November Brisbane:** Complete-mediation pretrial science75–85 remains unchanged. After the verified control6adedbf2 connection interruption, one operational strongest-result recovery6c7a6d3d is generating theorem/source-probability/repeated-output work. No completed assessed return or matched single-turn control result is established. This is censoring, not a scientific failure or extra allowance. This page's own result and scope are recorded below.
+
+
+**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P3 noisy-thermal-controld183726f is assessed NEW provisional correctness-assumed75–85, selected structural question complete/economical programme unfinished, prior frontier unchanged/no90+. Same-warm next2426-character prompt/9a28b97e was POSTED ONCE as nativef67c9f97-b996-424e-b79d-3e161fc963b6; visible2425-character body plus LF matched. Initial response only, no task-specific question/action visible; START PENDING. Prior d183 prompt was2380characters/c111865b. P2 once-only operational recovery6c7a6d3d is generating theorem/source-probability/repeated-output work, not a completed assessed return or matched single-turn control result. P1 control51cba3fa undisturbed. Root charges2planned starts+1recovery=3issued messages against the same12maximum; optional reveals reduced to fit, no new allowance/replacement/frontier/draw/outcome. All source holds remain. Capital sends no research prompt or recovery request.
 
 
 
 
 
 
-**P2 current role, 7 November Brisbane:** The complete-mediation return24c10ee2 is PRE-EXPERIMENT science, assessed NEW provisional correctness-assumed75–85; earlier thermal65–75/elliptic75–85/frontier75–85 remain unchanged. Its first known-solution control6adedbf2 is posted with initial response only; task-specific START unconfirmed and zero new-discovery credit. This page's own historical result and scope are recorded below.
+
+
+
 
 
 
