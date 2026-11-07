@@ -1,6 +1,7 @@
 # Supplied research returns
 
-**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P2 known control was reconstructed in completed interruption recovery6c7a6d3d after censored6adedbf2; positive composition evidence, extra request/effort/exposure retained, no clean blind single-turn result/new grade. SAME-P2 exact initial frontier-B launch7683chars/100744ed was POSTED ONCE asfcfde411-6d0f-4612-8e2b-c37d3ee0457a, visible7682chars plus LF matched. Initial response only; task-specific derivation/source action START pending. Identical4222char7bf63746 common packet/exact B launch reserved for P1's scheduled first B, unchanged case3c55890e/B-before-A. P1 control51cba3fa active/uncompleted, P3f67c9f97 finite-local-certificate investigation ACTIVE/no result. Actual messages4/12=2control starts+1recovery+1B initial; initialfrontier posts1/4/completed0/4, followups0/4, no reveal/draw/extra allowance. Control-operation result1/2 is via recovery, not independent discovery. Earlier science/frontier75–85/no90+ and all18ZIP/12non-ZIP/Sol/Dots/resource holds remain. Capital dispatches no research.
+**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** Both known operations reconstructed: P1control51cba3fa in one uninterrupted turn, P2 in additional recovery6c7a6d3d after a genuine interruption. Positive composition evidence, no new discovery/grade/blindness claim or matched single-turn comparison/policy winner; earlier science/frontier75–85 unchanged/no90+. One exact P1 first-A launch8020chars/5c29e8bf handed to existing dispatcher, POST/START pending; unchanged A b1637bf8 and common4633char e9e9b5aa source packet retain fixed temperature/volume/input promises and law/block/chain originals. Identical A reserved for P2 after B. P2 Bfcfde411 and independent P3f67c9f97 task-specifically ACTIVE/no completed frontier result. Actual messages4/12, becomes5 only after confirmed A POST; no proof reveal currently justified/peer draw/new allowance. All18ZIP/12non-ZIP/Sol/Dots/resource holds remain. Capital dispatches no research.
+
 
 
 
@@ -143,6 +144,7 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| P1 known-control uninterrupted reconstruction | [Original report/controller, full diagnostic provenance and assessed scope](2026-11-07-p1-diagnostic-control/README.md) |
 | P2 known-control interruption recovery | [Reconstructed operation, full provenance, coordinator assessment and pending frontier-B handoff](2026-11-07-p2-diagnostic-control-interruption-recovery/README.md) |
 | P3 noisy thermal control | [Noncommuting1D thermal targets, complete mixing, positive noisy-actuator balance and full compilation/holding costs](2026-11-07-p3-noisy-thermal-control/README.md) |
 | P1 acquired chaotic laws | [Finite noisy state acquisition, topological orbit laws, periodic addresses and modular network certificates; full costs/limits](2026-11-07-p1-acquired-chaotic-laws/README.md) |
