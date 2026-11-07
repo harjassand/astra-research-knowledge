@@ -1,6 +1,7 @@
 # Selected and retained collective states from acquired components
 
-**Latest lifecycle receipts, 7 November Brisbane:** all three current same-warm assignments are POSTED ONCE/START CONFIRMED by dispatcher reports: P1166a3f5e, P2d3da0a7c and P3031cfb9a. P2's exact2860-character continuation body matched. Its task-specific start examines global physical capacity/residence from the microscopic two-dimensional model, critical configurations and growth to the actual magnetization target. The predictor remains unresolved; a start supplies no scientific effect or causal policy advantage. No scientific handoff is pending in the supplied receipt. P1/P3 work is undisturbed. Earlier pending/no-assessment snapshots are historical; all activity/source/Sol/Dots/team/resource limits remain. Capital sends no prompt or recovery attempt.
+**Latest lifecycle receipts, 7 November Brisbane:** P1's166a3f5e turn completed. The producer reports completion of its selected robustness-gap causal-protocol endpoint, with general temporal-game construction proved/costed and a repeated-service safety game executed; arbitrary-source inference remains outside that contract. This source handoff supplies no new coordinator assessment or successor-post/start receipt. Earlier all-three-started notices are historical. P2d3da0a7c and P3031cfb9a work remain undisturbed in the handoff. Completion in one return does not test across-return continuity or establish a causal policy benefit. Capital does not choose or dispatch science; all activity/source/Sol/Dots/team/resource limits remain.
+
 
 
 
@@ -70,3 +71,5 @@ The producer reports actually reading the authorized [P2 complete-static-interfa
 Classical passivity, contraction, sampled-data ISS/emulation and multistable-memory methods retain credit, alongside N805 and the acquired memory/inference lineage. Their different finite-dimensional/PDE/device hypotheses are not silently imported. The rate-limited Zenodo payload is not used. Reported source use/constructed compatibility is not a controlled causal transfer or coordination-policy win.
 
 All26 original members, including the unchanged earlier archive, are preserved byte-exact. N1683 and all previous source/transfer holds remain unacquired. Expanded activity remains in the predecessor chat after native Mac unlock failed; only its opening explanation is staged, without an impact penalty. Capital ran no scientific code or recovery attempt. Generated retrieval remains pending under the resource limit.
+
+Later source return: [acquired causal descriptions for future temporal feedback protocols](../2026-11-07-p1-certified-future-protocols/README.md). This transient task pays new dynamic pulse acquisition and warranted source/instrument bounds. Earlier static/state-selection contracts and credit remain unchanged.

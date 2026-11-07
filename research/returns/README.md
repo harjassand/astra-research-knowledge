@@ -1,6 +1,9 @@
 # Supplied research returns
 
-**Latest lifecycle receipts, 7 November Brisbane:** all three current same-warm assignments are POSTED ONCE/START CONFIRMED by dispatcher reports: P1166a3f5e, P2d3da0a7c and P3031cfb9a. P2's exact2860-character continuation body matched. Its task-specific start examines global physical capacity/residence from the microscopic two-dimensional model, critical configurations and growth to the actual magnetization target. The predictor remains unresolved; a start supplies no scientific effect or causal policy advantage. No scientific handoff is pending in the supplied receipt. P1/P3 work is undisturbed. Earlier pending/no-assessment snapshots are historical; all activity/source/Sol/Dots/team/resource limits remain. Capital sends no prompt or recovery attempt.
+**Latest lifecycle receipts, 7 November Brisbane:** P1's166a3f5e turn completed. The producer reports completion of its selected robustness-gap causal-protocol endpoint, with general temporal-game construction proved/costed and a repeated-service safety game executed; arbitrary-source inference remains outside that contract. This source handoff supplies no new coordinator assessment or successor-post/start receipt. Earlier all-three-started notices are historical. P2d3da0a7c and P3031cfb9a work remain undisturbed in the handoff. Completion in one return does not test across-return continuity or establish a causal policy benefit. Capital does not choose or dispatch science; all activity/source/Sol/Dots/team/resource limits remain.
+
+**Latest P1 source:** [certified future protocols](2026-11-07-p1-certified-future-protocols/README.md) supplies a producer-complete robustness-gap acquisition/temporal-game operation, general parity proof/costs and executed repeated-service safety game. Source/noise/clock/instrument conditions and expensive general synthesis remain; no new assessment or physical deployment is inferred. Earlier scores and credit are unchanged.
+
 
 
 
@@ -83,6 +86,7 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| P1 certified future protocols | [Paid dynamic acquisition, horizon-independent causal-noise gap, temporal-game algorithms, repeated-service records and34-member original](2026-11-07-p1-certified-future-protocols/README.md) |
 | P2 physical nucleation | [Conditional residence-to-law construction, rational processor, explicit failure families and ten-member original](2026-11-07-p2-nucleation-law/README.md) |
 | P3 local state restoration | [Every-supplied-circuit restoring process, complete initialization, precision/noise costs and auxiliary-robust bottleneck limits;18-member original](2026-11-07-p3-local-state-stabilization/README.md) |
 | P1 selected and retained collective states | [Write/handover/retention, complete33MB control record, source/hardware costs and conditional addressed-register family;26-member original](2026-11-07-p1-certified-state-selection/README.md) |
