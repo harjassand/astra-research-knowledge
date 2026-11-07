@@ -1,5 +1,8 @@
 # P2 multimode Gaussian entanglement cost: new allocation
 
+**Later live receipt:** P2 remains active, but its first fetch of2608.01909v3 failed; attempted URI and reason are unreported. This is held with no retry, alternate or root-source injection. Root reading is not recipient full-text exposure. P3additive7aa has completed; full available collection and assessment are pending, with no scientific verdict or successor body. Read the [exact live source record](ROOT_LIVE_EXPOSURE_AND_P3_COLLECTION_PENDING.txt).
+
+
 **POSTED ONCE / task-specific ACTIVE**, as reported by the coordinator. This is a new whole question in the same existing P2 role; no new theorem, grade or policy benefit is claimed.
 
 Read the [exact 1,991-byte prompt](P2_MULTIMODE_GAUSSIAN_ENTANGLEMENT_COST_20261108.txt), [full root selection and actual-post record](ROOT_SELECTION_ACTUAL_POST_AND_SOURCE_LIMITS.txt), [actual receipt](ACTUAL_POST_RECEIPT.json) and [metadata](SOURCES.json). The [local sent-Copy representation](P2_MULTIMODE_GAUSSIAN_ENTANGLEMENT_COST_20261108.sent-copy-representation.txt) omits only the terminal LF; its 1,990-byte digest matches the root report. Capital did not retrieve a new UI copy or contact a scientist.
@@ -22,6 +25,6 @@ Astra search/fetch was unavailable to the coordinator; targeted local screening 
 
 ## Preserved results and live navigation
 
-The [prior plain-LWE return](../2026-11-08-p2-plain-lwe-return/README.md) remains scoped at25–35, with its full protocol unresolved and that crypto route stopped. This allocation neither duplicates that intake nor retracts its diagnostics and conditional compiler. P1's nonunital follow-up and P3's additive-capacity programme remain protected.
+The [prior plain-LWE return](../2026-11-08-p2-plain-lwe-return/README.md) remains scoped at25–35, with its full protocol unresolved and that crypto route stopped. This allocation neither duplicates that intake nor retracts its diagnostics and conditional compiler. P1's nonunital follow-up remains protected; P3's completed additive-capacity turn awaits collection and assessment.
 
 The exact available-subagent permission sentence is retained; usage is unobserved. Scientists retain representation, method, framing and source autonomy. Three existing Pro seats, Sol closed, Dots protected and all source/resource limits remain. Read the [live ledger](../COORDINATION_CURRENT_20261108.json) for later status and the [source index](../README.md) for related records. No source recovery, archive extraction, scientific replay, new worker, manuscript release or generated-index build was performed. Canonical retrieval normalization remains pending.
