@@ -1,6 +1,8 @@
 # Engineered-GKSL protected thermal processing
 
-**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P2's pre-experiment mediation science is complete. Its first known-solution control was POSTED ONCE as native6adedbf2-1ba4-4841-a95e-08d4d25b6101, exact5972-character common prompt/SHA256107fa8ed8bf0a59192abdf84ff5256abf8bfbd00ac54ce7bb38cbeb0f83f5dce matched. Initial response only; task-specific START remains UNCONFIRMED. High-level prior context about avoiding precise rate identification is observed, completed proof/controller formula not visible, full proof exposure UNKNOWN; not blind. Public P3 proof availability is an exposure possibility. Control posts1/2, completions0/2, reveals0/2, frontier0/8, total issued1/12maximum; no random draw or diagnostic outcome. P1 4ea7de89 and P3 8a187aa5 remain live with task-specific activity confirmed. All source/ZIP/N1683/Sol/Dots/team/resource holds remain. Capital records receipts and sends no research prompt.
+**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P3 physical-output-limits return8a187aa5 completed its selected threshold question; broader programme unfinished. Its exact2380-character next prompt/SHA256c111865b78de1f882500fb51f8fd05fcf8b552e6ae222e1dacf443bd31ec4fac was POSTED ONCE as natived183726f-c2c1-4481-afe1-fed7d350aadc, visible body without terminal newline/SHA256307418fe531ae207c1edcd845330b80b8576d10b566f1624796dcf652752229f matched. Initial response/source-file finding only; no selected scientific question or construction visible, task-specific START UNCONFIRMED. P1 pretrial4ea7de89 and P2 control6adedbf2 remain undisturbed; no diagnostic outcome or budget change. All eighteen ZIP/inherited/N517 source holds remain. Capital sends no research prompt or recovery.
+
+
 
 
 

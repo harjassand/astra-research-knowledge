@@ -1,9 +1,13 @@
 # Operational thermal-state and outcome-window compiler
 
-**P3 current role, 7 November Brisbane:** The latest completed sampling-state returnce8eed3e is assessed NEW provisional correctness-assumed70–80, prior family/frontier75–85 unchanged. The same P3 continuation8a187aa5 is posted and task-specific START CONFIRMED on a pure-state boundary, deriving local leakage/control inflow/transient fidelity/heralded-output bounds. This is activity, not a new result or grade. This page's own historical result and scope are recorded below.
+**P3 current role, 7 November Brisbane:** Physical-output-limits return8a187aa5 completed the constant-strength pure-output threshold question, assessed NEW provisional correctness-assumed70–80; prior mixed-state sampling/family/frontier75–85 retain their scopes. The full programme remains unfinished. Same-warm continuationd183726f is POSTED ONCE with an initial response only; task-specific START is UNCONFIRMED, not inferred from source-file finding. This page's own result and scope are recorded below; no automatic sharper-bound extension or new architecture experiment is assigned.
 
 
-**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P2's pre-experiment mediation science is complete. Its first known-solution control was POSTED ONCE as native6adedbf2-1ba4-4841-a95e-08d4d25b6101, exact5972-character common prompt/SHA256107fa8ed8bf0a59192abdf84ff5256abf8bfbd00ac54ce7bb38cbeb0f83f5dce matched. Initial response only; task-specific START remains UNCONFIRMED. High-level prior context about avoiding precise rate identification is observed, completed proof/controller formula not visible, full proof exposure UNKNOWN; not blind. Public P3 proof availability is an exposure possibility. Control posts1/2, completions0/2, reveals0/2, frontier0/8, total issued1/12maximum; no random draw or diagnostic outcome. P1 4ea7de89 and P3 8a187aa5 remain live with task-specific activity confirmed. All source/ZIP/N1683/Sol/Dots/team/resource holds remain. Capital records receipts and sends no research prompt.
+**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P3 physical-output-limits return8a187aa5 completed its selected threshold question; broader programme unfinished. Its exact2380-character next prompt/SHA256c111865b78de1f882500fb51f8fd05fcf8b552e6ae222e1dacf443bd31ec4fac was POSTED ONCE as natived183726f-c2c1-4481-afe1-fed7d350aadc, visible body without terminal newline/SHA256307418fe531ae207c1edcd845330b80b8576d10b566f1624796dcf652752229f matched. Initial response/source-file finding only; no selected scientific question or construction visible, task-specific START UNCONFIRMED. P1 pretrial4ea7de89 and P2 control6adedbf2 remain undisturbed; no diagnostic outcome or budget change. All eighteen ZIP/inherited/N517 source holds remain. Capital sends no research prompt or recovery.
+
+
+
+
 
 
 
@@ -124,3 +128,5 @@ Later completed structural result: [local state restoration and precision separa
 Later original: [local noise absorption and native-menu restoration](../2026-11-07-p3-noise-absorption/README.md), with modeled-noise/residual-error and target/interface restrictions. Earlier Gibbs/local-restoration guarantees and the unfinished broader programme retain scope.
 
 Later source: [sampling for complete state control](../2026-11-07-p3-sampling-state-control/README.md), with fresh observations, calibrated native/readout promises, complete reference/repeated-output contracts and paid source/randomness/holding costs. Earlier results and holds retain their scope.
+
+Later P3 source: [physical-output limits](../2026-11-07-p3-physical-output-limits/README.md) gives a pure physical-output/continuing-noise/instantaneous-strength obstruction with finite delivery/yield consequences. Faithful mixed targets and decoded protection retain different contracts. The former8a187aa5 start receipt is now historical: that return completed, and its next same-warm2380-character continuationd183726f is posted with an initial response only; task-specific start remains unconfirmed.
