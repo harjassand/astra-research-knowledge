@@ -1,6 +1,7 @@
 # General commuting repetition and entropy budgets
 
-**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P3's physical-output threshold return8a187aa5 is complete at its stated contract, broader programme unfinished. Exact2380-character next prompt/SHA256c111865b78de1f882500fb51f8fd05fcf8b552e6ae222e1dacf443bd31ec4fac was handed once; actual POST/START pending. P1 4ea7de89 remains undisturbed. P2's known-solution control6adedbf2 is posted with initial response only in the latest supplied receipt, task-specific start unconfirmed; no diagnostic outcome. All eighteen ZIP/inherited source holds and the new N517404 remain. Capital sends no research prompt/recovery; the earlier memory stop is preserved and resumption uses measured recovered headroom with unchanged limits.
+**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P3 physical-output-limits return8a187aa5 completed its selected threshold question; broader programme unfinished. Its exact2380-character next prompt/SHA256c111865b78de1f882500fb51f8fd05fcf8b552e6ae222e1dacf443bd31ec4fac was POSTED ONCE as natived183726f-c2c1-4481-afe1-fed7d350aadc, visible body without terminal newline/SHA256307418fe531ae207c1edcd845330b80b8576d10b566f1624796dcf652752229f matched. Initial response/source-file finding only; no selected scientific question or construction visible, task-specific START UNCONFIRMED. P1 pretrial4ea7de89 and P2 control6adedbf2 remain undisturbed; no diagnostic outcome or budget change. All eighteen ZIP/inherited/N517 source holds remain. Capital sends no research prompt or recovery.
+
 
 
 
