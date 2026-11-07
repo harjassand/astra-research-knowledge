@@ -1,5 +1,8 @@
 # P3 thermal-capacity return: finite witnesses and paid conversion
 
+**Additive successor completed:** The [complete available additive-capacity return](../2026-11-08-p3-additive-capacity-return/README.md) has arrived, with full activity; coordinator assessment is pending. Earlier task-active/collection-pending statements below are dated receipts. The ZIP remains held, and the [live ledger](../COORDINATION_CURRENT_20261108.json) governs current status.
+
+
 **Live coordination:** Read the [current assignment ledger](../COORDINATION_CURRENT_20261108.json) for current role/activity and collection status. The scientific claims and dated post receipts on this page retain their recorded scope.
 
 
