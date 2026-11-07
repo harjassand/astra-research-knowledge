@@ -1,6 +1,11 @@
 # Supplied research returns
 
-**Latest lifecycle and availability, 7 November Brisbane:** all three current same-warm successors are POSTED ONCE/START CONFIRMED by separate dispatcher receipts: P14be18304, P2e0144bad and P3ce8eed3e. Exact1967-character P1 and2524-character P3 visible bodies matched. P1 begins current-source review/endpoint selection with no final question visible; P3 begins lower-cost calibration acquisition/maintenance with physical output retained. Starts are not new science or policy gains. Both completed returns retain NEW provisional correctness-assumed70–80, earlier frontier75–85 unchanged. P1's ZIP remains transfer-unconfirmed/held, no retry; P3's broader control programme remains unfinished. No scientific handoff is pending. Both traces/prior captures are staged; Stickies uncertainty is cleanup only. Capital sends no prompt/recovery; all source/N1683/Sol/Dots/team/resource holds remain.
+**Latest lifecycle and availability, 7 November Brisbane:** P2's exact1967-character next-question prompt is POSTED ONCE in the same Pro, native24c10ee2, with exact visible body matched and an INITIAL RESPONSE observed. It says it will select a constructible question and distinguish acquired data/supplied model/stronger measurement access; no specific research action or final question is visible yet. Task-specific START is NOT confirmed and further activity confirmation remains pending. The scientific handoff is delivered; no resend/replay or producer wait is needed. P14be18304/P3ce8eed3e remain undisturbed. Completed thermal result NEW provisional correctness-assumed65–75, inherited credits/frontier75–85 and all source/ZIP/N1683/Sol/Dots/team/resource holds remain. Posting/initial response is not a scientific result or policy gain. Capital does not dispatch or recover sources.
+
+
+
+**Latest P2 source:** [local thermal-response horizon](2026-11-07-p2-thermal-local-response-horizon/README.md) gives matching scalar-channel information/reconstruction cost at finite temperature with a local gapped isospectral family. Access changes from actual microscopic coefficients; supplied NEW provisional correctness-assumed65–75 credits the local thermal realization/encoding/thermal recovery, with inherited exponent/scalar credit retained and programme75–85 unchanged, ordinal/nonadditive/no90+. Earlier credit/holds remain.
+
 
 
 
@@ -98,6 +103,7 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| P2 thermal local-response horizon | [Local finite-temperature isospectral construction, matching information/recovery cost, full12-member original and activity](2026-11-07-p2-thermal-local-response-horizon/README.md) |
 | P1 collective laws | [Exact nonlinear quotient, global energy and worst linear response; complete response/activity, ZIP transfer held](2026-11-07-p1-collective-laws-without-identification/README.md) |
 | P3 noise absorption | [Known-noise completion, physical restoration, native-menu/calibration limits and25-member original](2026-11-07-p3-noise-absorption/README.md) |
 | P2 conditional block transport | [Exact cutwidth operation, physical comparisons and scoped direct-simulation obstruction; ten-member original](2026-11-07-p2-nucleation-block-transport/README.md) |
