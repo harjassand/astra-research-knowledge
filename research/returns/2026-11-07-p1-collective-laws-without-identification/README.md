@@ -1,6 +1,8 @@
 # Collective laws without microscopic identification
 
-**Latest lifecycle and availability, 7 November Brisbane:** P1's hidden-phase structural endpoint is complete, NEW provisional correctness-assumed65–75; earlier collective laws70–80/frontier75–85 unchanged, ordinal/nonadditive/no90+. Exact1757-character P1_AFTER_HIDDEN_PHASE_COMPLEXITY_20261107.txt/SHA256a164457db5ca65d8aeb1a6cca4bbf20972d8d7ccc1e920d9a766f42e53abf4c5 was POSTED ONCE in the same normal-web Pro, native USER-MESSAGE4ea7de89-c063-454b-9d28-fba8a7d6d6f6, exact visible body matched. Initial response seeks a question connecting task-sufficient models to broader inference. Final question/specific research action is not yet visible: task-specific START remains UNCONFIRMED. P224c10ee2/P3ce8eed3e remain undisturbed. New standalone six-member original/full activity/prior capture available; earlier unrelated P1 ZIP and all18ZIP/source/N1683/Sol/Dots/team/resource holds remain. No Capital dispatch/recovery or new policy experiment.
+**Latest lifecycle and availability, 7 November Brisbane:** P3 ce8eed3e completed source-driven sampling/state control within its retained, unfinished full programme. The standalone 21-file original, complete report/proofs, exact prompt/chat response, expanded visible activity and prior capture are staged. No new coordinator score or successor receipt was supplied. P1 4ea7de89 now has dispatcher-confirmed task-specific activity on controlled experiments/reusable nonlinear prediction, observability, stable Hankel factorizations and finite causal memory; no final question or result inferred. P2 24c10ee2 remains undisturbed. All eighteen ZIP holds remain, plus the newly reported non-ZIP N236 calibration-original404. Prior scores and Sol/Dots/team/resource boundaries remain unchanged. Capital sends no scientific prompt or recovery.
+
+
 
 
 

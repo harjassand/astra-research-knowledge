@@ -1,6 +1,10 @@
 # Supplied research returns
 
-**Latest lifecycle and availability, 7 November Brisbane:** P1's hidden-phase structural endpoint is complete, NEW provisional correctness-assumed65–75; earlier collective laws70–80/frontier75–85 unchanged, ordinal/nonadditive/no90+. Exact1757-character P1_AFTER_HIDDEN_PHASE_COMPLEXITY_20261107.txt/SHA256a164457db5ca65d8aeb1a6cca4bbf20972d8d7ccc1e920d9a766f42e53abf4c5 was POSTED ONCE in the same normal-web Pro, native USER-MESSAGE4ea7de89-c063-454b-9d28-fba8a7d6d6f6, exact visible body matched. Initial response seeks a question connecting task-sufficient models to broader inference. Final question/specific research action is not yet visible: task-specific START remains UNCONFIRMED. P224c10ee2/P3ce8eed3e remain undisturbed. New standalone six-member original/full activity/prior capture available; earlier unrelated P1 ZIP and all18ZIP/source/N1683/Sol/Dots/team/resource holds remain. No Capital dispatch/recovery or new policy experiment.
+**Latest lifecycle and availability, 7 November Brisbane:** P3 ce8eed3e completed source-driven sampling/state control within its retained, unfinished full programme. The standalone 21-file original, complete report/proofs, exact prompt/chat response, expanded visible activity and prior capture are staged. No new coordinator score or successor receipt was supplied. P1 4ea7de89 now has dispatcher-confirmed task-specific activity on controlled experiments/reusable nonlinear prediction, observability, stable Hankel factorizations and finite causal memory; no final question or result inferred. P2 24c10ee2 remains undisturbed. All eighteen ZIP holds remain, plus the newly reported non-ZIP N236 calibration-original404. Prior scores and Sol/Dots/team/resource boundaries remain unchanged. Capital sends no scientific prompt or recovery.
+
+
+**Latest P3 source:** [sampling for complete state control](2026-11-07-p3-sampling-state-control/README.md) supplies observation-driven native command sampling, exact/bounded contracts and complete reference/repeated-output limits. Full original/proofs available; expanded activity/prior capture now available, no new score supplied.
+
 
 
 
@@ -109,6 +113,7 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| P3 sampling/state control | [Fresh-observation physical commands, complete output/reference, repeated-output independence and paid finite costs; 21-file original](2026-11-07-p3-sampling-state-control/README.md) |
 | P1 hidden phase complexity | [Exact observation equivalence, complete robust census, rational addressed phases and constrained NP-complete family; six-member original](2026-11-07-p1-hidden-phase-complexity/README.md) |
 | P2 thermal local-response horizon | [Local finite-temperature isospectral construction, matching information/recovery cost, full12-member original and activity](2026-11-07-p2-thermal-local-response-horizon/README.md) |
 | P1 collective laws | [Exact nonlinear quotient, global energy and worst linear response; complete response/activity, ZIP transfer held](2026-11-07-p1-collective-laws-without-identification/README.md) |
