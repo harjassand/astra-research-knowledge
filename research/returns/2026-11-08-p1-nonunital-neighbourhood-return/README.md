@@ -1,6 +1,6 @@
 # P1 nonunital return: strong-noise prediction and product suppression
 
-**Warm successor completed:** The [complete available insertion-compiler return](../2026-11-08-p1-nonunital-insertion-compiler-return/README.md) has arrived with all available activity; coordinator assessment is pending. Earlier active/collection-pending statements below are dated receipts. Source holds remain; use the [live ledger](../COORDINATION_CURRENT_20261108.json).
+**Warm successor assessed:** The [uniform insertion-compiler return](../2026-11-08-p1-nonunital-insertion-compiler-return/README.md) earns NEW60–70 at its stated growing-K/total-action/auxiliary scope. Full fixed-eta every-g prediction remains OPEN. SAME warm full question is root-released, actual post/start pending; earlier activity/assessment statements are dated receipts. Use the [live ledger](../COORDINATION_CURRENT_20261108.json).
 
 
 Root assigns provisional correctness-assumed **65–75** to a complete strong-noise predictor, an every-fixed-g reference-free product-suppression bridge, and a paid specified-input binary-time first-response operation. **The full every-fixed-g/fixed-nonzero-eta/reference-free arbitrary-accuracy global prediction endpoint remains UNRESOLVED; no model-preserving hardness is supplied.** Standard and inherited machinery retains credit; family/fullB90–94 is unchanged/nonadditive,no95.
