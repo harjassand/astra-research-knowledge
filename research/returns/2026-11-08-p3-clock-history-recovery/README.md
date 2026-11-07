@@ -1,5 +1,8 @@
 # P3 clock-history recovery bounds and scientific stop
 
+**Live assignments:** Read the [current coordination ledger](https://github.com/harjassand/astra-research-knowledge/blob/main/research/returns/COORDINATION_CURRENT_20261108.json) and [retained result index](https://github.com/harjassand/astra-research-knowledge/blob/main/research/returns/README.md). Scientific claims and dated receipts retain their recorded scope.
+
+
 Root assigns provisional correctness-assumed **30–40** to exact recovery bounds for a specified common-data-encoding/input-independent-record family and a local four-state clock-reset failure witness. **The full protected autonomous processor, nearlinear compiler, arbitrary-CPTP logical threshold p_* and full phase remain UNRESOLVED.** Earlier paid-noise conversion50–60 stays conditional, and fullB/programme frontier90–94 is unchanged; grades are nonadditive.
 
 Read the [complete actual prompt, response and all available activity](P3_CLOCK_HISTORY_RECOVERY_20261108_RETURN.txt), [full root assessment and scientific-stop decision](COORDINATOR_ASSESSMENT_AND_SCIENTIFIC_STOP.txt) and [source metadata](SOURCES.json).
@@ -24,7 +27,7 @@ Root reports primary-source reading of Knill–Laflamme quant-ph/9604034v1 and C
 
 ## Scientific stop and live programmes
 
-Root **stopped the current P3 autonomous-clock-repair programme** at this completed boundary. P3 is deliberately **IDLE for source-grounded RESELECTION**; no new scientific body is prepared or queued and no old continuation is automatic. This is an opportunity-cost judgment from cumulative missing logical-machine interfaces and lack of a new constructive bridge, not an operational failure, permission hold, latest-grade-only reset, proof of falsity or model ceiling. All reusable capital remains. The standing root release permits later reallocation without renewed permission; selecting the next whole question requires current literature/Astra/primary-source screening by the scientific coordinator. Capital does no new research selection or scientist contact.
+Root **stopped the P3 autonomous-clock-repair programme** at this completed boundary. P3 was initially idle for source-grounded reselection, without automatic old continuation. That opportunity-cost judgment preserves capital and implies no operational failure, permission hold, falsity or model ceiling. Subsequent primary-source screening has now produced a **different full thermal-loss capacity question**, posted once7d0e2a63/task-specifically active. See the [new allocation and actual source-selection/post receipt](../2026-11-08-p3-thermal-loss-capacity-allocation/README.md). The prior idle status is historical; the autonomy route remains stopped and its full phase unresolved. Capital performs no scientific selection or scientist contact.
 
 P1's [compatible-source full-question followup](../2026-11-08-p1-planar-output-sampler/FOLLOWUP_ACTUAL_POST_RECEIPT.json) was posted once5fab9ebf and is task-specifically active, with the designated user-original21382/e0100982 attachment. The staged1,936-byte body and root-reported1,935-byte Copy differ only terminalLF; local chooser identity/upload were confirmed as reported, with a renamed visible attachment but no remote hash claim. It is reading the global-product report and working on averaged-law sampling/conditioning/class-preserving hardness; this start supplies no new completed theorem. P2followup924e02e0 remains active. No compatible operation warrants automatically concentrating P3 onto either live question.
 
