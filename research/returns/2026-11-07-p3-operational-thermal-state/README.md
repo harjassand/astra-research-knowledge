@@ -1,6 +1,7 @@
 # Operational thermal-state and outcome-window compiler
 
-**Latest lifecycle and availability, 7 November Brisbane:** P14be18304 completed the hidden-phase structural question, reported complete for the explicit families. No new coordinator assessment or successor-post/start receipt was supplied with this handoff. P224c10ee2 and P3ce8eed3e work remain undisturbed. Matching user-visible activity and the pre-recovery capture are staged. This new standalone six-member ZIP contains no predecessor archive and does not recover the earlier P1 collective-law ZIP, which remains held. All18 original-ZIP holds and scientific credit/source/N1683/Sol/Dots/team/resource limits remain. Earlier all-three-started snapshots are history; no new grade or causal policy winner is inferred. Capital sends no prompt or recovery.
+**Latest lifecycle and availability, 7 November Brisbane:** P1's hidden-phase structural endpoint is complete and assessed at NEW provisional correctness-assumed65–75. The earlier collective-law70–80 and programme frontier75–85 remain intact, ordinal/nonadditive/no90+; NP-completeness alone adds no mission-impact promotion. Exact1757-character next-whole-question prompt was handed ONCE to the existing dispatcher; actual POST/START is pending in the supplied receipt. P224c10ee2/P3ce8eed3e remain undisturbed. New standalone six-file original/full activity/prior capture is available without recovering the older held P1 ZIP. All18ZIP and source/N1683/Sol/Dots/team/resource holds remain. Reduced specific recap is context hygiene, not a new prompt experiment or causal winner. Capital sends no prompt/recovery.
+
 
 
 
