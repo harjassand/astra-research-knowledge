@@ -1,6 +1,9 @@
 # Supplied research returns
 
-**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P3 physical-output-limits return8a187aa5 completed its selected threshold question; broader programme unfinished. Its exact2380-character next prompt/SHA256c111865b78de1f882500fb51f8fd05fcf8b552e6ae222e1dacf443bd31ec4fac was POSTED ONCE as natived183726f-c2c1-4481-afe1-fed7d350aadc, visible body without terminal newline/SHA256307418fe531ae207c1edcd845330b80b8576d10b566f1624796dcf652752229f matched. Initial response/source-file finding only; no selected scientific question or construction visible, task-specific START UNCONFIRMED. P1 pretrial4ea7de89 and P2 control6adedbf2 remain undisturbed; no diagnostic outcome or budget change. All eighteen ZIP/inherited/N517 source holds remain. Capital sends no research prompt or recovery.
+**Programme-wide lifecycle aside, 7 November Brisbane — not this page's result or score:** P1 pre-experiment4ea7de89 completed acquired chaotic laws at its stated torus/closed-state/regularity/access contract. Full twenty-file original/proofs/data, exact prompt/response, expanded visible activity and prior capture are staged. No new assessment or exact current diagnostic release is supplied: no automatic P1 post. P2 control6adedbf2 is unchanged, with no diagnostic outcome inferred. P3 d183726f now has confirmed task-specific activity on controlled restoration using recent one-dimensional Gibbs-state preparation work, not a completed result. All eighteen ZIP/inherited/N517/Franks-original access holds remain. Capital sends no research prompt or recovery.
+
+**Latest P1 source:** [acquired chaotic laws and network orbits](2026-11-07-p1-acquired-chaotic-laws/README.md), with finite positive-noise homology/conjugacy acquisition, exact orbit laws, later addressed periodic witnesses and additive component reuse at the full interface/margin/cost contract. No new score supplied.
+
 
 
 **Latest P3 source:** [physical-output limits](2026-11-07-p3-physical-output-limits/README.md), with arbitrary-auxiliary fidelity/delivery/yield bounds under explicit physical laws, matched restricted pump-rate order and supplied provisional70–80 assessment. Broader programme/frontier unchanged.
@@ -131,6 +134,7 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| P1 acquired chaotic laws | [Finite noisy state acquisition, topological orbit laws, periodic addresses and modular network certificates; full costs/limits](2026-11-07-p1-acquired-chaotic-laws/README.md) |
 | P3 physical-output limits | [Pure physical outputs, arbitrary auxiliaries, instantaneous incidence, finite delivery/yield and scoped rate comparators](2026-11-07-p3-physical-output-limits/README.md) |
 | P2 complete classical mediation | [Supplied noncommuting spin generator, complete references, finite LOCC construction and scoped cost/witness contracts](2026-11-07-p2-complete-mediation/README.md) |
 | Earlier research source map | [Seven prior families, canonical artifacts, source/version corrections and scoped dependency links](2026-11-07-research-programme-source-index/README.md) |
