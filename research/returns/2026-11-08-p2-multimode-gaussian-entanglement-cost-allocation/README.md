@@ -1,5 +1,8 @@
 # P2 multimode Gaussian entanglement cost: new allocation
 
+**Completed response available:** The [complete multimode Gaussian-cost return](../2026-11-08-p2-multimode-gaussian-cost-return/README.md) has arrived with all available activity. Coordinator assessment is pending; earlier task-active statements below are dated receipts. Source holds and the reported access exposure are retained. Use the [live ledger](../COORDINATION_CURRENT_20261108.json).
+
+
 **Later live receipt:** P2 remains active, but its first fetch of2608.01909v3 failed; attempted URI and reason are unreported. This is held with no retry, alternate or root-source injection. Root reading is not recipient full-text exposure. P3additive7aa has completed; full available collection and assessment are pending, with no scientific verdict or successor body. Read the [exact live source record](ROOT_LIVE_EXPOSURE_AND_P3_COLLECTION_PENDING.txt).
 
 
