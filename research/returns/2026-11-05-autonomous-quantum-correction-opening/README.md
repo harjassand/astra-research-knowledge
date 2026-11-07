@@ -19,7 +19,7 @@ The separate fully frequency-resolved bath obstruction is a proved limitation of
 
 The dossier is a research record dated 5 November 2026, with exactly three independent researchers alongside the principal as reported by the source. Existing internal derivations, audits and exact checks retain their actual scope. Capital did not spawn researchers, rerun their code or add a scientific audit.
 
-The archive's `SOURCE_INDEX.json` is preserved byte-for-byte under the public member path `package/source-file-index.json` to avoid colliding with the repository's canonical discovery files. Its original name and every original member remain unchanged inside the ZIP. That index describes inspected source-cache bytes and references, not a release-member checksum manifest. Third-party paper PDFs are not redistributed. The package guide mentions a separate ledger not included in the two supplied artifacts; no ledger is reconstructed.
+The archive's `SOURCE_INDEX.json` is preserved byte-for-byte under the public member path `package/source-file-index.json` to avoid colliding with the repository's canonical discovery files. Its original name and every original member remain unchanged inside the ZIP. That index describes inspected source-cache bytes and references, not a release-member checksum manifest. Third-party paper PDFs are not redistributed. The original two-artifact handoff did not include the separately mentioned ledger. The later source supplement below now supplies its exact bytes and validation record; no ledger was reconstructed.
 
 ## Desired capability and the operation actually proved
 
@@ -60,3 +60,17 @@ The required theorem must preserve those frontiers and gate order through recons
 ## Later finite-cooling contract
 
 The [finite-collision warm-service dossier](../2026-11-07-physical-cooling-thermal-service/README.md) supplies a distinct powered code/source/noise construction with version-bound internal PASS reviews, restricted encoded ports and selected gates. It does not close this original autonomous controller/frontier theorem or transfer through the fully secular model. Its inherited engineered-GKSL precursor and actual finite-collision service retain separate interfaces and costs. This dossier and all earlier proof/result bytes remain unchanged.
+
+## Later source completion, 7 November
+
+The governing dossier, original archive and existing source-cache index match the previously published hashes and are reused. Newly supplied ledger/validation complete the available source links below. The north star and global causal-frontier/quantum hierarchy remain unachieved.
+
+| Source | Role |
+|---|---|
+| [NORTH_STAR_RESEARCH_DOSSIER.txt](NORTH_STAR_RESEARCH_DOSSIER.txt) | dossier — existing canonical bytes reused |
+| [SCIENTIFIC_OPENING_RECORD.zip](original/SCIENTIFIC_OPENING_RECORD.zip) | archive — existing canonical bytes reused |
+| [SCIENTIFIC_OPENING_LEDGER.json](files/SCIENTIFIC_OPENING_LEDGER.json) | asset — byte-exact supplied file |
+| [SCIENTIFIC_OPENING_VALIDATION.json](files/SCIENTIFIC_OPENING_VALIDATION.json) | asset — byte-exact supplied file |
+| [SOURCE_INDEX.json](package/source-file-index.json) | asset — existing canonical bytes reused |
+
+See the [programme source map](../2026-11-07-research-programme-source-index/README.md) for distinct later thermal contracts.
