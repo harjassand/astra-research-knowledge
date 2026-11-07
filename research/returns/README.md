@@ -1,6 +1,9 @@
 # Supplied research returns
 
-**Latest lifecycle receipts, 7 November Brisbane:** all three same-warm assignments are POSTED ONCE/START CONFIRMED by dispatcher reports: P1166a3f5e, P2c77d3c5e and P3031cfb9a. P3's exact3030-character continuation body matched; it preserves the explicitly unfinished owned state-control endpoint across a return. Its visible start examines fixed-physical-error local restoration, output guarantees and clock/reset/stored-state noise. No fixed-noise result or observed policy efficacy follows. P1/P2 work is undisturbed; no scientific handoff remains pending in the supplied receipt. Earlier pending snapshots are historical. Expanded activity/native access gap, Dots workspace distinction, Sol closed/held and all prior/new source/resource holds remain; Capital sends no prompt/recovery attempt.
+**Latest lifecycle receipts, 7 November Brisbane:** P2's c77d3c5e turn completed with the full two-dimensional nucleation endpoint explicitly unresolved. This handoff supplies the complete response and original ZIP, with no new coordinator assessment or successor-post/start receipt. Earlier all-three-started notices are historical. P1's166a3f5e and P3's031cfb9a work remain undisturbed in the supplied handoff. Capital does not choose or dispatch a scientific continuation. The expanded-activity gap, Dots distinction, Sol closed/held and all existing source/resource limits remain.
+
+**Latest P2 source:** [physical nucleation](2026-11-07-p2-nucleation-law/README.md) supplies a conditional residence-to-waiting-time-law processor and explicit compression failure families. The growing two-dimensional predictor remains unresolved; no new assessment was supplied. Earlier scientific scores and credit are unchanged.
+
 
 
 **P3 supplied assessment:** [local state restoration](2026-11-07-p3-local-state-stabilization/README.md) has NEW provisional consequence75–85, correctness assumed. Programme frontier75–85 and earlier science unchanged, ordinal/nonadditive/no90+ or economical fixed-noise device. The full structural question is resolved within a still-unfinished producer-chosen state-control programme; six new non-ZIP original-access holds remain binding.
@@ -78,6 +81,7 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| P2 physical nucleation | [Conditional residence-to-law construction, rational processor, explicit failure families and ten-member original](2026-11-07-p2-nucleation-law/README.md) |
 | P3 local state restoration | [Every-supplied-circuit restoring process, complete initialization, precision/noise costs and auxiliary-robust bottleneck limits;18-member original](2026-11-07-p3-local-state-stabilization/README.md) |
 | P1 selected and retained collective states | [Write/handover/retention, complete33MB control record, source/hardware costs and conditional addressed-register family;26-member original](2026-11-07-p1-certified-state-selection/README.md) |
 | P2 rare-event chain | [Explicit kinetic Ising-model first-passage CDF/relative mean/entrance certificates, finite target renewal and full costs;14-member original](2026-11-07-p2-rare-event-chain/README.md) |
