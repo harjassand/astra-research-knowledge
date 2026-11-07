@@ -1,6 +1,9 @@
 # Collective laws without microscopic identification
 
-**Latest lifecycle and availability, 7 November Brisbane:** P2's task-specific START is now confirmed for the same exact1967-character prompt/native24c10ee2, superseding the earlier initial-response/activity-pending receipt. Visible work examines worst-case prediction for noncommuting many-body evolution under local relaxation, prior strong-noise work and a finite-algorithm boundary. No final selected technical question, completed result, new grade or causal policy effect is established. All three current exact successors are POSTED ONCE/START CONFIRMED: P14be18304, P224c10ee2, P3ce8eed3e; no scientific handoff is pending. Thermal assessment65–75, earlier capital/frontier75–85, original/source/activity/Sol/Dots/N1683/team/resource limits remain. Capital sends no prompt or recovery attempt.
+**Latest lifecycle and availability, 7 November Brisbane:** P1's hidden-phase structural endpoint is complete, NEW provisional correctness-assumed65–75; earlier collective laws70–80/frontier75–85 unchanged, ordinal/nonadditive/no90+. Exact1757-character P1_AFTER_HIDDEN_PHASE_COMPLEXITY_20261107.txt/SHA256a164457db5ca65d8aeb1a6cca4bbf20972d8d7ccc1e920d9a766f42e53abf4c5 was POSTED ONCE in the same normal-web Pro, native USER-MESSAGE4ea7de89-c063-454b-9d28-fba8a7d6d6f6, exact visible body matched. Initial response seeks a question connecting task-sufficient models to broader inference. Final question/specific research action is not yet visible: task-specific START remains UNCONFIRMED. P224c10ee2/P3ce8eed3e remain undisturbed. New standalone six-member original/full activity/prior capture available; earlier unrelated P1 ZIP and all18ZIP/source/N1683/Sol/Dots/team/resource holds remain. No Capital dispatch/recovery or new policy experiment.
+
+
+
 
 
 
@@ -62,3 +65,5 @@ The earned scope is task-sufficient matched collective energy/order and exact wo
 The full visible activity shows current-source checks finding N594–598, avoiding recredit of the existing classification and selecting whole-system consequences/unequal-coefficient dimension ambiguity. This is observed source reuse and target change, not a Zenodo-first, short-context or causal ownership winner. The selected structural endpoint is complete. Same warm P1 owns its next consequential whole question, without automatic assignment of the next noise/acquisition gap, another fixed extension or a fresh reset. Repeated one-turn structural questions can still plateau; later actual consequences/scope/opportunity cost decide value. Shared control vocabulary establishes no new P2/P3 transfer.
 
 Exact P1_AFTER_COLLECTIVE_LAWS_20261107.txt1967characters/SHA2560270534c530d51454597d33f851672d96b8a6e5ef5ba67dfa43015ea764a86d9 was handed once to the dispatcher. Actual POSTED ONCE/START CONFIRMED is supplied, native 4be18304-6ff4-4015-92a4-e99b537eb8be, with exact visible body matched; initial activity is not a scientific outcome or policy gain. Capital does not dispatch it.
+
+Later standalone original: [hidden phase complexity and constrained selection](../2026-11-07-p1-hidden-phase-complexity/README.md), separating exact port nonidentification, robust hidden landscapes, supplied-address computation and fixed-mean selection complexity. The earlier P1 ZIP hold remains untouched.
