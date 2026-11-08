@@ -1,5 +1,8 @@
 # P2 independent-sender Gaussian MAC: full-region allocation
 
+**Completed and fully assessed:** The [bda strict-separation return](../2026-11-08-p2-gaussian-mac-bdae-return/README.md) NEGATIVELY resolves the universal entire-Gaussian-hull equality at NEW65–75, not a full actual-region/SUM classification. Current P2 allocation ends; P2 is deliberately idle for a different source-screened question, no body queued. The original ZIP remains opaque/uninspected. Earlier activity/pending statements are dated receipts; use the [live ledger](../COORDINATION_CURRENT_20261108.json).
+
+
 **POSTED ONCE / task-specific ACTIVE**, SAME existing P2 Pro as bdaeaedc-8b2f-421f-ab41-ef5d8034e2ad, no attachment. Actual post00:00:21.249598UTC/start00:00:36.196260UTC were read by root. The new whole question has no completed scientific result, grade or95 inferred from its start.
 
 Read the [exact2,745-byte body](P2_GAUSSIAN_MULTIPLE_ACCESS_FULL_REGION_20261108.txt), [full root selection/release/source record](ROOT_MAC_SELECTION_RELEASE_AND_SOURCE_LIMITS.txt), [actual post/start receipt](ACTUAL_MAC_POST_RECEIPT.json), [exact actual root record](ROOT_ACTUAL_MAC_POST_AND_START.txt), [local Copy representation](P2_GAUSSIAN_MULTIPLE_ACCESS_FULL_REGION_20261108.sent-copy-representation.txt) and [metadata](SOURCES.json). Frozen66b1452f3da6de4251661f56f82df63e0bd777c0ac8e1dca5f64eb987af0d914 includes one finalLF; actual2,744-byte Copy/fefc8429f8955dc3e6ac50730d163927565308b1aeb4861915be1291992e26c7 omits ONLYLF and matches root's independently computed expected digest. Capital performed no new UI retrieval.
