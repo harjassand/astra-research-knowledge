@@ -1,6 +1,6 @@
 # P1 nonunital prediction: global tau, forgetting and open transient
 
-**Warm successor completed:** The [complete available2e7 full-preparation return](../2026-11-08-p1-nonunital-full-preparation-2e7-return/README.md) has arrived; coordinator assessment is pending. Earlier activity/collection statements below are dated receipts. Source holds remain; use the [live ledger](../COORDINATION_CURRENT_20261108.json).
+**Warm successor fully assessed:** The [full2e7 nonunital theorem](../2026-11-08-p1-nonunital-full-preparation-2e7-return/README.md) closes the FULL arbitrary-product/all-time/general-multiqubit-GKLS endpoint under correctness assumption at attained90–94. P1 allocation complete/ends; deliberately idle/different question/no body. The4fad80–89 result below remains credited at its own scope; earlier activity/pending/open-boundary statements are dated history. Use the [live ledger](../COORDINATION_CURRENT_20261108.json).
 
 
 **Coordinator assessed: NEW provisional correctness-assumed80–89 for actual all-g all-order reference-free global tau/late/static prediction and global-product forgetting. The FULL every-time arbitrary specified-product/general-MULTIQUBIT endpoint remains OPEN.** Family/fullB90–94 expands at this scope, nonadditively; prior65–75/60–70 retained, no95 or score addition.
