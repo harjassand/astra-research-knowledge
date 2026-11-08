@@ -2,7 +2,7 @@
 
 These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **17 result families and 83 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
 
-The sources and result pages are public on `main`. [Canonical authoring files](https://github.com/harjassand/astra-research-knowledge/tree/9c15345d0b1b982e7fd3c6600168397032f5a9a1) are also published. Generated Capital search has not been rebuilt for this batch; use the links below to read these results directly.
+The sources and result pages are public on `main`. [Canonical authoring files](https://github.com/harjassand/astra-research-knowledge/tree/80f98ded9af112addd775873cbda9d5997c9244e) are also published. Generated Capital search has not been rebuilt for this batch; use the links below to read these results directly.
 
 | Result | Completed work and exact limits | Units |
 | --- | --- | --- |
@@ -25,6 +25,6 @@ The sources and result pages are public on `main`. [Canonical authoring files](h
 | [N1764](published-20261108/N1764.md) | Conditional native-IQP obstruction; hardness premise unproved | 1 |
 | [N1648 addendum](published-20261108/N1648-addendum.md) | Recurrent comparator; naive last-mark gluing fails | 1 |
 
-[Earlier proof/source catalogue](https://github.com/harjassand/astra-research-knowledge/blob/1c3b997f8690b4f8213237537368ef6ae8494c84/research/returns/README.md) · [Autonomous-correction dossier](../2026-11-05-continuous-time-autonomous-quantum-correction/README.md)
+[Earlier proof/source catalogue](https://github.com/harjassand/astra-research-knowledge/blob/278f1ee7adb41652fc86922c7218dd2a6d220674/research/returns/README.md) · [Autonomous-correction dossier](../2026-11-05-continuous-time-autonomous-quantum-correction/README.md)
 
 Missing producer originals remain missing; no held source was recovered for publication. The P1/P3 viewer-model uncertainty remains in their source and assessment records. Archives are retained unchanged.
