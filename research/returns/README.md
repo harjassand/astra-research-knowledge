@@ -1,6 +1,6 @@
 # Completed research: proofs and results
 
-These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **30 result families and 185 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
+These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **30 result families and 193 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
 
 The proofs, canonical cards and reusable result units are merged on `main`, together with their generated Capital packets and search indexes. Each result keeps its exact assumptions and unresolved obligations. The portable reader can retrieve this batch; the separate native model query remains blocked by the existing 2 GiB memory limit.
 
@@ -32,10 +32,11 @@ The proofs, canonical cards and reusable result units are merged on `main`, toge
 | [N1771](published-20261109/N1771.md) | Polynomial stationary stirring, unknown-SPD composition and cross-diffusion transfer boundary | 6 |
 | [N1772](published-20261109/N1772.md) | Autonomous quantum memory: logical safety, a universal finite-device lifetime ceiling and the open threshold | 7 |
 | [N1773](published-20261109/N1773.md) | Pay exact weakly-reversible class membership and conditional Poisson normalization | 3 |
-| [N1774](published-20261109/N1774.md) | Kinetic gaps: finite-cut zero certificates and complete rank-one positive construction; general decision open | 22 |
+| [N1774](published-20261109/N1774.md) | Complete rank-one positive constructor; higher-rank classifier open; finite-cut/character certificates scoped | 23 |
 | [N1775](published-20261109/N1775.md) | Maxwell–Stefan global weak entropy control; unrestricted global strong continuation open | 10 |
 | [N1776](published-20261109/N1776.md) | Directed Euler tours: bidirected nearlinear sampler; full asymmetric sampler open | 7 |
-| [N1777](published-20261109/N1777.md) | Native-velocity source quantifiers and same-driver L2 stability; full deterministic controller open | 2 |
+| [N1777](published-20261109/N1777.md) | Full finite-computable native-velocity controller for all bounded H3 inputs; stronger polynomial-resource question open | 9 |
+
 | [N1648 addendum](published-20261108/N1648-addendum.md) | Recurrent comparator; naive last-mark gluing fails | 1 |
 
 [Earlier proof/source catalogue](https://github.com/harjassand/astra-research-knowledge/blob/278f1ee7adb41652fc86922c7218dd2a6d220674/research/returns/README.md) · [Autonomous-correction dossier](../2026-11-05-continuous-time-autonomous-quantum-correction/README.md)
