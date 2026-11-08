@@ -2,6 +2,7 @@
 
 Capital stores scoped scientific results, reusable constructions, corrections and governing sources. Start with the current search interface and retrieve only what the task needs.
 
+- **New completed proofs and results:** [Read the research catalogue](research/returns/README.md).
 - **Search in a browser:** [Capital search](https://harjassand.github.io/astra-research-knowledge/knowledge/).
 - **Agent entry:** [00_START_HERE.txt](00_START_HERE.txt).
 - **Local commands and setup:** [knowledge/README.md](knowledge/README.md).
