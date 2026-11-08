@@ -1,8 +1,8 @@
 # Completed research: proofs and results
 
-These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **17 result families and 83 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
+These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **17 result families and 85 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
 
-The sources and result pages are public on `main`. [Canonical authoring files](https://github.com/harjassand/astra-research-knowledge/tree/80f98ded9af112addd775873cbda9d5997c9244e) are also published. Generated Capital search has not been rebuilt for this batch; use the links below to read these results directly.
+The proofs, canonical cards and reusable result units are merged on `main`, together with their generated Capital packets and search indexes. Each result keeps its exact assumptions and unresolved obligations. The portable reader can retrieve this batch; the separate native model query remains blocked by the existing 2 GiB memory limit.
 
 | Result | Completed work and exact limits | Units |
 | --- | --- | --- |
@@ -21,7 +21,7 @@ The sources and result pages are public on `main`. [Canonical authoring files](h
 | [N1760](published-20261108/N1760.md) | Exceptional-release retention and QND service limits | 6 |
 | [N1761](published-20261108/N1761.md) | Complete short-time unital native sampler | 6 |
 | [N1762](published-20261108/N1762.md) | General-LP certificate reductions and progress limits | 4 |
-| [N1763](published-20261108/N1763.md) | Coulomb LFD partial convergence and the energy defect | 5 |
+| [N1763](published-20261108/N1763.md) | Coulomb LFD partial convergence and the energy defect | 7 |
 | [N1764](published-20261108/N1764.md) | Conditional native-IQP obstruction; hardness premise unproved | 1 |
 | [N1648 addendum](published-20261108/N1648-addendum.md) | Recurrent comparator; naive last-mark gluing fails | 1 |
 
