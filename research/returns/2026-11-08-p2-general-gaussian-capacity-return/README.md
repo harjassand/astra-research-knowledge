@@ -1,6 +1,6 @@
 # P2 general Gaussian classical capacity: full positive endpoint
 
-**Later different allocation:** P2 has a [new whole independent-sender Gaussian MAC region question](../2026-11-08-p2-gaussian-multiple-access-allocation/README.md), root-released with actual post/start pending. The completed capacity result/attained80–89/prior-claim overlap below is unchanged; its earlier idle decision is history. Use the [live ledger](../COORDINATION_CURRENT_20261108.json).
+**Later different allocation:** P2 has a [new whole independent-sender Gaussian MAC region question](../2026-11-08-p2-gaussian-multiple-access-allocation/README.md), posted once asbdaeaedc and task-specifically ACTIVE. The completed capacity result/attained80–89/prior-claim overlap below is unchanged; its earlier idle decision is history. Use the [live ledger](../COORDINATION_CURRENT_20261108.json).
 
 
 **Coordinator assessed: the FULL assigned C(Phi_XY,E)=chi_G(E)=conc chi_G(E) endpoint is POSITIVE under the accepted all-state quadratic-entropy and Gaussian-grouping premises. Provisional correctness-assumed ATTAINED CONSEQUENCE80–89.** It is not automatically a new mission discovery: the main identity overlaps the contemporaneous Zenodo23479869/v1 metadata prior claim. Family/fullB90–94 stays unchanged/nonadditive; no95 or priority claim.
