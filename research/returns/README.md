@@ -168,7 +168,7 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
-| P2 Gaussian MAC bda complete visible return and original ZIP | [Exact visible response/activity plus opaque ZIP; coordinator assessment pending; no archive inspection/source recovery](2026-11-08-p2-gaussian-mac-bdae-return/README.md) |
+| P2 Gaussian MAC bda complete visible return and original ZIP | [Universal Gaussian-hull equality NEGATIVELY RESOLVED65-75; paid strict finite code; opaque ZIP uninspected; P2 complete/idle](2026-11-08-p2-gaussian-mac-bdae-return/README.md) |
 | P1 nonunital spatial/global4fad complete available return | [All-g all-order GLOBALtau/late/static80–89; full arbitrary-product EARLY transient OPEN; ONLYFINAL posted once/task active; source holds](2026-11-08-p1-nonunital-spatial-global-4fad-return/README.md) |
 | P2 full independent-sender Gaussian MAC region allocation | [Exact whole question/source contracts; posted once bda/task active; no scientific result inferred](2026-11-08-p2-gaussian-multiple-access-allocation/README.md) |
 | P3 after-Chernoff98e complete available return | [Assessed50–60 method limits/negative input; full phase OPEN; current allocation stopped/P3idle, no body queued; source holds retained](2026-11-08-p3-additive-after-chernoff-98e-return/README.md) |

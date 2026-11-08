@@ -1,6 +1,6 @@
 # P2 independent-sender Gaussian MAC: full-region allocation
 
-**Completed response and opaque original received:** The [full visible bda return and original ZIP](../2026-11-08-p2-gaussian-mac-bdae-return/README.md) are retained; coordinator assessment is pending. Archive contents were not opened, unpacked, listed or inspected. Earlier task-active statements below are dated receipts; source holds persist and the [live ledger](../COORDINATION_CURRENT_20261108.json) governs current status.
+**Completed and fully assessed:** The [bda strict-separation return](../2026-11-08-p2-gaussian-mac-bdae-return/README.md) NEGATIVELY resolves the universal entire-Gaussian-hull equality at NEW65–75, not a full actual-region/SUM classification. Current P2 allocation ends; P2 is deliberately idle for a different source-screened question, no body queued. The original ZIP remains opaque/uninspected. Earlier activity/pending statements are dated receipts; use the [live ledger](../COORDINATION_CURRENT_20261108.json).
 
 
 **POSTED ONCE / task-specific ACTIVE**, SAME existing P2 Pro as bdaeaedc-8b2f-421f-ab41-ef5d8034e2ad, no attachment. Actual post00:00:21.249598UTC/start00:00:36.196260UTC were read by root. The new whole question has no completed scientific result, grade or95 inferred from its start.
