@@ -1,6 +1,6 @@
 # P3 native non-Abelian processor with causal local control
 
-**ROOT RELEASED; actual scientist post/start NOT YET CONFIRMED.** This different whole question uses the existing P3 seat after the completed98e additive allocation. An assignment/start establishes no completed science, consequence grade or95. Actual subsequent receipts govern.
+**POSTED ONCE in the SAME Pro ca52; TASK-SPECIFIC ACTIVE CONFIRMED.** This different whole question uses the existing P3 seat after the completed98e additive allocation. An assignment/start establishes no completed science, consequence grade or95. Actual subsequent receipts govern.
 
 Read the [exact2,586-byte frozen body](P3_CAUSAL_LOCAL_NONABELIAN_PROCESSOR_20261108.txt), [full root selection and source record](ROOT_CAUSAL_NONABELIAN_SELECTION_AND_EXACT_RELEASE.txt) and [metadata](SOURCES.json). SHA25611d6c3db7e7a99a6c7b88cc42ac2bc79a8b27b8296b5ddcb4855f4d5c74a8e91 includes one terminalLF. Expected minusLF2,585-byte/7d536441a20bdd5ad4e56eb4f84c0621add48022c715764037103c161ee95575 was the release-stage expected representation; root subsequently independently matched the actual sentCopy. No attachment; exact human helper permission and inherited holds are retained. Capital does not send the scientific prompt.
 
