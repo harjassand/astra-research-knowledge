@@ -1,6 +1,6 @@
 # Completed research: proofs and results
 
-These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **18 result families and 89 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
+These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **20 result families and 97 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
 
 The proofs, canonical cards and reusable result units are merged on `main`, together with their generated Capital packets and search indexes. Each result keeps its exact assumptions and unresolved obligations. The portable reader can retrieve this batch; the separate native model query remains blocked by the existing 2 GiB memory limit.
 
@@ -24,6 +24,8 @@ The proofs, canonical cards and reusable result units are merged on `main`, toge
 | [N1763](published-20261108/N1763.md) | Coulomb LFD partial convergence and the energy defect | 7 |
 | [N1764](published-20261108/N1764.md) | Conditional native-IQP obstruction; hardness premise unproved | 1 |
 | [N1765](published-20261109/N1765.md) | Zero-field Ising/parity RNC equivalence and shortcut limits | 4 |
+| [N1766](published-20261109/N1766.md) | Matching finite-bit wrapper and covariance/posterior obstructions | 4 |
+| [N1767](published-20261109/N1767.md) | Rank-one recurrence, drift/nonexplosion and marked-method obstruction | 4 |
 | [N1648 addendum](published-20261108/N1648-addendum.md) | Recurrent comparator; naive last-mark gluing fails | 1 |
 
 [Earlier proof/source catalogue](https://github.com/harjassand/astra-research-knowledge/blob/278f1ee7adb41652fc86922c7218dd2a6d220674/research/returns/README.md) · [Autonomous-correction dossier](../2026-11-05-continuous-time-autonomous-quantum-correction/README.md)
