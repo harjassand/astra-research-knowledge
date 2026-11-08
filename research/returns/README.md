@@ -1,6 +1,6 @@
 # Completed research: proofs and results
 
-These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **26 result families and 140 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
+These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **28 result families and 158 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
 
 The proofs, canonical cards and reusable result units are merged on `main`, together with their generated Capital packets and search indexes. Each result keeps its exact assumptions and unresolved obligations. The portable reader can retrieve this batch; the separate native model query remains blocked by the existing 2 GiB memory limit.
 
@@ -29,9 +29,11 @@ The proofs, canonical cards and reusable result units are merged on `main`, toge
 | [N1768](published-20261109/N1768.md) | Matrix signing at joint-support scale, variance sources and paid PSD reduction | 9 |
 | [N1769](published-20261109/N1769.md) | Autonomous quantum memory: paid local fault events, exact frames and reusable-record gaps | 9 |
 | [N1770](published-20261109/N1770.md) | Deterministic steady stirring gives global bounded reaction-diffusion solutions and arbitrary-rate homogenization | 6 |
-| [N1771](published-20261109/N1771.md) | Polynomial-resource three-dimensional stationary stirring by six separated transport channels | 4 |
-| [N1772](published-20261109/N1772.md) | Autonomous quantum-memory error reduces to robust unsafe-subspace occupation | 5 |
+| [N1771](published-20261109/N1771.md) | Polynomial stationary stirring, unknown-SPD composition and cross-diffusion transfer boundary | 6 |
+| [N1772](published-20261109/N1772.md) | Autonomous quantum memory: logical safety, a universal finite-device lifetime ceiling and the open threshold | 7 |
 | [N1773](published-20261109/N1773.md) | Pay exact weakly-reversible class membership and conditional Poisson normalization | 3 |
+| [N1774](published-20261109/N1774.md) | Exact kinetic-gap witnesses and pinned-spectrum reduction; total decision remains open | 10 |
+| [N1775](published-20261109/N1775.md) | Maxwell–Stefan entropy mixing at arbitrary rate, with an explicit strong-continuation boundary | 4 |
 | [N1648 addendum](published-20261108/N1648-addendum.md) | Recurrent comparator; naive last-mark gluing fails | 1 |
 
 [Earlier proof/source catalogue](https://github.com/harjassand/astra-research-knowledge/blob/278f1ee7adb41652fc86922c7218dd2a6d220674/research/returns/README.md) · [Autonomous-correction dossier](../2026-11-05-continuous-time-autonomous-quantum-correction/README.md)
