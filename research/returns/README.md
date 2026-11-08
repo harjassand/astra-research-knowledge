@@ -168,6 +168,7 @@ Use these links to read complete source reports and packages directly. Use the [
 
 | Material | Source route |
 |---|---|
+| P1 static NESS Gibbs structure / ONLY FINAL allocation | [Uniform operator-log norm and finite construction; root released, actual post/start pending; no result inferred](2026-11-08-p1-static-ness-gibbs-structure-allocation/README.md) |
 | P1 nonunital full-preparation2e7 complete available return | [FULL reference-free nonunital endpoint POSITIVE90–94; all product inputs/times/general GKLS; P1 complete/idle; theorem TXT unacquired](2026-11-08-p1-nonunital-full-preparation-2e7-return/README.md) |
 | P3 native doubled-Fibonacci processor / causal local control | [Exact different whole question; reliable classical operations/clock allowed; root released, posted once ca52, task-specific start confirmed](2026-11-08-p3-causal-local-nonabelian-processor-allocation/README.md) |
 | P2 Gaussian MAC bda complete visible return and original ZIP | [Universal Gaussian-hull equality NEGATIVELY RESOLVED65-75; paid strict finite code; opaque ZIP uninspected; P2 complete/idle](2026-11-08-p2-gaussian-mac-bdae-return/README.md) |
