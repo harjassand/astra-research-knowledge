@@ -45,16 +45,21 @@ def run(*arguments):
 
 def public_path_portability(base, root=ROOT):
     """Reject newly published literal host locators; not a secret/content audit."""
-    patch = subprocess.check_output([
+    command = [
         "git", "diff", "--no-ext-diff", "--unified=0", base, "--",
-        "research", "knowledge", "cards", "frontier", "indexes", "agent"], cwd=root).decode("utf-8", "replace")
+        "research", "knowledge", "cards", "frontier", "indexes", "agent"]
     marker = re.compile(r"/(?:Users|home)/[^/\s'\"<>]+/|file:[/]{2}")
     path, affected = None, set()
-    for line in patch.splitlines():
-        if line.startswith("+++ b/"):
-            path = line[6:]
-        elif line.startswith("+") and not line.startswith("+++") and marker.search(line[1:]):
-            affected.add(path)
+    with subprocess.Popen(command, cwd=root, stdout=subprocess.PIPE,
+                          text=True, encoding="utf-8", errors="replace") as patch:
+        for line in patch.stdout:
+            line = line.rstrip("\r\n")
+            if line.startswith("+++ b/"):
+                path = line[6:]
+            elif line.startswith("+") and not line.startswith("+++") and marker.search(line[1:]):
+                affected.add(path)
+        if patch.wait():
+            raise subprocess.CalledProcessError(patch.returncode, command)
     if affected:
         raise ValueError("New public text contains host-specific local locators: "
                          + ", ".join(sorted(affected))
