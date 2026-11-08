@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter, defaultdict
+from collections.abc import Mapping, MutableMapping
+import gc
+import hashlib
 import json
+import math
+import os
 from pathlib import Path
 import re
 import sys
@@ -183,9 +188,178 @@ def packet_excerpt(reference, passage, selection):
     return excerpt
 
 
+class BuildBytes(MutableMapping):
+    """Private temporary bytes; the public output mapping and hashes are unchanged."""
+    def __init__(self):
+        self._temporary = tempfile.TemporaryDirectory(prefix="astra-build-bytes-")
+        self._paths = {}
+        self._hashes = {}
+        self._serial = 0
+
+    def __iter__(self):
+        return iter(self._paths)
+
+    def __len__(self):
+        return len(self._paths)
+
+    def __contains__(self, key):
+        return key in self._paths
+
+    def close(self):
+        self._temporary.cleanup()
+
+    def __del__(self):
+        temporary = getattr(self, "_temporary", None)
+        if temporary is not None:
+            temporary.cleanup()
+
+    def __getitem__(self, key):
+        data = self._paths[key].read_bytes()
+        if digest(data) != self._hashes[key]:
+            raise ValueError("Temporary build output changed: " + str(key))
+        return data
+
+    def __setitem__(self, key, data):
+        self.write_chunks(key, (data,))
+
+    def __delitem__(self, key):
+        self._paths.pop(key).unlink()
+        del self._hashes[key]
+
+    def write_chunks(self, key, chunks):
+        if key not in self._paths:
+            self._paths[key] = Path(self._temporary.name) / str(self._serial)
+            self._serial += 1
+        checksum = hashlib.sha256()
+        with self._paths[key].open("wb") as target:
+            for chunk in chunks:
+                target.write(chunk)
+                checksum.update(chunk)
+        self._hashes[key] = checksum.hexdigest()
+
+    def sha256(self, key):
+        return self._hashes[key]
+
+    def path(self, key):
+        path = self._paths[key]
+        if file_digest(path) != self._hashes[key]:
+            raise ValueError("Temporary build output changed: " + str(key))
+        return path
+
+    def __eq__(self, other):
+        if not isinstance(other, Mapping) or len(self) != len(other):
+            return False
+        return all(key in other and self[key] == other[key] for key in self)
+
+
+class BuildSources(MutableMapping):
+    """Retain every validated source identity, with text held in temporary files."""
+    def __init__(self):
+        self._bytes = BuildBytes()
+
+    def __iter__(self):
+        return iter(self._bytes)
+
+    def __len__(self):
+        return len(self._bytes)
+
+    def __contains__(self, key):
+        return key in self._bytes
+
+    def __getitem__(self, key):
+        return self._bytes[key].decode("utf-8")
+
+    def __setitem__(self, key, text):
+        self._bytes[key] = text.encode("utf-8")
+
+    def __delitem__(self, key):
+        del self._bytes[key]
+
+
+def file_digest(path):
+    checksum = hashlib.sha256()
+    with Path(path).open("rb") as source:
+        for block in iter(lambda: source.read(1024 * 1024), b""):
+            checksum.update(block)
+    return checksum.hexdigest()
+
+
+def same_files(left, right):
+    with Path(left).open("rb") as a, Path(right).open("rb") as b:
+        while True:
+            first, second = a.read(1024 * 1024), b.read(1024 * 1024)
+            if first != second:
+                return False
+            if not first:
+                return True
+
+
+def build_trace(stage):
+    if os.environ.get("ASTRA_BUILD_RESOURCE_TRACE") == "1":
+        import resource
+        high = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        mib = high / (1024 * 1024 if sys.platform == "darwin" else 1024)
+        print(json.dumps({"build_phase": stage, "process_high_water_mib": round(mib, 2)}),
+              file=sys.stderr, flush=True)
+
+
+def field_index_shards(documents, project=None, remap=None):
+    """Original BM25 arithmetic/order, spooled and reduced one existing shard at a time."""
+    from knowledge.model import tokens
+    weights = ({"body": 1.0} if project is not None else
+               {"title": 2.5, "statement": 1.5, "contract": 1.4, "aliases": 1.2,
+                "body": 1.0, "notices": 0.7})
+    count = len(documents)
+    with tempfile.TemporaryDirectory(prefix="astra-build-postings-") as temporary:
+        folder = Path(temporary)
+        buffers = defaultdict(bytearray)
+
+        def flush(shard):
+            if buffers[shard]:
+                with (folder / shard).open("ab") as target:
+                    target.write(buffers[shard])
+                buffers[shard].clear()
+
+        for field, weight in weights.items():
+            lengths, frequency = [], Counter()
+            for document in documents:
+                selected = project(document) if project is not None else document
+                terms = Counter(tokens(flatten(selected.get(field, ""))))
+                lengths.append(sum(terms.values()))
+                frequency.update(terms.keys())
+            average = sum(lengths) / max(count, 1) or 1
+            for number, document in enumerate(documents):
+                selected = project(document) if project is not None else document
+                terms = Counter(tokens(flatten(selected.get(field, ""))))
+                normalizer = 1.2 * (0.25 + 0.75 * lengths[number] / average)
+                for term, occurrences in terms.items():
+                    inverse = math.log(1 + (count - frequency[term] + 0.5) /
+                                       (frequency[term] + 0.5))
+                    contribution = weight * inverse * occurrences * 2.2 / (occurrences + normalizer)
+                    shard = digest(term.encode())[:2]
+                    buffers[shard].extend(encoded([term, number, contribution]))
+                    if len(buffers[shard]) >= 65536:
+                        flush(shard)
+        for shard in buffers:
+            flush(shard)
+        del buffers, lengths, frequency
+        for path in sorted(folder.iterdir()):
+            scores = defaultdict(lambda: defaultdict(float))
+            with path.open() as source:
+                for line in source:
+                    term, number, contribution = json.loads(line)
+                    scores[term][number] += contribution
+            values = {term: [[remap[number] if remap is not None else number, round(score, 6)]
+                             for number, score in sorted(entries.items())]
+                      for term, entries in sorted(scores.items())}
+            yield path.name, values
+            del scores, values
+
+
 def build(root=ROOT):
     root = Path(root)
     inputs = Inputs(root)
+    inputs.sources = BuildSources()
     discovered = inventory(root)
     from knowledge.evidence import public_derivatives
     historical_derivatives = public_derivatives(inputs, discovered["selected_public_source_indexes"])
@@ -564,40 +738,43 @@ def build(root=ROOT):
             raise ValueError("Conflicting source-window identity: " + source["id"])
         source_documents[source["id"]] = source
     documents.extend(sorted(source_documents.values(), key=lambda item: item["id"]))
-    postings = field_index(documents)
-    content_lexical = field_index([{"body": document["title"] + " " + document["body"]
-        if document["kind"] == "source_window" else flatten({key: document.get(key, "")
-        for key in ("title", "statement", "contract", "body", "aliases", "notices")})} for document in documents])
-    result_documents = [document for document in documents if document["kind"] == "result"]
-    lexical = field_index([{"body": document["body"]} for document in result_documents])
-    document_indexes = {document["id"]: index for index, document in enumerate(documents)}
-    for values in lexical.values():
-        for entry in values:
-            entry[0] = document_indexes[result_documents[entry[0]]["id"]]
-    outputs = {
-        "knowledge/current/records.jsonl": b"".join(encoded(record) for record in sorted(records, key=lambda item: item["id"])),
-        "knowledge/current/documents.jsonl": b"".join(encoded({key: document[key] for key in (
-            "id", "kind", "record_id", "parents", "title", "evidence", "scope", "text_selection") if key in document}) for document in documents),
-        "knowledge/current/transfers.json": encoded(transfers),
-    }
+    build_trace("records and source windows normalized")
+    source_window_count = len(source_documents)
+    outputs = BuildBytes()
+    outputs.write_chunks("knowledge/current/records.jsonl",
+        (encoded(record) for record in sorted(records, key=lambda item: item["id"])))
+    outputs.write_chunks("knowledge/current/documents.jsonl",
+        (encoded({key: document[key] for key in (
+            "id", "kind", "record_id", "parents", "title", "evidence", "scope", "text_selection")
+            if key in document}) for document in documents))
+    outputs["knowledge/current/transfers.json"] = encoded(transfers)
     from knowledge.operations import operation_frame, historical_summary
-    outputs["knowledge/current/operations.jsonl"] = b"".join(
-        encoded(operation_frame(record)) for record in sorted(records, key=lambda item: item["id"]))
-    shards = defaultdict(dict)
-    for term, entries in postings.items():
-        shards[digest(term.encode())[:2]][term] = entries
-    for shard, values in sorted(shards.items()):
+    outputs.write_chunks("knowledge/current/operations.jsonl",
+        (encoded(operation_frame(record)) for record in sorted(records, key=lambda item: item["id"])))
+    shards = []
+    for shard, values in field_index_shards(documents):
+        shards.append(shard)
         outputs["knowledge/current/postings/" + shard + ".json"] = encoded(values)
-    content_shards = defaultdict(dict)
-    for term, entries in content_lexical.items():
-        content_shards[digest(term.encode())[:2]][term] = entries
-    for shard, values in sorted(content_shards.items()):
+    build_trace("structured postings spooled")
+
+    def content_document(document):
+        return {"body": document["title"] + " " + document["body"]
+            if document["kind"] == "source_window" else flatten({key: document.get(key, "")
+            for key in ("title", "statement", "contract", "body", "aliases", "notices")})}
+
+    for shard, values in field_index_shards(documents, project=content_document):
         outputs["knowledge/current/content/" + shard + ".json"] = encoded(values)
-    lexical_shards = defaultdict(dict)
-    for term, entries in lexical.items():
-        lexical_shards[digest(term.encode())[:2]][term] = entries
-    for shard, values in sorted(lexical_shards.items()):
+    build_trace("content postings spooled")
+    result_documents = [document for document in documents if document["kind"] == "result"]
+    document_indexes = {document["id"]: index for index, document in enumerate(documents)}
+    remap = [document_indexes[document["id"]] for document in result_documents]
+    lexical_shards = []
+    for shard, values in field_index_shards(result_documents,
+            project=lambda document: {"body": document["body"]}, remap=remap):
+        lexical_shards.append(shard)
         outputs["knowledge/current/lexical/" + shard + ".json"] = encoded(values)
+    values = None
+    build_trace("lexical postings spooled")
     catalog_records = [{"record_id": record["id"], "title": record["title"], "kind": record["kind"], "parents": record["parents"]}
                        | ({"acceptance": acceptance_view(record, preview=True)} if record.get("current_acceptance") else {})
                        for record in sorted(records, key=lambda item: item["id"])]
@@ -605,6 +782,8 @@ def build(root=ROOT):
     catalog = [[record_indexes[document["record_id"]], int(document["kind"] == "source_window")] for document in documents]
     outputs["knowledge/current/catalog.json"] = encoded({"documents": catalog, "records": catalog_records, "concepts": concepts,
                                                         "shards": sorted(shards), "lexical_shards": sorted(lexical_shards)})
+    del documents, source_documents, sources, result_documents, document_indexes, catalog_records, record_indexes, catalog
+    gc.collect()
     for record in records:
         packet = dict(record)
         packet.pop("body", None)
@@ -701,7 +880,7 @@ def build(root=ROOT):
         outputs["knowledge/current/packets/" + route_id(record["id"]) + ".json"] = encoded(packet)
     coverage = {
         "records_by_kind": dict(Counter(record["kind"] for record in records)),
-        "source_windows": len(source_documents),
+        "source_windows": source_window_count,
         "recoverable_exact_source_versions": len({(path, version) for path, version, _ in inputs.sources}),
         "distinct_source_text_hashes": len({version for _, version, _ in inputs.sources}),
         "topics": dict(Counter(topic for record in records for topic in record.get("topics", []))),
@@ -709,10 +888,15 @@ def build(root=ROOT):
         "eligible_mechanism_denominator": "UNKNOWN", "scientific_acceptance": "Actual version-bound substantive reviews and explicit standing human acceptance retain their stated scope; extraction and hashing confer neither.",
     }
     from knowledge.evidence import projection
-    evidence_outputs, evidence_coverage = projection(root, inputs, records, discovered["selected_public_source_indexes"], transfers)
-    outputs.update(evidence_outputs)
+    evidence_outputs, evidence_coverage = projection(root, inputs, records, discovered["selected_public_source_indexes"], transfers,
+        output_store=outputs, index_shards=field_index_shards)
+    assert evidence_outputs is outputs
+    del evidence_outputs
+    gc.collect()
+    build_trace("evidence projection spooled; original contextual projection follows")
     from knowledge.contextual_search import projection as contextual_projection, VECTORS
     outputs.update(contextual_projection(root, inputs, records))
+    build_trace("original contextual projection complete")
     coverage["evidence_navigation"] = evidence_coverage
     outputs["knowledge/current/coverage.json"] = encoded(coverage)
     topic_records = defaultdict(dict)
@@ -738,7 +922,7 @@ def build(root=ROOT):
         browse.append("\t".join([" / ".join(sorted(topic_names[slug])), str(len(selected)), path]))
     outputs["knowledge/current/browse/index.txt"] = ("\n".join(browse) + "\n").encode()
     input_version = digest(encoded({"authoring_inputs": inputs.hashes,
-                                    "contextual_vectors_sha256": digest(outputs[VECTORS])}))
+                                    "contextual_vectors_sha256": outputs.sha256(VECTORS)}))
     outputs["knowledge/current/release.json"] = encoded({
         "schema": "astra.public-corpus-release.v1", "input_version": input_version,
         "manifest": "knowledge/current/manifest.json", "records": len(records),
@@ -747,11 +931,11 @@ def build(root=ROOT):
         "consumer_view_layout": CURRENT_CONSUMER_LAYOUT,
         "scope": "Complete ordinary build/check projection. Corpus identity covers cards, units, sources, corrections, runtime readers and exact contextual vector bytes; indexing confers no scientific acceptance."})
     outputs["knowledge/current/search_manifest.json"] = encoded({"input_version": input_version,
-        "outputs": {name: digest(data) for name, data in outputs.items() if name.startswith((
+        "outputs": {name: outputs.sha256(name) for name in outputs if name.startswith((
             "knowledge/current/catalog", "knowledge/current/postings/", "knowledge/current/lexical/", "knowledge/current/packets/",
             "knowledge/current/operations", "knowledge/current/evidence/", "knowledge/current/content/"))}})
     manifest = {"schema": "astra.knowledge-manifest.v1", "inputs": dict(sorted(inputs.hashes.items())),
-                "discovery": discovered, "outputs": {name: digest(data) for name, data in sorted(outputs.items())},
+                "discovery": discovered, "outputs": {name: outputs.sha256(name) for name in sorted(outputs)},
                 "counts": coverage, "input_version": input_version}
     outputs[MANIFEST] = encoded(manifest)
     return outputs, manifest
@@ -770,12 +954,14 @@ def check(root=ROOT, regenerate=True):
         raise ValueError("Stale knowledge: generated output membership changed")
     for group in ("inputs", "outputs"):
         for name, expected in manifest[group].items():
-            if not local(root, name).is_file() or digest(local(root, name).read_bytes()) != expected:
+            if not local(root, name).is_file() or file_digest(local(root, name)) != expected:
                 raise ValueError("Stale knowledge " + group + ": " + name + "; run python3 knowledge/build.py build")
     if regenerate:
         outputs, _ = build(root)
-        for name, data in outputs.items():
-            if not local(root, name).is_file() or local(root, name).read_bytes() != data:
+        for name in outputs:
+            target = local(root, name)
+            equal = same_files(target, outputs.path(name)) if target.is_file() else False
+            if not equal:
                 raise ValueError("Generated knowledge differs: " + name)
     return manifest
 
@@ -789,13 +975,19 @@ def publish(root, outputs):
             if digest(target.read_bytes()) != expected:
                 raise ValueError("Refusing to remove edited prior generated output: " + name)
             target.unlink()
-    for name, data in outputs.items():
+    for name in outputs:
         target = local(root, name)
-        if target.is_file() and target.read_bytes() == data:
+        source = outputs.path(name) if isinstance(outputs, BuildBytes) else None
+        if target.is_file() and (same_files(target, source) if source is not None else target.read_bytes() == outputs[name]):
             continue
         target.parent.mkdir(parents=True, exist_ok=True)
         with tempfile.NamedTemporaryFile(dir=target.parent, delete=False) as temporary:
-            temporary.write(data)
+            if source is None:
+                temporary.write(outputs[name])
+            else:
+                with source.open("rb") as original:
+                    for block in iter(lambda: original.read(1024 * 1024), b""):
+                        temporary.write(block)
             staged = Path(temporary.name)
         staged.replace(target)
 

@@ -1,0 +1,16 @@
+# Corrections retained in this release
+
+These are substantive safeguards, not hidden mathematical changes to reviewed proofs.
+
+1. **Multi-site target visitation.** A literal future-factor-only interval alphabet can admit an earlier arrival at another target site and double count a history. The exact lattice counterexample and regression are in `b_global_activity_audit_20261108/check_multisite_target_gap.py`. The governing two-body proof excludes the entire unfinished target and all future retained discovery vertices. It retains geometrically causal return histories even when final physical support disappears.
+2. **Physical versus ancillary graph.** Shared interface switches are central classical labels. Treating them as physical vertices would artificially increase degree. The first-discovery proof uses physical supports and Fourier extraction instead.
+3. **Scalar precision versus classical integer size.** The pinned-KP derivative replaces the old 2^(-m^2) physical-query precision requirement by exp[-O(L+b|C|)]. O(m^2)-bit Ursell arithmetic is still paid.
+4. **Tensor interpolation indices.** Physical prefix row sets are nested; final suffix pivot sets need not be. A zero tensor is handled without taking an empty inverse. Numerator minors can contain a replaced physical row outside the pivot set.
+5. **Raw rational denominators.** O(h[B+log R]) bits is false for arbitrary entrywise-rational raw cores. Their denominators can be unrelated. The proof pays the product of all stored entry denominators, polynomial in materialized representation size, then resets each completed coefficient to the integer-tensor minor bound. The independent audit supplies the discarded bound's counterexample.
+6. **Dimensionless action.** Apply the patch evaluator to L/gamma at numerical time sigma, not to an unpriced physical time sigma/gamma. Rational division contributes input bits.
+7. **Grouped local strengths.** The promised h bounds the sum of all contributions on each physical support. An arbitrarily long repeated-term input list cannot evade the fixed-ratio promise.
+8. **Zero Hamiltonian and sparse geometry.** h=0 has a direct independent-noise branch. Disconnected geometric components are separated before rectangle padding; encoded coordinate gaps are not physical volume.
+9. **Failure branches and unconditional sampling.** Coefficients and scalar answers are clipped, size caps are deterministic, logarithms are guarded, and exponentiation is confined to a bounded interval. Fresh per-history failure bounds are paid by sequential coupling; conditioning on a global success event would not justify unconditional TV.
+10. **Signed polynomial versus physical channel.** The truncated coefficient-MPO polynomial need not be CP or TP. It is an approximation used in scalar computation, not directly sampled as a channel. Prototype half-l1 errors are labeled accordingly.
+
+The original reviewed theorem/proof and both final review hashes appear in `START_HERE.md`. SOURCE_PROVENANCE.json records presentation-only changes and both original and release-copy hashes; no mathematical statement or executable diagnostic code is altered. Old draft names and earlier “pending” labels remain as provenance and are explicitly superseded by the final audits.

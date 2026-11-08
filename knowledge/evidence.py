@@ -75,7 +75,7 @@ def public_derivatives(inputs, index_paths):
     return derivatives
 
 
-def projection(root, inputs, records, index_paths, transfers=()):
+def projection(root, inputs, records, index_paths, transfers=(), output_store=None, index_shards=None):
     artifacts = {}
     declarations = []
 
@@ -210,12 +210,23 @@ def projection(root, inputs, records, index_paths, transfers=()):
                 documents.append({"id": "E-" + digest(encoded({"artifact": item["id"], "source": selected}))[:24],
                     "artifact_id": item["id"], "source": selected, "title": Path(ref["path"]).name,
                     "body": body, "text_selection": selector})
-    outputs = {"knowledge/current/evidence/artifacts.jsonl": b"".join(encoded(v) for v in artifacts.values()),
-               "knowledge/current/evidence/documents.jsonl": b"".join(encoded({k: v for k, v in d.items() if k != "body"}) for d in documents)}
-    shards = defaultdict(dict)
-    for term, values in field_index(documents).items():
-        shards[digest(term.encode())[:2]][term] = values
-    for shard, values in shards.items():
+    outputs = {} if output_store is None else output_store
+    artifact_chunks = (encoded(v) for v in artifacts.values())
+    document_chunks = (encoded({k: v for k, v in d.items() if k != "body"}) for d in documents)
+    if hasattr(outputs, "write_chunks"):
+        outputs.write_chunks("knowledge/current/evidence/artifacts.jsonl", artifact_chunks)
+        outputs.write_chunks("knowledge/current/evidence/documents.jsonl", document_chunks)
+    else:
+        outputs["knowledge/current/evidence/artifacts.jsonl"] = b"".join(artifact_chunks)
+        outputs["knowledge/current/evidence/documents.jsonl"] = b"".join(document_chunks)
+    if index_shards is None:
+        shards = defaultdict(dict)
+        for term, values in field_index(documents).items():
+            shards[digest(term.encode())[:2]][term] = values
+        selected = shards.items()
+    else:
+        selected = index_shards(documents)
+    for shard, values in selected:
         outputs["knowledge/current/evidence/postings/" + shard + ".json"] = encoded(values)
     coverage = {"artifacts": len(artifacts), "searchable_artifacts": sum(bool(v["ranges"]) for v in artifacts.values()),
                 "evidence_windows": len(documents), "text_windows": sum(d["source"].get("lines") is not None for d in documents),
