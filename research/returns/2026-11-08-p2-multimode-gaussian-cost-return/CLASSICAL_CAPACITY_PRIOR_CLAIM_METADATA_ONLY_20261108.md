@@ -1,5 +1,8 @@
 # Classical-capacity prior claim: metadata only
 
+**Later allocation context:** The joint-encoder result and prior overlap remain at scope; P2 now has a [different independent-sender MAC full-region question](../2026-11-08-p2-gaussian-multiple-access-allocation/README.md), posted once asbdaeaedc/task-specifically ACTIVE. The record claim alone does not establish that independent-user region. Earlier idle statements are dated history; the original PDF stays held/unread.
+
+
 **Completed capacity assessment:** The [full e18 return/assessment](../2026-11-08-p2-general-gaussian-capacity-return/README.md) attains the positive endpoint under accepted premises at80–89, with main-identity prior-claim overlap and unread-original resource/priority scope unassessed. That allocation ends; P2 is deliberately idle for a different source-screened question, no body queued. Earlier pending/activity statements are dated history; source holds persist.
 
 
