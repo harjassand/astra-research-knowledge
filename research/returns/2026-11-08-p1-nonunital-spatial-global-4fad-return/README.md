@@ -1,5 +1,8 @@
 # P1 nonunital prediction: global tau, forgetting and open transient
 
+**Warm successor completed:** The [complete available2e7 full-preparation return](../2026-11-08-p1-nonunital-full-preparation-2e7-return/README.md) has arrived; coordinator assessment is pending. Earlier activity/collection statements below are dated receipts. Source holds remain; use the [live ledger](../COORDINATION_CURRENT_20261108.json).
+
+
 **Coordinator assessed: NEW provisional correctness-assumed80–89 for actual all-g all-order reference-free global tau/late/static prediction and global-product forgetting. The FULL every-time arbitrary specified-product/general-MULTIQUBIT endpoint remains OPEN.** Family/fullB90–94 expands at this scope, nonadditively; prior65–75/60–70 retained, no95 or score addition.
 
 Read the [unchanged complete39,749-byte return](P1_NONUNITAL_AFTER_INSERTIONS_4FAD_RETURN.txt), [full root assessment](ROOT_GLOBAL_TAU_FORGETTING_ASSESSMENT_AND_FINAL_RELEASE.txt), [ONLY final follow-up body](P1_NONUNITAL_AFTER_ALLORDER_FORGETTING_FINAL_20261108.txt) and [metadata](SOURCES.json). Root read the entire file, actual prompt/full response/all available activity; component hashes are FILE digests, not independent DOM-copy claims. Capital retained the source once without scientific replay.
