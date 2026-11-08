@@ -1,5 +1,8 @@
 # P1 nonunital prediction: uniform insertion compiler
 
+**Warm successor completed:** The [complete available4fad spatial/global return](../2026-11-08-p1-nonunital-spatial-global-4fad-return/README.md) has arrived; coordinator assessment is pending. Earlier activity/collection statements below are dated receipts. Source holds remain; use the [live ledger](../COORDINATION_CURRENT_20261108.json).
+
+
 **Coordinator assessed: NEW provisional correctness-assumed60–70. The full every-fixed-g, positive-radius, reference-free, scheduled GLOBAL-product, arbitrary-accuracy at fixed eta, binary-time polynomial-BIT endpoint remains OPEN. No model-preserving hardness is supplied.** Family/fullB90–94 is unchanged and nonadditive; no95 claim.
 
 Read the [unchanged complete40,119-byte return](P1_NONUNITAL_INSERTION_COMPILER_20261108_RETURN.txt), [full root assessment and decision](ROOT_UNIFORM_INSERTION_SCOPE_AND_WARM_RELEASE.txt), [exact warm full question](P1_NONUNITAL_AFTER_UNIFORM_INSERTIONS_20261108.txt) and [metadata](SOURCES.json). Root read/digest-matched the exact prompt, entire response and all available activity. Capital retained the original once without scientific replay.
