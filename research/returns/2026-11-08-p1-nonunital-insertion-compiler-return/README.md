@@ -1,6 +1,6 @@
 # P1 nonunital prediction: uniform insertion compiler
 
-**Warm successor completed:** The [complete available4fad spatial/global return](../2026-11-08-p1-nonunital-spatial-global-4fad-return/README.md) has arrived; coordinator assessment is pending. Earlier activity/collection statements below are dated receipts. Source holds remain; use the [live ledger](../COORDINATION_CURRENT_20261108.json).
+**Warm successor assessed:** The [full4fad global tau/forgetting assessment](../2026-11-08-p1-nonunital-spatial-global-4fad-return/README.md) earns NEW80–89 for actual global tau/late/static operations. Full early arbitrary-product/general-multiqubit endpoint stays OPEN. ONLY FINAL2,474-byte full continuation is root-released, actual post/start pending; the2,436 draft was never released. Earlier active/pending statements are dated history; use the [live ledger](../COORDINATION_CURRENT_20261108.json).
 
 
 **Coordinator assessed: NEW provisional correctness-assumed60–70. The full every-fixed-g, positive-radius, reference-free, scheduled GLOBAL-product, arbitrary-accuracy at fixed eta, binary-time polynomial-BIT endpoint remains OPEN. No model-preserving hardness is supplied.** Family/fullB90–94 is unchanged and nonadditive; no95 claim.
