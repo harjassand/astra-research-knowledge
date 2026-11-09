@@ -1,6 +1,6 @@
 # Completed research: proofs and results
 
-These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **32 result families and 214 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
+These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **32 result families and 219 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
 
 The proofs, canonical cards and reusable result units are merged on `main`, together with their generated Capital packets and search indexes. Each result keeps its exact assumptions and unresolved obligations. The portable reader can retrieve this batch; the separate native model query remains blocked by the existing 2 GiB memory limit.
 
@@ -36,12 +36,8 @@ The proofs, canonical cards and reusable result units are merged on `main`, toge
 | [N1775](published-20261109/N1775.md) | Maxwell–Stefan global weak entropy control; unrestricted global strong continuation open | 10 |
 | [N1776](published-20261109/N1776.md) | Directed Euler tours: bidirected nearlinear sampler; full asymmetric sampler open | 7 |
 | [N1777](published-20261109/N1777.md) | Full2B5 robust controller; fixed-sector scattering bounds without uniform fixed-actuator theorem | 16 |
-
-
-
 | [N1778](published-20261109/N1778.md) | Full adjacent-port noisy FIFO; clean long-distance conveyor and restricted semantic failure; full long-distance open | 8 |
-| [N1779](published-20261109/N1779.md) | Full uniform-volume rank-one positive compiler; arbitrary-rank volume theorem open | 6 |
-
+| [N1779](published-20261109/N1779.md) | Full all-rank physical volume-gap compiler and compressed actual-class locator | 11 |
 | [N1648 addendum](published-20261108/N1648-addendum.md) | Recurrent comparator; naive last-mark gluing fails | 1 |
 
 [Earlier proof/source catalogue](https://github.com/harjassand/astra-research-knowledge/blob/278f1ee7adb41652fc86922c7218dd2a6d220674/research/returns/README.md) · [Autonomous-correction dossier](../2026-11-05-continuous-time-autonomous-quantum-correction/README.md)
