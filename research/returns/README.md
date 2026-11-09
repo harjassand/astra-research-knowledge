@@ -1,6 +1,6 @@
 # Completed research: proofs and results
 
-These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **36 result families and 262 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
+These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **38 result families and 270 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
 
 The proofs, canonical cards and reusable result units are merged on `main`, together with their generated Capital packets and search indexes. Each result keeps its exact assumptions and unresolved obligations. The portable reader can retrieve this batch; the separate native model query remains blocked by the existing 2 GiB memory limit.
 
@@ -42,6 +42,8 @@ The proofs, canonical cards and reusable result units are merged on `main`, toge
 | [N1781](published-20261109/N1781.md) | Full fixed-structure accuracy-bit conditional-Poisson sampler and log class probability | 8 |
 | [N1782](published-20261109/N1782.md) | Full spatial physical gap/equilibrium; paid nonlinear skeleton and exact collision subcase; general transient open | 14 |
 | [N1783](published-20261109/N1783.md) | Concrete C=7 edit-code existence, paid prefix counts and BCH substitution subcase; full mixed-edit uniform construction open | 4 |
+| [N1784](published-20261109/N1784.md) | Ideal smoothed-gradient cost balance; original-gradient/full-TV algorithm open | 1 |
+| [N1785](published-20261109/N1785.md) | Full finite-parameter closed3D L2-ball weak-solution performance; conditional unacquired readout | 7 |
 | [N1648 addendum](published-20261108/N1648-addendum.md) | Recurrent comparator; naive last-mark gluing fails | 1 |
 
 [Earlier proof/source catalogue](https://github.com/harjassand/astra-research-knowledge/blob/278f1ee7adb41652fc86922c7218dd2a6d220674/research/returns/README.md) · [Autonomous-correction dossier](../2026-11-05-continuous-time-autonomous-quantum-correction/README.md)
