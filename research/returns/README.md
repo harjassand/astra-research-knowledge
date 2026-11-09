@@ -1,6 +1,6 @@
 # Completed research: proofs and results
 
-These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **47 result families and 417 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
+These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **47 result families and 427 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
 
 The proofs, canonical cards and reusable result units are merged on `main`, together with their generated Capital packets and search indexes. Each result keeps its exact assumptions and unresolved obligations. The portable reader can retrieve this batch; the separate native model query remains blocked by the existing 2 GiB memory limit.
 
@@ -40,13 +40,13 @@ The proofs, canonical cards and reusable result units are merged on `main`, toge
 | [N1779](published-20261109/N1779.md) | Full physical volume-gap compiler; exact compressed support and bounded-leaf binary sampler | 12 |
 | [N1780](published-20261109/N1780.md) | Full fixed-network binary-size equilibrium TV sampler with every-run BIT bounds | 5 |
 | [N1781](published-20261109/N1781.md) | Full fixed-structure accuracy-bit conditional-Poisson sampler and log class probability | 8 |
-| [N1782](published-20261109/N1782.md) | Full spatial physical gap/equilibrium; paid nonlinear skeleton and exact collision subcase; general transient open | 14 |
+| [N1782](published-20261109/N1782.md) | Nominal all-class spatial mixing, automatic moments and retained conservative/binary endpoint results | 18 |
 | [N1783](published-20261109/N1783.md) | Concrete C=7 edit-code existence, paid prefix counts and BCH substitution subcase; full mixed-edit uniform construction open | 4 |
 | [N1784](published-20261109/N1784.md) | Ideal order balance, exact-score separation and paid original-oracle baseline; sharp-scale full sampler open | 5 |
 | [N1785](published-20261109/N1785.md) | Full finite-parameter closed3D L2-ball weak-solution performance; conditional unacquired readout | 7 |
 | [N1786](published-20261109/N1786.md) | Sharp dense/complete subclasses; bounded flat-XOR and local failures; full prescribed-base closure open | 15 |
 | [N1787](published-20261109/N1787.md) | FULL fixed-WR mean inverse: O_R(L) numerical log radius and every-run polynomial-BIT rational activities; physical mixing/novelty unestablished | 38 |
-| [N1788](published-20261109/N1788.md) | Nominal catalytic gaps, necessary robust tolerance and a complete one-species baseline | 11 |
+| [N1788](published-20261109/N1788.md) | Robust catalytic kinetics on finite and rank-one classes, with moment-transfer and clock limits | 17 |
 | [N1789](published-20261109/N1789.md) | Full arbitrary-frequency deterministic H1-ball control compiler; explicit enormous costs; fixed-twelve sequel open | 5 |
 | [N1790](published-20261109/N1790.md) | Full exact-SCC weighted inference; effective reversible compiler; conservative support avatar changes weights | 4 |
 | [N1791](published-20261109/N1791.md) | Full three-first-harmonic H1/all-weak control with polynomial BIT/natural resources; ordinary body-force transfer open | 7 |
