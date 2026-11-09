@@ -1,0 +1,112 @@
+<!-- current-scope-first -->
+# N1794 — current result
+
+The A873 continuation supplies exact nonlinear obstructions for every actuator family supported on one Fourier line and for planar monochromatic Euler-null spaces. For one explicit full-Euler second variation it derives a nonzero SMALL-impulse echo defect and a vanishing LARGE-impulse oscillatory bound. Every fixed finite Galerkin system also has a force-independent volume-squeezing lower bound. These are scoped component results; the fixed finite-family common-force/all-H1/allweak PDE compiler remains OPEN. Earlier balanced linear/planar echoes and restricted no-go results retain their scopes.
+
+Construct common multidirectional nonlinear squeezing of the full unknown H1 ball, including surviving neutral modes and all relevant quadratic/higher interactions, admitted disturbances, every weak realization and explicit total compiler resources; or prove a genuine obstruction over the full finite-family existence claim.
+
+Read the full current packet with `python3 knowledge/retrieve.py packet N1794 --max-bytes 131072`.
+
+---
+
+# N1794 — Ordinary additive body force: shear echoes, actuator realization and scoped obstructions
+
+[Canonical card](https://github.com/harjassand/astra-research-knowledge/blob/main/cards/N1794-ordinary-additive-body-force-echo-realization-and-scoped-obstructions.txt) · [Scoped status](https://github.com/harjassand/astra-research-knowledge/blob/main/frontier/cards/N1794-ordinary-additive-body-force-echo-realization-and-scoped-obstructions.json)
+
+Complete supplied components for the ORDINARY additive-force equation: a linear zero-impulse lift-up echo and viscosity error; a fixed36 rational actuator realization of twelve-shear backgrounds with certified residual; a Galerkin volume identity; an ACTUAL infinite-PDE obstruction for the restricted four-planar-actuator family; noncritical physical Rayleigh spectral escape; and a sound finite all-H1/all-weak certificate implication. The full common-force compiler for an arbitrary chosen fixed finite actuator family remains OPEN. These results neither undo the completed extra-advection theorem in N1791 nor transfer it automatically to physical strain dynamics.
+
+## Reusable results
+
+- [Cancel lift-up in the streamwise-independent linear physical shear sector](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1794-physical-shear-zero-impulse-echo-and-rational-residual/v0001.json)
+- [Bound common-force contraction inside a fixed Galerkin model](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1794-Galerkin-phase-volume-contraction-obstruction/v0001.json)
+- [Realize twelve-shear backgrounds in one fixed36 force family](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1794-fixed-thirty-six-rational-actuator-background-realization/v0001.json)
+- [Prove a no-go for one restricted actual-PDE force family](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1794-restricted-planar-four-field-infinite-PDE-no-go/v0001.json)
+- [Establish qualitative spectral escape for noncritical physical Rayleigh fibres](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1794-noncritical-physical-Rayleigh-RAGE-escape-and-sector-certificates/v0001.json)
+- [Certify an ordinary additive force given complete finite witnesses](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1794-conditional-finite-all-H1-all-weak-additive-force-certificate/v0001.json)
+
+## Proof and scope
+
+[Complete supplied source](../2026-11-09-p2-ordinary-body-force-f137/P2_XI_F137_BODY_FORCE_RETURN_PUBLIC_PATHS.md) · [Exact prompt](../2026-11-09-p2-ordinary-body-force-f137/P2_FULL_COMMON_FINITE_BODY_FORCE_AFTER_6950_XI_20261109.txt)
+
+Full ordinary additive common-force compiler remains OPEN; no negative covering all admitted finite families. Echo is inviscid LINEAR streamwise-independent, with stated viscous cutoff error, not nonlinear/full3D contraction. Galerkin volume is ONLY a truncation obstruction. The separate planar four-field no-go is for the actual infinite PDE but ONLY that restricted force family. Rayleigh escape is ONLY noncritical p!=0,p^2+l^2>=2 component: Squire forcing/critical modes/lift-up/nonlinear interfaces unpaid; O(m^-2) bonds lack the first weighted moment of the extra-advection family, so its uniform dispersion estimate is not imported. Fixed36 closes algebra, not dynamics. The finite certificate is SOUND if all witnesses pass; existence and total compiler termination are not proved. Net/relative-energy machinery overlaps prior N1789 capital and is credited once. No original ZIP identified, no new acquisition or scientific execution. Effective model/helper compute throughout unconfirmed; all source/access/transfer/resource holds persist.
+
+
+## Continuation
+
+# N1794 — Physical body-force components: accepted interfaces and paid higher-order shear echoes
+
+[Canonical card](https://github.com/harjassand/astra-research-knowledge/blob/main/cards/N1794-ordinary-additive-body-force-echo-realization-and-scoped-obstructions.txt) · [Scoped status](https://github.com/harjassand/astra-research-knowledge/blob/main/frontier/cards/N1794-ordinary-additive-body-force-echo-realization-and-scoped-obstructions.json)
+
+Complete supplied components for the ORDINARY additive-force equation: a linear zero-impulse lift-up echo and viscosity error; a fixed36 rational actuator realization of twelve-shear backgrounds with certified residual; a Galerkin volume identity; an ACTUAL infinite-PDE obstruction for the restricted four-planar-actuator family; noncritical physical Rayleigh spectral escape; and a sound finite all-H1/all-weak certificate implication. The full common-force compiler for an arbitrary chosen fixed finite actuator family remains OPEN. These results neither undo the completed extra-advection theorem in N1791 nor transfer it automatically to physical strain dynamics. CONTINUATION: ROOT accepts the scoped F137 physical interfaces and restricted obstructions, clarifying that viscous echo error is relative to PURE HEAT. ROOT supplies an explicit ordinary-rational degree-(p+6) pulse with p vanishing time moments, nonzero prescribed cumulative excursion, paid coefficients/action/peak, and order-p streamwise-independent LINEAR strain/heat cancellation. One fixed-shear inviscid zero-net-action word is exactly identity on every sector. Full ordinary common-force all-H1/allweak control remains OPEN; the completed extra-advection N1791 theorem is unchanged.
+
+## Reusable results
+
+- [Construct a paid rational high-order pulse with nonzero shear excursion](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1794-root-paid-rational-high-order-echo-pulse/v0001.json)
+- [Pay order-p physical strain cancellation relative to heat](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1794-root-high-order-linear-physical-echo-error-and-inviscid-identity/v0001.json)
+
+## Proof and scope
+
+[Complete supplied source](../2026-11-09-root-paid-physical-shear-echo/ROOT_BODY_FORCE_ACCEPTANCE_AND_PAID_HIGH_ORDER_ECHO_PROOF_PUBLIC_PATHS.md)
+
+Full ordinary additive common-force compiler remains OPEN; no negative covering all admitted finite families. Echo is inviscid LINEAR streamwise-independent, with stated viscous cutoff error, not nonlinear/full3D contraction. Galerkin volume is ONLY a truncation obstruction. The separate planar four-field no-go is for the actual infinite PDE but ONLY that restricted force family. Rayleigh escape is ONLY noncritical p!=0,p^2+l^2>=2 component: Squire forcing/critical modes/lift-up/nonlinear interfaces unpaid; O(m^-2) bonds lack the first weighted moment of the extra-advection family, so its uniform dispersion estimate is not imported. Fixed36 closes algebra, not dynamics. The finite certificate is SOUND if all witnesses pass; existence and total compiler termination are not proved. Net/relative-energy machinery overlaps prior N1789 capital and is credited once. No original ZIP identified, no new acquisition or scientific execution. Effective model/helper compute throughout unconfirmed; all source/access/transfer/resource holds persist. CONTINUATION: Full ordinary additive common-force compiler remains OPEN; no negative covering all admitted finite families. Echo is inviscid LINEAR streamwise-independent, with stated viscous cutoff error, not nonlinear/full3D contraction. Galerkin volume is ONLY a truncation obstruction. The separate planar four-field no-go is for the actual infinite PDE but ONLY that restricted force family. Rayleigh escape is ONLY noncritical p!=0,p^2+l^2>=2 component: Squire forcing/critical modes/lift-up/nonlinear interfaces unpaid; O(m^-2) bonds lack the first weighted moment of the extra-advection family, so its uniform dispersion estimate is not imported. Fixed36 closes algebra, not dynamics. The finite certificate is SOUND if all witnesses pass; existence and total compiler termination are not proved. Net/relative-energy machinery overlaps prior N1789 capital and is credited once. No original ZIP identified, no new acquisition or scientific execution. Effective model/helper compute throughout unconfirmed; all source/access/transfer/resource holds persist. ROOT higher-order echo is LINEAR streamwise-independent and compares with e^(nu T0 Delta)u0, not identity. It does not cover nonlinear2D3C, arbitrary disturbance response, nonzero-streamwise/Squire/critical blocks or a whole-controller norm. An inviscid fixed-shear zero-action sequence cannot itself yield end-of-word escape because its generator is A(t)L. No full physical controller is inferred from this restricted constructive lemma.
+
+
+## Continuation
+
+# N1794 — Physical shear: coupled certificates, balanced loops and nonlinear actuator obstructions
+
+[Canonical card](https://github.com/harjassand/astra-research-knowledge/blob/main/cards/N1794-ordinary-additive-body-force-echo-realization-and-scoped-obstructions.txt) · [Scoped status](https://github.com/harjassand/astra-research-knowledge/blob/main/frontier/cards/N1794-ordinary-additive-body-force-echo-realization-and-scoped-obstructions.json)
+
+Complete scoped physical results: sharp full inviscid H1-to-L2 shear bound; noncritical coupled viscous decay with total rational operator-norm certification; full nonlinear obstruction for coordinate-collinear actuator families. The later A733 return constructs a rational four-moment zero-return loop with uniform streamwise-independent linear echo, decay on each fixed noncritical coupled fibre, a smooth-planar nonlinear echo, robust all-weak SMALL-basin return, and a nonlinear obstruction for all actuator families inside one curl eigenspace. The common-force arbitrary-H1/all-Leray-Hopf full compiler remains OPEN. The critical p=+/-1,l=0 Rayleigh fibre has an explicit kernel/complement triangular splitting and polynomial action bound; existing Lin-Xu projected damping transfers to a decaying-amplitude background with the stated vorticity norm and qualitative threshold.
+
+## Reusable results
+
+- [Bound the entire inviscid physical shear with sharp linear growth](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1794-sharp-full-inviscid-physical-shear-H1-L2-growth/v0001.json)
+- [Separate diagonal viscous dissipation from the coupled system](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1794-viscous-rayleigh-energy-and-diagonal-enhancement/v0001.json)
+- [Transfer the existing full coupled noncritical shear estimate](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1794-coupled-noncritical-physical-shear-existing-estimate-rescaling/v0001.json)
+- [Certify a whole coupled fibre with finite rational arithmetic](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1794-total-rational-full-coupled-operator-norm-certificate/v0001.json)
+- [Obstruct all coordinate-collinear actuator families nonlinearly](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1794-nonlinear-coordinate-collinear-force-heat-obstruction/v0001.json)
+- [Cancel terminal lift-up on the entire streamwise-independent sector](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1794-four-moment-zero-return-neutral-linear-shear-echo/v0001.json)
+- [Combine a balanced loop with fixed-fibre coupled dissipation](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1794-balanced-loop-fixed-coupled-noncritical-decay/v0001.json)
+- [Bound the nonlinear echo on smooth planar preparation classes](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1794-nonlinear-planar-four-moment-echo/v0001.json)
+- [Obstruct multidirectional actuators within a common curl eigenspace](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1794-nonlinear-common-curl-eigenspace-actuator-obstruction/v0001.json)
+- [Realize the rational force and its robust small-basin return](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1794-rational-balanced-force-and-allweak-small-basin-return/v0001.json)
+- [Split the critical Rayleigh kernel and complement exactly](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1794-critical-rayleigh-kernel-complement-triangular-bound/v0001.json)
+- [Transfer known critical-complement damping with its exact limitations](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1794-known-projected-critical-damping-amplitude-rescaling-and-nonlinear-limit/v0001.json)
+
+## Proof and scope
+
+[Complete supplied source](../2026-11-10-physical-shear-e104-a733-coupled-proof/P2_XI_E104_PHYSICAL_SHEAR_RETURN_PUBLIC_PATHS.md) · [Exact prompt](../2026-11-10-physical-shear-e104-a733-coupled-proof/P2_FULL_BODY_FORCE_AFTER_F137_XI_20261109.txt)
+
+No full common-force/all-H1/allweak theorem or general impossibility over all finite actuator families. Fixed noncritical fibre decay is not uniform decay over every Fourier sector. Four-moment linear echo retains transient amplification; smooth planar nonlinear echo excludes genuinely 3D inter-sector interactions and transverse disturbance. All-weak robust return only covers an exponentially small initial L2 basin, not radius M>=1. Collinear and common-curl-eigenspace obstructions are exact nonlinear restricted-family results. Earlier inviscid echoes, finite nets and extra-advection constructions retain their scopes. Original E104 Hilbert-Schmidt certificate is explicitly corrected by the supplied ROOT operator-norm test; raw source bytes are preserved. Critical-complement damping leaves anomalous kernel forcing, background removal/rational approximation and nonlinear closure open. Known near-Kolmogorov nonlinear counterexamples block a naive linear-to-nonlinear transfer, not every forced multidirectional controller.
+
+- [root_coupled_certificate: ROOT_COUPLED_PHYSICAL_SHEAR_SOURCE_AND_CERTIFICATE_20261110.txt](../2026-11-10-physical-shear-e104-a733-coupled-proof/ROOT_COUPLED_PHYSICAL_SHEAR_SOURCE_AND_CERTIFICATE_20261110.txt)
+
+- [A733_balanced_loop: P2_XI_A733_COMMON_FORCE_RETURN_PUBLIC_PATHS.md](../2026-11-10-physical-shear-e104-a733-coupled-proof/P2_XI_A733_COMMON_FORCE_RETURN_PUBLIC_PATHS.md)
+
+- [A733_exact_prompt: P2_FULL_BODY_FORCE_AFTER_E104_XI_20261110.txt](../2026-11-10-physical-shear-e104-a733-coupled-proof/P2_FULL_BODY_FORCE_AFTER_E104_XI_20261110.txt)
+
+- [root_critical_projection: ROOT_CRITICAL_RAYLEIGH_PROJECTION_AND_NONLINEAR_BOUNDARY_20261110.txt](../2026-11-10-physical-shear-e104-a733-coupled-proof/ROOT_CRITICAL_RAYLEIGH_PROJECTION_AND_NONLINEAR_BOUNDARY_20261110.txt)
+
+
+## Continuation
+
+# N1794 — Physical nonlinear echoes, invariant actuator spaces and finite-Galerkin volume limits
+
+[Canonical card](https://github.com/harjassand/astra-research-knowledge/blob/main/cards/N1794-ordinary-additive-body-force-echo-realization-and-scoped-obstructions.txt) · [Scoped status](https://github.com/harjassand/astra-research-knowledge/blob/main/frontier/cards/N1794-ordinary-additive-body-force-echo-realization-and-scoped-obstructions.json)
+
+The A873 continuation supplies exact nonlinear obstructions for every actuator family supported on one Fourier line and for planar monochromatic Euler-null spaces. For one explicit full-Euler second variation it derives a nonzero SMALL-impulse echo defect and a vanishing LARGE-impulse oscillatory bound. Every fixed finite Galerkin system also has a force-independent volume-squeezing lower bound. These are scoped component results; the fixed finite-family common-force/all-H1/allweak PDE compiler remains OPEN. Earlier balanced linear/planar echoes and restricted no-go results retain their scopes.
+
+## Reusable results
+
+- [Obstruct every actuator family on one Fourier line](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1794-nonlinear-fourier-line-actuator-heat-obstruction/v0001.json)
+- [Obstruct planar monochromatic actuator spaces](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1794-nonlinear-planar-monochromatic-euler-null-obstruction/v0001.json)
+- [Compute a nonzero selected quadratic echo defect](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1794-selected-full-euler-quadratic-echo-defect/v0001.json)
+- [Suppress the selected quadratic response at large balanced impulse](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1794-selected-quadratic-large-impulse-oscillatory-suppression/v0001.json)
+- [Bound common-force squeezing in each fixed Galerkin dimension](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1794-fixed-galerkin-force-independent-volume-squeezing-bound/v0001.json)
+
+## Proof and scope
+
+[Complete supplied source](../2026-11-10-physical-nonlinear-echo-and-invariants-a873/P2_XI_A873_ADDITIVE_FORCE_RETURN_PUBLIC_PATHS.md) · [Exact prompt](../2026-11-10-physical-nonlinear-echo-and-invariants-a873/P2_FULL_BODY_FORCE_AFTER_A733_XI_20261110.txt)
+
+The full common-force/all-H1/all-Leray-Hopf existence question remains OPEN; there is no general finite-family negative. Invariant-space obstructions exclude only the named Fourier-line or planar-monochromatic families, not the general36-field family. The explicit second variation concerns one input w and requires smooth small-rho expansion; the small-impulse LOWER bound is inviscid and requires2pi|AT|<=1/4, while the large-impulse UPPER bound controls that selected coefficient only. Neither is a bound for the entire transformed bilinear operator, all Fourier pairs, higher nonlinear iterates or all weak trajectories. Fixed Galerkin volume bounds may vanish as dimension grows and are not PDE no-go results. Original scientific response/activity/prompt are preserved; model-throughout/helpers/compute remain unknown. No original ZIP identified and all source/access/transfer/resource holds persist.
