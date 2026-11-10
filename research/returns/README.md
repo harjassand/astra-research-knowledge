@@ -1,6 +1,6 @@
 # Completed research: proofs and results
 
-These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **50 result families and 592 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
+These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **51 result families and 605 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
 
 The proofs, canonical cards and reusable result units are merged on `main`, together with their generated Capital packets and search indexes. Each result keeps its exact assumptions and unresolved obligations. The portable reader can retrieve this batch; the separate native model query remains blocked by the existing 2 GiB memory limit.
 
@@ -49,13 +49,14 @@ The proofs, canonical cards and reusable result units are merged on `main`, toge
 | [N1788](published-20261109/N1788.md) | Fixed-network catalytic compilers: time/state errors and a variable-network bottleneck | 64 |
 | [N1789](published-20261109/N1789.md) | Full arbitrary-frequency deterministic H1-ball control compiler; explicit enormous costs; fixed-twelve sequel open | 5 |
 | [N1790](published-20261109/N1790.md) | Full exact-SCC weighted inference; effective reversible compiler; conservative support avatar changes weights | 4 |
-| [N1791](published-20261109/N1791.md) | Three-cosine extra-advection controller and separate ordinary-force results | 7 |
+| [N1791](published-20261109/N1791.md) | Three-cosine extra advection and completed exact-twelve ordinary forcing | 7 |
 | [N1792](published-20261109/N1792.md) | Exact sample reuse: deterministic-budget Bernstein rigidity and sharp independent horizons | 39 |
-| [N1793](published-20261109/N1793.md) | Original quartic: uniform one-direction neighborhoods and exact translated-Hessian squares | 32 |
-| [N1794](published-20261109/N1794.md) | Polynomial common ordinary forcing: global strong continuation and twelve-mode interface | 70 |
+| [N1793](published-20261109/N1793.md) | Original quartic: inherited metric, sharp lifting and fixed-field certificate | 34 |
+| [N1794](published-20261109/N1794.md) | Exact twelve fundamental ordinary-force actuators: full polynomial common compiler | 76 |
 | [N1795](published-20261109/N1795.md) | All-parameter Wright–Fisher compiler with explicit native/UI source boundaries | 32 |
 | [N1796](published-20261109/N1796.md) | Free-streaming score identities and constant coercive-metric boundary | 1 |
-| [N1797](published-20261109/N1797.md) | Finite-mass classical Coulomb continuation and functional boundaries | 7 |
+| [N1797](published-20261109/N1797.md) | Finite-mass Coulomb: unconditional integrated fractional control and physical covariance signs | 12 |
+| [N1798](published-20261109/N1798.md) | Dots4D memory candidate: exact padded-generator contract and source limits | 0 |
 | [N1648 addendum](published-20261108/N1648-addendum.md) | Recurrent comparator; naive last-mark gluing fails | 1 |
 
 [Earlier proof/source catalogue](https://github.com/harjassand/astra-research-knowledge/blob/278f1ee7adb41652fc86922c7218dd2a6d220674/research/returns/README.md) · [Autonomous-correction dossier](../2026-11-05-continuous-time-autonomous-quantum-correction/README.md)
