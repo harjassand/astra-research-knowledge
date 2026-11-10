@@ -1,6 +1,6 @@
 # Completed research: proofs and results
 
-These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **51 result families and 625 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
+These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **51 result families and 636 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
 
 The proofs, canonical cards and reusable result units are merged on `main`, together with their generated Capital packets and search indexes. Each result keeps its exact assumptions and unresolved obligations. The portable reader can retrieve this batch; the separate native model query remains blocked by the existing 2 GiB memory limit.
 
@@ -46,13 +46,13 @@ The proofs, canonical cards and reusable result units are merged on `main`, toge
 | [N1785](published-20261109/N1785.md) | Full finite-parameter closed3D L2-ball weak-solution performance; conditional unacquired readout | 7 |
 | [N1786](published-20261109/N1786.md) | Sharp dense/complete subclasses; bounded flat-XOR and local failures; full prescribed-base closure open | 15 |
 | [N1787](published-20261109/N1787.md) | FULL fixed-WR mean inverse: O_R(L) numerical log radius and every-run polynomial-BIT rational activities; physical mixing/novelty unestablished | 38 |
-| [N1788](published-20261109/N1788.md) | Finite-capacity elementary reaction lift and the unclosed infinite-class interface | 69 |
+| [N1788](published-20261109/N1788.md) | Polynomial nominal elementary accuracy on infinite classes; robust mixing remains open | 73 |
 | [N1789](published-20261109/N1789.md) | Full arbitrary-frequency deterministic H1-ball control compiler; explicit enormous costs; fixed-twelve sequel open | 5 |
 | [N1790](published-20261109/N1790.md) | Full exact-SCC weighted inference; effective reversible compiler; conservative support avatar changes weights | 4 |
-| [N1791](published-20261109/N1791.md) | Three-cosine extra advection and completed exact-twelve ordinary forcing | 7 |
+| [N1791](published-20261109/N1791.md) | Extra-advection control and the separate uniform twelve-force target compiler | 7 |
 | [N1792](published-20261109/N1792.md) | Exact sample reuse: deterministic-budget Bernstein rigidity and sharp independent horizons | 39 |
 | [N1793](published-20261109/N1793.md) | Original quartic: inherited metric, sharp lifting and fixed-field certificate | 34 |
-| [N1794](published-20261109/N1794.md) | Logarithmic-depth rational Fourier certificates and the physical synthesis gap | 81 |
+| [N1794](published-20261109/N1794.md) | Uniform variable-target common control with exactly twelve ordinary body forces | 88 |
 | [N1795](published-20261109/N1795.md) | All-parameter Wright–Fisher compiler with explicit native/UI source boundaries | 32 |
 | [N1796](published-20261109/N1796.md) | Free-streaming score identities and constant coercive-metric boundary | 1 |
 | [N1797](published-20261109/N1797.md) | Local Fisher-metric product-minimum rigidity and the nonlinear lifting limit | 22 |
