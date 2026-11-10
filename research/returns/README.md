@@ -1,6 +1,6 @@
 # Completed research: proofs and results
 
-These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **48 result families and 463 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
+These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **48 result families and 464 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
 
 The proofs, canonical cards and reusable result units are merged on `main`, together with their generated Capital packets and search indexes. Each result keeps its exact assumptions and unresolved obligations. The portable reader can retrieve this batch; the separate native model query remains blocked by the existing 2 GiB memory limit.
 
@@ -46,7 +46,7 @@ The proofs, canonical cards and reusable result units are merged on `main`, toge
 | [N1785](published-20261109/N1785.md) | Full finite-parameter closed3D L2-ball weak-solution performance; conditional unacquired readout | 7 |
 | [N1786](published-20261109/N1786.md) | Sharp dense/complete subclasses; bounded flat-XOR and local failures; full prescribed-base closure open | 15 |
 | [N1787](published-20261109/N1787.md) | FULL fixed-WR mean inverse: O_R(L) numerical log radius and every-run polynomial-BIT rational activities; physical mixing/novelty unestablished | 38 |
-| [N1788](published-20261109/N1788.md) | All-activity polynomial trapping-clock certificate and reversible gap composition | 32 |
+| [N1788](published-20261109/N1788.md) | Symmetrized nominal activity transfer and the completed trapping certificate | 33 |
 | [N1789](published-20261109/N1789.md) | Full arbitrary-frequency deterministic H1-ball control compiler; explicit enormous costs; fixed-twelve sequel open | 5 |
 | [N1790](published-20261109/N1790.md) | Full exact-SCC weighted inference; effective reversible compiler; conservative support avatar changes weights | 4 |
 | [N1791](published-20261109/N1791.md) | Full three-first-harmonic H1/all-weak control with polynomial BIT/natural resources; ordinary body-force transfer open | 7 |
