@@ -1,0 +1,123 @@
+"""New affine-mean/parameter analysis of one supplied compatible field.
+
+Read the unchanged producer ZIP; do not execute its verification scripts.
+Construct the degree-three polynomial 8(k+1)J_k and its all-mean moment matrix.
+Exact primitive Sturm remainders count determinant roots on k>1/3.
+This concerns this ONE actual P1 field, not every compatible gradient.
+"""
+from fractions import Fraction as F
+from pathlib import Path
+from itertools import permutations
+from math import gcd, lcm
+import json, zipfile, hashlib, time
+
+START=time.monotonic()
+ARCHIVE=Path(__file__).resolve().parents[2]/'.astra-dispatch/sources/Focused_allocation_20261103/P1_PRO_7916AD_QUARTIC_ORIGINAL_20261110.zip'
+RAW=ARCHIVE.read_bytes()
+assert hashlib.sha256(RAW).hexdigest()=='08c3f11db748b86725fa9f1943cf29012800b91324f9703d39ae47fdfdb47d08'
+with zipfile.ZipFile(ARCHIVE) as zf:
+    data=json.loads(zf.read('quartic_research_packet/continuation/construction_continuation/exact_below_one_third_reserve.json'))
+N=data['N']; vals=list(map(F,data['z']))
+def node(i,j):
+    t=2*((i%N)*N+j%N)
+    return vals[t:t+2]
+gradients=[]
+for i in range(N):
+    for j in range(N):
+        a,b,c,d=node(i,j),node(i+1,j),node(i,j+1),node(i+1,j+1)
+        for left,right,bottom,top in [(a,b,b,d),(c,d,a,c)]:
+            gradients.append(tuple(v for r in range(2) for v in (N*(right[r]-left[r]),N*(top[r]-bottom[r]))))
+
+def trim(p):
+    p=list(p)
+    while p and p[-1]==0:p.pop()
+    return p
+def add(a,b):
+    return trim([(a[i] if i<len(a) else F(0))+(b[i] if i<len(b) else F(0)) for i in range(max(len(a),len(b)))])
+def scale(p,s):return trim([x*s for x in p])
+def mul(a,b):
+    if not a or not b:return []
+    p=[F(0)]*(len(a)+len(b)-1)
+    for i,x in enumerate(a):
+        for j,y in enumerate(b):p[i+j]+=x*y
+    return trim(p)
+def evaluate(p,x):
+    v=F(0)
+    for c in reversed(p):v=v*x+c
+    return v
+def phi(V):
+    a,b,c,d=V;u=a*a+c*c;v=b*b+d*d;j=a*d-b*c
+    return [-v*v-2*u*v+4*v*j+4*j*j,
+            6*u*v-4*u*j+3*v*v-12*v*j+20*j*j,
+            -u*u+12*u*j,3*u*u]
+def gap(A):
+    p=[F(0)]*4
+    for G in gradients:p=add(p,phi(tuple(a+g for a,g in zip(A,G))))
+    return add(scale(p,F(1,len(gradients))),scale(phi(A),-1))
+zero=(F(0),)*4;c=gap(zero)
+unit=[tuple(F(i==j) for i in range(4)) for j in range(4)]
+plus=[gap(e) for e in unit];minus=[gap(tuple(-x for x in e)) for e in unit]
+b=[scale(add(x,scale(y,-1)),F(1,2)) for x,y in zip(plus,minus)]
+H=[[[] for j in range(4)] for i in range(4)]
+for i in range(4):
+    H[i][i]=add(add(plus[i],minus[i]),scale(c,-2))
+    for j in range(i):
+        H[i][j]=H[j][i]=add(add(add(gap(tuple(x+y for x,y in zip(unit[i],unit[j]))),scale(plus[i],-1)),scale(plus[j],-1)),c)
+M=[[scale(c,2)]+b]+[[b[i]]+H[i] for i in range(4)]
+def determinant(A):
+    n=len(A);p=[]
+    for perm in permutations(range(n)):
+        q=[F((-1)**sum(perm[i]>perm[j] for i in range(n) for j in range(i+1,n)))]
+        for i,j in enumerate(perm):q=mul(q,A[i][j])
+        p=add(p,q)
+    return p
+def primitive(p):
+    p=trim(p)
+    if not p:return []
+    den=lcm(*(x.denominator for x in p));a=[int(x*den) for x in p];g=0
+    for x in a:g=gcd(g,abs(x))
+    return [F(x//g) for x in a]
+def derivative(p):return trim([i*p[i] for i in range(1,len(p))])
+def remainder(p,q):
+    r=trim(p)
+    while r and len(r)>=len(q):
+        t=r[-1]/q[-1];offset=len(r)-len(q)
+        for i,v in enumerate(q):r[i+offset]-=t*v
+        r=trim(r)
+    return r
+def sign_right(p,x):
+    while p:
+        v=evaluate(p,x)
+        if v:return 1 if v>0 else -1
+        p=derivative(p)
+    return 0
+def variations(signs):
+    s=[x for x in signs if x]
+    return sum(a!=b for a,b in zip(s,s[1:]))
+def sturm(p):
+    seq=[primitive(p),primitive(derivative(p))]
+    while seq[-1]:
+        r=primitive(scale(remainder(seq[-2],seq[-1]),-1))
+        if not r:break
+        seq.append(r)
+    left=[sign_right(q,F(1,3)) for q in seq]
+    right=[1 if q[-1]>0 else -1 for q in seq]
+    return {'degree':len(p)-1,'roots_in_open_interval_one_third_infinity':variations(left)-variations(right),
+            'left_signs':left,'infinity_signs':right,'sturm_degrees':[len(q)-1 for q in seq],
+            'primitive_coefficients_low_to_high':[str(x) for x in primitive(p)]}
+detH=determinant(H);detM=determinant(M)
+k=F(17,50);normalizer=8*(k+1)
+minimum=evaluate(detM,k)/(2*evaluate(detH,k)*normalizer)
+oldA=tuple(F(x) for row in data['A'] for x in row)
+oldgap=evaluate(gap(oldA),k)/normalizer
+result={'scope':'ONE fixed compatible 128-triangle field; all affine means and parameter k>1/3',
+        'archive_sha256':hashlib.sha256(RAW).hexdigest(),'triangles':len(gradients),
+        'normalization':'moment polynomials for Phi_k=8(k+1)J_k',
+        'H':sturm(detH),'M':sturm(detM),
+        'at_k_17_over_50':{'minimum_over_ALL_real_affine_means':str(minimum),'minimum_positive':minimum>0,
+                           'supplied_mean_gap':str(oldgap),'c_G':str(evaluate(c,k)/normalizer),
+                           'minimum_over_c_G':str(minimum/(evaluate(c,k)/normalizer))},
+        'coefficient_max_bitlength':max(abs(x.numerator).bit_length() for x in primitive(detM)),
+        'arithmetic':'exact Python Fraction and primitive polynomial Sturm sequence; no optimizer or sampled sign proof',
+        'elapsed_seconds':time.monotonic()-START}
+print(json.dumps(result,indent=2))
