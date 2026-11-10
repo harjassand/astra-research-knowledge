@@ -1,6 +1,6 @@
 # Completed research: proofs and results
 
-These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **52 result families and 716 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
+These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **52 result families and 735 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
 
 The proofs, canonical cards and reusable result units are merged on `main`, together with their generated Capital packets and search indexes. Each result keeps its exact assumptions and unresolved obligations. The portable reader can retrieve this batch; the separate native model query remains blocked by the existing 2 GiB memory limit.
 
@@ -51,13 +51,13 @@ The proofs, canonical cards and reusable result units are merged on `main`, toge
 | [N1790](published-20261109/N1790.md) | Full exact-SCC weighted inference; effective reversible compiler; conservative support avatar changes weights | 4 |
 | [N1791](published-20261109/N1791.md) | Extra-advection control and the separate uniform twelve-force target compiler | 7 |
 | [N1792](published-20261109/N1792.md) | Exact sample reuse: deterministic-budget Bernstein rigidity and sharp independent horizons | 39 |
-| [N1793](published-20261109/N1793.md) | Exact endpoint defects, compatible two-input lift and all-parameter heat-certificate obstruction | 61 |
+| [N1793](published-20261109/N1793.md) | Original quartic: all-mean three-shear theorem, vector contact and exact stochastic representation | 72 |
 | [N1794](published-20261109/N1794.md) | Completed twelve-force endpoints and a distinct unactuated-curve tracking obstruction | 89 |
 | [N1795](published-20261109/N1795.md) | All-parameter Wright–Fisher compiler with explicit native/UI source boundaries | 32 |
 | [N1796](published-20261109/N1796.md) | Free-streaming score identities and constant coercive-metric boundary | 1 |
 | [N1797](published-20261109/N1797.md) | Local Fisher-metric product-minimum rigidity and the nonlinear lifting limit | 22 |
 | [N1798](published-20261109/N1798.md) | Dots4D memory candidate: exact padded-generator contract and source limits | 0 |
-| [N1799](published-20261109/N1799.md) | Common MHD compilers, coupled magnetic-mean pulses and exact extension boundaries | 33 |
+| [N1799](published-20261109/N1799.md) | Common twelve-force MHD compiler with unknown diffusivities and unknown conserved magnetic mean | 41 |
 | [N1648 addendum](published-20261108/N1648-addendum.md) | Recurrent comparator; naive last-mark gluing fails | 1 |
 
 [Earlier proof/source catalogue](https://github.com/harjassand/astra-research-knowledge/blob/278f1ee7adb41652fc86922c7218dd2a6d220674/research/returns/README.md) · [Autonomous-correction dossier](../2026-11-05-continuous-time-autonomous-quantum-correction/README.md)
