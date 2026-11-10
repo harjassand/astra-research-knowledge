@@ -1,6 +1,6 @@
 # Completed research: proofs and results
 
-These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **51 result families and 605 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
+These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **51 result families and 610 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
 
 The proofs, canonical cards and reusable result units are merged on `main`, together with their generated Capital packets and search indexes. Each result keeps its exact assumptions and unresolved obligations. The portable reader can retrieve this batch; the separate native model query remains blocked by the existing 2 GiB memory limit.
 
@@ -52,10 +52,10 @@ The proofs, canonical cards and reusable result units are merged on `main`, toge
 | [N1791](published-20261109/N1791.md) | Three-cosine extra advection and completed exact-twelve ordinary forcing | 7 |
 | [N1792](published-20261109/N1792.md) | Exact sample reuse: deterministic-budget Bernstein rigidity and sharp independent horizons | 39 |
 | [N1793](published-20261109/N1793.md) | Original quartic: inherited metric, sharp lifting and fixed-field certificate | 34 |
-| [N1794](published-20261109/N1794.md) | Exact twelve fundamental ordinary-force actuators: full polynomial common compiler | 76 |
+| [N1794](published-20261109/N1794.md) | Common target steering with a growing force catalogue and the fixed-twelve limit | 78 |
 | [N1795](published-20261109/N1795.md) | All-parameter Wright–Fisher compiler with explicit native/UI source boundaries | 32 |
 | [N1796](published-20261109/N1796.md) | Free-streaming score identities and constant coercive-metric boundary | 1 |
-| [N1797](published-20261109/N1797.md) | Finite-mass Coulomb: unconditional integrated fractional control and physical covariance signs | 12 |
+| [N1797](published-20261109/N1797.md) | Finite-mass Coulomb: integrated Gaussian collision form and paid time-growth interface | 15 |
 | [N1798](published-20261109/N1798.md) | Dots4D memory candidate: exact padded-generator contract and source limits | 0 |
 | [N1648 addendum](published-20261108/N1648-addendum.md) | Recurrent comparator; naive last-mark gluing fails | 1 |
 
