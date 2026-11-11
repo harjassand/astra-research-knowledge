@@ -1,0 +1,14418 @@
+# P3 complete available return
+
+Chat: https://chatgpt.com/c/6af3030c-e834-83ec-b294-ad6a7f60aa46  
+Model visible: Pro. User turn: 5b3f7582-5701-4fb8-8af3-5e8f72a85488; final: d257e8df-6c76-54c9-b4ff-f5f6cdab94e1.
+
+Actual prompt: `work/astra-renewed-pro-programmes-20261103/P3_FULL_ELEMENTARY_STATIONARY_ROBUSTNESS_CONTINUATION_PRO_20261110.txt` (SHA-256 9b2c8f9ea9dca59fc27d844f51ff7b360925608422fd752e71a45e7c9e6907b9).
+
+The full final below was copied using the current response UI Copy and saved as plain UTF-8; its 40057 bytes have SHA-256 6bf380efe49d6cb83ec5b6b21af32b4d6c16393b91d935b134f3d9052b2227d9, identical to the separately human-supplied pasted-text attachment. This is UI-copy identity, not a database-byte claim. No original ZIP was visible in the current answer; availability and identity elsewhere were not established. Existing source and transfer holds remain. The activity and six helper panels below are user-visible accessibility snapshots: mathematical notation can fragment or repeat. Three helpers belong to the current turn; the remaining three are earlier chat-wide panels.
+
+## Complete UI-copied final
+
+**Yes—under the accepted higher-molecularity compiler premise, the universal statement is true.** A fixed finite elementary augmentation can supply the missing infinite-class stationary robustness.
+
+The additional ingredient is an autonomous controller with two quantitative properties:
+
+1. Near the nominal distribution, activating it requires \(J\) successive rare elementary events.
+2. From an arbitrary state, returning to a region where nominal comparison works costs at most a fixed polynomial times \(\eta^{-7J/8}\).
+
+The activation error is proportional to \(\eta^J\). Consequently, after paying the return occupation, a positive power \(\eta^{J/8-Q}\) remains. Choosing the fixed integer \(J\) after \(Q\) closes the stationary argument.
+
+Below I give the construction, the infinite-class return proof, the stationary comparison, and a terminating procedure for the constants in the resource contract. All stopping rules and comparison processes used in the proof are analytical objects. The physical process has one autonomous, constant-rate generator throughout.
+
+---
+
+# 1. Statement and conventions
+
+Fix the labelled weakly reversible structure \(\mathcal R\). Invoke the accepted higher-molecularity compiler to obtain its fixed catalytic table
+\[
+Y_e\longrightarrow Z_e
+\]
+and nominal constants \(\kappa_e\). Enlarge its computable constants, if necessary, so that one integer \(p_0\ge1\) and one rational \(B_0\ge1\) bound:
+
+- its nominal Poincaré inequality;
+- every \(\kappa_e^{-1}\);
+- its binary compilation work, memory and output.
+
+We use the table as finite data for choosing elementary representative conversions.
+
+Throughout the proof, \(B\) denotes a computable positive rational bound obtained from finite structural data. Different occurrences can denote different bounds. After a fixed integer \(J\) is selected, such coefficients may depend on \(J\). **The polynomial degrees identified as preceding \(J\) do not depend on \(J\).** Section 10 specifies how these bounds produce explicit \(C_{\mathcal R},p_{\mathcal R}\).
+
+Write
+\[
+N(u)=|u|_1.
+\]
+All calculations initially use *raw* rates. A single common normalization at the end makes every nominal physical rate at most one.
+
+---
+
+# 2. Finite reductions that preserve the actual classes
+
+The controller needs a finite collection of reductions that decrease a positive linear weight and stay in the actual communicating class.
+
+Form the polynomial ideal
+\[
+I_{\mathcal R}
+=
+\left\langle X^{y_r}-X^{z_r}:r\in\mathcal R\right\rangle
+\subseteq \mathbb Q[X_1,\ldots,X_d].
+\]
+
+Use this polynomial ideal directly, without saturation or localization.
+
+## 2.1 Why this identifies actual communicating classes
+
+As a vector space, \(I_{\mathcal R}\) is spanned by translated reaction differences
+\[
+X^{a+y_r}-X^{a+z_r},\qquad a\in\mathbb N^d.
+\]
+For each connected component of the undirected reaction graph, summing coefficients of monomials in that component annihilates every such difference. Therefore
+\[
+X^\alpha-X^\beta\in I_{\mathcal R}
+\]
+implies that \(\alpha,\beta\) belong to the same undirected component. The converse follows by telescoping along a path.
+
+Weak reversibility turns each reverse use of an original edge into a directed path: translate a fixed return path between its reaction complexes by the unused population. Thus these undirected components are exactly the **actual communicating classes**.
+
+Compute a reduced Gröbner basis in graded lexicographic order. It consists of pure differences
+\[
+X^{\alpha_g}-X^{\beta_g},
+\qquad
+X^{\alpha_g}>X^{\beta_g}.
+\]
+The preservation of binomial form by Gröbner-basis computation is standard; here the coefficients remain \(1,-1\) throughout the computation. [eisenbud.github.io](https://eisenbud.github.io/papers/pdfs/1996-002.pdf?utm_source=chatgpt.com)
+
+For every \(g\), find a finite directed original-reaction word
+\[
+p_{g,0}=\alpha_g
+\longrightarrow p_{g,1}
+\longrightarrow\cdots
+\longrightarrow p_{g,\ell_g}=\beta_g.
+\tag{1}
+\]
+A breadth-first search terminates because the preceding argument establishes reachability. These are searches on fixed data depending only on \(\mathcal R\).
+
+## 2.2 A positive integer weight
+
+There is an effectively computable
+\[
+\omega\in\mathbb N_{>0}^d
+\quad\text{such that}\quad
+\omega\cdot(\alpha_g-\beta_g)\ge1
+\quad\text{for every }g.
+\tag{2}
+\]
+
+For an explicit choice, let
+\[
+b_g=\max_{g,i}|\alpha_{g,i}-\beta_{g,i}|,\qquad
+L_g=2b_g+2,
+\]
+and take
+\[
+A_g=1+b_g\sum_{i=1}^dL_g^{d-i},
+\qquad
+\omega_i=A_g+L_g^{d-i}.
+\]
+The common term prioritizes total degree; the remaining terms implement the finitely many lexicographic comparisons.
+
+Each actual class has a unique Gröbner normal form \(x_{\rm nf}\). Every state other than that normal form admits a reduction, and
+\[
+\omega\cdot x_{\rm nf}\le \omega\cdot x_0.
+\tag{3}
+\]
+The compiler does not compute \(x_{\rm nf}\). It uses the explicit upper bound in (3).
+
+If \(I_{\mathcal R}=0\), every original edge is null. The elementary prefix construction with representative null channels already gives exact decoded laws and bounded finite fibres; this case can be handled directly. The remainder treats \(I_{\mathcal R}\ne0\).
+
+---
+
+# 3. The fixed elementary network
+
+The network has an elementary nominal base, population-dependent abort counters, and a reduction controller.
+
+## 3.1 Elementary nominal base
+
+Let
+\[
+D_0=\max\left(1,\max_e|Y_e|_1,\max_e|Z_e|_1\right).
+\]
+
+Use unique-parent binary prefixes for the table complexes. Every prefix \(P\) carries a fixed payload \(E_P\in\mathbb N^d\). Its decoder column is
+\[
+DP=E_P.
+\]
+The first binding and its reverse have raw constants \(\theta,1\); subsequent binding/release pairs have constants \(1,1\).
+
+Represent a complex by one prefix species when its order is at least two, by the original species when its order is one, and by the empty complex when its order is zero.
+
+Slow every representative conversion flux by \(\theta\). Its coefficient before adding phases is
+\[
+c_e=
+\begin{cases}
+\kappa_e,& |Y_e|_1\ge2,\\
+\theta\kappa_e,& |Y_e|_1\le1.
+\end{cases}
+\tag{4}
+\]
+At the proposed activities, its flux is \(\theta\kappa_e\lambda^{Y_e}\).
+
+Call a table edge *outward* when
+\[
+\omega\cdot(Z_e-Y_e)>0.
+\]
+
+For each outward edge, introduce \(M\) commit stages. Initially ignore the second index below and write them as \(C_{e,i}\), \(0\le i<M\). Every stage carries payload \(Y_e\). Put
+\[
+g=4M.
+\]
+The reactions are:
+
+- initiation
+  \[
+  \operatorname{rep}(Y_e)\to C_{e,0},
+  \qquad c_e(1+g^{-1})^M;
+  \]
+- commit progress \(C_{e,i}\to C_{e,i+1}\), at rate \(g\);
+- final commitment \(C_{e,M-1}\to\operatorname{rep}(Z_e)\), at rate \(g\);
+- baseline abort \(C_{e,i}\to\operatorname{rep}(Y_e)\), at rate \(1\).
+
+Non-outward representative conversions remain direct.
+
+The nominal stage activities are
+\[
+c_{e,i}
+=
+\frac{\theta\kappa_e\lambda^{Y_e}}{g}
+(1+g^{-1})^{M-i-1}.
+\tag{5}
+\]
+The successful flux is exactly \(\theta\kappa_e\lambda^{Y_e}\); the excess initiation flux returns through the baseline aborts. Hence this base is complex balanced.
+
+Every auxiliary base activity has the form
+\[
+c_a=\rho_a\lambda^{E_a},
+\qquad 0<\rho_a\le\theta.
+\tag{6}
+\]
+This includes zero-payload stages for outward conversions with zero source.
+
+## 3.2 Abort counters
+
+Replace each \(C_{e,i}\) by
+\[
+C_{e,i,j},\qquad 0\le j<J.
+\]
+Primary progress **preserves \(j\)**:
+\[
+C_{e,i,j}\to C_{e,i+1,j}.
+\tag{7}
+\]
+
+A second, analytical payload map \(\bar D\) will be defined for the controller below. It equals \(D\) on the base species. Put
+\[
+w_S=\omega\cdot\bar D S.
+\]
+
+For every species \(S\) with \(w_S>0\), add
+\[
+C_{e,i,j}+S\to C_{e,i,j+1}+S,
+\qquad \eta w_S,\quad j<J-1,
+\tag{8}
+\]
+and
+\[
+C_{e,i,J-1}+S\to\operatorname{rep}(Y_e)+S,
+\qquad \eta w_S.
+\tag{9}
+\]
+These are binary reactions on both sides.
+
+For a checkpoint whose payload has weight
+\[
+d_e=\omega\cdot Y_e,
+\]
+its nominal per-particle counter intensity is
+\[
+\eta(V-d_e),
+\qquad V=\omega\cdot\bar D u.
+\tag{10}
+\]
+The subtraction is necessary: when the catalyst is another molecule of the same checkpoint species, the falling factorial excludes the target molecule itself.
+
+## 3.3 Rare controller activation
+
+Introduce zero-payload probe species \(T_0,\ldots,T_{J-1}\), with
+\[
+\varnothing\to T_0\quad\text{at rate }\nu,
+\qquad
+T_j\to\varnothing\quad\text{at rate }1,
+\]
+where, for example, \(\nu=2^{-16}\).
+
+Their forward stages are
+\[
+T_j+S\to T_{j+1}+S,
+\qquad \eta w_S.
+\]
+The final forward step produces an armed controller:
+\[
+T_{J-1}+S\to T_{\rm armed}+S.
+\]
+Then
+\[
+T_{\rm armed}\to H+T_{\rm ready}.
+\tag{11}
+\]
+
+All these species have actual decoder column zero. An armed controller already counts as an active mode carrier, before (11) fires.
+
+## 3.4 The reduction controller
+
+A ready controller can choose any Gröbner rule. It collects the ordered atoms of \(\alpha_g\), one at a time, using binary reactions
+\[
+\text{collector}+X_i\to\text{next collector}.
+\]
+Partial collectors have unit-rate abort routes that release their collected atoms.
+
+After collecting \(\alpha_g\), the controller executes the fixed word (1) through unary species
+\[
+G_{g,0}\to G_{g,1}\to\cdots\to G_{g,\ell_g}.
+\]
+Their **actual** decoder columns are
+\[
+DG_{g,i}=p_{g,i}.
+\tag{12}
+\]
+Thus every word step realizes one enabled original edge.
+
+For the analytical map, set
+\[
+\bar D G_{g,i}=\alpha_g
+\]
+until the word has finished. On entering the release chain for \(\beta_g\), change the analytical payload to \(\beta_g\). This completion decreases \(V\) by at least one.
+
+All collection, word and release coefficients are one.
+
+The controller retains its identity through **every** release stage. The final atom release produces the atom and \(T_{\rm ready}\); a zero-payload completion produces \(T_{\rm ready}\).
+
+Every active identity has a death reaction, at rate \(\xi>0\), to a dead variant with the same actual and analytical payload. Dead partial collectors release their atoms. Dead protected words finish their fixed word and then release \(\beta_g\). Dead release chains finish at \(T_{\rm dead}\), followed by
+\[
+T_{\rm dead}+H\to\varnothing.
+\tag{13}
+\]
+
+For every ordered pair of active identity types \(S,T\), add
+\[
+S+T\to S^\dagger+T
+\tag{14}
+\]
+at rate one, where \(S^\dagger\) is the corresponding dead variant. For \(S=T\), this is \(2S\to S^\dagger+S\). Coalescence cannot kill the last active controller.
+
+There are also dead armed states, with
+\[
+T_{\rm armed}^\dagger\to H+T_{\rm dead}.
+\]
+
+On the class reached from canonical initialization,
+\[
+M_{\rm mode}
+:=
+H+T_{\rm armed}+T_{\rm armed}^\dagger
+=
+\text{number of active and dead controller identities}.
+\tag{15}
+\]
+
+Finally, every mode-carrier species \(M_s\) supplies a veto:
+\[
+C_{e,i,j}+M_s\to\operatorname{rep}(Y_e)+M_s,
+\qquad gA.
+\tag{16}
+\]
+
+Every reaction listed has at most two molecules on each side.
+
+---
+
+# 4. Graph fidelity and nonexplosion
+
+The actual decoder \(D\) is the identity on original species. All other columns are their nonnegative integer payloads.
+
+Binding, release, collection, abort, counter, death, coalescence, probe and cleanup reactions have decoded change zero. A representative commitment holds its complete source payload. A protected word phase holds the current population \(p_{g,i}\), which contains the source of its next original edge. Consequently, the required graph condition holds **from every fine state**, including states outside canonical communicating classes.
+
+Every enabled original edge has a canonical fine lift: assemble its representative, perform its conversion, and release its product.
+
+Conversely, from any state reachable from \(j(x_0)\), one can:
+
+1. remove probes;
+2. abort checkpoints and release ordinary prefixes;
+3. retire controllers, finishing any protected words;
+4. clean up the matching \(H,T_{\rm dead}\) pairs.
+
+This reaches a canonical state \(j(x)\) with \(x\in\Gamma\). Original paths then return to \(j(x_0)\). Thus the reachable set is one closed communicating class and
+\[
+D(\widehat\Gamma)=\Gamma.
+\tag{17}
+\]
+
+For nonexplosion, a reaction with two reactants cannot increase physical molecule count. Positive increments of \(N\) therefore have total intensity bounded by a linear function of \(N\). A linear birth-process domination gives finite population on every finite time interval. On bounded-population sets, the sum of **all marked intensities**, including null and parallel channels, is bounded. Hence the full marked process is nonexplosive.
+
+The quantitative population bounds needed by the contract will be stronger than this qualitative argument.
+
+---
+
+# 5. Nominal reference estimates
+
+Let \(\mu^0\) be the stationary law of the uncoloured nominal base from §3.1.
+
+Its class is exactly the full base preimage of \(\Gamma\): every auxiliary can be released or aborted without changing its decoded state, and every such encoding can be built from its canonical state. Complex balance therefore gives the conditioned product-form law on that class. This is the standard complex-balanced product-form theorem. [arxiv.org](https://arxiv.org/abs/0803.3042?utm_source=chatgpt.com)
+
+The following estimates also cover the zero-payload stages.
+
+## 5.1 Static approximation and moments
+
+Use the canonical state \(j(x_0)\) as a lower bound on the partition sum. When \(\theta\le W^{-D_0}\), the sum of all unconditioned activities is at most \(BW\). It follows that
+\[
+\log\mu^0 e^N\le BW^2,
+\qquad
+\mu^0 N^m\le B_mW^{2m}
+\tag{18}
+\]
+for every fixed integer \(m\).
+
+There is an exact factorial identity for every base auxiliary:
+\[
+\mathbb E_{\mu^0}Z_a
+=
+\rho_a\,
+\mathbb E_{\mu^0}(Z_{\rm original})_{E_a}.
+\tag{19}
+\]
+It follows by replacing one auxiliary molecule by its payload in the product weights.
+
+Consequently,
+\[
+\mu^0(\text{some auxiliary is present})
+\le B\theta W^{2D_0},
+\]
+and
+\[
+\mathbb E_{\mu^0}
+\!\left[|DZ|_1\,1_{\{\text{some auxiliary is present}\}}\right]
+\le B\theta W^{2D_0+2}.
+\tag{20}
+\]
+
+Conditional on all auxiliaries being absent, the decoded law is exactly \(\pi_\lambda\). Thus
+\[
+\|D_*\mu^0-\pi_\lambda\|_{\rm TV}
++
+\max_i|\mu^0(DZ)_i-\pi_\lambda X_i|
+\le B\theta W^{2D_0+2}.
+\tag{21}
+\]
+
+## 5.2 All-time reference moments
+
+From a base state \(u\), \(n=N(u)\), the same canonical anchor bounds
+\[
+\log\frac1{\mu^0(u)}
+\le
+BW^2+Bn\log((n+1)W)+Bn\log\theta^{-1}.
+\tag{22}
+\]
+
+Near-\(L^1\) contraction of the stationary semigroup, combined with the exponential moment in (18), gives
+\[
+\sup_{t\ge0}\mathbb E_u N_t^m
+\le
+B_m
+\left[
+W^2+n\log((n+1)W)+n\log\theta^{-1}
+\right]^m.
+\tag{23}
+\]
+The small activity enters through its logarithm.
+
+This estimate is essential later: moments of order proportional to \(J\) retain powers of \(W\) and \(\log\theta^{-1}\), rather than acquiring negative powers of \(\theta\).
+
+## 5.3 A weak Poincaré inequality sufficient for mixing
+
+Let \(s_0\) be the number of species in the uncoloured base. When
+\[
+\theta(B_1B)^{D_0}\le c_1,
+\]
+canonical release paths and lifted table-edge paths give
+\[
+\operatorname{Var}_{\mu^0}f
+\le
+A(B)\mathcal E_0(f)
++
+b(B)\operatorname{osc}(f)^2,
+\tag{24}
+\]
+with the safe bounds
+\[
+A(B)
+=
+B_2\theta^{-1}W^{p_0+2D_0}
+(1+B)^{s_0+4D_0+2},
+\tag{25}
+\]
+\[
+b(B)
+\le
+B_3
+\exp\!\left[
+B_4W^2-c_2B\log\frac{B}{B_5W}
+\right].
+\tag{26}
+\]
+
+Here is why the comparison remains valid on an infinite class.
+
+A complete release of one auxiliary increases its endpoint weight by at least
+\[
+\frac1{\theta(B_6B)^{D_0}}.
+\]
+Intermediate release stages lose at most a fixed power of \(B\). Inside the analytical ball, there are at most \((B_7B)^{s_0}\) possible starting states and release paths have length at most \(B_8B\).
+
+For an outward edge, the phase flow is
+\[
+\mu^0(j(x-Y_e)+C_{e,i})\,g
+=
+c_0\theta\,\pi_\lambda(x)\kappa_e(x)_{Y_e}
+(1+g^{-1})^{M-i-1},
+\tag{27}
+\]
+where \(c_0\) is the total canonical mass. Thus the phase comparison costs one factor \(\theta^{-1}\).
+
+Apply the **global** original Poincaré inequality to a canonical cutoff of \(f\). Its cutoff-crossing edges are paid by the original factorial activity tail. Fine states outside the analytical ball are paid by the fine factorial tail. These are the two terms in (26); the remainder does not acquire a factor \(\theta^{-1}\).
+
+For the nonreversible base, use the adjoint density
+\[
+f_t=P_t^*\frac{1_u}{\mu^0(u)}.
+\]
+The adjoint has the same quadratic Dirichlet form and contracts \(L^\infty(\mu^0)\). Hence
+\[
+\operatorname{Var}_{\mu^0}f_t
+\le
+e^{-2t/A(B)}\mu^0(u)^{-1}
++
+b(B)\mu^0(u)^{-2}.
+\tag{28}
+\]
+Together with \(\mu^0N^2<\infty\), this pays both TV and absolute coordinate means.
+
+Choose
+\[
+\eta=\rho^{-8},
+\qquad
+\theta=(W\rho)^{-b},
+\qquad b=2D_0+5,
+\tag{29}
+\]
+and eventually take \(\rho=W^a\) with sufficiently large fixed \(a\). An analytical radius \(B=B_9\rho^2\) works uniformly for starting populations \(N(u)\le B_{10}\rho\).
+
+A conservative effective mixing exponent is
+\[
+Q_0=
+2b+p_0+2D_0
++2(s_0+4D_0+2)+6.
+\tag{30}
+\]
+A rational time
+\[
+T_0=B_T\rho^{Q_0}
+\tag{31}
+\]
+then makes the reference TV and absolute-mean errors at most \(\rho^{-10}\), uniformly over those starting states. No population ball is enumerated.
+
+---
+
+# 6. A uniform infinite-class return estimate
+
+This section applies to every independent rate perturbation of relative size at most \(1/2\). It establishes recurrence through the actual elementary generator.
+
+## 6.1 Fixed path length and queue weight
+
+Let
+\[
+A_0=\max_g|\alpha_g|_1,
+\qquad L_0=\max_g\ell_g.
+\]
+A conservative structural bound for the release–collection–word protocol is
+\[
+\ell=10(A_0+1)(D_0+A_0+L_0+5).
+\tag{32}
+\]
+It does not depend on \(M,J\): any checkpoint can be aborted directly.
+
+Set
+\[
+q=2\ell,\qquad
+M=q+3,\qquad
+h=2M+q+10,\qquad
+k_*=h+3.
+\tag{33}
+\]
+
+Choose an integer \(w\) larger by two than the longest dead retirement chain. Give every active identity and inactive probe queue weight \(w\). Give dead phases their remaining retirement length plus one, and give zero-source checkpoints weight one. Let \(Q\) be the resulting total queue weight.
+
+Identity conservation gives
+\[
+N\le B(1+V+Q).
+\tag{34}
+\]
+
+Only constant-rate immigration increases \(Q\). Active coalescence has intensity at least \(\frac12 a(a-1)\), where \(a\) is the number of active identities. Dead progression, cleanup, probe deaths and zero-source baseline aborts supply the other decreases. Therefore
+\[
+\mathcal LQ\le B-\frac{Q}{2w}.
+\tag{35}
+\]
+For a fixed positive rational \(t\),
+\[
+\frac{\mathcal Le^{tQ}}{e^{tQ}}
+\le
+B_t-\frac{1-e^{-t}}{2w}Q.
+\tag{36}
+\]
+These estimates are independent of the veto multiplier \(A\) and the small controller-death rate \(\xi\).
+
+## 6.2 A pending-commit correction
+
+Write \(z=1+V\). For a checkpoint with source weight \(d_e\), define
+\[
+a_e(z)=\frac{\eta}{2}\max(z-1-d_e,0),
+\qquad
+G=\frac32g,\qquad B_{\rm abort}=\frac12.
+\]
+With \(r\) primary commits and \(s\) counter stages remaining, let
+\[
+p_{r,s}^{e}(z)=
+\sum_{\ell'=0}^{s-1}
+\binom{r+\ell'-1}{\ell'}
+\frac{G^r a_e(z)^{\ell'}}
+{[G+B_{\rm abort}+a_e(z)]^{r+\ell'}}.
+\tag{37}
+\]
+
+This is the success probability with the fastest admitted primary progress and the slowest admitted counter and baseline aborts.
+
+For \(z\ge2(1+d_e)\),
+\[
+-2r\le\frac{z(p_{r,s}^{e})'(z)}{p_{r,s}^{e}(z)}\le0,
+\tag{38}
+\]
+\[
+p_{r,s}^{e}(z)\le\frac{6Jg}{\eta z},
+\qquad
+p_{M,J}^{e}(z)
+\le
+\binom{M+J-1}{J-1}
+\left(\frac{6g}{\eta z}\right)^M.
+\tag{39}
+\]
+
+Let \(P(u)\) be the sum of these credits over all pending checkpoints, and set
+\[
+\Phi(u)=z^h+K_hz^{h-1}P(u),
+\tag{40}
+\]
+with a fixed sufficiently large integer \(K_h\).
+
+At frozen \(z\), the generator of the total credit is at most minus the intensity of positive commitments. This follows from the competing-clock recursion in (37), with terminal success value one removed from the credit.
+
+The derivative bound (38) makes \(z^{h-1}p(z)\) nondecreasing in the tail. Negative \(V\)-jumps therefore decrease every surviving credit. On \(Q\le4z\), (39) bounds the sum of credits by \(B_J/\eta\), so positive-jump changes in other credits are absorbed once \(z\ge B_J/\eta\).
+
+Writing \(b_+,b_-\) for the total positive and negative \(V\)-change intensities, we obtain
+\[
+\mathcal L\Phi
+\le
+B_J\eta^{-M}z^{h-M}
+-cz^{h-1}(b_++b_-)
+\tag{41}
+\]
+on the tail cone.
+
+The correction deliberately ignores the extra mode veto. A veto only deletes credit. Mode appearance or extinction therefore creates no upward correction jump.
+
+Adding a fixed multiple of \((1+Q)^{k_*}\) gives a function \(F\) satisfying
+\[
+c(z^h+Q^{k_*})\le F\le B(1+z^h+Q^{k_*}),
+\tag{42}
+\]
+and, outside \(Q\le2z\),
+\[
+\mathcal LF\le B-cQ^{k_*}.
+\tag{43}
+\]
+
+## 6.3 Exposing a negative move
+
+Suppose \(V\) is above \(\omega\cdot x_{\rm nf}\).
+
+If a protected word is present, completing it gives a negative \(V\)-jump. Otherwise the virtual population is represented by releasable payloads, and some Gröbner head is available. Release the required payloads, collect that head and execute its word.
+
+At most \(\ell\) marked steps are needed after a controller is available. Inside a stopped region of population \(O(n)\), disruptive non-veto intensity is at most \(Bn^2\), while every desired step has a structural positive lower rate. Hence the desired path has probability at least \(Bn^{-q}\) in a structural time interval.
+
+Large veto rates do not enter this competition. A veto of a selected checkpoint releases its payload and accomplishes an exposure step early; other vetoes do not consume selected atoms.
+
+For \(V\ge B_J/\eta\), a fresh probe activates with a probability \(c_J>0\) in a fixed-duration block. Its \(J\) progress stages do not require suppressing intervening base firings: while \(V\) is unchanged, the tagged probe has a constant lower forward hazard. Earlier \(V\)-changes or queue exits count as stopping successes.
+
+Consequently, from \(Q\le2n\), the first \(V\)-change, queue exit or deadline
+\[
+t_n=B_Jn^q
+\]
+has probability at least \(1/2\) of including a \(V\)-change. The exponential queue estimate controls exit through \(Q\ge4n\).
+
+Integrating (41) to this stopping time gives
+\[
+\mathbb E\Delta F
+\le
+B_J\eta^{-M}n^{h-M+q}
++B_Jn^q-cn^{h-1}.
+\tag{44}
+\]
+Since \(M=q+3\), the negative term dominates beyond a polynomial radius.
+
+The occupation of \((1+N)^4\) during the episode is at most \(B_Jn^{q+4}\), which is paid by the negative drift because \(h-1\ge q+4\). Outside the cone, (43) pays the same reward.
+
+Concatenating these stopped episodes and telescoping \(F\) proves
+\[
+U_4(u):=
+\mathbb E_u\int_0^{\tau_{\mathcal B}}(1+N_t)^4\,dt
+\le B_J(1+N(u))^{k_*},
+\tag{45}
+\]
+where
+\[
+\mathcal B=\{z\le R,\ Q\le4R\},
+\qquad
+R=B_{\rm tail}\rho^{r_0},
+\qquad
+r_0=2+8(M+q+4).
+\tag{46}
+\]
+
+Episode times cannot accumulate: each episode either ends at a firing or consumes a positive time cap, and the marked process is nonexplosive.
+
+## 6.4 Paying failed trials without conditioning
+
+Set \(U_4=0\) on \(\mathcal B\). First-step decomposition gives
+\[
+\mathcal LU_4=-(1+N)^4
+\quad\text{off }\mathcal B.
+\]
+Only bounded-coefficient positive jumps can leave \(\mathcal B\). Vetoes, deaths, coalescence, binding, release and retirement cannot leave it. Therefore
+\[
+\mathcal LU_4\le K-(1+N)^4,
+\qquad
+K\le B_J\rho^{(k_*+2)r_0}.
+\tag{47}
+\]
+
+For every bounded trial stopping time \(\sigma\),
+\[
+\mathbb E_u\!\left[
+\int_0^\sigma(1+N_t)^4\,dt+U_4(Z_\sigma)
+\right]
+\le U_4(u)+K\mathbb E_u\sigma.
+\tag{48}
+\]
+The endpoint term pays the actual return after a failed trial. This is the step that prevents an extra reciprocal success probability from entering the return cost.
+
+---
+
+# 7. Returning to a clean comparison region
+
+Define the finite, analysis-only set
+\[
+C=
+\left\{
+\begin{array}{l}
+M_{\rm mode}=0,\ \text{no probes},\\
+\text{every checkpoint has }j=0,\\
+N\le B_{\rm typ}W^2
+\end{array}
+\right\}\cap\widehat\Gamma.
+\tag{49}
+\]
+Choose \(B_{\rm typ}\) from (18), so the nominal base puts at least \(0.99\) mass below this population bound. Canonical initialization belongs to \(C\).
+
+## 7.1 Fixed exponents for the return mechanism
+
+Let \(\Delta\ge1\) bound a positive \(V\)-jump and let \(m_+\) count outward table labels. Put
+\[
+B_{\rm jump}=\max(\Delta+1,w),
+\]
+\[
+\gamma_{k_*}
+=
+(3m_++2)\big[(1+B_{\rm jump})^{k_*}-1\big],
+\]
+\[
+r_1=r_0\bigl(2+k_*+(4w+4)\gamma_{k_*}\bigr).
+\tag{50}
+\]
+
+Use
+\[
+\xi=\rho^{-u_d},
+\qquad
+u_d=(q+2)r_1+4,
+\]
+\[
+A=\rho^{v_a},
+\qquad
+v_a=u_d+2r_1+6.
+\tag{51}
+\]
+
+These exponents precede \(J\).
+
+Indeed, for
+\[
+G_0=z+\Delta N_{\rm checkpoint}+Q,
+\]
+only initiations and probe immigration increase \(G_0\). Their positive-jump intensity has a linear bound independent of \(J\). A logarithmic preflush therefore reaches, with a fixed positive probability,
+\[
+Q\le B_{\rm queue},
+\qquad
+z\le R'=B_{\rm flush}\rho^{r_1}.
+\tag{52}
+\]
+
+## 7.2 Active-mode return
+
+While the mode is present, checkpoint veto has per-particle intensity at least \(gA/2\). Until a positive commitment,
+\[
+\mathbb E\int_0^t N_{\rm checkpoint}(s)\,ds
+\le
+\frac{2(C_0+\Lambda t)}{gA},
+\qquad \Lambda\le BR'.
+\tag{53}
+\]
+This bounds the probability of positive commitments during the mode.
+
+Coalescence preserves the last active controller. Its extinction hazard is at most \(3\xi/2\). The exposure argument gives a polynomial deadline for reaching the normal form, and the chosen \(u_d\) makes extinction before that deadline unlikely.
+
+At the normal form, a protected word cannot remain: its virtual head would certify a further reduction. Retained controller identities ensure that all guardian payloads disappear before the mode vanishes.
+
+A conservative mode deadline is
+\[
+T_m=B_{\rm mode}\rho^{u_d+r_1+2}.
+\tag{54}
+\]
+The veto error is bounded by
+\[
+B_J\frac{R'T_m}{A}\le B_J\rho^{-4}.
+\tag{55}
+\]
+
+To control probes at mode extinction, tag those already present as old and suppress activation only for fresh probes in a comparison process. Old probes disappear after a logarithmic washout. Fresh probes are dominated by an independent immigration–death process with mean at most \(3\nu\).
+
+The probability that a checkpoint remains at the random final cleanup time is also paid by (53): the final cleanup hazard is at most \(3/2\). Fresh activation during the mode contributes at most
+\[
+B_JW^J\rho^{u_d+r_1+2-8J}.
+\tag{56}
+\]
+
+A mode with no active controller is handled first by its unconditional dead retirement chains, stopping if a fresh activation occurs. After (52), only a structural number of identities is involved.
+
+Thus an available mode reaches \(C\) with a fixed positive probability in a deadline whose degree is independent of \(J\).
+
+## 7.3 Mode-free return
+
+There are two cases after (52).
+
+**Low population: \(z\le\rho\).**  
+Compare with the nominal base using the same compiled rates. Initial advanced counters and probes are tagged old. Their baseline lifetimes give
+\[
+\Pr(\text{old intervention})
+\le B\,\eta\,n^3\operatorname{poly}(W,\log\rho).
+\tag{57}
+\]
+At \(n\le B\rho\), this has a negative power of \(\rho\).
+
+New tokens require all \(J\) counter advances. Their contribution up to \(T_0\) is at most
+\[
+B_J(1+T_0)\eta^J
+n^{2J+c}\operatorname{poly}(W,\log\rho).
+\tag{58}
+\]
+Since \(\eta=\rho^{-8}\), this retains a factor \(\rho^{-6J+Q_0+c}\).
+
+The expected number of advanced checkpoints at the endpoint obeys
+\[
+\mathbb E F_t
+\le ne^{-t/2}
++B\eta\sup_{s\le t}\mathbb E N_s^2.
+\tag{59}
+\]
+This uses baseline abort alone; primary progress preserves the counter index.
+
+Nominal mixing, (57)–(59), probe washout and the small compiled rate-error box give a fixed positive probability of reaching \(C\).
+
+**Intermediate population: \(z>\rho\).**  
+In a mode-free comparison that silences probe activation, condition on the core path. Either it reaches the low region, or a designated probe has forward hazard at least
+\[
+c\eta\rho=c\rho^{-7}
+\]
+through every stage. Forcing its \(J\) forward events and survival gives a joint success probability
+\[
+c_J\rho^{-7J}.
+\tag{60}
+\]
+The population cap is imposed jointly with this event by conditioning on the core path. No fixed cap-failure probability is subtracted from the small probability in (60).
+
+Earlier activation of another probe also succeeds.
+
+## 7.4 Clean return bound
+
+A safe pre-\(J\) trial-cost exponent is
+\[
+E=(k_*+3)r_0+Q_0+u_d+2r_1+30.
+\tag{61}
+\]
+Equation (48) pays each trial and its failed endpoint. Geometric retries using (60) therefore yield
+\[
+\boxed{
+\mathbb E_u\int_0^{\tau_C}(1+N_t)^4\,dt
+\le
+B_J\rho^{E+7J}(1+N(u))^{k_*}.
+}
+\tag{62}
+\]
+
+The degree \(E\) is fixed before \(J\). This estimate supplies the quantitative infinite-class recurrence and occupation control needed for stationarity.
+
+---
+
+# 8. Stationary comparison by stopped occupation cycles
+
+Define a reference process as follows:
+
+- its base projection is the nominal complex-balanced base;
+- checkpoint counters are passive, with a terminal counter event replaced by a null firing;
+- probe activation is replaced by probe death.
+
+Before the first intervention or rate-error mismatch, couple this reference and the actual process exactly.
+
+Let \(\tau_{\rm bad}\) be that first event. For \(r\ge0\), define
+\[
+H_r(t)=
+\sup_{x\in C}
+\mathbb E_x\!\left[
+(1+N_{\tau_{\rm bad}-})^r
+1_{\{\tau_{\rm bad}\le t\}}
+\right].
+\]
+
+## 8.1 Weighted intervention bound
+
+A useful explicit bound is
+\[
+\boxed{
+H_r(t)
+\le
+B_{J,r}(1+t)
+\left[
+\eta^J W^{2J+2r+3}(1+\log\rho)^{J+r+2}
++
+\delta W^{2r+4}(1+\log\rho)^{r+2}
+\right].
+}
+\tag{63}
+\]
+
+The full factor \(\eta^J\) survives the weighted estimate.
+
+To see this, condition on the labelled autonomous base path and latent baseline lifetimes, excluding counter-progress marks. Counter colours do not affect that base path. For each token, the probability of \(J\) counter events by age \(m\) is bounded by its ordered Poisson integral, giving
+\[
+\frac{(B\eta)^J}{J!}(m+2)^J
+\sup_{\text{relevant interval}}(1+N)^J.
+\]
+Partition births into unit windows. Unit-window birth counts and population maxima have polynomial moments from (23) and linear-birth domination. Keep the baseline survival event inside the expectation and apply Hölder. This contributes exponential age decay, while retaining \(\eta^J\). Summing ages is finite; summing birth windows produces \(1+t\).
+
+For example,
+\[
+\sum_{m\ge0}(m+2)^{J+1}(3/4)^m
+\le 2(J+1)!\,4^{J+2},
+\]
+so the coefficient can be bounded by finite rational arithmetic.
+
+Before the first bad event, all guardian channels are disabled and
+\[
+a_{\rm all}^{\rm ref}(u)\le B(1+N(u))^2.
+\tag{64}
+\]
+A maximal labelled coupling has mismatch hazard at most \(\delta a_{\rm all}^{\rm ref}\). This gives the second term of (63), including binding, release, null and parallel firings.
+
+## 8.2 Occupation cycles
+
+Starting from \(x\in C\), run the coupled processes until
+\[
+\sigma=t\wedge\tau_{\rm bad}.
+\]
+Then continue the unchanged actual process until its next hit of \(C\).
+
+The embedded kernel on finite \(C\) has an invariant probability. Its normalized expected cycle occupation is an invariant probability for the actual process. Equation (62) makes the cycle occupation integrable. Irreducibility then gives positive recurrence and a unique stationary law \(\widetilde\mu\).
+
+Take either a TV test \(0\le f(Du)\le1\), or a coordinate \(f(Du)=(Du)_i\). The reference conditional-moment bound has the form
+\[
+\sup_{s\ge0}\mathbb E_y|f(DY_s)|
+\le K(1+N(y))^2,
+\]
+with \(K\) polynomial in \(W,\log\rho\).
+
+Write
+\[
+A_{\rm ret}=B_J\rho^{E+7J},
+\qquad
+K_{k_*}=\sup_{x\in C,s\ge0}\mathbb E_x(1+N_s)^{k_*},
+\]
+and let \(M_f=\mu^0|f|\). Subtracting the reference occupation after the bad time and adding the actual return occupation gives
+\[
+\begin{aligned}
+|\widetilde\mu f-\mu^0f|
+\le {}&
+B\,e_{\rm avg}(t)
++B(K+M_f)H_{k_*}(t)\\
+&+
+B(1+M_f)\frac{A_{\rm ret}}t
+\left(K_{k_*}+H_{k_*}(t)\right),
+\end{aligned}
+\tag{65}
+\]
+provided \(H_0(t)\le1/2\). The denominator is at least \(t(1-H_0(t))\).
+
+This inequality applies to unbounded coordinate tests because (62) pays their return occupation and (63) pays the weighted bad event.
+
+Set
+\[
+S=E+Q_0+2k_*+20,
+\qquad
+t=B_{\rm cycle}\rho^{S+7J}.
+\tag{66}
+\]
+The endpoint-return term and nominal averaging term are then small.
+
+For the intervention term, substitute \(\eta=\rho^{-8}\) into (63). Its principal factor is
+\[
+\rho^{-8J}\rho^{S+7J}
+=
+\rho^{S-J}.
+\tag{67}
+\]
+The remaining factors are powers of \(W\) and \(\log\rho\).
+
+After \(J\) is fixed, all logarithms can be collected into one power and bounded by
+\[
+(1+\log\rho)^m\le m^m\rho
+\qquad(m\ge1,\ \rho\ge1).
+\tag{68}
+\]
+Thus logarithms consume only one additional power of \(\rho\). Choosing \(J>S\) with the margins below, followed by \(\rho=W^a\) with sufficiently large fixed \(a\), makes (65) at most \(1/(100W)\).
+
+Combining with (21) gives the required stationary TV and absolute first-moment accuracy.
+
+Applying the same cycle bound to the nonnegative reward \(N\) also gives
+\[
+\mathbb E_{\widetilde\mu}N
+\le B_JW^2(1+\log\rho)+B_J.
+\tag{69}
+\]
+Every controller, carrier, probe and intermediate is included.
+
+---
+
+# 9. Transient accuracy and physical costs
+
+The long time \(t\) in (66) is used only for the stationary proof. The compiler’s raw observation time is the nominal mixing time \(T_0\) in (31).
+
+The Lyapunov calculation also gives the global upper drift
+\[
+\mathcal LF
+\le
+B_J\eta^{-M}
+\left(1+F^{1-M/h}\right).
+\]
+Jensen’s inequality and the scalar differential inequality yield
+\[
+\mathbb E_uF(Z_t)
+\le
+B_J\left[
+1+F(u)^{M/h}
++B_J\eta^{-M}t
+\right]^{h/M}.
+\tag{70}
+\]
+Thus, from canonical initialization, a safe bound is
+\[
+\sup_{0\le t\le T_0}\mathbb E N_t^2
+\le B_J\rho^{20+2Q_0}.
+\tag{71}
+\]
+
+Couple actual and reference processes to their first bad event. TV is paid by \(H_0(T_0)\). Cauchy–Schwarz and (71) pay the absolute coordinate-mean error after that event. The required power of \(\rho\) here is fixed before \(J\), because \(T_0\) has exponent \(Q_0\). Equations (63) and (21) therefore pay both transient requirements.
+
+The raw total marked intensity satisfies
+\[
+a_{\rm all}(u)\le B_J(1+A)(1+N(u))^2.
+\tag{72}
+\]
+Hence
+\[
+\mathbb E\{\text{all firings up to }T_0\}
+\le
+B_J\rho^{v_a+3Q_0+20}.
+\tag{73}
+\]
+This counts unsuccessful collections, binding/release events, aborts, counter events, coalescence, retirement, null firings and parallel labels.
+
+Finally put
+\[
+H=1+\sum_e k_e^{\rm raw},
+\qquad
+k_e=\frac{k_e^{\rm raw}}H,
+\qquad
+T=HT_0.
+\tag{74}
+\]
+Then \(0<k_e\le1\), and
+\[
+H\le B_J\rho^{v_a}.
+\]
+Relative error boxes are unchanged. Stationary laws are unchanged. The number of firings up to physical time \(T\) equals the number up to raw time \(T_0\). The clock slowing is therefore fully charged.
+
+---
+
+# 10. Explicit computable constants and compiler
+
+Here is a terminating selection procedure. It uses fixed preprocessing and exact rational arithmetic.
+
+## 10.1 Fixed integer choices
+
+Compute the fixed Gröbner basis, word certificates, payloads and path lengths. Compute \(q,M,h,k_*,b,Q_0,r_0,r_1,u_d,v_a,E,S\) by (29)–(33), (46), (50), (51), (61) and (66).
+
+Choose \(J\) at least
+\[
+100(1+S+v_a+Q_0+h+k_*+p_0+b)
+\]
+and satisfying the explicit strict-slack tests
+\[
+\begin{split}
+J&>S+20,\\
+8J&>u_d+r_1+20,\\
+6J&>Q_0+20,\\
+8J&>3Q_0+60.
+\end{split}
+\tag{75}
+\]
+Taking the least such integer is a finite arithmetic operation.
+
+Choose an integer \(d_\delta\) at least
+\[
+10(S+7J+Q_0+v_a+h+k_*+20)
+\]
+and satisfying
+\[
+d_\delta>
+\max\{S+7J+20,\ 3Q_0+40,\ 2k_*+20\}.
+\tag{76}
+\]
+Set
+\[
+\delta=(W\rho)^{-d_\delta}.
+\tag{77}
+\]
+
+## 10.2 Coefficients and the final exponent \(a\)
+
+All coefficients used above are effectively bounded from the fixed data:
+
+- finite path lengths and numbers of species or labels;
+- sums, products and integer powers;
+- binomial coefficients and factorials;
+- the accepted compiler constants;
+- elementary exponential and geometric-series bounds.
+
+For example, use \(e<3\), (68), and, for rational \(0<c\le1\),
+\[
+\sum_{n\ge0}(n+1)^m e^{-cn}
+\le
+\frac{6m!2^m}{c^{m+1}}.
+\]
+Unit-rate finite-word probabilities are bounded by finite products of rational lower bounds for exponential-clock races.
+
+Select the tail, preflush, mode, mixing and cycle coefficients **in that order**. Record their bounds in a finite rational ledger. No coefficient is defined in terms of itself.
+
+After collecting logarithms using (68), every remaining accuracy or success-probability requirement has a sufficient form
+\[
+B_iW^{u_i}\rho^{-s_i}\le c_iW^{-r_i},
+\qquad s_i>0.
+\tag{78}
+\]
+Include \(\rho\ge B_{\rm typ}W^2\) and the weak-Poincaré radius condition in this ledger.
+
+Find an integer \(m_i\) by doubling until
+\[
+2^{m_i}\ge B_i/c_i.
+\]
+Then take
+\[
+\boxed{
+a=
+\max\left\{
+2,\
+\max_i
+\left\lceil
+\frac{u_i+r_i+m_i+1}{s_i}
+\right\rceil
+\right\},
+\qquad
+\rho=W^a.
+}
+\tag{79}
+\]
+Since \(W\ge2\), this satisfies every ledger inequality.
+
+Allocate \(1/(100W)\) to each accuracy contribution. Because \(W^{-1}\le\epsilon\), their sums satisfy all four requested \(\epsilon\)-bounds.
+
+This procedure never computes a normalizer, a class decomposition, an input-dependent normal form, a stationary law, or a population ball. The factorial and point-weight expressions in the proof are replaced by their \(W\)-bounds before compilation.
+
+## 10.3 A numerical exponent
+
+A deliberately oversized common numerical exponent is
+\[
+\boxed{
+p_{\mathcal R}
+=
+2p_0+4
++
+a\left(
+2d_\delta+2v_a+u_d+p_0+2b
++4Q_0+2k_*+100
+\right).
+}
+\tag{80}
+\]
+It dominates the powers needed for:
+
+- \(T\);
+- \(\delta^{-1}\);
+- every \(k_e^{-1}\);
+- all firings up to \(T\);
+- transient and stationary fine populations.
+
+For example,
+\[
+\max_e(k_e^{\rm raw})^{-1}
+\le
+B_J\rho^{\max\{p_0+2b,\ u_d,\ 8\}},
+\]
+and normalization adds at most \(v_a\) to that exponent.
+
+## 10.4 Charging all fixed preprocessing
+
+Use a fixed bit-machine implementation of the preceding preprocessing and rational-bound ledger. Let \(N_{\mathcal R}\) be:
+
+- its measured bit-operation count;
+- plus the bit length of its complete output certificate, including (80), the channel list and all fixed coefficients;
+- plus a fixed implementation-overhead constant.
+
+Define
+\[
+\boxed{
+C_{\mathcal R}=2^{(N_{\mathcal R}+2)^4}.
+}
+\tag{81}
+\]
+
+This is an explicit computable constant. The preprocessing terminates by Gröbner-basis termination, finite reachability of the fixed word certificates, and the strict exponent margins in (75)–(79).
+
+The final envelope \(C_{\mathcal R}\) is used only to bound resources; it is not fed back into rate or time selection.
+
+For variable inputs, \(W\) has \(O_{\mathcal R}(L)\) bits. All new rate and time formulas use a fixed number of rational operations and fixed integer powers. Combining these operations with the accepted compiler costs at most
+\[
+C_{\mathcal R}(1+L)^{p_{\mathcal R}}
+\]
+bit work, memory and output. The fixed preprocessing is included in that bound.
+
+Equations (69), (71), (73), (74), (77) and the rate-reciprocal bound give
+\[
+T,\ \delta^{-1},\ \max_e k_e^{-1},\
+\mathbb E[\text{all firings up to }T],\
+\sup_{t\le T}\mathbb E N_t,\
+\mathbb E_{\widetilde\mu}N
+\le C_{\mathcal R}W^{p_{\mathcal R}},
+\]
+uniformly over admitted errors.
+
+---
+
+# 11. Result
+
+The fixed network just constructed has:
+
+- at most two molecules on each side of every physical channel;
+- a fixed nonnegative integer decoder, identity on original species;
+- canonical initialization with every auxiliary absent;
+- exact preservation of the actual original graph and communicating classes;
+- nonexplosion and positive recurrence for every admitted independent rate perturbation;
+- stationary and transient whole-law TV accuracy;
+- stationary and transient absolute first-moment accuracy;
+- polynomial numerical time, reciprocal rates, reciprocal tolerance, fine populations and **all** firing costs;
+- polynomial binary compilation, including all fixed searches.
+
+The infinite-class stationary step is supplied by the occupation estimate (62) and the cycle comparison (65). Its decisive quantitative margin is
+\[
+\eta^J\cdot\eta^{-Q-7J/8}
+=
+\eta^{J/8-Q},
+\]
+with \(Q\) fixed before \(J\). That margin allows the physically implemented return controller to enforce robust recurrence while its stationary effect remains within the prescribed law and absolute-moment error.
+
+## Current turn expanded visible activity (accessibility snapshot)
+
+Worked for 395m 8s
+    - paragraph: I’ll focus on the remaining infinite-class stationary problem, taking the nominal and finite-horizon results as premises. I’ll pursue conversion-based perturbation estimates, alternative elementary constructions, and possible universal obstructions in parallel. Any proposed closure will need to cover recurrence and stationary absolute moments in the same fixed rate-error box.
+    - region "Subagent activity":
+      - button "Conversion stationarity"
+      - text: ","
+      - button "Alternative elementary"
+      - text: and
+      - button "Stationary obstructions"
+      - text: started working
+    - generic: Searched 33 websites
+    - paragraph: Derived product-Poisson and conversion Palm measures
+    - paragraph: Compared catalytic paths and weighted forms
+    - paragraph: Tested weighted PI coercivity and checked null-channel handling
+    - paragraph: Constructed a counterexample
+    - paragraph: Refined sector perturbations and tested adjoint product weights
+    - paragraph: Constructed a superweight mixture and tested its counterbalance
+    - paragraph: Refined activity coefficients by restricting them to positive values
+    - paragraph: Assessed perturbation invertibility and checked generator closure
+    - paragraph: Analyzed stationary response bounds and grouped communicating classes
+    - paragraph: Checked translated-cycle closure and constructed facewise macrocycles
+    - paragraph: Tested finite closure
+    - region "Subagent activity":
+      - button "Conversion stationarity"
+      - text: and
+      - button "Alternative elementary"
+      - text: updated
+    - generic: Searched 33 websites
+    - region "Subagent activity":
+      - button "Stationary obstructions"
+      - text: finished
+    - paragraph: Reviewed recurrence references and conditions
+    - paragraph: Checked reversible network stability and weighted fine count
+    - paragraph: Checked recurrence conditions and macro connectivity
+    - paragraph: Developed entropy argument and checked tail bounds
+    - paragraph: Checked fibre spectral gaps and tested uniform bounds
+    - paragraph: Checked loss-network mixing and spectral-gap bounds
+    - paragraph: Assessed transferability of generalized kinetics theorems
+    - paragraph: Checked Gröbner normal forms and weighted reduction bounds
+    - paragraph: Checked quadratic basis encoding and bounded decoder carriers
+    - paragraph: Analyzed catalyst dominance and bounded guard activation
+    - paragraph: Analyzed guardian-prefix sequestration and guard dominance
+    - region "Subagent activity":
+      - button "Alternative elementary"
+      - text: and
+      - button "Conversion stationarity"
+      - text: updated
+    - paragraph: Built finite-tree density and tree-path bounds
+    - paragraph: Developed entropy-balance proof with recurrence bounds
+    - paragraph: Applied stoichiometric conservation and developed a tree-surgery proof
+    - paragraph: Tested path-ratio bounds and assessed ratchet amplification
+    - paragraph: Checked and bounded occupation transfer error
+    - paragraph: Constructed a common Lyapunov bound
+    - paragraph: Checked conditional-gap control and perturbation scaling
+    - paragraph:
+      - text: The local first-conversion comparison can be strengthened from TV control to an
+      - math:
+        - generic: L
+        - generic: "2"
+      - text: L
+      - generic: "2"
+      - text: "operator bound, still independent of population and binding speed. But a conversion-chain gap is not automatic: adding an independent two-state toggle to the earlier sequestration example makes that gap vanish too. A stationary proof will need to use the structure of the rate errors or change the construction."
+    - paragraph: Checked outward-filter recovery and implemented the GB guardian
+    - paragraph: Refined Lyapunov and phase weights
+    - paragraph: Designed phase weights
+    - paragraph: Defined a coercive count and chose a phase discount
+    - paragraph: Refined zero-source coercivity and bounded phase-0 queues
+    - paragraph: Refined the Lyapunov function
+    - paragraph: Explored local perturbation bounds and checked guard exponent hierarchy
+    - paragraph: Checked stopped-path comparisons and guardian exit effects
+    - paragraph: Checked recurrence under filtering and global tail control
+    - paragraph: Analyzed reversible rate robustness and leader multiplicity
+    - paragraph: Explored cycle construction and tested marker constraints
+    - region "Subagent activity":
+      - button "Alternative elementary"
+      - text: updated
+    - paragraph: Checked fine-class closure and refined the reversible filter
+    - paragraph: Defined positive phase weights and checked virtual decoder
+    - paragraph: Proved negative-attempt bounds and checked zero-Z lifetimes
+    - region "Subagent activity":
+      - button "Conversion stationarity"
+      - text: and
+      - button "Alternative elementary"
+      - text: updated
+    - paragraph: Constructed a Foster corrector and bounded late-checkpoint bursts
+    - paragraph: Constructed coercive H and applied random-time Foster-Lyapunov analysis
+    - paragraph: Controlled renewal timing and chose trial horizon
+    - paragraph: Incorporated Bernstein correctors
+    - paragraph: Bounded state-band occupancy and refined the preactivation gate
+    - paragraph: Designed and refined outward filter boundary states
+    - paragraph: Analyzed checkpoint exposure and abort-drift designs
+    - paragraph: Checked gambler-chain lifetime and zero-queue absorption bounds
+    - paragraph: Formalized uniform switching bounds and evaluated staged timeout
+    - paragraph: Tuned η, g, and J
+    - paragraph: Tested a rigorous obstruction and checked the coercivity contradiction
+    - paragraph: Tested countertable validity and checked F-toggle bounds
+    - region "Subagent activity":
+      - button "Stationary obstructions"
+      - text: updated
+    - paragraph: Assessed construction options and evaluated guarded sampler
+    - region "Subagent activity":
+      - button "Alternative elementary"
+      - text: and
+      - button "Stationary obstructions"
+      - text: updated
+    - paragraph: Checked affine independence, deficiency-zero augmentation, and auxiliary rank
+    - paragraph: Analyzed prefix-binding increments and tested cycle-tag construction
+    - paragraph: Checked reaction graph closure and tagged-complex deficiency
+    - paragraph: Tested P_y node reuse and explored fibre-step construction
+    - paragraph: Tested deficiency-zero embeddings and checked robustness theorems
+    - paragraph: Tested recurrence robustness and long-loop barriers
+    - paragraph: Compared binding-converter drift and checked recurrence examples
+    - paragraph: Checked equilibrium tail drift and binary network conditions
+    - paragraph: Assessed finite dimer closure and tested product-form stability
+    - paragraph: Derived stationary entropy bounds and tested factorial supersolutions
+    - paragraph: "I have verified a stronger limitation of the conversion-chain approach: its gap can vanish even when the original catalytic network satisfies the supplied polynomial activity inequality on every class. This rules out a generic gap-based transfer, but it does not rule out stationary robustness under the structured rate errors here. I’m also checking whether an elementary redesign can guarantee recurrence directly; the remaining difficulty is proving that it preserves stationary accuracy."
+    - generic: Searched 20 websites
+    - region "Subagent activity":
+      - button "Stationary obstructions"
+      - text: ","
+      - button "Conversion stationarity"
+      - text: and
+      - button "Alternative elementary"
+      - text: updated
+    - paragraph: Explored adaptive MCMC and constructed canonical rewrite moves
+    - paragraph: Refined and tested coercive macro descent
+    - paragraph: Selected bounded normal-form blocks for finite prefix saturation
+    - paragraph: Designed finite rewrite rules and added inward prefix converters
+    - paragraph: Designed unary payload paths and checked phase access
+    - paragraph: Refined the elementary lift and checked reverse-path growth
+    - paragraph: Added binary normal-form joins and restricted normal-prefix closure
+    - paragraph: Explored normal-form assembly and balanced guardian activation
+    - paragraph: Assessed an L2-bound counterexample and checked product-Poisson stationarity
+    - paragraph: Tested zero-deficiency graph and Lawrence lifts
+    - paragraph: Checked complete-intersection retractions
+    - region "Subagent activity":
+      - button "Conversion stationarity"
+      - text: updated
+    - button "Searched the web"
+    - generic: Searched the web
+    - region "Subagent activity":
+      - button "Stationary obstructions"
+      - text: finished
+    - paragraph: Evaluated guardian construction and tested persistence
+    - paragraph: Specified controller reaction phases and bounded phase counts
+    - paragraph: Refined virtual-source release and checked checkpoint occupancy
+    - paragraph: Refined release timing bounds and froze escape probability
+    - paragraph: Designed decoupled guard signal and checked H identity requirement
+    - paragraph: Checked inactive-probe effects and defined probe-stage reference
+    - paragraph: Checked nominal probe stationarity and set J above q
+    - paragraph: Refined the reference model and filter-drift bounds
+    - paragraph: "There is also a structural obstruction to one broad redesign strategy: some original networks force every graph-preserving enlargement to have positive deficiency, even with unrestricted molecularity. So a universal proof cannot simply make the enlarged network weakly reversible with deficiency zero and invoke product-form stationarity for every rate choice. The population-dependent safeguard design remains a candidate, but its return-time and stationary-error estimates still need a complete proof."
+    - region "Subagent activity":
+      - button "Conversion stationarity"
+      - text: updated
+    - paragraph: Audited the counterexample and tested the epsilon-limit argument
+    - paragraph: Checked the stationary solution and verified null-count rates
+    - paragraph: Tested uniform tail bounds and an adaptive gauge
+    - paragraph: Assessed finite-chain sensitivity and local-balance bounds
+    - paragraph: Checked density bounds and conversion-loop bias
+    - paragraph: Checked exact reference projection
+    - paragraph: Checked NF minimality after eliminating high counters
+    - paragraph: Bounded residual activation and finite-horizon mix
+    - paragraph: Checked the coupled-death invariant
+    - paragraph: Made dead-phase release unary
+    - paragraph: Checked parameter-ordering constraints and uniform fine-TV bounds
+    - paragraph: Established finite-fibre mixing and chose θ for comparison
+    - paragraph: Fixed η and δ and revised local comparison
+    - paragraph: Bounded rare-probe activation and advanced-stage recursion
+    - paragraph: Checked return-to-C bounds and first-negative timing
+    - paragraph: Defined shadow age potential and checked quadratic moment bounds
+    - paragraph: Formalized sampled Foster drift
+    - paragraph: Defined positive p(V) bounds
+    - paragraph: Bounded first-negative hazards
+    - paragraph: Bounded expected exposure time
+    - paragraph: Bounded episode success and established high-queue drain
+    - paragraph: Chose Foster drift exponents and checked rate-choice circularity
+    - paragraph: Checked μ-dependent queue bounds and unweighted queue drift
+    - paragraph: Bounded parameters and selected a finite construction
+    - paragraph: Selected parameter scalings
+    - region "Subagent activity":
+      - button "Conversion stationarity"
+      - text: updated
+    - paragraph: Verified the L2 bound and path likelihood
+    - paragraph: Applied stationary Palm identity and fixed polynomial P(n)
+    - paragraph: Checked assembly-source uniqueness
+    - paragraph: Checked log-tree ratios and bounded B-gauge shifts
+    - paragraph: Derived the mgf bound
+    - paragraph: Audited universal constants
+    - paragraph: Verified weighted C_A inequality
+    - paragraph: Traced the high-N tail
+    - paragraph: Refined spectral-gap bound
+    - region "Subagent activity":
+      - button "Alternative elementary"
+      - text: and
+      - button "Stationary obstructions"
+      - text: updated
+    - paragraph: Refined deficiency bound and checked cited theorem coverage
+    - paragraph: I’m auditing the safeguard design’s parameter choices now. A possible circularity is that the population threshold for guaranteed return depends on the controller’s lifetime, while choosing that lifetime requires the same threshold. The reaction gadgets appear to preserve the graph requirements, but that alone does not establish polynomial stationary costs. I’ll keep this separate from the lemmas that are already proved.
+    - paragraph: Refined guardian proof
+    - paragraph: Computed Gröbner bounds and checked guardian collection
+    - paragraph: Chosen the GB reducer
+    - paragraph: Refined normalized queue weights
+    - paragraph: Checked abort-event bounds and effects
+    - paragraph: Bounded tracked-success hazards
+    - region "Subagent activity":
+      - button "Conversion stationarity"
+      - text: updated
+    - paragraph: Constructed sampled stopping kernel and bounded cycle occupation measure
+    - paragraph: Constructed stopping coupling and aligned full-state counters
+    - paragraph: Checked cycle construction
+    - paragraph: Bounded cycle-occupation errors and missing occupation
+    - paragraph: Chose cycle length and logarithmic cutoff B
+    - paragraph: Derived core mixing rate under η,B bounds
+    - paragraph: Refined initial-mass moment bounds
+    - region "Subagent activity":
+      - button "Alternative elementary"
+      - text: ","
+      - button "Conversion stationarity"
+      - text: and
+      - button "Stationary obstructions"
+      - text: updated
+    - paragraph: Refined proof estimates and bounded endpoint returns
+    - paragraph: Selected return and probe-free sets
+    - paragraph: Prepared the probe-empty core and selected J
+    - paragraph: Formalized clearing-phase bound and bounded old-abort probability
+    - paragraph: Bounded coupling failure
+    - paragraph: Bounded old-bad intensity and newborn advancement
+    - paragraph: Bounded controller activation time
+    - region "Subagent activity":
+      - button "Alternative elementary"
+      - text: and
+      - button "Conversion stationarity"
+      - text: updated
+    - paragraph: Queried conversion bounds and defined common ready state
+    - paragraph: Defined forced-mode bounds
+    - paragraph: Chose parameter bounds and limited active cleanup
+    - paragraph: Bounded old- and new-cohort activations
+    - paragraph: Selected the ordinary release rate
+    - paragraph: Formalized the cleanup bound
+    - paragraph: Bounded mode-or-threshold time
+    - paragraph: Analyzed bounded activation trial
+    - paragraph: Normalized rates and selected core-path events
+    - paragraph: Bounded augmented checkpoint potential and checked probe activation
+    - paragraph: Updated armed-mode counts
+    - region "Subagent activity":
+      - button "Conversion stationarity"
+      - text: and
+      - button "Alternative elementary"
+      - text: updated
+    - paragraph: Chose computable overbounds and checked J-independent exponents
+    - paragraph: Bounded nominal ball exits and checked θ-dependence cancellation
+    - paragraph: Checked moment bounds and conversion counts
+    - paragraph: Chose exponential-tail cutoff and tuned nominal filter stages
+    - paragraph: Applied global Lyapunov bounds
+    - paragraph: Verified phase accessibility and checked phase-three constants
+    - paragraph: The latest design addresses two earlier difficulties. A race filter can delay neither progress nor commit, and the controller queue now has a drift bound independent of controller lifetime. A stopped-cycle argument also turns a sufficiently strong return bound into stationary accuracy. The remaining audit is whether the design returns to a typical population range with the claimed cost; a bound for return to a much larger, parameter-dependent range would not suffice.
+    - region "Subagent activity":
+      - button "Stationary obstructions"
+      - text: ","
+      - button "Conversion stationarity"
+      - text: and
+      - button "Alternative elementary"
+      - text: updated
+    - paragraph: Assessed low-V queue flushing and probe decay
+    - paragraph: Refined queue flushing and applied the low-V trial
+    - paragraph: Checked rare-path bounds
+    - paragraph: Assessed higher-compiler applicability and checked compiler gap uniformity
+    - paragraph: Prepared exit-tail bounds and bounded stationary crossings
+    - paragraph: Set parameter bounds and checked fibre equilibrium
+    - paragraph: Chose g after K and bounded initial phase changes
+    - paragraph: Bounded initial phases and checked lemma assumptions
+    - paragraph: Checked compensator exponents
+    - region "Subagent activity":
+      - button "Conversion stationarity"
+      - text: and
+      - button "Stationary obstructions"
+      - text: updated
+    - paragraph: Derived probability formula and checked monotonicity bound
+    - paragraph: Defined frozen filter generator and modeled last-commit removal
+    - paragraph: Constructed the rate-robust p
+    - paragraph: Bounded positive-shift credits and absorbed coefficient terms
+    - paragraph: Checked outside-cone growth bound
+    - paragraph: Revised the Lyapunov bound and selected the Bernoulli bound
+    - region "Subagent activity":
+      - button "Stationary obstructions"
+      - text: finished
+    - paragraph: Defined compiler exponents and checked degree-growth loop
+    - paragraph: Derived Foster tail bounds and specified exponent dependence
+    - paragraph: Bounded expected attempt time and queue-cone moments
+    - paragraph: Checked tail-radius dominance and exponent sufficiency
+    - paragraph: Checked exponent choice and episode bound
+    - paragraph: Refined adaptive episode phases and verified termination
+    - paragraph: Chose explicit constants and formalized C_R,p_R selection
+    - paragraph: Defined degree bounds and estimated conversion growth
+    - paragraph: Checked exponent independence and converter coefficients
+    - paragraph: Checked finite-ball error bounds and estimated binding-rate requirements
+    - paragraph: Prepared affirmative proof
+    - region "Subagent activity":
+      - button "Conversion stationarity"
+      - text: and
+      - button "Alternative elementary"
+      - text: updated
+    - paragraph: Prepared adjusted compiler input and checked coupling-time bounds
+    - paragraph: Derived defective Poincare bound and bounded fibre path energy
+    - paragraph: Checked uniform μx–π closeness and phase-weight ratios
+    - paragraph: Checked converter energy and tail bounds
+    - paragraph: Bounded variance and congestion
+    - paragraph: Formalized nominal extension proof and set theta compilation
+    - paragraph: Checked weak PI and release-phase bounds
+    - paragraph: Refined parameter scaling
+    - region "Subagent activity":
+      - button "Alternative elementary"
+      - text: updated
+    - paragraph: Prepared weak Poincaré proof and checked release-step ratios
+    - paragraph: Bounded fibre congestion
+    - paragraph: Assembled canonical edge paths and compared release-prefix weights
+    - paragraph: Verified phase conversion bounds and bounded canonical congestion
+    - paragraph: Derived bounds and selected the β_R exponent
+    - paragraph: Derived low-mixing bounds
+    - paragraph: Chose θ and exponents
+    - paragraph: Bounded physical firing rates
+    - region "Subagent activity":
+      - button "Alternative elementary"
+      - text: updated
+    - paragraph: Checked phase-path construction
+    - paragraph: Checked queue-drift control and zero-gap variance
+    - paragraph: Checked virtual normal-form mapping and edge correspondence
+    - paragraph: Checked catalyst reaction design and mode cleanup
+    - paragraph: Checked invariant preservation and canonical invariants
+    - paragraph: Checked coupling mismatch bounds and defined terminal null reaction
+    - paragraph: Clarified counter retention
+    - region "Subagent activity":
+      - button "Alternative elementary"
+      - text: updated
+    - paragraph: Constructed activation lower bound and bounded conditional forward rates
+    - paragraph: Defined H-mode coalescence and checked armed-controller exposure
+    - paragraph: Bounded joint event and success probabilities
+    - paragraph: Simplified tail estimates and selected tail parameters
+    - paragraph: Chose the growth exponents
+    - paragraph: Set mode-end parameters
+    - paragraph: Chose flush cap and compiler time bound
+    - paragraph: Prepared and bounded compiler scaling constants
+    - paragraph: Formalized constant-selection tests and eliminated circular constants
+    - paragraph: Chose exponent a and bounded the reference ball B
+    - region "Subagent activity":
+      - button "Conversion stationarity"
+      - text: updated
+    - paragraph: Checked complex-balance constants
+    - paragraph: Checked stationary-law bounds and selected polynomial θ_stat
+    - paragraph: Erweiterte statische Abschätzung und beschränkte neue Phasenaktivitäten
+    - paragraph: Verified binomial membership certificates and selected graded-lex weights
+    - paragraph: Chose positive weights and checked normal-form payload
+    - paragraph: Proved fine-class recurrence and reachability closure
+    - paragraph: Validated original-edge path and catalyst reaction
+    - paragraph: The recurrence and return estimates now appear compatible under a single order of parameter choices. I’m checking the final nominal mixing estimate using an inequality that retains an explicit tail term outside a finite ball. That would keep the physical process untruncated and let the binding and phase rates stay fixed, while the small binding activity controls the nominal approximation. I’m not yet treating the universal statement as proved.
+    - region "Subagent activity":
+      - button "Stationary obstructions"
+      - text: updated
+    - paragraph: Defined computable constants and C_R directly
+    - paragraph: Defined a computable bound certificate
+    - paragraph: Chose J from the given bounds
+    - paragraph: Set J for accuracy and chose exponent a
+    - paragraph: Checked finite-bound conditions
+    - paragraph: Separated exponents and coefficients, then checked flush-time scaling
+    - paragraph: Verified compiler bounds
+    - paragraph: Set transient and density horizons
+    - paragraph: Checked base projection autonomy and bounded first-bad probability
+    - paragraph: Bounded survival-weighted moments and reference event hazard
+    - paragraph: Derived cycle comparison and ratio bounds
+    - paragraph: Defined finite C-states and selected the time bound
+    - paragraph: Bounded stationary population moments
+    - region "Subagent activity":
+      - button "Stationary obstructions"
+      - text: finished
+    - paragraph: Refined logarithmic moment bounds
+    - region "Subagent activity":
+      - button "Conversion stationarity"
+      - text: and
+      - button "Alternative elementary"
+      - text: finished
+    - paragraph: Derived the factorial identity
+    - paragraph: Bounded canonical-law errors and moments
+    - paragraph: Bounded auxiliary error
+    - paragraph: Verified normal-form bounds and set closure constants
+    - paragraph: Verified weak-PI base comparison and invariant closure
+    - paragraph: Prepared first V-change bound
+    - paragraph: Prepared active controller and checked probe activation timing
+    - paragraph: Verified uniform queue bounds
+    - paragraph: Located primary citations and deferred optional citations
+    - paragraph: Prepared a scratch checkpoint
+    - paragraph: Verified phase bounds
+    - paragraph: Verified rational time and analytic ball bounds
+    - paragraph: Checked null-firing accounting
+    - paragraph: Defined coalescence phases and added dead-state transitions
+    - paragraph: Mapped entry transition cases
+    - paragraph: Bounded completion time
+    - paragraph: Derived Qlinear drift and bounded QueueQ
+    - paragraph: "The construction now has two parts: an elementary network that gives the nominal approximation, and a rarely activated controller that supplies a return mechanism on infinite classes. The remaining proof check is quantitative: its return cost must grow slowly enough that rare activations still leave the stationary law and absolute means within the requested tolerance."
+    - region "Subagent activity":
+      - button "Stationary obstructions"
+      - text: ","
+      - button "Conversion stationarity"
+      - text: and
+      - button "Alternative elementary"
+      - text: updated
+    - generic: Searching 2 websites
+    - region "Subagent activity":
+      - button "Stationary obstructions"
+      - text: ","
+      - button "Conversion stationarity"
+      - text: and
+      - button "Alternative elementary"
+      - text: finished
+    - paragraph: Inspected graph constraints and checked Foster drift and queue weight
+    - paragraph: Validated resource bounds and checked queue and active-count drift
+    - paragraph: Checked dead-phase and checkpoint drift bounds
+    - paragraph: Bounded cross-credit terms and traced checkpoint release paths
+    - paragraph: Checked armed-controller coalescence and bounded block success probability
+    - paragraph: Checked the hitting bound and weak PI proof
+    - paragraph: Checked canonical and anchor moment bounds
+    - paragraph: Bounded auxiliary occupancy and mean discrepancy
+    - paragraph: Checked edge-lift and assembly binding rates
+    - paragraph: Checked low-restart bounds and assigned statewise coupling labels
+    - paragraph: Checked old-state error bounds
+    - paragraph:
+      - text: The parameter estimates now leave a margin for the stationary comparison. If the intervention mechanism has
+      - math:
+        - generic: J
+      - generic: J
+      - text: stages, its activation probability over a nominal time interval of length
+      - math:
+        - generic: t
+      - generic: t
+      - text: is bounded by a constant times
+      - math:
+        - generic: t
+        - generic: η
+        - generic: J
+      - text: t
+      - text: η
+      - generic: J
+      - text: . The return-to-clean-state cost is bounded by a constant times
+      - math:
+        - generic: η
+        - generic: −
+        - generic: Q
+        - generic: −
+        - generic: "7"
+        - generic: J
+        - generic: /
+        - generic: "8"
+      - text: η
+      - generic: −Q−7J/8
+      - text: ", with"
+      - math:
+        - generic: Q
+      - generic: Q
+      - text: chosen before
+      - math:
+        - generic: J
+      - generic: J
+      - text: . Choosing
+      - math:
+        - generic: J
+        - generic: ">"
+        - generic: "8"
+        - generic: Q
+      - generic: J >
+      - generic: 8Q
+      - text: leaves a positive power of
+      - math:
+        - generic: η
+      - generic: η
+      - text: to pay the stationary error. I’m checking the remaining rate and firing-count bookkeeping against that margin.
+    - paragraph: Verified preflush bounds and bounded active-drain cost
+    - paragraph: Verified extinction bounds and checked normal-form uniqueness
+    - paragraph: Bounded NF-mode cleanup
+    - paragraph: Verified independent probe clocks
+    - paragraph: Checked strict-C conditions and mode-0 activation
+    - paragraph: Prepared a bounded core-path event and exact probe birth
+    - paragraph: Chose reward exponent and assessed stationary moment
+    - paragraph: Verified generator bound and rate finiteness
+    - paragraph: Validated stationary-cycle construction and occupation-measure stationarity
+    - paragraph: Verified coupling estimates and combined total bounds
+    - paragraph: Verified uniform time bounds and selected error parameters
+    - paragraph: Bounded transient output and N² via F
+    - paragraph: Bounded bad-event error and computed runtime bounds
+    - paragraph: Defined computable bounds and preserved null self-loops
+    - paragraph: Checked monoid edge cases and verified binomial basis proof
+    - paragraph: Built finite path certificates
+    - paragraph: Refined release handling and coalescence rates
+    - paragraph: Checked channel invariants and guardian release
+    - paragraph: Defined polynomial runtime bounds and checked recurrence invariants
+    - paragraph: Checked reachability decidability and graph-distance bounds
+    - paragraph: Prepared extension lemmas and derived J-independent Q bounds
+    - paragraph: Formalized preprocessing cost and finite-sum bounds
+    - paragraph: Derived explicit rational and activation bounds
+    - paragraph: Formalized resource-ledger rules and checked inequality certificates
+    - paragraph: Defined C_R's runtime bound and accounted for p_R costs
+    - paragraph: Combined bounds for a and checked absolute-error units
+    - paragraph: Checked R0↔3A checkpoint and probe-frequency costs
+    - paragraph: Checked mass-action rates and verified prefix channels
+    - paragraph: Checked coefficient bounds
+    - button "Searched the web"
+    - generic: Searched the web
+    - region "Subagent activity":
+      - button "Stationary obstructions"
+      - text: ","
+      - button "Conversion stationarity"
+      - text: and
+      - button "Alternative elementary"
+      - text: updated
+    - paragraph: Checked stopping-time fairness and expected F drop
+    - region "Subagent activity":
+      - button "Alternative elementary"
+      - text: finished
+    - paragraph: Verified moment bounds and checked the loss exponent
+    - paragraph: Checked counter-clock coupling and countermark labeling
+    - paragraph: Computed preprocessing constants and derived explicit radius coefficients
+    - paragraph: Adjusted r0 and R'
+    - region "Subagent activity":
+      - button "Stationary obstructions"
+      - text: finished
+    - paragraph: Chose fixed exponents
+    - paragraph: Checked capped-trial bounds
+    - paragraph: Combined bounds into E
+    - paragraph: Tracked return exponents
+    - paragraph: Chose J from the given bounds
+    - paragraph: Chose the final exponent
+    - paragraph: Chose the error exponent
+    - paragraph: Set parameter bounds
+    - paragraph: Checked weak-PI tail coefficient and reserved Q0 slack
+    - paragraph: Computed ℓ and Rr bounds
+    - paragraph: Checked empty and null case handling uniqueness
+    - paragraph: "The audits identified two corrections that are now built into the proof: the catalytic abort rate excludes the checkpoint molecule itself, and commit progress preserves the abort-counter index. With those corrections, the recurrence estimate covers every allowed rate perturbation. I’m assembling the full argument and the computable constant-selection procedure; the latter must charge the fixed Gröbner preprocessing as well as every physical firing and the final clock normalization."
+    - region "Subagent activity":
+      - button "Stationary obstructions"
+      - text: and
+      - button "Conversion stationarity"
+      - text: updated
+    - region "Subagent activity":
+      - button "Stationary obstructions"
+      - text: finished
+    - paragraph: Verified stationary accuracy and refined the exponent bound
+    - paragraph: Verified the F bound
+    - paragraph: Bounded transient moments
+    - paragraph: Bounded preprocessing complexity
+    - paragraph: Reviewed normal-form selection and checked queue invariants
+    - paragraph: Checked coalescence invariants and active-state drift
+    - paragraph: Checked stopped-time and pre-exit drift bounds
+    - paragraph: Verified episode duration and bounded wanted-tag race
+    - paragraph: Checked finite trace kernel
+    - paragraph: Checked cleanup coupling and base connectivity
+    - paragraph: Evaluated slow-converter K1
+    - paragraph:
+      - text: The physical construction is fixed once
+      - math:
+        - generic: R
+      - generic: R
+      - text: "is fixed: the input changes only rational rate constants, the error tolerance, and the observation time. The proof uses finite sets for stopping arguments, but the compiler never enumerates them and the physical process never truncates at them. I’m writing out the stationary occupation comparison and the final resource bounds so that the infinite-class conclusion does not rest on finite-horizon approximation alone."
+    - paragraph: Set explicit J and d bounds
+    - paragraph: Verified finite constraints and checked proposed C0' coverage
+    - paragraph: Bounded the stationary population
+    - paragraph: Defined final resource bounds
+    - paragraph: Set proof error budgets
+    - paragraph: Refined notation names
+    - paragraph: Defined phase channels
+    - paragraph: Analyzed protocol holding bounds and competing changes
+    - paragraph: Checked nonreversible energy identity
+    - paragraph: Verified phase-abort weights
+    - paragraph: Verified nominal channel balance
+    - paragraph: Refined graph-clearing proof
+    - paragraph: Organized theorem structure and coordinated exponent definitions
+    - paragraph: Chose coefficient thresholds
+    - paragraph: Checked controller transitions
+    - paragraph: Verified Foster sampling bounds and checked outside-cone drift
+    - paragraph: Prepared finite-mean return cycle and checked canonical initial bounds
+    - paragraph: Refined physical execution and checked abort reaction
+    - paragraph: Verified coefficient bounds and rational parameter formulas
+    - paragraph: Refined M/J parameter roles
+    - paragraph: Verified conditional-moment bounds
+    - paragraph: Prepared weighted mismatch bounds and checked high-mode normal-form descent
+    - paragraph: Audited compiler bit bounds and charged fixed-R overhead
+    - paragraph: Verified finite preprocessing bounds and counted P_R output size
+    - paragraph: Defined fixed computable constants and checked competing-probability bounds
+    - paragraph: Verified probability bounds and checked Lp superharmonicity
+    - paragraph: Checked Lyapunov drift bounds and global drift assumptions
+    - paragraph: Defined proof constants and derived the path bound
+    - paragraph: Checked the length bound
+    - paragraph: Constructed explicit C_R
+    - paragraph: Checked the ideal-class proof
+    - 
+
+## Available helper final panels (chat-wide; first three are the current turn)
+
+  - complementary:
+    - heading "Subagents" [level=2]
+    - button "Enter full view":
+    - button "Close panel":
+    - tabpanel "Subagents" [active]:
+      - button "Back to subagents":
+      - generic: Conversion stationarity
+      - heading "Status" [level=2]
+      - generic: Done
+      - heading "Final response" [level=2]
+      - paragraph:
+        - strong:
+          - text: Confirmed. This exponent chain is safely larger than the costs it must cover, and the no-active-controller branch does not introduce an extra
+          - math:
+            - generic: J
+          - generic: J
+          - text: "-dependent power."
+        - text: The stationary margin survives provided the clean-reference moment factors in the intervention bound are kept as powers of
+        - math:
+          - generic: W
+        - generic: W
+        - text: and
+        - math:
+          - generic: log
+          - generic: ⁡
+          - generic: ρ
+        - generic: log
+        - text: ρ
+        - text: ", rather than replaced by"
+        - math:
+          - generic: ρ
+          - generic: "2"
+          - generic: J
+        - text: ρ
+        - generic: 2J
+        - text: .
+      - heading "Tail and preflush" [level=3]
+      - paragraph: For the stopped tail episode, the relevant error-to-negative-drift ratio is bounded by
+      - math:
+        - generic: C
+        - generic: J
+        - generic: ρ
+        - generic: "8"
+        - generic: M
+        - generic: R
+        - generic: q
+        - generic: +
+        - generic: "1"
+        - generic: −
+        - generic: M
+        - generic: .
+      - text: C
+      - generic: J
+      - text: ρ
+      - generic: 8M
+      - text: R
+      - generic: q+1−M
+      - text: .
+      - paragraph:
+        - text: Because
+        - math:
+          - generic: M
+          - generic: ">"
+          - generic: q
+          - generic: +
+          - generic: "1"
+        - generic: M >
+        - generic: q +
+        - generic: "1"
+        - text: ", your"
+      - math:
+        - generic: r
+        - generic: "0"
+        - generic: =
+        - generic: "2"
+        - generic: +
+        - generic: "8"
+        - generic: (
+        - generic: M
+        - generic: +
+        - generic: q
+        - generic: +
+        - generic: "4"
+        - generic: )
+      - text: r
+      - generic: "0"
+      - text: =
+      - generic: 2 +
+      - generic: 8(M +
+      - generic: q +
+      - generic: 4)
+      - paragraph:
+        - text: makes this a strictly negative power of
+        - math:
+          - generic: ρ
+        - generic: ρ
+        - text: ", with ample room to absorb"
+        - math:
+          - generic: C
+          - generic: J
+        - text: C
+        - generic: J
+        - text: . It also covers the threshold
+        - math:
+          - generic: R
+          - generic: ≫
+          - generic: g
+          - generic: /
+          - generic: η
+        - generic: R ≫
+        - generic: g/η
+        - text: ", the"
+        - math:
+          - generic: z
+        - generic: z
+        - text: "-jump bounds, and"
+        - math:
+          - generic: R
+          - generic: ">"
+          - generic: v
+          - generic: ⋅
+          - generic: x
+          - generic: "0"
+        - generic: R >
+        - generic: v ⋅
+        - text: x
+        - generic: "0"
+        - text: .
+      - paragraph:
+        - text: With preflush length
+        - math:
+          - generic: (
+          - generic: "4"
+          - generic: w
+          - generic: +
+          - generic: "4"
+          - generic: )
+          - generic: log
+          - generic: ⁡
+          - generic: R
+        - generic: (4w +
+        - text: 4)
+        - generic: log
+        - text: R
+        - text: ", the queue becomes structurally bounded in expectation. The"
+        - math:
+          - generic: k
+        - generic: k
+        - text: "-th"
+        - math:
+          - generic: G
+        - generic: G
+        - text: "-moment grows by at most"
+        - math:
+          - generic: R
+          - generic: (
+          - generic: "4"
+          - generic: w
+          - generic: +
+          - generic: "4"
+          - generic: )
+          - generic: γ
+          - generic: k
+        - text: R
+        - text: (4w+4)
+        - text: γ
+        - generic: k
+        - text: . Thus
+      - math:
+        - generic: r
+        - generic: "1"
+        - generic: =
+        - generic: r
+        - generic: "0"
+        - generic: (
+        - generic: "2"
+        - generic: +
+        - generic: k
+        - generic: +
+        - generic: (
+        - generic: "4"
+        - generic: w
+        - generic: +
+        - generic: "4"
+        - generic: )
+        - generic: γ
+        - generic: k
+        - generic: )
+      - text: r
+      - generic: "1"
+      - text: =
+      - text: r
+      - generic: "0"
+      - generic: (
+      - text: 2 +
+      - generic: k +
+      - generic: (4w +
+      - text: 4)
+      - text: γ
+      - generic: k
+      - generic: )
+      - paragraph:
+        - text: is more than sufficient for the fixed-probability event
+        - math:
+          - generic: z
+          - generic: ≤
+          - generic: R
+          - generic: ′
+        - generic: z ≤
+        - text: R
+        - generic: ′
+        - text: ","
+        - math:
+          - generic: Q
+          - generic: ≤
+          - generic: B
+          - generic: "0"
+        - generic: Q ≤
+        - text: B
+        - generic: "0"
+        - text: .
+      - heading "Mode parameters" [level=3]
+      - paragraph:
+        - text: The drain deadline has exponent
+        - math:
+          - generic: (
+          - generic: q
+          - generic: +
+          - generic: "2"
+          - generic: )
+          - generic: r
+          - generic: "1"
+        - generic: (q +
+        - text: 2)
+        - text: r
+        - generic: "1"
+        - text: . Hence
+      - math:
+        - generic: u
+        - generic: =
+        - generic: (
+        - generic: q
+        - generic: +
+        - generic: "2"
+        - generic: )
+        - generic: r
+        - generic: "1"
+        - generic: +
+        - generic: "4"
+        - generic: ","
+        - generic: μ
+        - generic: =
+        - generic: ρ
+        - generic: −
+        - generic: u
+      - generic: u =
+      - generic: (q +
+      - text: 2)
+      - text: r
+      - generic: "1"
+      - text: +
+      - generic: 4, μ =
+      - text: ρ
+      - generic: −u
+      - paragraph:
+        - text: gives a
+        - math:
+          - generic: ρ
+          - generic: −
+          - generic: "4"
+        - text: ρ
+        - generic: −4
+        - text: margin in the last-active-survival estimate.
+      - paragraph: Your mode deadline
+      - math:
+        - generic: T
+        - generic: m
+        - generic: =
+        - generic: B
+        - generic: J
+        - generic: ρ
+        - generic: u
+        - generic: +
+        - generic: r
+        - generic: "1"
+        - generic: +
+        - generic: "2"
+      - text: T
+      - generic: m
+      - text: =
+      - text: B
+      - generic: J
+      - text: ρ
+      - text: u+
+      - text: r
+      - generic: "1"
+      - text: "+2"
+      - paragraph: covers old-probe flushing, extinction of all active controllers, and unconditional dead retirement.
+      - paragraph:
+        - text: Since the veto estimates have numerator at most a constant times
+        - math:
+          - generic: R
+          - generic: ′
+          - generic: (
+          - generic: "1"
+          - generic: +
+          - generic: T
+          - generic: m
+          - generic: )
+        - text: R
+        - generic: ′
+        - text: (1 +
+        - text: T
+        - generic: m
+        - text: )
+        - text: ","
+      - math:
+        - generic: v
+        - generic: =
+        - generic: u
+        - generic: +
+        - generic: "2"
+        - generic: r
+        - generic: "1"
+        - generic: +
+        - generic: "6"
+        - generic: ","
+        - generic: A
+        - generic: =
+        - generic: ρ
+        - generic: v
+      - generic: v =
+      - generic: u +
+      - text: "2"
+      - text: r
+      - generic: "1"
+      - text: +
+      - generic: 6, A =
+      - text: ρ
+      - generic: v
+      - paragraph:
+        - text: again leaves at least four powers of
+        - math:
+          - generic: ρ
+        - generic: ρ
+        - text: . This covers both positive commits during the mode and checkpoints remaining at final cleanup.
+      - paragraph: "A mode with no active controller is handled in a fixed structural time after the preflush: it either retires completely or is interrupted by activation of an armed controller. Stop at that activation. All dead identities have unconditional retirement chains, the queue is initially structurally bounded, and the mode carrier supplies the veto throughout. This branch therefore costs only a structural constant or a fixed-degree polynomial already covered by the proposed deadline."
+      - heading "Occupation and geometric retries" [level=3]
+      - paragraph: The boundary bound
+      - math:
+        - generic: K
+        - generic: ≤
+        - generic: B
+        - generic: J
+        - generic: ρ
+        - generic: (
+        - generic: k
+        - generic: +
+        - generic: "2"
+        - generic: )
+        - generic: r
+        - generic: "0"
+      - generic: K ≤
+      - text: B
+      - generic: J
+      - text: ρ
+      - text: (k+2)
+      - text: r
+      - generic: "0"
+      - paragraph:
+        - text: is valid for the analytic potential
+        - math:
+          - generic: U
+          - generic: "4"
+        - text: U
+        - generic: "4"
+        - text: . Only bounded-coefficient positive jumps can leave the large core. The fast veto and slow controller deaths cannot.
+      - paragraph: Multiplying this by a trial deadline bounded by
+      - math:
+        - generic: B
+        - generic: J
+        - generic: ρ
+        - generic: Q
+        - generic: "0"
+        - generic: +
+        - generic: u
+        - generic: +
+        - generic: r
+        - generic: "1"
+        - generic: +
+        - generic: "3"
+      - text: B
+      - generic: J
+      - text: ρ
+      - text: Q
+      - generic: "0"
+      - text: +u+
+      - text: r
+      - generic: "1"
+      - text: "+3"
+      - paragraph: gives a degree below your
+      - math:
+        - generic: E
+        - generic: =
+        - generic: (
+        - generic: k
+        - generic: +
+        - generic: "3"
+        - generic: )
+        - generic: r
+        - generic: "0"
+        - generic: +
+        - generic: Q
+        - generic: "0"
+        - generic: +
+        - generic: u
+        - generic: +
+        - generic: "2"
+        - generic: r
+        - generic: "1"
+        - generic: +
+        - generic: "30."
+      - generic: E =
+      - generic: (k +
+      - text: 3)
+      - text: r
+      - generic: "0"
+      - text: +
+      - text: Q
+      - generic: "0"
+      - text: +
+      - generic: u +
+      - text: "2"
+      - text: r
+      - generic: "1"
+      - text: +
+      - generic: "30."
+      - paragraph: The exact inequality
+      - math:
+        - generic: E
+        - generic: ⁣
+        - generic: "["
+        - generic: ∫
+        - generic: "0"
+        - generic: σ
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: "N"
+        - generic: t
+        - generic: )
+        - generic: "4"
+        - generic: d
+        - generic: t
+        - generic: +
+        - generic: U
+        - generic: "4"
+        - generic: (
+        - generic: Z
+        - generic: σ
+        - generic: )
+        - generic: "]"
+        - generic: ≤
+        - generic: U
+        - generic: "4"
+        - generic: (
+        - generic: Z
+        - generic: "0"
+        - generic: )
+        - generic: +
+        - generic: K
+        - generic: E
+        - generic: σ
+      - text: E
+      - generic: "["
+      - text: ∫
+      - generic: "0"
+      - generic: σ
+      - text: (1 +
+      - text: "N"
+      - generic: t
+      - text: )
+      - generic: "4"
+      - text: dt +
+      - text: U
+      - generic: "4"
+      - text: (
+      - text: Z
+      - generic: σ
+      - text: )
+      - generic: "]"
+      - text: ≤
+      - text: U
+      - generic: "4"
+      - text: (
+      - text: Z
+      - generic: "0"
+      - text: ) +
+      - generic: KEσ
+      - paragraph:
+        - text: pays every failed endpoint and its return to the large core. Therefore geometric retries introduce exactly the factor
+        - math:
+          - generic: ρ
+          - generic: "7"
+          - generic: J
+        - text: ρ
+        - generic: 7J
+        - text: ":"
+      - math:
+        - generic: A
+        - generic: r
+        - generic: e
+        - generic: t
+        - generic: (
+        - generic: u
+        - generic: )
+        - generic: ≤
+        - generic: B
+        - generic: J
+        - generic: ρ
+        - generic: E
+        - generic: +
+        - generic: "7"
+        - generic: J
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: "N"
+        - generic: (
+        - generic: u
+        - generic: )
+        - generic: )
+        - generic: k
+        - generic: .
+      - text: A
+      - generic: ret
+      - text: (u) ≤
+      - text: B
+      - generic: J
+      - text: ρ
+      - generic: E+7J
+      - text: (1 +
+      - text: N(u)
+      - text: )
+      - generic: k
+      - text: .
+      - paragraph: There is no additional conditional-failure factor.
+      - heading "Stationary cycle margin" [level=3]
+      - paragraph: For
+      - math:
+        - generic: S
+        - generic: =
+        - generic: E
+        - generic: +
+        - generic: Q
+        - generic: "0"
+        - generic: +
+        - generic: "2"
+        - generic: k
+        - generic: +
+        - generic: "20"
+        - generic: ","
+        - generic: t
+        - generic: =
+        - generic: B
+        - generic: J
+        - generic: ρ
+        - generic: S
+        - generic: +
+        - generic: "7"
+        - generic: J
+        - generic: ","
+      - generic: S =
+      - generic: E +
+      - text: Q
+      - generic: "0"
+      - text: +
+      - generic: 2k +
+      - generic: 20, t =
+      - text: B
+      - generic: J
+      - text: ρ
+      - generic: S+7J
+      - text: ","
+      - paragraph:
+        - text: the endpoint return contribution is safely small. The fixed-order endpoint moment can be bounded by
+        - math:
+          - generic: ρ
+          - generic: "2"
+          - generic: k
+        - text: ρ
+        - generic: 2k
+        - text: ", and the additional"
+        - math:
+          - generic: Q
+          - generic: "0"
+          - generic: +
+          - generic: "20"
+        - text: Q
+        - generic: "0"
+        - text: +
+        - generic: "20"
+        - text: pays nominal averaging, first moments, and
+        - math:
+          - generic: ϵ
+          - generic: −
+          - generic: "1"
+          - generic: ≤
+          - generic: W
+        - text: ϵ
+        - generic: −1
+        - text: ≤
+        - generic: W
+        - text: .
+      - paragraph: For the intervention term, retain the sharper form
+      - math:
+        - generic: H
+        - generic: r
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ≤
+        - generic: C
+        - generic: J
+        - generic: W
+        - generic: p
+        - generic: J
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: log
+        - generic: ⁡
+        - generic: ρ
+        - generic: )
+        - generic: m
+        - generic: J
+        - generic: ρ
+        - generic: S
+        - generic: −
+        - generic: J
+        - generic: +
+        - generic: rate-error term
+        - generic: .
+      - text: H
+      - generic: r
+      - text: (t) ≤
+      - text: C
+      - generic: J
+      - text: W
+      - text: p
+      - generic: J
+      - text: (1 +
+      - generic: log
+      - text: ρ
+      - text: )
+      - text: m
+      - generic: J
+      - text: ρ
+      - generic: S−J
+      - text: +
+      - generic: rate-error term
+      - text: .
+      - paragraph:
+        - text: Do
+        - strong: not
+        - text: replace the
+        - math:
+          - generic: J
+        - generic: J
+        - text: "-dependent clean-reference moment by"
+        - math:
+          - generic: ρ
+          - generic: "2"
+          - generic: J
+        - text: ρ
+        - generic: 2J
+        - text: .
+      - paragraph:
+        - text: After
+        - math:
+          - generic: J
+        - generic: J
+        - text: is fixed, the explicit inequality
+      - math:
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: log
+        - generic: ⁡
+        - generic: ρ
+        - generic: )
+        - generic: m
+        - generic: ≤
+        - generic: m
+        - generic: m
+        - generic: ρ
+        - generic: ","
+        - generic: ρ
+        - generic: ≥
+        - generic: "1"
+        - generic: ","
+      - generic: (1 +
+      - generic: log
+      - text: ρ
+      - text: )
+      - generic: m
+      - text: ≤
+      - text: m
+      - generic: m
+      - text: ρ, ρ ≥
+      - generic: 1,
+      - paragraph:
+        - text: absorbs every logarithm into a computable coefficient and only one additional
+        - math:
+          - generic: ρ
+        - generic: ρ
+        - text: "-power. Thus the stationary term has the form"
+      - math:
+        - generic: C
+        - generic: J
+        - generic: W
+        - generic: p
+        - generic: J
+        - generic: ρ
+        - generic: S
+        - generic: −
+        - generic: J
+        - generic: +
+        - generic: "1"
+        - generic: .
+      - text: C
+      - generic: J
+      - text: W
+      - text: p
+      - generic: J
+      - text: ρ
+      - generic: S−J+1
+      - text: .
+      - paragraph: Your choice
+      - math:
+        - generic: J
+        - generic: =
+        - generic: "100"
+        - generic: (
+        - generic: S
+        - generic: +
+        - generic: v
+        - generic: +
+        - generic: Q
+        - generic: "0"
+        - generic: +
+        - generic: h
+        - generic: +
+        - generic: k
+        - generic: +
+        - generic: p
+        - generic: "0"
+        - generic: +
+        - generic: b
+        - generic: +
+        - generic: "1"
+        - generic: )
+      - generic: J =
+      - generic: 100(S +
+      - generic: v +
+      - text: Q
+      - generic: "0"
+      - text: +
+      - generic: h +
+      - generic: k +
+      - text: p
+      - generic: "0"
+      - text: +
+      - generic: b +
+      - generic: 1)
+      - paragraph:
+        - text: leaves a large positive margin. Choosing
+        - math:
+          - generic: a
+        - generic: a
+        - text: last in
+        - math:
+          - generic: ρ
+          - generic: =
+          - generic: W
+          - generic: a
+        - generic: ρ =
+        - text: W
+        - generic: a
+        - text: then absorbs the remaining
+        - math:
+          - generic: W
+          - generic: p
+          - generic: J
+        - text: W
+        - text: p
+        - generic: J
+        - text: factor and all computed coefficients.
+      - paragraph: Finally,
+      - math:
+        - generic: d
+        - generic: =
+        - generic: "10"
+        - generic: (
+        - generic: S
+        - generic: +
+        - generic: "7"
+        - generic: J
+        - generic: +
+        - generic: Q
+        - generic: "0"
+        - generic: +
+        - generic: v
+        - generic: +
+        - generic: h
+        - generic: +
+        - generic: k
+        - generic: +
+        - generic: "20"
+        - generic: )
+      - generic: d =
+      - generic: 10(S +
+      - generic: 7J +
+      - text: Q
+      - generic: "0"
+      - text: +
+      - generic: v +
+      - generic: h +
+      - generic: k +
+      - generic: 20)
+      - paragraph: is substantially larger than the rate-error exponent required by either the stationary cycle or the separate nominal transient horizon.
+      - heading "Coefficient bookkeeping" [level=3]
+      - paragraph:
+        - text: Use sequential named constants for the tail radius, preflush radius, mode deadline, return bound, and cycle bound; the generic notation
+        - math:
+          - generic: B
+          - generic: J
+        - text: B
+        - generic: J
+        - text: can stand for their final computable maximum. This avoids a merely notational self-reference in which the same
+        - math:
+          - generic: B
+          - generic: J
+        - text: B
+        - generic: J
+        - text: is used both as an input coefficient and as a bound on its own powers.
+      - paragraph:
+        - text: All those constants are selected after
+        - math:
+          - generic: J
+        - generic: J
+        - text: and before
+        - math:
+          - generic: a
+        - generic: a
+        - text: . None depends on the variable input. The normal form, the large core, the clean core, and the cycles remain analysis-only objects.
+
+---
+
+  - complementary:
+    - heading "Subagents" [level=2]
+    - button "Enter full view":
+    - button "Close panel":
+    - tabpanel "Subagents" [active]:
+      - button "Back to subagents":
+      - generic: Alternative elementary
+      - heading "Status" [level=2]
+      - generic: Done
+      - heading "Final response" [level=2]
+      - paragraph:
+        - text: The conditional-clock argument is valid, including when the reference replaces the terminal counter abort by a
+        - strong: null firing
+        - text: . A safe explicit bound from the strict core is
+      - math:
+        - generic: H
+        - generic: r
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ≤
+        - generic: C
+        - generic: R
+        - generic: ","
+        - generic: J
+        - generic: ","
+        - generic: r
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: t
+        - generic: )
+        - generic: "["
+        - generic: η
+        - generic: J
+        - generic: W
+        - generic: "2"
+        - generic: J
+        - generic: +
+        - generic: "2"
+        - generic: r
+        - generic: +
+        - generic: "3"
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: log
+        - generic: ⁡
+        - generic: ρ
+        - generic: )
+        - generic: J
+        - generic: +
+        - generic: r
+        - generic: +
+        - generic: "2"
+        - generic: +
+        - generic: δ
+        - generic: W
+        - generic: "2"
+        - generic: r
+        - generic: +
+        - generic: "4"
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: log
+        - generic: ⁡
+        - generic: ρ
+        - generic: )
+        - generic: r
+        - generic: +
+        - generic: "2"
+        - generic: "]"
+        - generic: .
+        - generic: (52)
+      - text: H
+      - generic: r
+      - text: (t) ≤
+      - text: C
+      - generic: R,J,r
+      - text: (1 + t)
+      - generic: "["
+      - text: η
+      - generic: J
+      - text: W
+      - generic: 2J+2r+3
+      - text: (1 +
+      - generic: log
+      - text: ρ
+      - text: )
+      - generic: J+r+2
+      - text: + δ
+      - text: W
+      - generic: 2r+4
+      - text: (1 +
+      - generic: log
+      - text: ρ
+      - text: )
+      - generic: r+2
+      - generic: "]"
+      - text: .
+      - text: (
+      - generic: "52"
+      - text: )
+      - paragraph:
+        - text: Here
+        - math:
+          - generic: H
+          - generic: r
+        - text: H
+        - generic: r
+        - text: is the weighted probability of the first bad event, with reward
+        - math:
+          - generic: (
+          - generic: "1"
+          - generic: +
+          - generic: "N"
+          - generic: τ
+          - generic: −
+          - generic: )
+          - generic: r
+        - generic: (1 +
+        - text: "N"
+        - generic: τ−
+        - text: )
+        - generic: r
+        - text: . Bounded changes at the bad event can be absorbed into
+        - math:
+          - generic: C
+          - generic: R
+          - generic: ","
+          - generic: J
+          - generic: ","
+          - generic: r
+        - text: C
+        - generic: R,J,r
+        - text: .
+      - heading "1. What is conditioned on" [level=2]
+      - paragraph:
+        - text: Condition on the
+        - strong: labelled autonomous base path
+        - text: ", augmented with latent baseline lifetimes and the dominating probe immigration–death process. Do not include counter or probe progress marks themselves in this conditioning."
+      - paragraph: "The base path records:"
+      - list:
+        - listitem: representative-conversion initiations;
+        - listitem: the identity of each filter token;
+        - listitem: its commit-stage progress;
+        - listitem: its baseline abort or final commit;
+        - listitem: all other autonomous base reactions.
+      - paragraph: This path is independent of counter colors because commit and baseline-abort rates are the same for every counter index.
+      - paragraph: A filter token retains its identity and counter history through
+      - math:
+        - generic: C
+        - generic: i
+        - generic: ","
+        - generic: j
+        - generic: ⟶
+        - generic: C
+        - generic: i
+        - generic: +
+        - generic: "1"
+        - generic: ","
+        - generic: j
+        - generic: .
+      - text: C
+      - generic: i,j
+      - text: ⟶
+      - text: C
+      - generic: i+1,j
+      - text: .
+      - paragraph: Its baseline-abort clock can be assigned at birth and retained through these transitions. Final commit removes the token; a later initiation creates a new token starting at counter index zero.
+      - paragraph: Conditional on the labelled base path, the counter’s progress marks form an inhomogeneous Poisson process with rate
+      - math:
+        - generic: η
+        - generic: (
+        - generic: V
+        - generic: (
+        - generic: s
+        - generic: )
+        - generic: −
+        - generic: d
+        - generic: t
+        - generic: o
+        - generic: k
+        - generic: e
+        - generic: "n"
+        - generic: )
+        - generic: ≤
+        - generic: η
+        - generic: V
+        - generic: (
+        - generic: s
+        - generic: )
+        - generic: .
+      - text: η
+      - generic: (
+      - text: V(s) −
+      - text: d
+      - generic: token
+      - generic: )
+      - text: ≤
+      - generic: ηV(s).
+      - paragraph: The self-exclusion term is precisely what the falling-factorial propensity supplies when the catalyst species equals the target species. It depends only on the token’s fixed source encoding, not its counter color.
+      - paragraph:
+        - text: For probes, the corresponding rate is
+        - math:
+          - generic: η
+          - generic: V
+          - generic: (
+          - generic: s
+          - generic: )
+        - generic: ηV(s)
+        - text: .
+      - heading "2. Null terminal counter firings cause no difficulty" [level=2]
+      - paragraph:
+        - text: If the terminal reference counter reaction is null, the reference token stays at
+        - math:
+          - generic: j
+          - generic: =
+          - generic: J
+          - generic: −
+          - generic: "1"
+        - generic: j =
+        - generic: J −
+        - generic: "1"
+        - text: and may subsequently produce further null marks.
+      - paragraph:
+        - text: For the first bad-event bound, count only the token’s
+        - strong:
+          - text: first
+          - math:
+            - generic: J
+          - generic: J
+          - text: th progress mark since birth
+        - text: . Later null marks are irrelevant to the union bound for the first intervention. They remain included in the total firing intensity used for the rate-error term and physical activity costs.
+      - paragraph:
+        - text: The reference probe’s terminal activation is replaced by death. For domination, retain a virtual copy of the probe until its independent baseline-death time. This produces an immigration–death population
+        - math:
+          - generic: I
+          - generic: t
+        - text: I
+        - generic: t
+        - text: independent of probe progress marks. It does not feed back into the autonomous base.
+      - paragraph: Thus
+      - math:
+        - generic: "N"
+        - generic: r
+        - generic: e
+        - generic: f
+        - generic: e
+        - generic: r
+        - generic: e
+        - generic: "n"
+        - generic: c
+        - generic: e
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ≤
+        - generic: "N"
+        - generic: ‾
+        - generic: t
+        - generic: ":"
+        - generic: =
+        - generic: "N"
+        - generic: b
+        - generic: a
+        - generic: s
+        - generic: e
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: +
+        - generic: I
+        - generic: t
+        - generic: .
+      - text: "N"
+      - generic: reference
+      - text: (t) ≤
+      - generic: "N"
+      - generic: t
+      - text: :=
+      - text: "N"
+      - generic: base
+      - text: (t) +
+      - text: I
+      - generic: t
+      - text: .
+      - heading "3. Uniform moments from the strict core" [level=2]
+      - paragraph: Write
+      - math:
+        - generic: ℓ
+        - generic: =
+        - generic: "1"
+        - generic: +
+        - generic: log
+        - generic: ⁡
+        - generic: ρ
+        - generic: .
+      - generic: ℓ =
+      - generic: 1 +
+      - generic: log
+      - text: ρ.
+      - paragraph:
+        - text: For initial states in strict
+        - math:
+          - generic: C
+        - generic: C
+        - text: ", the base population is at most"
+        - math:
+          - generic: C
+          - generic: R
+          - generic: W
+          - generic: "2"
+        - text: C
+        - generic: R
+        - text: W
+        - generic: "2"
+        - text: ", and all probes are absent. The nominal anchor and near-"
+        - math:
+          - generic: L
+          - generic: "1"
+        - text: L
+        - generic: "1"
+        - text: estimate give, for every fixed integer
+        - math:
+          - generic: h
+        - generic: h
+        - text: ","
+      - math:
+        - generic: sup
+        - generic: ⁡
+        - generic: t
+        - generic: ≥
+        - generic: "0"
+        - generic: E
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: "N"
+        - generic: ‾
+        - generic: t
+        - generic: )
+        - generic: h
+        - generic: ≤
+        - generic: B
+        - generic: h
+        - generic: W
+        - generic: "2"
+        - generic: h
+        - generic: ℓ
+        - generic: h
+        - generic: .
+        - generic: (53)
+      - generic: t≥0
+      - generic: sup
+      - text: E(1 +
+      - generic: "N"
+      - generic: t
+      - text: )
+      - generic: h
+      - text: ≤
+      - text: B
+      - generic: h
+      - text: W
+      - generic: 2h
+      - text: ℓ
+      - generic: h
+      - text: .
+      - text: (
+      - generic: "53"
+      - text: )
+      - paragraph:
+        - text: The constants
+        - math:
+          - generic: B
+          - generic: h
+        - text: B
+        - generic: h
+        - text: can be chosen as explicit integers, for example
+      - math:
+        - generic: B
+        - generic: h
+        - generic: =
+        - generic: (
+        - generic: C
+        - generic: "0"
+        - generic: (
+        - generic: h
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: )
+        - generic: "4"
+        - generic: (
+        - generic: h
+        - generic: +
+        - generic: "1"
+        - generic: )
+      - text: B
+      - generic: h
+      - text: =
+      - generic: (
+      - text: C
+      - generic: "0"
+      - text: (h +
+      - text: 1)
+      - generic: )
+      - generic: 4(h+1)
+      - paragraph:
+        - text: after selecting a sufficiently large fixed integer
+        - math:
+          - generic: C
+          - generic: "0"
+        - text: C
+        - generic: "0"
+        - text: from the anchor bounds.
+      - paragraph:
+        - text: These constants contain no negative power of
+        - math:
+          - generic: η
+        - generic: η
+        - text: . The dependence on rare base activities is contained in
+        - math:
+          - generic: ℓ
+        - generic: ℓ
+        - text: .
+      - heading "4. Birth counts and population maxima on unit intervals" [level=2]
+      - paragraph:
+        - text: Let
+        - math:
+          - generic: B
+          - generic: k
+        - text: B
+        - generic: k
+        - text: count new filter tokens and probe births in
+        - math:
+          - generic: "["
+          - generic: k
+          - generic: ","
+          - generic: k
+          - generic: +
+          - generic: "1"
+          - generic: "]"
+        - generic: "[k, k +"
+        - generic: 1]
+        - text: .
+      - paragraph:
+        - text: The filter-initiation intensity is at most
+        - math:
+          - generic: C
+          - generic: R
+          - generic: (
+          - generic: "1"
+          - generic: +
+          - generic: "N"
+          - generic: ‾
+          - generic: )
+        - text: C
+        - generic: R
+        - text: (1 +
+        - generic: "N"
+        - text: )
+        - text: ", because representative conversions were all slowed by"
+        - math:
+          - generic: θ
+        - generic: θ
+        - text: . Physical positive-population jumps also have only linear intensity, with coefficients bounded independently of
+        - math:
+          - generic: θ
+        - generic: θ
+        - text: and
+        - math:
+          - generic: η
+        - generic: η
+        - text: .
+      - paragraph: On a unit interval, dominate both kinds of events by a pure-birth process of rate
+      - math:
+        - generic: c
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: "Y"
+        - generic: )
+        - generic: ","
+      - generic: c(1 +
+      - generic: Y),
+      - paragraph:
+        - text: increasing
+        - math:
+          - generic: "Y"
+        - generic: "Y"
+        - text: by one at every candidate event, even when the actual filter initiation leaves population unchanged. Consequently,
+      - math:
+        - generic: E
+        - generic: B
+        - generic: k
+        - generic: h
+        - generic: +
+        - generic: E
+        - generic: sup
+        - generic: ⁡
+        - generic: k
+        - generic: ≤
+        - generic: s
+        - generic: ≤
+        - generic: k
+        - generic: +
+        - generic: "1"
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: "N"
+        - generic: ‾
+        - generic: s
+        - generic: )
+        - generic: h
+        - generic: ≤
+        - generic: M
+        - generic: h
+        - generic: W
+        - generic: "2"
+        - generic: h
+        - generic: ℓ
+        - generic: h
+        - generic: .
+        - generic: (54)
+      - text: E
+      - text: B
+      - generic: k
+      - generic: h
+      - text: +
+      - text: E
+      - generic: k≤s≤k+1
+      - generic: sup
+      - text: (1 +
+      - generic: "N"
+      - generic: s
+      - text: )
+      - generic: h
+      - text: ≤
+      - text: M
+      - generic: h
+      - text: W
+      - generic: 2h
+      - text: ℓ
+      - generic: h
+      - text: .
+      - text: (
+      - generic: "54"
+      - text: )
+      - paragraph: One explicit rational choice is
+      - math:
+        - generic: M
+        - generic: h
+        - generic: =
+        - generic: "3"
+        - generic: h
+        - generic: "!"
+        - generic: "2"
+        - generic: "2"
+        - generic: c
+        - generic: h
+        - generic: B
+        - generic: h
+        - generic: ","
+      - text: M
+      - generic: h
+      - text: =
+      - text: 3h!
+      - text: "2"
+      - generic: 2ch
+      - text: B
+      - generic: h
+      - text: ","
+      - paragraph: enlarged by a fixed factor for the initial filter cohort.
+      - paragraph:
+        - text: For an interval covering
+        - math:
+          - generic: m
+          - generic: +
+          - generic: "2"
+        - generic: m +
+        - generic: "2"
+        - text: unit windows,
+      - math:
+        - generic: E
+        - generic: sup
+        - generic: ⁡
+        - generic: k
+        - generic: ≤
+        - generic: s
+        - generic: ≤
+        - generic: k
+        - generic: +
+        - generic: m
+        - generic: +
+        - generic: "2"
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: "N"
+        - generic: ‾
+        - generic: s
+        - generic: )
+        - generic: h
+        - generic: ≤
+        - generic: (
+        - generic: m
+        - generic: +
+        - generic: "2"
+        - generic: )
+        - generic: M
+        - generic: h
+        - generic: W
+        - generic: "2"
+        - generic: h
+        - generic: ℓ
+        - generic: h
+        - generic: .
+        - generic: (55)
+      - text: E
+      - generic: k≤s≤k+m+2
+      - generic: sup
+      - text: (1 +
+      - generic: "N"
+      - generic: s
+      - text: )
+      - generic: h
+      - text: ≤
+      - generic: (m +
+      - text: 2)
+      - text: M
+      - generic: h
+      - text: W
+      - generic: 2h
+      - text: ℓ
+      - generic: h
+      - text: .
+      - text: (
+      - generic: "55"
+      - text: )
+      - paragraph:
+        - text: This uses
+        - math:
+          - generic: max
+          - generic: ⁡
+          - generic: j
+          - generic: X
+          - generic: j
+          - generic: h
+          - generic: ≤
+          - generic: ∑
+          - generic: j
+          - generic: X
+          - generic: j
+          - generic: h
+        - text: max
+        - generic: j
+        - text: X
+        - generic: j
+        - generic: h
+        - text: ≤
+        - text: ∑
+        - generic: j
+        - text: X
+        - generic: j
+        - generic: h
+        - text: ; no temporal independence is assumed.
+      - heading "5. Survival is handled without falsely conditioning it to be exponential" [level=2]
+      - paragraph:
+        - text: Baseline lifetimes affect the base path, so one must
+        - strong: not
+        - text: replace their conditional survival probability, given that path, by
+        - math:
+          - generic: e
+          - generic: −
+          - generic: m
+        - text: e
+        - generic: −m
+        - text: .
+      - paragraph: Instead, keep the survival event inside the expectation.
+      - paragraph:
+        - text: Let
+        - math:
+          - generic: S
+          - generic: k
+          - generic: ","
+          - generic: m
+        - text: S
+        - generic: k,m
+        - text: be the event that some token born in window
+        - math:
+          - generic: k
+        - generic: k
+        - text: survives its baseline clock long enough to intervene at age
+        - math:
+          - generic: m
+        - generic: m
+        - text: . The baseline clock assigned to a newly born token is independent of its past. The birth compensator therefore gives the unconditional bound
+      - math:
+        - generic: P
+        - generic: (
+        - generic: S
+        - generic: k
+        - generic: ","
+        - generic: m
+        - generic: )
+        - generic: ≤
+        - generic: K
+        - generic: s
+        - generic: W
+        - generic: "2"
+        - generic: ℓ
+        - generic: e
+        - generic: −
+        - generic: m
+        - generic: ","
+        - generic: (56)
+      - text: P(
+      - text: S
+      - generic: k,m
+      - text: ) ≤
+      - text: K
+      - generic: s
+      - text: W
+      - generic: "2"
+      - text: ℓ
+      - text: e
+      - generic: −m
+      - text: ","
+      - text: (
+      - generic: "56"
+      - text: )
+      - paragraph:
+        - text: after enlarging a fixed integer
+        - math:
+          - generic: K
+          - generic: s
+        - text: K
+        - generic: s
+        - text: to cover
+        - math:
+          - generic: m
+          - generic: =
+          - generic: "0"
+          - generic: ","
+          - generic: "1"
+        - generic: m =
+        - generic: 0, 1
+        - text: and the initial cohort.
+      - paragraph: This is the only exponential-survival estimate used. Its correlation with population maxima and birth counts is handled by Hölder.
+      - heading "6. Weighted -stage bound" [level=2]:
+        - text: 6. Weighted
+        - math:
+          - generic: J
+        - generic: J
+        - text: "-stage bound"
+      - paragraph: Let
+      - math:
+        - generic: S
+        - generic: k
+        - generic: ","
+        - generic: m
+        - generic: ∗
+        - generic: =
+        - generic: sup
+        - generic: ⁡
+        - generic: k
+        - generic: ≤
+        - generic: s
+        - generic: ≤
+        - generic: k
+        - generic: +
+        - generic: m
+        - generic: +
+        - generic: "2"
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: "N"
+        - generic: ‾
+        - generic: s
+        - generic: )
+        - generic: .
+      - text: S
+      - generic: k,m
+      - generic: ∗
+      - text: =
+      - generic: k≤s≤k+m+2
+      - generic: sup
+      - text: (1 +
+      - generic: "N"
+      - generic: s
+      - text: ).
+      - paragraph:
+        - text: Conditional on the labelled base path and latent lifetimes, the probability of at least
+        - math:
+          - generic: J
+        - generic: J
+        - text: counter marks by age
+        - math:
+          - generic: m
+        - generic: m
+        - text: is at most
+      - math:
+        - generic: (
+        - generic: C
+        - generic: v
+        - generic: η
+        - generic: )
+        - generic: J
+        - generic: J
+        - generic: "!"
+        - generic: (
+        - generic: m
+        - generic: +
+        - generic: "2"
+        - generic: )
+        - generic: J
+        - generic: (
+        - generic: S
+        - generic: k
+        - generic: ","
+        - generic: m
+        - generic: ∗
+        - generic: )
+        - generic: J
+        - generic: ","
+      - generic: J!
+      - text: (
+      - text: C
+      - generic: v
+      - text: η
+      - text: )
+      - generic: J
+      - text: (m +
+      - text: "2"
+      - text: )
+      - generic: J
+      - text: (
+      - text: S
+      - generic: k,m
+      - generic: ∗
+      - text: )
+      - generic: J
+      - text: ","
+      - paragraph:
+        - text: where
+        - math:
+          - generic: C
+          - generic: v
+        - text: C
+        - generic: v
+        - text: is the largest fixed virtual species weight.
+      - paragraph:
+        - text: Including a terminal reward of degree
+        - math:
+          - generic: r
+        - generic: r
+        - text: ", the window contribution is bounded by"
+      - math:
+        - generic: (
+        - generic: C
+        - generic: v
+        - generic: η
+        - generic: )
+        - generic: J
+        - generic: J
+        - generic: "!"
+        - generic: (
+        - generic: m
+        - generic: +
+        - generic: "2"
+        - generic: )
+        - generic: J
+        - generic: E
+        - generic: ⁣
+        - generic: "["
+        - generic: B
+        - generic: k
+        - generic: (
+        - generic: S
+        - generic: k
+        - generic: ","
+        - generic: m
+        - generic: ∗
+        - generic: )
+        - generic: J
+        - generic: +
+        - generic: r
+        - generic: "1"
+        - generic: S
+        - generic: k
+        - generic: ","
+        - generic: m
+        - generic: "]"
+        - generic: .
+      - generic: J!
+      - text: (
+      - text: C
+      - generic: v
+      - text: η
+      - text: )
+      - generic: J
+      - text: (m +
+      - text: "2"
+      - text: )
+      - generic: J
+      - text: E
+      - generic: "["
+      - text: B
+      - generic: k
+      - text: (
+      - text: S
+      - generic: k,m
+      - generic: ∗
+      - text: )
+      - generic: J+r
+      - text: "1"
+      - text: S
+      - generic: k,m
+      - generic: "]"
+      - text: .
+      - paragraph:
+        - text: Hölder with exponents
+        - math:
+          - generic: "3"
+          - generic: ","
+          - generic: "3"
+          - generic: ","
+          - generic: "3"
+        - generic: 3, 3, 3
+        - text: ", using (54)–(56), bounds this by"
+      - math:
+        - generic: C
+        - generic: R
+        - generic: ","
+        - generic: J
+        - generic: ","
+        - generic: r
+        - generic: η
+        - generic: J
+        - generic: W
+        - generic: "2"
+        - generic: J
+        - generic: +
+        - generic: "2"
+        - generic: r
+        - generic: +
+        - generic: "8"
+        - generic: /
+        - generic: "3"
+        - generic: ℓ
+        - generic: J
+        - generic: +
+        - generic: r
+        - generic: +
+        - generic: "4"
+        - generic: /
+        - generic: "3"
+        - generic: (
+        - generic: m
+        - generic: +
+        - generic: "2"
+        - generic: )
+        - generic: J
+        - generic: +
+        - generic: "1"
+        - generic: /
+        - generic: "3"
+        - generic: e
+        - generic: −
+        - generic: m
+        - generic: /
+        - generic: "3"
+        - generic: .
+      - text: C
+      - generic: R,J,r
+      - text: η
+      - generic: J
+      - text: W
+      - generic: 2J+2r+8/3
+      - text: ℓ
+      - generic: J+r+4/3
+      - text: (m +
+      - text: "2"
+      - text: )
+      - generic: J+1/3
+      - text: e
+      - generic: −m/3
+      - text: .
+      - paragraph: Round exponents upward. Since
+      - math:
+        - generic: e
+        - generic: −
+        - generic: m
+        - generic: /
+        - generic: "3"
+        - generic: ≤
+        - generic: (
+        - generic: "3"
+        - generic: /
+        - generic: "4"
+        - generic: )
+        - generic: m
+      - text: e
+      - generic: −m/3
+      - text: ≤
+      - text: (3/4
+      - text: )
+      - generic: m
+      - paragraph: and
+      - math:
+        - generic: ∑
+        - generic: m
+        - generic: ≥
+        - generic: "0"
+        - generic: (
+        - generic: m
+        - generic: +
+        - generic: "2"
+        - generic: )
+        - generic: J
+        - generic: +
+        - generic: "1"
+        - generic: (
+        - generic: "3"
+        - generic: /
+        - generic: "4"
+        - generic: )
+        - generic: m
+        - generic: ≤
+        - generic: "2"
+        - generic: (
+        - generic: J
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: "!"
+        - generic: "4"
+        - generic: J
+        - generic: +
+        - generic: "2"
+        - generic: ","
+      - generic: m≥0
+      - generic: ∑
+      - text: (m +
+      - text: "2"
+      - text: )
+      - generic: J+1
+      - text: (3/4
+      - text: )
+      - generic: m
+      - text: ≤
+      - generic: 2(J +
+      - text: 1)!
+      - text: "4"
+      - generic: J+2
+      - text: ","
+      - paragraph:
+        - text: the sum over ages is finite with an explicit rational bound. Summing birth windows contributes at most a constant times
+        - math:
+          - generic: "1"
+          - generic: +
+          - generic: t
+        - generic: 1 +
+        - generic: t
+        - text: . This proves the gate term in (52).
+      - paragraph: A safe explicit integer gate coefficient is
+      - math:
+        - generic: "2"
+        - generic: "10"
+        - generic: "3"
+        - generic: r
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: C
+        - generic: v
+        - generic: )
+        - generic: J
+        - generic: M
+        - generic: "3"
+        - generic: M
+        - generic: "3"
+        - generic: (
+        - generic: J
+        - generic: +
+        - generic: r
+        - generic: )
+        - generic: K
+        - generic: s
+        - generic: (
+        - generic: J
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: "!"
+        - generic: "4"
+        - generic: J
+        - generic: +
+        - generic: "2"
+        - generic: ","
+      - text: "2"
+      - generic: "10"
+      - text: "3"
+      - generic: r
+      - text: (1 +
+      - text: C
+      - generic: v
+      - text: )
+      - generic: J
+      - text: M
+      - generic: "3"
+      - text: M
+      - generic: 3(J+r)
+      - text: K
+      - generic: s
+      - text: (J +
+      - text: 1)!
+      - text: "4"
+      - generic: J+2
+      - text: ","
+      - paragraph: with a fixed enlargement for the initial cohort.
+      - heading "7. Rate-error term" [level=2]
+      - paragraph: Before the first bad event, all guardian-mode channels are disabled, and
+      - math:
+        - generic: a
+        - generic: a
+        - generic: l
+        - generic: l
+        - generic: r
+        - generic: e
+        - generic: f
+        - generic: (
+        - generic: u
+        - generic: )
+        - generic: ≤
+        - generic: C
+        - generic: a
+        - generic: l
+        - generic: l
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: "N"
+        - generic: ‾
+        - generic: (
+        - generic: u
+        - generic: )
+        - generic: )
+        - generic: "2"
+        - generic: .
+      - text: a
+      - generic: all
+      - generic: ref
+      - text: (u) ≤
+      - text: C
+      - generic: all
+      - text: (1 +
+      - generic: "N"
+      - text: (u)
+      - text: )
+      - generic: "2"
+      - text: .
+      - paragraph: This includes counter null firings, bindings, releases, parallel labels, and probe events.
+      - paragraph:
+        - text: The mismatch hazard is at most
+        - math:
+          - generic: δ
+          - generic: a
+          - generic: a
+          - generic: l
+          - generic: l
+          - generic: r
+          - generic: e
+          - generic: f
+        - text: δ
+        - text: a
+        - generic: all
+        - generic: ref
+        - text: . Its weighted compensator gives
+      - math:
+        - generic: H
+        - generic: r
+        - generic: e
+        - generic: r
+        - generic: r
+        - generic: o
+        - generic: r
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ≤
+        - generic: C
+        - generic: a
+        - generic: l
+        - generic: l
+        - generic: B
+        - generic: r
+        - generic: +
+        - generic: "2"
+        - generic: δ
+        - generic: t
+        - generic: W
+        - generic: "2"
+        - generic: r
+        - generic: +
+        - generic: "4"
+        - generic: ℓ
+        - generic: r
+        - generic: +
+        - generic: "2"
+        - generic: .
+      - text: H
+      - generic: r
+      - generic: error
+      - text: (t) ≤
+      - text: C
+      - generic: all
+      - text: B
+      - generic: r+2
+      - text: δt
+      - text: W
+      - generic: 2r+4
+      - text: ℓ
+      - generic: r+2
+      - text: .
+      - paragraph: An actual excess terminal firing before the corresponding reference mark is covered by this mismatch term.
+      - heading "8. Eliminating logarithms from compiler inequalities" [level=2]
+      - paragraph: If
+      - math:
+        - generic: ρ
+        - generic: =
+        - generic: W
+        - generic: a
+      - generic: ρ =
+      - text: W
+      - generic: a
+      - paragraph:
+        - text: with fixed integer
+        - math:
+          - generic: a
+        - generic: a
+        - text: ", then for every fixed integer"
+        - math:
+          - generic: m
+        - generic: m
+        - text: ","
+      - math:
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: log
+        - generic: ⁡
+        - generic: ρ
+        - generic: )
+        - generic: m
+        - generic: ≤
+        - generic: "3"
+        - generic: m
+        - generic: "!"
+        - generic: (
+        - generic: a
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: m
+        - generic: W
+        - generic: .
+      - generic: (1 +
+      - generic: log
+      - text: ρ
+      - text: )
+      - generic: m
+      - text: ≤
+      - generic: 3m!(a +
+      - text: "1"
+      - text: )
+      - generic: m
+      - text: W.
+      - paragraph:
+        - text: This follows by expanding
+        - math:
+          - generic: (
+          - generic: "1"
+          - generic: +
+          - generic: log
+          - generic: ⁡
+          - generic: W
+          - generic: )
+          - generic: m
+        - generic: (1 +
+        - generic: log
+        - text: W
+        - text: )
+        - generic: m
+        - text: and using
+      - math:
+        - generic: x
+        - generic: k
+        - generic: ≤
+        - generic: k
+        - generic: "!"
+        - generic: e
+        - generic: x
+        - generic: .
+      - text: x
+      - generic: k
+      - text: ≤
+      - text: k!
+      - text: e
+      - generic: x
+      - text: .
+      - paragraph:
+        - text: Therefore all inequalities reduce to rational powers of
+        - math:
+          - generic: W
+        - generic: W
+        - text: ", multiplied by explicitly computable integer constants. The remaining dependence on"
+        - math:
+          - generic: a
+        - generic: a
+        - text: is polynomial, through
+        - math:
+          - generic: (
+          - generic: a
+          - generic: +
+          - generic: "1"
+          - generic: )
+          - generic: m
+        - generic: (a +
+        - text: "1"
+        - text: )
+        - generic: m
+        - text: . Choosing
+        - math:
+          - generic: a
+        - generic: a
+        - text: "last is noncircular: the suppression from the positive exponent margin"
+        - math:
+          - generic: J
+          - generic: −
+          - generic: "8"
+          - generic: Q
+        - generic: J −
+        - generic: 8Q
+        - text: grows exponentially in
+        - math:
+          - generic: a
+        - generic: a
+        - text: ", and eventually dominates that polynomial factor."
+      - paragraph: All coefficients above can be bounded using finite integer and rational arithmetic. No normalizer, stationary distribution, path sampling, or population-ball enumeration is needed.
+
+---
+
+  - complementary:
+    - heading "Subagents" [level=2]
+    - button "Enter full view":
+    - button "Close panel":
+    - tabpanel "Subagents" [active]:
+      - button "Back to subagents":
+      - generic: Stationary obstructions
+      - heading "Status" [level=2]
+      - generic: Done
+      - heading "Final response" [level=2]
+      - paragraph:
+        - text: The revised chain is consistent. The boundary-generator argument is a legitimate way to avoid a separate
+        - math:
+          - generic: k
+          - generic: r
+          - generic: "1"
+        - text: k
+        - text: r
+        - generic: "1"
+        - text: cost term. I do not see a fatal degree error.
+      - paragraph: There are four points to state precisely.
+      - heading "1. The boundary argument is valid" [level=2]:
+        - text: 1. The
+        - math:
+          - generic: U
+          - generic: "4"
+        - text: U
+        - generic: "4"
+        - text: boundary argument is valid
+      - paragraph:
+        - text: Let
+        - math:
+          - generic: B
+        - generic: B
+        - text: be the large finite core and define
+      - math:
+        - generic: U
+        - generic: "4"
+        - generic: (
+        - generic: u
+        - generic: )
+        - generic: =
+        - generic: E
+        - generic: u
+        - generic: ∫
+        - generic: "0"
+        - generic: τ
+        - generic: B
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: "N"
+        - generic: t
+        - generic: )
+        - generic: "4"
+        - generic: d
+        - generic: t
+        - generic: ","
+        - generic: U
+        - generic: "4"
+        - generic: =
+        - generic: "0"
+        - generic: "on"
+        - generic: B
+        - generic: .
+      - text: U
+      - generic: "4"
+      - text: (u) =
+      - text: E
+      - generic: u
+      - text: ∫
+      - generic: "0"
+      - text: τ
+      - generic: B
+      - text: (1 +
+      - text: "N"
+      - generic: t
+      - text: )
+      - generic: "4"
+      - text: dt,
+      - text: U
+      - generic: "4"
+      - text: =
+      - text: "0"
+      - generic: "on"
+      - text: B.
+      - paragraph: The sampled Foster proof supplies the uniform bound
+      - math:
+        - generic: U
+        - generic: "4"
+        - generic: (
+        - generic: u
+        - generic: )
+        - generic: ≤
+        - generic: B
+        - generic: J
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: "N"
+        - generic: (
+        - generic: u
+        - generic: )
+        - generic: )
+        - generic: k
+        - generic: .
+      - text: U
+      - generic: "4"
+      - text: (u) ≤
+      - text: B
+      - generic: J
+      - text: (1 +
+      - text: N(u)
+      - text: )
+      - generic: k
+      - text: .
+      - paragraph:
+        - text: Outside
+        - math:
+          - generic: B
+        - generic: B
+        - text: ", first-step decomposition gives"
+      - math:
+        - generic: L
+        - generic: U
+        - generic: "4"
+        - generic: (
+        - generic: u
+        - generic: )
+        - generic: =
+        - generic: −
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: "N"
+        - generic: (
+        - generic: u
+        - generic: )
+        - generic: )
+        - generic: "4"
+        - generic: .
+      - text: L
+      - text: U
+      - generic: "4"
+      - text: (u) =
+      - generic: −(1 +
+      - text: N(u)
+      - text: )
+      - generic: "4"
+      - text: .
+      - paragraph: On the core,
+      - math:
+        - generic: L
+        - generic: U
+        - generic: "4"
+        - generic: (
+        - generic: u
+        - generic: )
+        - generic: =
+        - generic: ∑
+        - generic: v
+        - generic: ∉
+        - generic: B
+        - generic: q
+        - generic: (
+        - generic: u
+        - generic: ","
+        - generic: v
+        - generic: )
+        - generic: U
+        - generic: "4"
+        - generic: (
+        - generic: v
+        - generic: )
+        - generic: .
+      - text: L
+      - text: U
+      - generic: "4"
+      - text: (u) =
+      - text: v
+      - generic: ∈
+      - generic: /
+      - text: B
+      - generic: ∑
+      - text: q(u, v)
+      - text: U
+      - generic: "4"
+      - text: (v).
+      - paragraph:
+        - text: "The high-rate veto reactions cannot leave the core: they preserve"
+        - math:
+          - generic: V
+        - generic: V
+        - text: and do not increase
+        - math:
+          - generic: Q
+        - generic: Q
+        - text: . All remaining core-exit coefficients are bounded. A core state and its one-jump neighbors have total population
+        - math:
+          - generic: O
+          - generic: R
+          - generic: (
+          - generic: R
+          - generic: )
+        - text: O
+        - generic: R
+        - text: (R)
+        - text: . Hence, after including the maximum of the reward on the core,
+      - math:
+        - generic: L
+        - generic: U
+        - generic: "4"
+        - generic: ≤
+        - generic: K
+        - generic: −
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: "N"
+        - generic: )
+        - generic: "4"
+        - generic: ","
+        - generic: K
+        - generic: ≤
+        - generic: B
+        - generic: J
+        - generic: R
+        - generic: k
+        - generic: +
+        - generic: "2"
+        - generic: ≤
+        - generic: B
+        - generic: J
+        - generic: ρ
+        - generic: (
+        - generic: k
+        - generic: +
+        - generic: "2"
+        - generic: )
+        - generic: r
+        - generic: "0"
+        - generic: .
+      - text: L
+      - text: U
+      - generic: "4"
+      - text: ≤ K − (1 + N
+      - text: )
+      - generic: "4"
+      - text: ", K ≤"
+      - text: B
+      - generic: J
+      - text: R
+      - generic: k+2
+      - text: ≤
+      - text: B
+      - generic: J
+      - text: ρ
+      - text: (k+2)
+      - text: r
+      - generic: "0"
+      - text: .
+      - paragraph:
+        - text: No values of
+        - math:
+          - generic: U
+          - generic: "4"
+        - text: U
+        - generic: "4"
+        - text: need to be computed. The compiler uses only its explicit polynomial majorant.
+      - paragraph:
+        - text: For a bounded, pre-recovery trial stopping time
+        - math:
+          - generic: τ
+        - generic: τ
+        - text: ","
+      - math:
+        - generic: E
+        - generic: u
+        - generic: ⁣
+        - generic: "["
+        - generic: ∫
+        - generic: "0"
+        - generic: τ
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: "N"
+        - generic: s
+        - generic: )
+        - generic: "4"
+        - generic: d
+        - generic: s
+        - generic: +
+        - generic: U
+        - generic: "4"
+        - generic: (
+        - generic: Z
+        - generic: τ
+        - generic: )
+        - generic: "]"
+        - generic: ≤
+        - generic: U
+        - generic: "4"
+        - generic: (
+        - generic: u
+        - generic: )
+        - generic: +
+        - generic: K
+        - generic: E
+        - generic: u
+        - generic: τ
+        - generic: .
+      - text: E
+      - generic: u
+      - generic: "["
+      - text: ∫
+      - generic: "0"
+      - generic: τ
+      - text: (1 +
+      - text: "N"
+      - generic: s
+      - text: )
+      - generic: "4"
+      - text: ds +
+      - text: U
+      - generic: "4"
+      - text: (
+      - text: Z
+      - generic: τ
+      - text: )
+      - generic: "]"
+      - text: ≤
+      - text: U
+      - generic: "4"
+      - text: (u) +
+      - text: K
+      - text: E
+      - generic: u
+      - text: τ.
+      - paragraph:
+        - text: A trial starting in the large core has
+        - math:
+          - generic: U
+          - generic: "4"
+          - generic: (
+          - generic: u
+          - generic: )
+          - generic: =
+          - generic: "0"
+        - text: U
+        - generic: "4"
+        - text: (u) =
+        - generic: "0"
+        - text: . The second term on the left pays the actual return after the trial. Therefore the entire trial plus recovery is bounded by
+        - math:
+          - generic: K
+        - generic: K
+        - text: times its deadline.
+      - heading "2. Your displayed safely exceeds the resulting exponent" [level=2]:
+        - text: 2. Your displayed
+        - math:
+          - generic: E
+        - generic: E
+        - text: safely exceeds the resulting exponent
+      - paragraph: The deadline bound is
+      - math:
+        - generic: T
+        - generic: t
+        - generic: r
+        - generic: i
+        - generic: a
+        - generic: l
+        - generic: ≤
+        - generic: B
+        - generic: J
+        - generic: ρ
+        - generic: Q
+        - generic: "0"
+        - generic: +
+        - generic: u
+        - generic: +
+        - generic: r
+        - generic: "1"
+        - generic: +
+        - generic: "3"
+        - generic: .
+      - text: T
+      - generic: trial
+      - text: ≤
+      - text: B
+      - generic: J
+      - text: ρ
+      - text: Q
+      - generic: "0"
+      - text: +u+
+      - text: r
+      - generic: "1"
+      - text: "+3"
+      - text: .
+      - paragraph:
+        - text: Multiplying by the boundary bound for
+        - math:
+          - generic: K
+        - generic: K
+        - text: gives exponent
+      - math:
+        - generic: (
+        - generic: k
+        - generic: +
+        - generic: "2"
+        - generic: )
+        - generic: r
+        - generic: "0"
+        - generic: +
+        - generic: Q
+        - generic: "0"
+        - generic: +
+        - generic: u
+        - generic: +
+        - generic: r
+        - generic: "1"
+        - generic: +
+        - generic: "3."
+      - generic: (k +
+      - text: 2)
+      - text: r
+      - generic: "0"
+      - text: +
+      - text: Q
+      - generic: "0"
+      - text: +
+      - generic: u +
+      - text: r
+      - generic: "1"
+      - text: +
+      - generic: "3."
+      - paragraph: Your choice
+      - math:
+        - generic: E
+        - generic: =
+        - generic: (
+        - generic: k
+        - generic: +
+        - generic: "3"
+        - generic: )
+        - generic: r
+        - generic: "0"
+        - generic: +
+        - generic: Q
+        - generic: "0"
+        - generic: +
+        - generic: u
+        - generic: +
+        - generic: "2"
+        - generic: r
+        - generic: "1"
+        - generic: +
+        - generic: "30"
+      - generic: E =
+      - generic: (k +
+      - text: 3)
+      - text: r
+      - generic: "0"
+      - text: +
+      - text: Q
+      - generic: "0"
+      - text: +
+      - generic: u +
+      - text: "2"
+      - text: r
+      - generic: "1"
+      - text: +
+      - generic: "30"
+      - paragraph: exceeds this by
+      - math:
+        - generic: r
+        - generic: "0"
+        - generic: +
+        - generic: r
+        - generic: "1"
+        - generic: +
+        - generic: "27."
+      - text: r
+      - generic: "0"
+      - text: +
+      - text: r
+      - generic: "1"
+      - text: +
+      - generic: "27."
+      - paragraph: Thus
+      - math:
+        - generic: A
+        - generic: r
+        - generic: e
+        - generic: t
+        - generic: ≤
+        - generic: B
+        - generic: J
+        - generic: ρ
+        - generic: E
+        - generic: +
+        - generic: "7"
+        - generic: J
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: "N"
+        - generic: )
+        - generic: k
+      - text: A
+      - generic: ret
+      - text: ≤
+      - text: B
+      - generic: J
+      - text: ρ
+      - generic: E+7J
+      - text: (1 +
+      - text: "N"
+      - text: )
+      - generic: k
+      - paragraph:
+        - text: is a valid conservative raw-time return-occupation envelope, assuming the already established uniform success probability
+        - math:
+          - generic: c
+          - generic: J
+          - generic: ρ
+          - generic: −
+          - generic: "7"
+          - generic: J
+        - text: c
+        - generic: J
+        - text: ρ
+        - generic: −7J
+        - text: .
+      - paragraph:
+        - text: This reasoning is why
+        - math:
+          - generic: E
+        - generic: E
+        - text: need not separately dominate
+        - math:
+          - generic: k
+          - generic: r
+          - generic: "1"
+        - text: k
+        - text: r
+        - generic: "1"
+        - text: ": the trial starts in the large core, and the"
+        - math:
+          - generic: U
+          - generic: "4"
+        - text: U
+        - generic: "4"
+        - text: identity controls the expectation of the endpoint recovery cost directly.
+      - heading "3. The longer mode deadline and enlarged veto remain compatible" [level=2]
+      - paragraph: With
+      - math:
+        - generic: T
+        - generic: m
+        - generic: =
+        - generic: B
+        - generic: J
+        - generic: ρ
+        - generic: u
+        - generic: +
+        - generic: r
+        - generic: "1"
+        - generic: +
+        - generic: "2"
+        - generic: ","
+        - generic: v
+        - generic: =
+        - generic: u
+        - generic: +
+        - generic: "2"
+        - generic: r
+        - generic: "1"
+        - generic: +
+        - generic: "6"
+        - generic: ","
+      - text: T
+      - generic: m
+      - text: =
+      - text: B
+      - generic: J
+      - text: ρ
+      - text: u+
+      - text: r
+      - generic: "1"
+      - text: "+2"
+      - text: ", v ="
+      - generic: u +
+      - text: "2"
+      - text: r
+      - generic: "1"
+      - text: +
+      - generic: 6,
+      - paragraph: the principal veto error has exponent
+      - math:
+        - generic: r
+        - generic: "1"
+        - generic: +
+        - generic: (
+        - generic: u
+        - generic: +
+        - generic: r
+        - generic: "1"
+        - generic: +
+        - generic: "2"
+        - generic: )
+        - generic: −
+        - generic: v
+        - generic: =
+        - generic: −
+        - generic: "4."
+      - text: r
+      - generic: "1"
+      - text: +
+      - generic: (u +
+      - text: r
+      - generic: "1"
+      - text: +
+      - generic: 2) −
+      - generic: v =
+      - generic: −4.
+      - paragraph: The survival condition is needed through the drain, where
+      - math:
+        - generic: μ
+        - generic: (
+        - generic: R
+        - generic: ′
+        - generic: )
+        - generic: q
+        - generic: +
+        - generic: "1"
+        - generic: ≲
+        - generic: ρ
+        - generic: −
+        - generic: u
+        - generic: +
+        - generic: (
+        - generic: q
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: r
+        - generic: "1"
+        - generic: =
+        - generic: ρ
+        - generic: −
+        - generic: r
+        - generic: "1"
+        - generic: −
+        - generic: "4"
+        - generic: .
+      - text: μ(
+      - text: R
+      - generic: ′
+      - text: )
+      - generic: q+1
+      - text: ≲
+      - text: ρ
+      - text: −u+(q+1)
+      - text: r
+      - generic: "1"
+      - text: =
+      - text: ρ
+      - text: −
+      - text: r
+      - generic: "1"
+      - text: −4
+      - text: .
+      - paragraph:
+        - text: It is
+        - strong: not
+        - text: necessary, or appropriate, to require active-controller survival throughout retirement. Death is the intended mechanism there. Survival through the additional
+        - math:
+          - generic: O
+          - generic: (
+          - generic: log
+          - generic: ⁡
+          - generic: R
+          - generic: ′
+          - generic: )
+        - text: O(
+        - generic: log
+        - text: R
+        - generic: ′
+        - text: )
+        - text: old-probe washout is also paid by the chosen
+        - math:
+          - generic: μ
+        - generic: μ
+        - text: .
+      - paragraph: Fresh activation during retirement has envelope
+      - math:
+        - generic: B
+        - generic: J
+        - generic: W
+        - generic: J
+        - generic: ρ
+        - generic: u
+        - generic: +
+        - generic: r
+        - generic: "1"
+        - generic: +
+        - generic: "2"
+        - generic: −
+        - generic: "8"
+        - generic: J
+        - generic: ","
+      - text: B
+      - generic: J
+      - text: W
+      - generic: J
+      - text: ρ
+      - text: u+
+      - text: r
+      - generic: "1"
+      - text: +2−8J
+      - text: ","
+      - paragraph:
+        - text: which has ample negative
+        - math:
+          - generic: ρ
+        - generic: ρ
+        - text: "-degree under the proposed"
+        - math:
+          - generic: J
+        - generic: J
+        - text: ", with the"
+        - math:
+          - generic: W
+        - generic: W
+        - text: "-factor absorbed by the final choice of"
+        - math:
+          - generic: a
+        - generic: a
+        - text: .
+      - heading "4. Retain three bookkeeping safeguards" [level=2]
+      - heading "Raw versus physical costs" [level=3]
+      - paragraph:
+        - text: The displayed
+        - math:
+          - generic: A
+          - generic: r
+          - generic: e
+          - generic: t
+        - text: A
+        - generic: ret
+        - text: is a raw-time population-occupation bound. Common clock normalization and the total firing-intensity bound can introduce an additional factor at most
+        - math:
+          - generic: B
+          - generic: J
+          - generic: ρ
+          - generic: v
+        - text: B
+        - generic: J
+        - text: ρ
+        - generic: v
+        - text: . Add this factor in the final resource ledger; do not describe
+        - math:
+          - generic: ρ
+          - generic: E
+          - generic: +
+          - generic: "7"
+          - generic: J
+        - text: ρ
+        - generic: E+7J
+        - text: alone as already paying normalized time and all firings.
+      - heading "Analytical cycle versus output time" [level=3]
+      - paragraph: Keep
+      - math:
+        - generic: t
+        - generic: =
+        - generic: B
+        - generic: J
+        - generic: ρ
+        - generic: S
+        - generic: +
+        - generic: "7"
+        - generic: J
+      - generic: t =
+      - text: B
+      - generic: J
+      - text: ρ
+      - generic: S+7J
+      - paragraph: as the analytical cycle length, and use the separately verified nominal mixing time
+      - math:
+        - generic: T
+        - generic: r
+        - generic: a
+        - generic: w
+        - generic: ≤
+        - generic: B
+        - generic: J
+        - generic: ρ
+        - generic: Q
+        - generic: "0"
+      - text: T
+      - generic: raw
+      - text: ≤
+      - text: B
+      - generic: J
+      - text: ρ
+      - text: Q
+      - generic: "0"
+      - paragraph: for the output transient guarantee.
+      - paragraph: Reusing the much longer cycle length as the output time would require rechecking the absolute-moment coupling estimate against its larger polynomial population-growth factor.
+      - heading "Verify the numerical and choices by the finite ledger" [level=3]:
+        - text: Verify the numerical
+        - math:
+          - generic: "100"
+        - generic: "100"
+        - text: and
+        - math:
+          - generic: "10"
+        - generic: "10"
+        - text: choices by the finite ledger
+      - paragraph: The proposed
+      - math:
+        - generic: J
+        - generic: =
+        - generic: "100"
+        - generic: (
+        - generic: S
+        - generic: +
+        - generic: v
+        - generic: +
+        - generic: Q
+        - generic: "0"
+        - generic: +
+        - generic: h
+        - generic: +
+        - generic: k
+        - generic: +
+        - generic: p
+        - generic: "0"
+        - generic: +
+        - generic: b
+        - generic: +
+        - generic: "1"
+        - generic: )
+      - generic: J =
+      - generic: 100(S +
+      - generic: v +
+      - text: Q
+      - generic: "0"
+      - text: +
+      - generic: h +
+      - generic: k +
+      - text: p
+      - generic: "0"
+      - text: +
+      - generic: b +
+      - generic: 1)
+      - paragraph: and
+      - math:
+        - generic: d
+        - generic: δ
+        - generic: =
+        - generic: "10"
+        - generic: (
+        - generic: S
+        - generic: +
+        - generic: "7"
+        - generic: J
+        - generic: +
+        - generic: Q
+        - generic: "0"
+        - generic: +
+        - generic: v
+        - generic: +
+        - generic: h
+        - generic: +
+        - generic: k
+        - generic: +
+        - generic: "20"
+        - generic: )
+      - text: d
+      - generic: δ
+      - text: =
+      - generic: 10(S +
+      - generic: 7J +
+      - text: Q
+      - generic: "0"
+      - text: +
+      - generic: v +
+      - generic: h +
+      - generic: k +
+      - generic: 20)
+      - paragraph:
+        - text: are plausible oversized bounds. To make the explicit-constants contract airtight, define each as at least the displayed value
+        - strong: and
+        - text: require it to satisfy the finite rational exponent tests produced by the actual lemmas.
+      - paragraph: "For example, check the strict positivity of the margins for:"
+      - list:
+        - text: "Stationary fresh interventions:"
+        - math:
+          - generic: J
+          - generic: −
+          - generic: S
+          - generic: −
+          - generic: logarithmic loss
+        - generic: J −
+        - generic: S −
+        - generic: logarithmic loss
+        - text: .
+        - text: "Retirement activations:"
+        - math:
+          - generic: "8"
+          - generic: J
+          - generic: −
+          - generic: u
+          - generic: −
+          - generic: r
+          - generic: "1"
+          - generic: −
+          - generic: "2"
+          - generic: −
+          - generic: logarithmic loss
+        - generic: 8J −
+        - generic: u −
+        - text: r
+        - generic: "1"
+        - text: −
+        - generic: 2 −
+        - generic: logarithmic loss
+        - text: .
+        - listitem: Low-return fresh interventions.
+        - listitem: Rate-error coupling over the cycle.
+        - listitem: The finite-horizon first-moment estimate.
+      - paragraph:
+        - text: These are finite linear inequalities with positive leading coefficients. Checking them is a terminating arithmetic calculation, not a search for a recurrence or stationary-law theorem. Coefficient inequalities are then handled by the final
+        - math:
+          - generic: ρ
+          - generic: =
+          - generic: W
+          - generic: a
+        - generic: ρ =
+        - text: W
+        - generic: a
+        - text: choice.
+      - paragraph: With those safeguards, the revised degree chain is a sound conservative majorant.
+
+---
+
+  - complementary:
+    - heading "Subagents" [level=2]
+    - button "Enter full view":
+    - button "Close panel":
+    - tabpanel "Subagents" [active]:
+      - button "Back to subagents":
+      - generic: Elementary construction
+      - heading "Status" [level=2]
+      - generic: Done
+      - heading "Final response" [level=2]
+      - paragraph:
+        - text: The finite-horizon perturbation argument is valid. It closes robust transient TV and absolute first-moment accuracy, together with polynomial transient fine-population and total-firing bounds,
+        - strong: provided the nominal polynomial mixing time and nominal uniform exponential-moment estimate are already proved
+        - text: . It does not establish perturbed recurrence or stationary accuracy.
+      - paragraph: Here is an explicit version with constants.
+      - heading "Assumptions and notation" [level=2]
+      - paragraph: "Let the normalized elementary prefix lift have:"
+      - list:
+        - math:
+          - generic: K
+          - generic: ≥
+          - generic: "1"
+        - generic: K ≥
+        - generic: "1"
+        - text: labelled physical channels, counting null and parallel channels separately;
+        - text: nominal constants
+        - math:
+          - generic: k
+          - generic: e
+          - generic: ≤
+          - generic: "1"
+        - text: k
+        - generic: e
+        - text: ≤
+        - generic: "1"
+        - text: ;
+        - text: decoder maximum column sum
+        - math:
+          - generic: D
+          - generic: ≥
+          - generic: "1"
+        - generic: D ≥
+        - generic: "1"
+        - text: ;
+        - text: maximal positive decoded-total jump
+        - math:
+          - generic: J
+          - generic: ≥
+          - generic: "0"
+        - generic: J ≥
+        - generic: "0"
+        - text: ;
+        - text: no zero-decoded species, so
+        - math:
+          - generic: ∣
+          - generic: Z
+          - generic: ∣
+          - generic: "1"
+          - generic: ≤
+          - generic: ∣
+          - generic: D
+          - generic: Z
+          - generic: ∣
+          - generic: "1"
+          - generic: ≤
+          - generic: D
+          - generic: ∣
+          - generic: Z
+          - generic: ∣
+          - generic: "1"
+          - generic: ;
+        - text: ∣Z
+        - text: ∣
+        - generic: "1"
+        - text: ≤
+        - text: ∣DZ
+        - text: ∣
+        - generic: "1"
+        - text: ≤
+        - text: D∣Z
+        - text: ∣
+        - generic: "1"
+        - text: ;
+        - listitem: decoded-changing channels of arity zero or one on the source side.
+      - paragraph: "The last property holds for the prefix lift: binding/release has zero decoded change, and macro conversions are zero/unary."
+      - paragraph:
+        - text: Write
+        - math:
+          - generic: "N"
+          - generic: (
+          - generic: t
+          - generic: )
+          - generic: =
+          - generic: ∣
+          - generic: D
+          - generic: Z
+          - generic: (
+          - generic: t
+          - generic: )
+          - generic: ∣
+          - generic: "1"
+        - generic: N(t) =
+        - text: ∣DZ(t)
+        - text: ∣
+        - generic: "1"
+        - text: . Assume the nominal chain started from
+        - math:
+          - generic: j
+          - generic: (
+          - generic: x
+          - generic: "0"
+          - generic: )
+        - text: j(
+        - text: x
+        - generic: "0"
+        - text: )
+        - text: satisfies
+      - math:
+        - generic: sup
+        - generic: ⁡
+        - generic: t
+        - generic: ≥
+        - generic: "0"
+        - generic: E
+        - generic: "0"
+        - generic: e
+        - generic: "N"
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: /
+        - generic: c
+        - generic: ≤
+        - generic: e
+        - generic: "2"
+        - generic: ","
+        - generic: c
+        - generic: =
+        - generic: D
+        - generic: q
+        - generic: ","
+        - generic: q
+        - generic: =
+        - generic: ⌈
+        - generic: "4"
+        - generic: W
+        - generic: "2"
+        - generic: ⌉
+        - generic: .
+      - generic: t≥0
+      - generic: sup
+      - text: E
+      - generic: "0"
+      - text: e
+      - generic: N(t)/c
+      - text: ≤
+      - text: e
+      - generic: "2"
+      - text: ", c ="
+      - generic: Dq, q =
+      - text: ⌈4
+      - text: W
+      - generic: "2"
+      - text: ⌉.
+      - paragraph:
+        - text: Let
+        - math:
+          - generic: T
+          - generic: ">"
+          - generic: "0"
+        - generic: T >
+        - generic: "0"
+        - text: be the nominal polynomial mixing time.
+      - paragraph: Define
+      - math:
+        - generic: a
+        - generic: =
+        - generic: K
+        - generic: +
+        - generic: D
+        - generic: +
+        - generic: J
+        - generic: +
+        - generic: "2"
+        - generic: ","
+        - generic: S
+        - generic: =
+        - generic: T
+        - generic: +
+        - generic: W
+        - generic: "2"
+        - generic: +
+        - generic: "1"
+        - generic: ","
+      - generic: a =
+      - generic: K +
+      - generic: D +
+      - generic: J +
+      - generic: 2, S =
+      - generic: T +
+      - text: W
+      - generic: "2"
+      - text: +
+      - generic: 1,
+      - paragraph: and choose the integer cutoff
+      - math:
+        - generic: B
+        - generic: =
+        - generic: J
+        - generic: +
+        - generic: ⌈
+        - generic: "128"
+        - generic: a
+        - generic: c
+        - generic: S
+        - generic: ⌉
+        - generic: .
+      - text: B = J +
+      - generic: ⌈128acS⌉
+      - text: .
+      - paragraph: Let
+      - math:
+        - generic: A
+        - generic: =
+        - generic: K
+        - generic: (
+        - generic: B
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: "2"
+      - generic: A =
+      - generic: K(B +
+      - text: "1"
+      - text: )
+      - generic: "2"
+      - paragraph: and choose
+      - math:
+        - generic: δ
+        - generic: =
+        - generic: min
+        - generic: ⁡
+        - generic: "{"
+        - generic: "1"
+        - generic: "2"
+        - generic: ","
+        - generic: ϵ
+        - generic: "64"
+        - generic: D
+        - generic: (
+        - generic: B
+        - generic: +
+        - generic: J
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: (
+        - generic: A
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: (
+        - generic: T
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: "}"
+        - generic: .
+      - text: δ = min
+      - generic: "{"
+      - generic: "2"
+      - generic: "1"
+      - text: ","
+      - generic: 64D(B + J + 1)(A + 1)(T + 1)
+      - generic: ϵ
+      - generic: "}"
+      - text: .
+      - paragraph:
+        - text: These are rational/integer calculations of polynomial binary complexity. If
+        - math:
+          - generic: T
+        - generic: T
+        - text: is polynomial in
+        - math:
+          - generic: W
+        - generic: W
+        - text: ", then"
+        - math:
+          - generic: B
+          - generic: ","
+          - generic: δ
+          - generic: −
+          - generic: "1"
+        - text: B,
+        - text: δ
+        - generic: −1
+        - text: are polynomial in
+        - math:
+          - generic: W
+        - generic: W
+        - text: .
+      - heading "1. Nominal exit probability" [level=2]
+      - paragraph: Let
+      - math:
+        - generic: τ
+        - generic: B
+        - generic: =
+        - generic: inf
+        - generic: ⁡
+        - generic: "{"
+        - generic: t
+        - generic: ":"
+        - generic: "N"
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ">"
+        - generic: B
+        - generic: "}"
+        - generic: .
+      - text: τ
+      - generic: B
+      - text: =
+      - generic: inf
+      - text: "{t :"
+      - generic: N(t) >
+      - generic: "B}."
+      - paragraph:
+        - text: The cutoff exceeds
+        - math:
+          - generic: "N"
+          - generic: (
+          - generic: "0"
+          - generic: )
+        - generic: N(0)
+        - text: . Before an exit, a positive decoded jump must occur from
+        - math:
+          - generic: "N"
+          - generic: ">"
+          - generic: B
+          - generic: −
+          - generic: J
+        - generic: N >
+        - generic: B −
+        - generic: J
+        - text: . Its total intensity is at most
+        - math:
+          - generic: K
+          - generic: (
+          - generic: "1"
+          - generic: +
+          - generic: "N"
+          - generic: )
+        - generic: K(1 +
+        - generic: N)
+        - text: . Using the jump compensator,
+      - math:
+        - generic: P
+        - generic: "0"
+        - generic: (
+        - generic: τ
+        - generic: B
+        - generic: ≤
+        - generic: T
+        - generic: )
+        - generic: ≤
+        - generic: K
+        - generic: ∫
+        - generic: "0"
+        - generic: T
+        - generic: E
+        - generic: "0"
+        - generic: ⁣
+        - generic: "["
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: "N"
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: )
+        - generic: "1"
+        - generic: "{"
+        - generic: "N"
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ">"
+        - generic: B
+        - generic: −
+        - generic: J
+        - generic: "}"
+        - generic: "]"
+        - generic: d
+        - generic: t
+        - generic: .
+      - text: P
+      - generic: "0"
+      - text: (
+      - text: τ
+      - generic: B
+      - text: ≤
+      - generic: T) ≤
+      - text: K
+      - text: ∫
+      - generic: "0"
+      - generic: T
+      - text: E
+      - generic: "0"
+      - generic: "["
+      - text: (1 + N(t))
+      - text: "1"
+      - generic: "{N(t)>B−J}"
+      - generic: "]"
+      - text: dt.
+      - paragraph:
+        - text: For
+        - math:
+          - generic: c
+          - generic: ≥
+          - generic: "1"
+        - generic: c ≥
+        - generic: "1"
+        - text: ","
+      - math:
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: "n"
+        - generic: )
+        - generic: "1"
+        - generic: "{"
+        - generic: "n"
+        - generic: ">"
+        - generic: b
+        - generic: "}"
+        - generic: ≤
+        - generic: (
+        - generic: "2"
+        - generic: c
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: e
+        - generic: −
+        - generic: b
+        - generic: /
+        - generic: (
+        - generic: "2"
+        - generic: c
+        - generic: )
+        - generic: e
+        - generic: "n"
+        - generic: /
+        - generic: c
+        - generic: .
+      - generic: (1 +
+      - text: n)
+      - text: "1"
+      - generic: "{n>b}"
+      - text: ≤
+      - generic: (2c +
+      - text: 1)
+      - text: e
+      - generic: −b/(2c)
+      - text: e
+      - generic: n/c
+      - text: .
+      - paragraph: Hence
+      - math:
+        - generic: p
+        - generic: "0"
+        - generic: ":"
+        - generic: =
+        - generic: P
+        - generic: "0"
+        - generic: (
+        - generic: τ
+        - generic: B
+        - generic: ≤
+        - generic: T
+        - generic: )
+        - generic: ≤
+        - generic: K
+        - generic: T
+        - generic: e
+        - generic: "2"
+        - generic: (
+        - generic: "2"
+        - generic: c
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: exp
+        - generic: ⁡
+        - generic: ⁣
+        - generic: "["
+        - generic: −
+        - generic: B
+        - generic: −
+        - generic: J
+        - generic: "2"
+        - generic: c
+        - generic: "]"
+        - generic: .
+      - text: p
+      - generic: "0"
+      - text: :=
+      - text: P
+      - generic: "0"
+      - text: (
+      - text: τ
+      - generic: B
+      - text: ≤ T) ≤ KT
+      - text: e
+      - generic: "2"
+      - text: (2c + 1) exp
+      - generic: "["
+      - text: −
+      - generic: 2c
+      - generic: B − J
+      - generic: "]"
+      - text: .
+      - paragraph: This charges decoded-changing events only, as appropriate for exits. Binding and release events are still included in the likelihood and activity calculations below.
+      - heading "2. Stopped marked-path likelihood" [level=2]
+      - paragraph:
+        - text: Stop the full marked reaction process at
+        - math:
+          - generic: τ
+          - generic: B
+        - text: τ
+        - generic: B
+        - text: . Under the nominal law, its all-label total intensity is bounded by
+        - math:
+          - generic: A
+        - generic: A
+        - text: ", including null and parallel firings."
+      - paragraph: For fixed errors
+      - math:
+        - generic: r
+        - generic: e
+        - generic: =
+        - generic: k
+        - generic: ~
+        - generic: e
+        - generic: k
+        - generic: e
+        - generic: ","
+        - generic: ∣
+        - generic: r
+        - generic: e
+        - generic: −
+        - generic: "1"
+        - generic: ∣
+        - generic: ≤
+        - generic: δ
+        - generic: ","
+      - text: r
+      - generic: e
+      - text: =
+      - text: k
+      - generic: e
+      - generic: k
+      - generic: e
+      - text: ", ∣"
+      - text: r
+      - generic: e
+      - text: −
+      - generic: 1∣ ≤
+      - generic: δ,
+      - paragraph: the marked-path likelihood is
+      - math:
+        - generic: L
+        - generic: T
+        - generic: =
+        - generic: ∏
+        - generic: firings before
+        - generic: T
+        - generic: ∧
+        - generic: τ
+        - generic: B
+        - generic: r
+        - generic: e
+        - generic: exp
+        - generic: ⁡
+        - generic: ⁣
+        - generic: "["
+        - generic: −
+        - generic: ∑
+        - generic: e
+        - generic: (
+        - generic: r
+        - generic: e
+        - generic: −
+        - generic: "1"
+        - generic: )
+        - generic: ∫
+        - generic: "0"
+        - generic: T
+        - generic: ∧
+        - generic: τ
+        - generic: B
+        - generic: a
+        - generic: e
+        - generic: (
+        - generic: Z
+        - generic: s
+        - generic: )
+        - generic: d
+        - generic: s
+        - generic: "]"
+        - generic: .
+      - text: L
+      - generic: T
+      - text: =
+      - generic: firings before
+      - text: T∧
+      - text: τ
+      - generic: B
+      - generic: ∏
+      - text: r
+      - generic: e
+      - text: exp
+      - generic: "["
+      - text: −
+      - generic: e
+      - generic: ∑
+      - text: (
+      - text: r
+      - generic: e
+      - text: − 1)
+      - text: ∫
+      - generic: "0"
+      - text: T∧
+      - text: τ
+      - generic: B
+      - text: a
+      - generic: e
+      - text: (
+      - text: Z
+      - generic: s
+      - text: ) ds
+      - generic: "]"
+      - text: .
+      - paragraph: The standard bounded-intensity exponential-martingale calculation gives
+      - math:
+        - generic: E
+        - generic: "0"
+        - generic: L
+        - generic: T
+        - generic: "2"
+        - generic: ≤
+        - generic: e
+        - generic: δ
+        - generic: "2"
+        - generic: A
+        - generic: T
+        - generic: .
+      - text: E
+      - generic: "0"
+      - text: L
+      - generic: T
+      - generic: "2"
+      - text: ≤
+      - text: e
+      - text: δ
+      - generic: "2"
+      - text: AT
+      - text: .
+      - paragraph: Thus the TV distance between the two stopped marked-path laws is at most
+      - math:
+        - generic: v
+        - generic: ≤
+        - generic: "1"
+        - generic: "2"
+        - generic: e
+        - generic: δ
+        - generic: "2"
+        - generic: A
+        - generic: T
+        - generic: −
+        - generic: "1"
+        - generic: .
+      - text: v ≤
+      - generic: "2"
+      - generic: "1"
+      - text: e
+      - text: δ
+      - generic: "2"
+      - text: AT
+      - text: − 1
+      - text: .
+      - paragraph: Cauchy–Schwarz applied to the stopped exit event gives
+      - math:
+        - generic: p
+        - generic: ∼
+        - generic: ":"
+        - generic: =
+        - generic: P
+        - generic: ∼
+        - generic: (
+        - generic: τ
+        - generic: B
+        - generic: ≤
+        - generic: T
+        - generic: )
+        - generic: ≤
+        - generic: e
+        - generic: δ
+        - generic: "2"
+        - generic: A
+        - generic: T
+        - generic: /
+        - generic: "2"
+        - generic: p
+        - generic: "0"
+        - generic: .
+      - text: p
+      - generic: ∼
+      - text: :=
+      - text: P
+      - generic: ∼
+      - text: (
+      - text: τ
+      - generic: B
+      - text: ≤ T) ≤
+      - text: e
+      - text: δ
+      - generic: "2"
+      - text: AT/2
+      - text: p
+      - generic: "0"
+      - text: .
+      - paragraph:
+        - text: The proposed
+        - math:
+          - generic: δ
+        - generic: δ
+        - text: ensures
+        - math:
+          - generic: δ
+          - generic: "2"
+          - generic: A
+          - generic: T
+          - generic: <
+          - generic: "1"
+        - text: δ
+        - generic: "2"
+        - text: AT <
+        - generic: "1"
+        - text: and
+      - math:
+        - generic: v
+        - generic: ≤
+        - generic: δ
+        - generic: A
+        - generic: T
+        - generic: ≤
+        - generic: ϵ
+        - generic: "64"
+        - generic: D
+        - generic: (
+        - generic: B
+        - generic: +
+        - generic: J
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: .
+      - generic: v ≤
+      - text: δ
+      - generic: AT
+      - text: ≤
+      - generic: 64D(B + J + 1)
+      - generic: ϵ
+      - text: .
+      - paragraph: This likelihood calculation is valid with null channels, because their marked firing processes are included even though they do not change the state.
+      - heading "3. Post-exit moments are controlled uniformly" [level=2]
+      - paragraph:
+        - text: For every elementary network with
+        - math:
+          - generic: k
+          - generic: ~
+          - generic: e
+          - generic: ≤
+          - generic: "3"
+          - generic: /
+          - generic: "2"
+        - generic: k
+        - generic: e
+        - text: ≤
+        - generic: 3/2
+        - text: ", only zero- or unary-source reactions can increase the"
+        - strong: fine particle count
+        - math:
+          - generic: "n"
+          - generic: =
+          - generic: ∣
+          - generic: Z
+          - generic: ∣
+          - generic: "1"
+        - generic: n =
+        - text: ∣Z
+        - text: ∣
+        - generic: "1"
+        - text: . Binary-source reactions have at most two products and cannot increase it.
+      - paragraph:
+        - text: For
+        - math:
+          - generic: V
+          - generic: (
+          - generic: "n"
+          - generic: )
+          - generic: =
+          - generic: (
+          - generic: "n"
+          - generic: +
+          - generic: "1"
+          - generic: )
+          - generic: "2"
+        - generic: V(n) =
+        - generic: (n +
+        - text: "1"
+        - text: )
+        - generic: "2"
+        - text: ", direct calculation gives"
+      - math:
+        - generic: L
+        - generic: ~
+        - generic: V
+        - generic: (
+        - generic: "n"
+        - generic: )
+        - generic: ≤
+        - generic: "12"
+        - generic: K
+        - generic: V
+        - generic: (
+        - generic: "n"
+        - generic: )
+        - generic: .
+      - generic: L
+      - text: V(n) ≤
+      - generic: 12KV(n).
+      - paragraph: "For example:"
+      - list:
+        - text: zero-source reactions increase
+        - math:
+          - generic: "n"
+        - generic: "n"
+        - text: by at most two;
+        - text: unary-source reactions increase
+        - math:
+          - generic: "n"
+        - generic: "n"
+        - text: by at most one;
+        - listitem: all other reactions contribute nonpositively to this upper bound.
+      - paragraph: At the exit,
+      - math:
+        - generic: ∣
+        - generic: Z
+        - generic: (
+        - generic: τ
+        - generic: B
+        - generic: )
+        - generic: ∣
+        - generic: "1"
+        - generic: ≤
+        - generic: "N"
+        - generic: (
+        - generic: τ
+        - generic: B
+        - generic: )
+        - generic: ≤
+        - generic: B
+        - generic: +
+        - generic: J
+        - generic: .
+      - text: ∣Z(
+      - text: τ
+      - generic: B
+      - text: )
+      - text: ∣
+      - generic: "1"
+      - text: ≤
+      - text: N(
+      - text: τ
+      - generic: B
+      - text: ) ≤
+      - generic: B +
+      - generic: J.
+      - paragraph:
+        - text: The strong Markov property therefore yields, for
+        - math:
+          - generic: t
+          - generic: ≥
+          - generic: τ
+          - generic: B
+        - generic: t ≥
+        - text: τ
+        - generic: B
+        - text: ","
+      - math:
+        - generic: E
+        - generic: ∼
+        - generic: ⁣
+        - generic: "["
+        - generic: (
+        - generic: ∣
+        - generic: Z
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ∣
+        - generic: "1"
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: "2"
+        - generic: ∣
+        - generic: F
+        - generic: τ
+        - generic: B
+        - generic: "]"
+        - generic: ≤
+        - generic: (
+        - generic: B
+        - generic: +
+        - generic: J
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: "2"
+        - generic: e
+        - generic: "12"
+        - generic: K
+        - generic: (
+        - generic: t
+        - generic: −
+        - generic: τ
+        - generic: B
+        - generic: )
+        - generic: .
+      - text: E
+      - generic: ∼
+      - generic: "["
+      - text: (∣Z(t)
+      - text: ∣
+      - generic: "1"
+      - text: + 1
+      - text: )
+      - generic: "2"
+      - text: ∣
+      - text: F
+      - text: τ
+      - generic: B
+      - generic: "]"
+      - text: ≤
+      - generic: (B +
+      - generic: J +
+      - text: "1"
+      - text: )
+      - generic: "2"
+      - text: e
+      - text: 12K(t−
+      - text: τ
+      - generic: B
+      - text: )
+      - text: .
+      - paragraph:
+        - text: Since
+        - math:
+          - generic: "1"
+          - generic: +
+          - generic: "N"
+          - generic: (
+          - generic: t
+          - generic: )
+          - generic: ≤
+          - generic: D
+          - generic: (
+          - generic: "1"
+          - generic: +
+          - generic: ∣
+          - generic: Z
+          - generic: (
+          - generic: t
+          - generic: )
+          - generic: ∣
+          - generic: "1"
+          - generic: )
+        - generic: 1 +
+        - generic: N(t) ≤
+        - generic: D(1 +
+        - text: ∣Z(t)
+        - text: ∣
+        - generic: "1"
+        - text: )
+        - text: ","
+      - math:
+        - generic: E
+        - generic: ∼
+        - generic: ⁣
+        - generic: "["
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: "N"
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: )
+        - generic: "2"
+        - generic: "1"
+        - generic: "{"
+        - generic: τ
+        - generic: B
+        - generic: ≤
+        - generic: t
+        - generic: "}"
+        - generic: "]"
+        - generic: ≤
+        - generic: D
+        - generic: "2"
+        - generic: (
+        - generic: B
+        - generic: +
+        - generic: J
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: "2"
+        - generic: e
+        - generic: "12"
+        - generic: K
+        - generic: T
+        - generic: p
+        - generic: ∼
+        - generic: .
+      - text: E
+      - generic: ∼
+      - generic: "["
+      - text: (1 + N(t)
+      - text: )
+      - generic: "2"
+      - text: "1"
+      - text: "{"
+      - text: τ
+      - generic: B
+      - text: "≤t}"
+      - generic: "]"
+      - text: ≤
+      - text: D
+      - generic: "2"
+      - text: (B + J + 1
+      - text: )
+      - generic: "2"
+      - text: e
+      - generic: 12KT
+      - text: p
+      - generic: ∼
+      - text: .
+      - paragraph:
+        - text: This remains true uniformly for
+        - math:
+          - generic: "0"
+          - generic: ≤
+          - generic: t
+          - generic: ≤
+          - generic: T
+        - generic: 0 ≤
+        - generic: t ≤
+        - generic: T
+        - text: . The same estimate applies nominally.
+      - paragraph: The elementary birth bound also independently proves nonexplosion, so use of the strong Markov process here is legitimate.
+      - heading "4. The explicit cutoff beats the post-exit growth" [level=2]
+      - paragraph: With the choices above,
+      - math:
+        - generic: c
+        - generic: ≤
+        - generic: "5"
+        - generic: D
+        - generic: W
+        - generic: "2"
+        - generic: ≤
+        - generic: "5"
+        - generic: a
+        - generic: W
+        - generic: "2"
+        - generic: ","
+        - generic: B
+        - generic: +
+        - generic: J
+        - generic: +
+        - generic: "1"
+        - generic: ≤
+        - generic: "130"
+        - generic: a
+        - generic: c
+        - generic: S
+        - generic: ≤
+        - generic: "650"
+        - generic: a
+        - generic: "2"
+        - generic: W
+        - generic: "2"
+        - generic: S
+        - generic: .
+      - generic: c ≤
+      - text: 5D
+      - text: W
+      - generic: "2"
+      - text: ≤
+      - text: 5a
+      - text: W
+      - generic: "2"
+      - text: ", B +"
+      - generic: J +
+      - generic: 1 ≤
+      - generic: 130acS ≤
+      - text: "650"
+      - text: a
+      - generic: "2"
+      - text: W
+      - generic: "2"
+      - text: S.
+      - paragraph:
+        - text: Because
+        - math:
+          - generic: δ
+          - generic: "2"
+          - generic: A
+          - generic: T
+          - generic: ≤
+          - generic: "1"
+        - text: δ
+        - generic: "2"
+        - text: AT ≤
+        - generic: "1"
+        - text: ","
+      - math:
+        - generic: p
+        - generic: ∼
+        - generic: ≤
+        - generic: "18"
+        - generic: a
+        - generic: W
+        - generic: S
+        - generic: "1"
+        - generic: /
+        - generic: "2"
+        - generic: e
+        - generic: −
+        - generic: "32"
+        - generic: a
+        - generic: S
+        - generic: .
+      - text: p
+      - generic: ∼
+      - text: ≤
+      - text: 18aW
+      - text: S
+      - generic: 1/2
+      - text: e
+      - generic: −32aS
+      - text: .
+      - paragraph: Consequently,
+      - math:
+        - generic: D
+        - generic: "2"
+        - generic: (
+        - generic: B
+        - generic: +
+        - generic: J
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: "2"
+        - generic: e
+        - generic: "12"
+        - generic: K
+        - generic: T
+        - generic: p
+        - generic: ∼
+        - generic: ≤
+        - generic: 7,605,000
+        - generic: a
+        - generic: "7"
+        - generic: W
+        - generic: "5"
+        - generic: S
+        - generic: "5"
+        - generic: /
+        - generic: "2"
+        - generic: e
+        - generic: −
+        - generic: "20"
+        - generic: a
+        - generic: T
+        - generic: −
+        - generic: "32"
+        - generic: a
+        - generic: (
+        - generic: W
+        - generic: "2"
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: .
+      - text: D
+      - generic: "2"
+      - text: (B +
+      - generic: J +
+      - text: "1"
+      - text: )
+      - generic: "2"
+      - text: e
+      - generic: 12KT
+      - text: p
+      - generic: ∼
+      - text: ≤
+      - text: "7"
+      - generic: ","
+      - text: "605"
+      - generic: ","
+      - text: "000"
+      - text: a
+      - generic: "7"
+      - text: W
+      - generic: "5"
+      - text: S
+      - generic: 5/2
+      - text: e
+      - text: −20aT−32a(
+      - text: W
+      - generic: "2"
+      - text: +1)
+      - text: .
+      - paragraph:
+        - text: This is at most
+        - math:
+          - generic: ϵ
+          - generic: /
+          - generic: "128"
+        - generic: ϵ/128
+        - text: . One elementary verification is to use
+        - math:
+          - generic: ϵ
+          - generic: ≥
+          - generic: "1"
+          - generic: /
+          - generic: W
+        - generic: ϵ ≥
+        - generic: 1/W
+        - text: ", multiply by"
+        - math:
+          - generic: "128"
+          - generic: W
+        - generic: 128W
+        - text: ", take logarithms, and bound"
+      - math:
+        - generic: log
+        - generic: ⁡
+        - generic: a
+        - generic: ≤
+        - generic: a
+        - generic: ","
+        - generic: log
+        - generic: ⁡
+        - generic: W
+        - generic: ≤
+        - generic: W
+        - generic: "2"
+        - generic: /
+        - generic: "2"
+        - generic: ","
+        - generic: log
+        - generic: ⁡
+        - generic: S
+        - generic: ≤
+        - generic: S
+        - generic: .
+      - generic: log
+      - text: a ≤
+      - text: a,
+      - generic: log
+      - text: W ≤
+      - text: W
+      - generic: "2"
+      - text: /2,
+      - generic: log
+      - text: S ≤
+      - generic: S.
+      - paragraph: The remaining logarithm is bounded above by
+      - math:
+        - generic: "23.5"
+        - generic: −
+        - generic: "25"
+        - generic: a
+        - generic: +
+        - generic: (
+        - generic: "5.5"
+        - generic: −
+        - generic: "32"
+        - generic: a
+        - generic: )
+        - generic: W
+        - generic: "2"
+        - generic: +
+        - generic: (
+        - generic: "2.5"
+        - generic: −
+        - generic: "20"
+        - generic: a
+        - generic: )
+        - generic: T
+        - generic: <
+        - generic: "0."
+      - generic: 23.5 −
+      - generic: 25a +
+      - generic: (5.5 −
+      - text: 32a)
+      - text: W
+      - generic: "2"
+      - text: +
+      - generic: (2.5 −
+      - generic: 20a)T <
+      - generic: "0."
+      - paragraph: Thus
+      - math:
+        - generic: sup
+        - generic: ⁡
+        - generic: "0"
+        - generic: ≤
+        - generic: t
+        - generic: ≤
+        - generic: T
+        - generic: E
+        - generic: ∼
+        - generic: ⁣
+        - generic: "["
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: "N"
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: )
+        - generic: "2"
+        - generic: "1"
+        - generic: "{"
+        - generic: τ
+        - generic: B
+        - generic: ≤
+        - generic: t
+        - generic: "}"
+        - generic: "]"
+        - generic: ≤
+        - generic: ϵ
+        - generic: /
+        - generic: "128."
+      - generic: 0≤t≤T
+      - generic: sup
+      - text: E
+      - generic: ∼
+      - generic: "["
+      - text: (1 + N(t)
+      - text: )
+      - generic: "2"
+      - text: "1"
+      - text: "{"
+      - text: τ
+      - generic: B
+      - text: "≤t}"
+      - generic: "]"
+      - text: ≤ ϵ/128.
+      - paragraph: The nominal version holds as well.
+      - paragraph: This algebraic choice avoids computing tiny exponentials or encoding an exponentially small probability.
+      - heading "5. Recovering the unstopped transient conclusions" [level=2]
+      - paragraph: For TV, compare each actual terminal law to its stopped law. The discrepancy is at most its exit probability. Therefore
+      - math:
+        - generic: TV
+        - generic: ⁡
+        - generic: (
+        - generic: L
+        - generic: ∼
+        - generic: (
+        - generic: D
+        - generic: Z
+        - generic: (
+        - generic: T
+        - generic: )
+        - generic: )
+        - generic: ","
+        - generic: L
+        - generic: "0"
+        - generic: (
+        - generic: D
+        - generic: Z
+        - generic: (
+        - generic: T
+        - generic: )
+        - generic: )
+        - generic: )
+        - generic: ≤
+        - generic: v
+        - generic: +
+        - generic: p
+        - generic: ∼
+        - generic: +
+        - generic: p
+        - generic: "0"
+        - generic: .
+      - generic: TV
+      - generic: (
+      - text: L
+      - generic: ∼
+      - text: (DZ(T)),
+      - text: L
+      - generic: "0"
+      - text: (DZ(T))
+      - generic: )
+      - text: ≤
+      - generic: v +
+      - text: p
+      - generic: ∼
+      - text: +
+      - text: p
+      - generic: "0"
+      - text: .
+      - paragraph:
+        - text: The bounds above make this less than
+        - math:
+          - generic: ϵ
+          - generic: /
+          - generic: "32"
+        - generic: ϵ/32
+        - text: .
+      - paragraph:
+        - text: For coordinate
+        - math:
+          - generic: i
+        - generic: i
+        - text: ", the stopped observable is bounded by"
+        - math:
+          - generic: B
+          - generic: +
+          - generic: J
+        - generic: B +
+        - generic: J
+        - text: ", so"
+      - math:
+        - generic: ∣
+        - generic: E
+        - generic: ∼
+        - generic: (
+        - generic: D
+        - generic: Z
+        - generic: (
+        - generic: T
+        - generic: ∧
+        - generic: τ
+        - generic: B
+        - generic: )
+        - generic: )
+        - generic: i
+        - generic: −
+        - generic: E
+        - generic: "0"
+        - generic: (
+        - generic: D
+        - generic: Z
+        - generic: (
+        - generic: T
+        - generic: ∧
+        - generic: τ
+        - generic: B
+        - generic: )
+        - generic: )
+        - generic: i
+        - generic: ∣
+        - generic: ≤
+        - generic: (
+        - generic: B
+        - generic: +
+        - generic: J
+        - generic: )
+        - generic: v
+        - generic: .
+      - text: ∣
+      - text: E
+      - generic: ∼
+      - text: (DZ(T ∧
+      - text: τ
+      - generic: B
+      - text: )
+      - text: )
+      - generic: i
+      - text: −
+      - text: E
+      - generic: "0"
+      - text: (DZ(T ∧
+      - text: τ
+      - generic: B
+      - text: )
+      - text: )
+      - generic: i
+      - text: ∣
+      - text: ≤
+      - generic: (B +
+      - generic: J)v.
+      - paragraph: For each of the two laws,
+      - math:
+        - generic: ∣
+        - generic: E
+        - generic: (
+        - generic: D
+        - generic: Z
+        - generic: (
+        - generic: T
+        - generic: )
+        - generic: )
+        - generic: i
+        - generic: −
+        - generic: E
+        - generic: (
+        - generic: D
+        - generic: Z
+        - generic: (
+        - generic: T
+        - generic: ∧
+        - generic: τ
+        - generic: B
+        - generic: )
+        - generic: )
+        - generic: i
+        - generic: ∣
+        - generic: ≤
+        - generic: E
+        - generic: ⁣
+        - generic: "["
+        - generic: "N"
+        - generic: (
+        - generic: T
+        - generic: )
+        - generic: "1"
+        - generic: "{"
+        - generic: τ
+        - generic: B
+        - generic: ≤
+        - generic: T
+        - generic: "}"
+        - generic: "]"
+        - generic: +
+        - generic: E
+        - generic: ⁣
+        - generic: "["
+        - generic: "N"
+        - generic: (
+        - generic: τ
+        - generic: B
+        - generic: )
+        - generic: "1"
+        - generic: "{"
+        - generic: τ
+        - generic: B
+        - generic: ≤
+        - generic: T
+        - generic: "}"
+        - generic: "]"
+        - generic: ≤
+        - generic: ϵ
+        - generic: /
+        - generic: "64."
+      - text: ∣E(DZ(T)
+      - text: )
+      - generic: i
+      - text: − E(DZ(T ∧
+      - text: τ
+      - generic: B
+      - text: )
+      - text: )
+      - generic: i
+      - text: ∣
+      - text: ≤ E
+      - generic: "["
+      - text: N(T)
+      - text: "1"
+      - text: "{"
+      - text: τ
+      - generic: B
+      - text: "≤T}"
+      - generic: "]"
+      - text: + E
+      - generic: "["
+      - text: N(
+      - text: τ
+      - generic: B
+      - text: )
+      - text: "1"
+      - text: "{"
+      - text: τ
+      - generic: B
+      - text: "≤T}"
+      - generic: "]"
+      - text: ≤ ϵ/64.
+      - paragraph:
+        - text: Thus the perturbed and nominal terminal first moments differ by at most
+        - math:
+          - generic: "3"
+          - generic: ϵ
+          - generic: /
+          - generic: "64"
+        - generic: 3ϵ/64
+        - text: with the sharper TV convention above, or at most
+        - math:
+          - generic: ϵ
+          - generic: /
+          - generic: "16"
+        - generic: ϵ/16
+        - text: using a conservative factor-two bound.
+      - paragraph:
+        - text: If the nominal compiler targets accuracy
+        - math:
+          - generic: ϵ
+          - generic: /
+          - generic: "2"
+        - generic: ϵ/2
+        - text: ", these perturbative errors comfortably fit within the requested"
+        - math:
+          - generic: ϵ
+        - generic: ϵ
+        - text: .
+      - heading "6. Population and all-firing costs" [level=2]
+      - paragraph:
+        - text: "On"
+        - math:
+          - generic: "{"
+          - generic: τ
+          - generic: B
+          - generic: ">"
+          - generic: t
+          - generic: "}"
+        - text: "{"
+        - text: τ
+        - generic: B
+        - text: ">"
+        - generic: "t}"
+        - text: ","
+        - math:
+          - generic: "N"
+          - generic: (
+          - generic: t
+          - generic: )
+          - generic: ≤
+          - generic: B
+        - generic: N(t) ≤
+        - generic: B
+        - text: . Combining with the tail estimate,
+      - math:
+        - generic: sup
+        - generic: ⁡
+        - generic: "0"
+        - generic: ≤
+        - generic: t
+        - generic: ≤
+        - generic: T
+        - generic: E
+        - generic: ∼
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: "N"
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: )
+        - generic: "2"
+        - generic: ≤
+        - generic: (
+        - generic: B
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: "2"
+        - generic: +
+        - generic: "1."
+      - generic: 0≤t≤T
+      - generic: sup
+      - text: E
+      - generic: ∼
+      - text: (1 +
+      - text: N(t)
+      - text: )
+      - generic: "2"
+      - text: ≤
+      - generic: (B +
+      - text: "1"
+      - text: )
+      - generic: "2"
+      - text: +
+      - generic: "1."
+      - paragraph: Therefore
+      - math:
+        - generic: sup
+        - generic: ⁡
+        - generic: "0"
+        - generic: ≤
+        - generic: t
+        - generic: ≤
+        - generic: T
+        - generic: E
+        - generic: ∼
+        - generic: ∣
+        - generic: Z
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ∣
+        - generic: "1"
+        - generic: ≤
+        - generic: B
+        - generic: +
+        - generic: "2."
+      - generic: 0≤t≤T
+      - generic: sup
+      - text: E
+      - generic: ∼
+      - text: ∣Z(t)
+      - text: ∣
+      - generic: "1"
+      - text: ≤
+      - generic: B +
+      - generic: "2."
+      - paragraph:
+        - text: The total
+        - strong: actual marked firing intensity
+        - text: ", including all binding, release, unsuccessful, null, and parallel reactions, is at most"
+      - math:
+        - generic: "3"
+        - generic: "2"
+        - generic: K
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: ∣
+        - generic: Z
+        - generic: ∣
+        - generic: "1"
+        - generic: )
+        - generic: "2"
+        - generic: .
+      - generic: "2"
+      - generic: "3"
+      - text: K(1 +
+      - text: ∣Z
+      - text: ∣
+      - generic: "1"
+      - text: )
+      - generic: "2"
+      - text: .
+      - paragraph: Hence
+      - math:
+        - generic: E
+        - generic: ∼
+        - generic: "["
+        - generic: all firings up to
+        - generic: T
+        - generic: "]"
+        - generic: ≤
+        - generic: "3"
+        - generic: "2"
+        - generic: K
+        - generic: T
+        - generic: "["
+        - generic: (
+        - generic: B
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: "2"
+        - generic: +
+        - generic: "1"
+        - generic: "]"
+        - generic: .
+      - text: E
+      - generic: ∼
+      - text: "["
+      - generic: all firings up to
+      - text: T] ≤
+      - generic: "2"
+      - generic: "3"
+      - text: KT
+      - generic: "["
+      - text: (B + 1
+      - text: )
+      - generic: "2"
+      - text: + 1
+      - generic: "]"
+      - text: .
+      - paragraph:
+        - text: This is polynomial in
+        - math:
+          - generic: W
+        - generic: W
+        - text: whenever the nominal
+        - math:
+          - generic: T
+        - generic: T
+        - text: is.
+      - heading "What this does and does not close" [level=2]
+      - paragraph: "The argument supplies robust finite-horizon properties without proving any global Lyapunov condition for the perturbed chain:"
+      - list:
+        - listitem: uniform nonexplosion;
+        - listitem: robust transient TV accuracy;
+        - listitem: robust transient absolute first moments;
+        - listitem: polynomial transient fine populations;
+        - listitem: polynomial all-label physical firing count.
+      - paragraph:
+        - text: It does
+        - strong: not
+        - text: prove that a perturbed chain has a stationary probability distribution, that it is positive recurrent, or that stationary moments are polynomial. The cutoff is chosen as a function of the finite horizon
+        - math:
+          - generic: T
+        - generic: T
+        - text: ; taking
+        - math:
+          - generic: T
+          - generic: →
+          - generic: ∞
+        - generic: T →
+        - generic: ∞
+        - text: makes it diverge and yields no stationary tightness.
+      - paragraph: I found no flaw in this finite-horizon closure, subject to the stated nominal premises.
+
+---
+
+  - complementary:
+    - heading "Subagents" [level=2]
+    - button "Enter full view":
+    - button "Close panel":
+    - tabpanel "Subagents" [active]:
+      - button "Back to subagents":
+      - generic: Obstructions
+      - heading "Status" [level=2]
+      - generic: Done
+      - heading "Final response" [level=2]
+      - heading "Status" [level=2]
+      - paragraph:
+        - text: I found
+        - strong: no obstruction to every allowed elementary design
+        - text: ". I did find two rigorous counterexamples to natural transfer claims:"
+      - list:
+        - text: A legal, detailed-balanced elementary prefix lift can fail
+        - strong: every activity-weighted Poincaré inequality
+        - text: ", even when the original catalytic chain has an explicit strong activity-weighted inequality."
+        - text: Another legal, detailed-balanced prefix lift can have
+        - strong: zero ordinary spectral gap for every positive choice of the separation parameters
+        - text: . The mechanism is sequestration of a conserved catalyst in prefixes of reactions that are disabled on the communicating class.
+      - paragraph:
+        - text: These counterexamples do
+        - strong: not
+        - text: disprove the requested universal compiler. Different prefix ordering, additional catalytic macro channels, or a different elementary architecture can remove them.
+      - paragraph: Your proposed repair—absorb binding/release errors into modified prefix activities and control only macro-conversion errors—survives these examples. I found no counterexample to the necessary conversion-weighted inequality consistent with the original strong activity-weighted premise.
+      - separator
+      - heading "1. A particularly well-behaved original catalytic chain" [level=2]
+      - paragraph: Take the original weakly reversible structure
+      - math:
+        - generic: B
+        - generic: ⇄
+        - generic: A
+        - generic: +
+        - generic: B
+      - generic: B ⇄
+      - generic: A +
+      - generic: B
+      - paragraph:
+        - text: and add the allowed catalyst
+        - math:
+          - generic: w
+          - generic: =
+          - generic: A
+        - generic: w =
+        - generic: A
+        - text: ", obtaining the four labelled channels"
+      - math:
+        - generic: B
+        - generic: ⇄
+        - generic: A
+        - generic: +
+        - generic: B
+        - generic: ","
+        - generic: A
+        - generic: +
+        - generic: B
+        - generic: ⇄
+        - generic: "2"
+        - generic: A
+        - generic: +
+        - generic: B
+        - generic: .
+      - generic: B ⇄
+      - generic: A +
+      - generic: B, A +
+      - generic: B ⇄
+      - generic: 2A +
+      - generic: B.
+      - paragraph:
+        - text: Set every nominal rate equal to
+        - math:
+          - generic: "1"
+        - generic: "1"
+        - text: . On the communicating class
+        - math:
+          - generic: B
+          - generic: =
+          - generic: "1"
+        - generic: B =
+        - generic: "1"
+        - text: ", write"
+        - math:
+          - generic: "n"
+          - generic: =
+          - generic: A
+        - generic: n =
+        - generic: A
+        - text: . The resulting birth–death chain has
+      - math:
+        - generic: b
+        - generic: "n"
+        - generic: =
+        - generic: "1"
+        - generic: +
+        - generic: "n"
+        - generic: ","
+        - generic: d
+        - generic: "n"
+        - generic: =
+        - generic: "n"
+        - generic: +
+        - generic: "n"
+        - generic: (
+        - generic: "n"
+        - generic: −
+        - generic: "1"
+        - generic: )
+        - generic: =
+        - generic: "n"
+        - generic: "2"
+        - generic: .
+      - text: b
+      - generic: "n"
+      - text: =
+      - generic: 1 +
+      - text: n,
+      - text: d
+      - generic: "n"
+      - text: =
+      - generic: n +
+      - generic: n(n −
+      - generic: 1) =
+      - text: "n"
+      - generic: "2"
+      - text: .
+      - paragraph: Its stationary law is
+      - math:
+        - generic: π
+        - generic: "n"
+        - generic: =
+        - generic: e
+        - generic: −
+        - generic: "1"
+        - generic: "n"
+        - generic: "!"
+        - generic: ","
+      - text: π
+      - generic: "n"
+      - text: =
+      - generic: n!
+      - text: e
+      - generic: −1
+      - text: ","
+      - paragraph: because
+      - math:
+        - generic: π
+        - generic: "n"
+        - generic: b
+        - generic: "n"
+        - generic: =
+        - generic: π
+        - generic: "n"
+        - generic: +
+        - generic: "1"
+        - generic: d
+        - generic: "n"
+        - generic: +
+        - generic: "1"
+        - generic: .
+      - text: π
+      - generic: "n"
+      - text: b
+      - generic: "n"
+      - text: =
+      - text: π
+      - generic: n+1
+      - text: d
+      - generic: n+1
+      - text: .
+      - paragraph: The total labelled firing intensity is
+      - math:
+        - generic: a
+        - generic: "n"
+        - generic: =
+        - generic: "1"
+        - generic: +
+        - generic: "n"
+        - generic: +
+        - generic: "n"
+        - generic: "2"
+        - generic: ","
+      - text: a
+      - generic: "n"
+      - text: =
+      - generic: 1 +
+      - generic: n +
+      - text: "n"
+      - generic: "2"
+      - text: ","
+      - paragraph: so
+      - math:
+        - generic: a
+        - generic: "n"
+        - generic: ≥
+        - generic: "1"
+        - generic: "2"
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: "n"
+        - generic: )
+        - generic: "2"
+        - generic: ","
+        - generic: π
+        - generic: a
+        - generic: =
+        - generic: "4."
+      - text: a
+      - generic: "n"
+      - text: ≥
+      - generic: "2"
+      - generic: "1"
+      - text: (1 +
+      - text: "n"
+      - text: )
+      - generic: "2"
+      - text: ", πa ="
+      - generic: "4."
+      - paragraph: Its Dirichlet form is
+      - math:
+        - generic: E
+        - generic: (
+        - generic: h
+        - generic: )
+        - generic: =
+        - generic: ∑
+        - generic: j
+        - generic: ≥
+        - generic: "1"
+        - generic: π
+        - generic: j
+        - generic: j
+        - generic: "2"
+        - generic: (
+        - generic: h
+        - generic: j
+        - generic: −
+        - generic: h
+        - generic: j
+        - generic: −
+        - generic: "1"
+        - generic: )
+        - generic: "2"
+        - generic: .
+      - generic: E(h) =
+      - generic: j≥1
+      - generic: ∑
+      - text: π
+      - generic: j
+      - text: j
+      - generic: "2"
+      - text: (
+      - text: h
+      - generic: j
+      - text: −
+      - text: h
+      - generic: j−1
+      - text: )
+      - generic: "2"
+      - text: .
+      - heading "Explicit activity-weighted coercivity" [level=3]
+      - paragraph: For completeness, there is a direct elementary proof of
+      - math:
+        - generic: ∑
+        - generic: "n"
+        - generic: ≥
+        - generic: "0"
+        - generic: π
+        - generic: "n"
+        - generic: a
+        - generic: "n"
+        - generic: (
+        - generic: h
+        - generic: "n"
+        - generic: −
+        - generic: π
+        - generic: h
+        - generic: )
+        - generic: "2"
+        - generic: ≤
+        - generic: "3240"
+        - generic: E
+        - generic: (
+        - generic: h
+        - generic: )
+        - generic: .
+      - generic: n≥0
+      - generic: ∑
+      - text: π
+      - generic: "n"
+      - text: a
+      - generic: "n"
+      - text: (
+      - text: h
+      - generic: "n"
+      - text: −
+      - text: πh
+      - text: )
+      - generic: "2"
+      - text: ≤
+      - generic: 3240 E(h).
+      - paragraph:
+        - text: Put
+        - math:
+          - generic: g
+          - generic: "n"
+          - generic: =
+          - generic: h
+          - generic: "n"
+          - generic: −
+          - generic: h
+          - generic: "0"
+        - text: g
+        - generic: "n"
+        - text: =
+        - text: h
+        - generic: "n"
+        - text: −
+        - text: h
+        - generic: "0"
+        - text: ", and"
+        - math:
+          - generic: Δ
+          - generic: j
+          - generic: =
+          - generic: h
+          - generic: j
+          - generic: −
+          - generic: h
+          - generic: j
+          - generic: −
+          - generic: "1"
+        - text: Δ
+        - generic: j
+        - text: =
+        - text: h
+        - generic: j
+        - text: −
+        - text: h
+        - generic: j−1
+        - text: . Geometrically weighted Cauchy–Schwarz gives
+      - math:
+        - generic: g
+        - generic: "n"
+        - generic: "2"
+        - generic: ≤
+        - generic: "2"
+        - generic: ∑
+        - generic: j
+        - generic: =
+        - generic: "1"
+        - generic: "n"
+        - generic: "2"
+        - generic: "n"
+        - generic: −
+        - generic: j
+        - generic: Δ
+        - generic: j
+        - generic: "2"
+        - generic: .
+      - text: g
+      - generic: "n"
+      - generic: "2"
+      - text: ≤
+      - text: "2"
+      - generic: j=1
+      - generic: ∑
+      - generic: "n"
+      - text: "2"
+      - generic: n−j
+      - text: Δ
+      - generic: j
+      - generic: "2"
+      - text: .
+      - paragraph:
+        - text: For
+        - math:
+          - generic: j
+          - generic: ≥
+          - generic: "1"
+        - generic: j ≥
+        - generic: "1"
+        - text: ", writing"
+        - math:
+          - generic: "n"
+          - generic: =
+          - generic: j
+          - generic: +
+          - generic: r
+        - generic: n =
+        - generic: j +
+        - generic: r
+        - text: ","
+      - math:
+        - generic: ∑
+        - generic: "n"
+        - generic: ≥
+        - generic: j
+        - generic: "2"
+        - generic: "n"
+        - generic: −
+        - generic: j
+        - generic: π
+        - generic: "n"
+        - generic: a
+        - generic: "n"
+        - generic: ≤
+        - generic: π
+        - generic: j
+        - generic: j
+        - generic: "2"
+        - generic: ∑
+        - generic: r
+        - generic: ≥
+        - generic: "0"
+        - generic: "2"
+        - generic: r
+        - generic: (
+        - generic: r
+        - generic: +
+        - generic: "2"
+        - generic: )
+        - generic: "2"
+        - generic: r
+        - generic: "!"
+        - generic: =
+        - generic: "18"
+        - generic: e
+        - generic: "2"
+        - generic: π
+        - generic: j
+        - generic: j
+        - generic: "2"
+        - generic: .
+      - generic: n≥j
+      - generic: ∑
+      - text: "2"
+      - generic: n−j
+      - text: π
+      - generic: "n"
+      - text: a
+      - generic: "n"
+      - text: ≤
+      - text: π
+      - generic: j
+      - text: j
+      - generic: "2"
+      - generic: r≥0
+      - generic: ∑
+      - generic: r!
+      - text: "2"
+      - generic: r
+      - text: (r + 2
+      - text: )
+      - generic: "2"
+      - text: = 18
+      - text: e
+      - generic: "2"
+      - text: π
+      - generic: j
+      - text: j
+      - generic: "2"
+      - text: .
+      - paragraph: Here we used
+      - math:
+        - generic: j
+        - generic: "!"
+        - generic: (
+        - generic: j
+        - generic: +
+        - generic: r
+        - generic: )
+        - generic: "!"
+        - generic: ≤
+        - generic: "1"
+        - generic: r
+        - generic: "!"
+        - generic: ","
+        - generic: a
+        - generic: j
+        - generic: +
+        - generic: r
+        - generic: ≤
+        - generic: (
+        - generic: j
+        - generic: +
+        - generic: r
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: "2"
+        - generic: ≤
+        - generic: j
+        - generic: "2"
+        - generic: (
+        - generic: r
+        - generic: +
+        - generic: "2"
+        - generic: )
+        - generic: "2"
+        - generic: .
+      - generic: (j + r)!
+      - generic: j!
+      - text: ≤
+      - generic: r!
+      - generic: "1"
+      - text: ","
+      - text: a
+      - generic: j+r
+      - text: ≤
+      - generic: (j +
+      - generic: r +
+      - text: "1"
+      - text: )
+      - generic: "2"
+      - text: ≤
+      - text: j
+      - generic: "2"
+      - text: (r +
+      - text: "2"
+      - text: )
+      - generic: "2"
+      - text: .
+      - paragraph: Consequently,
+      - math:
+        - generic: π
+        - generic: (
+        - generic: a
+        - generic: g
+        - generic: "2"
+        - generic: )
+        - generic: ≤
+        - generic: "36"
+        - generic: e
+        - generic: "2"
+        - generic: E
+        - generic: (
+        - generic: h
+        - generic: )
+        - generic: ≤
+        - generic: "324"
+        - generic: E
+        - generic: (
+        - generic: h
+        - generic: )
+        - generic: .
+      - text: π(a
+      - text: g
+      - generic: "2"
+      - text: ) ≤
+      - text: "36"
+      - text: e
+      - generic: "2"
+      - text: E(h) ≤
+      - generic: 324E(h).
+      - paragraph:
+        - text: Since
+        - math:
+          - generic: a
+          - generic: ≥
+          - generic: "1"
+        - generic: a ≥
+        - generic: "1"
+        - text: and
+        - math:
+          - generic: π
+          - generic: a
+          - generic: =
+          - generic: "4"
+        - generic: πa =
+        - generic: "4"
+        - text: ","
+      - math:
+        - generic: π
+        - generic: ⁣
+        - generic: "["
+        - generic: a
+        - generic: (
+        - generic: g
+        - generic: −
+        - generic: π
+        - generic: g
+        - generic: )
+        - generic: "2"
+        - generic: "]"
+        - generic: ≤
+        - generic: "2"
+        - generic: π
+        - generic: (
+        - generic: a
+        - generic: g
+        - generic: "2"
+        - generic: )
+        - generic: +
+        - generic: "2"
+        - generic: (
+        - generic: π
+        - generic: g
+        - generic: )
+        - generic: "2"
+        - generic: π
+        - generic: a
+        - generic: ≤
+        - generic: "10"
+        - generic: π
+        - generic: (
+        - generic: a
+        - generic: g
+        - generic: "2"
+        - generic: )
+        - generic: ≤
+        - generic: "3240"
+        - generic: E
+        - generic: (
+        - generic: h
+        - generic: )
+        - generic: .
+      - text: π
+      - generic: "["
+      - text: a(g − πg
+      - text: )
+      - generic: "2"
+      - generic: "]"
+      - text: ≤ 2π(a
+      - text: g
+      - generic: "2"
+      - text: ) + 2(πg
+      - text: )
+      - generic: "2"
+      - text: πa
+      - text: ≤ 10π(a
+      - text: g
+      - generic: "2"
+      - text: ) ≤ 3240E(h).
+      - paragraph: Thus the elementary-lift failures below do not arise from a weak original chain.
+      - separator
+      - heading "2. All-activity weighted coercivity can fail after an elementary lift" [level=2]
+      - paragraph: Introduce auxiliary species with decoding
+      - math:
+        - generic: D
+        - generic: U
+        - generic: =
+        - generic: A
+        - generic: +
+        - generic: B
+        - generic: ","
+        - generic: D
+        - generic: H
+        - generic: =
+        - generic: "2"
+        - generic: A
+        - generic: ","
+        - generic: D
+        - generic: V
+        - generic: =
+        - generic: "2"
+        - generic: A
+        - generic: +
+        - generic: B
+        - generic: .
+      - generic: DU =
+      - generic: A +
+      - generic: B, DH =
+      - generic: 2A, DV =
+      - generic: 2A +
+      - generic: B.
+      - paragraph:
+        - text: Keep
+        - math:
+          - generic: D
+          - generic: A
+          - generic: =
+          - generic: A
+        - generic: DA =
+        - generic: A
+        - text: ","
+        - math:
+          - generic: D
+          - generic: B
+          - generic: =
+          - generic: B
+        - generic: DB =
+        - generic: B
+        - text: .
+      - paragraph:
+        - text: For any
+        - math:
+          - generic: K
+          - generic: ","
+          - generic: θ
+          - generic: ">"
+          - generic: "0"
+        - generic: K, θ >
+        - generic: "0"
+        - text: ", use these binding/release channels:"
+      - table:
+        - rowgroup:
+          - row "Channel Forward rate Reverse rate":
+            - columnheader "Channel"
+            - columnheader "Forward rate"
+            - columnheader "Reverse rate"
+        - rowgroup:
+          - row:
+            - cell:
+              - math:
+                - generic: A
+                - generic: +
+                - generic: B
+                - generic: ⇄
+                - generic: U
+              - generic: A +
+              - generic: B ⇄
+              - generic: U
+            - cell:
+              - math:
+                - generic: K
+                - generic: θ
+              - generic: Kθ
+            - cell:
+              - math:
+                - generic: K
+              - generic: K
+          - row:
+            - cell:
+              - math:
+                - generic: "2"
+                - generic: A
+                - generic: ⇄
+                - generic: H
+              - generic: 2A ⇄
+              - generic: H
+            - cell:
+              - math:
+                - generic: K
+                - generic: θ
+              - generic: Kθ
+            - cell:
+              - math:
+                - generic: K
+              - generic: K
+          - row:
+            - cell:
+              - math:
+                - generic: H
+                - generic: +
+                - generic: B
+                - generic: ⇄
+                - generic: V
+              - generic: H +
+              - generic: B ⇄
+              - generic: V
+            - cell:
+              - math:
+                - generic: K
+              - generic: K
+            - cell:
+              - math:
+                - generic: K
+              - generic: K
+      - button "Copy table":
+      - paragraph: "Use these macro-conversion channels:"
+      - table:
+        - rowgroup:
+          - row "Channel Forward rate Reverse rate":
+            - columnheader "Channel"
+            - columnheader "Forward rate"
+            - columnheader "Reverse rate"
+        - rowgroup:
+          - row:
+            - cell:
+              - math:
+                - generic: B
+                - generic: ⇄
+                - generic: U
+              - generic: B ⇄
+              - generic: U
+            - cell:
+              - math:
+                - generic: "1"
+              - generic: "1"
+            - cell:
+              - math:
+                - generic: "1"
+                - generic: /
+                - generic: θ
+              - generic: 1/θ
+          - row:
+            - cell:
+              - math:
+                - generic: U
+                - generic: ⇄
+                - generic: V
+              - generic: U ⇄
+              - generic: V
+            - cell:
+              - math:
+                - generic: "1"
+                - generic: /
+                - generic: θ
+              - generic: 1/θ
+            - cell:
+              - math:
+                - generic: "1"
+                - generic: /
+                - generic: θ
+              - generic: 1/θ
+      - button "Copy table":
+      - paragraph:
+        - text: Every reaction has at most two molecules on each side. Every binding/release move has decoded change zero. Every macro conversion realizes the appropriate enabled original
+        - math:
+          - generic: A
+        - generic: A
+        - text: "-birth or"
+        - math:
+          - generic: A
+        - generic: A
+        - text: "-death edge."
+      - paragraph: All five reversible pairs are detailed balanced at activities
+      - math:
+        - generic: c
+        - generic: A
+        - generic: =
+        - generic: c
+        - generic: B
+        - generic: =
+        - generic: "1"
+        - generic: ","
+        - generic: c
+        - generic: U
+        - generic: =
+        - generic: c
+        - generic: H
+        - generic: =
+        - generic: c
+        - generic: V
+        - generic: =
+        - generic: θ
+        - generic: .
+      - text: c
+      - generic: A
+      - text: =
+      - text: c
+      - generic: B
+      - text: =
+      - text: 1,
+      - text: c
+      - generic: U
+      - text: =
+      - text: c
+      - generic: H
+      - text: =
+      - text: c
+      - generic: V
+      - text: =
+      - generic: θ.
+      - paragraph:
+        - text: On the class of the canonical state with decoded
+        - math:
+          - generic: B
+          - generic: =
+          - generic: "1"
+        - generic: B =
+        - generic: "1"
+        - text: ", the fine conservation law is"
+      - math:
+        - generic: B
+        - generic: +
+        - generic: U
+        - generic: +
+        - generic: V
+        - generic: =
+        - generic: "1."
+      - generic: B +
+      - generic: U +
+      - generic: V =
+      - generic: "1."
+      - paragraph: "The product-form stationary law therefore has the following simple description:"
+      - list:
+        - math:
+          - generic: X
+          - generic: =
+          - generic: A
+          - generic: ∼
+          - generic: Pois
+          - generic: ⁡
+          - generic: (
+          - generic: "1"
+          - generic: )
+        - generic: X =
+        - generic: A ∼
+        - generic: Pois
+        - text: (1)
+        - text: ;
+        - math:
+          - generic: H
+          - generic: ∼
+          - generic: Pois
+          - generic: ⁡
+          - generic: (
+          - generic: θ
+          - generic: )
+        - generic: H ∼
+        - generic: Pois
+        - text: (θ)
+        - text: ;
+        - text: independently, the unique
+        - math:
+          - generic: B
+        - generic: B
+        - text: "-containing marker is"
+        - math:
+          - generic: B
+          - generic: ","
+          - generic: U
+          - generic: ","
+          - generic: V
+        - generic: B, U, V
+        - text: ", with weights"
+        - math:
+          - generic: "1"
+          - generic: ","
+          - generic: θ
+          - generic: ","
+          - generic: θ
+        - generic: 1, θ, θ
+        - text: .
+      - paragraph:
+        - text: If
+        - math:
+          - generic: J
+          - generic: =
+          - generic: "0"
+          - generic: ","
+          - generic: "1"
+          - generic: ","
+          - generic: "2"
+        - generic: J =
+        - generic: 0, 1, 2
+        - text: denotes these respective marker states, then the decoded
+        - math:
+          - generic: A
+        - generic: A
+        - text: "-population is"
+      - math:
+        - generic: "N"
+        - generic: =
+        - generic: X
+        - generic: +
+        - generic: "2"
+        - generic: H
+        - generic: +
+        - generic: J
+        - generic: .
+      - generic: N =
+      - generic: X +
+      - generic: 2H +
+      - generic: J.
+      - heading "Large firing activity with bounded decoded activity" [level=3]
+      - paragraph:
+        - text: Let
+        - math:
+          - generic: a
+          - generic: ^
+        - generic: a
+        - text: count
+        - strong: all
+        - text: fine labelled firings. The release channel
+        - math:
+          - generic: H
+          - generic: →
+          - generic: "2"
+          - generic: A
+        - generic: H →
+        - generic: 2A
+        - text: gives
+      - math:
+        - generic: a
+        - generic: ^
+        - generic: ≥
+        - generic: K
+        - generic: H
+        - generic: .
+      - generic: a
+      - text: ≥
+      - generic: KH.
+      - paragraph: In contrast, decoded downward jumps occur only through
+      - math:
+        - generic: U
+        - generic: →
+        - generic: B
+        - generic: ","
+        - generic: V
+        - generic: →
+        - generic: U
+        - generic: .
+      - generic: U →
+      - generic: B, V →
+      - generic: U.
+      - paragraph:
+        - text: There is only one marker, so the total decoded downward intensity is at most
+        - math:
+          - generic: "1"
+          - generic: /
+          - generic: θ
+        - generic: 1/θ
+        - text: ", independently of"
+        - math:
+          - generic: "N"
+        - generic: "N"
+        - text: .
+      - paragraph: Set
+      - math:
+        - generic: f
+        - generic: m
+        - generic: =
+        - generic: "1"
+        - generic: "{"
+        - generic: "N"
+        - generic: ≥
+        - generic: m
+        - generic: "}"
+        - generic: ","
+        - generic: p
+        - generic: m
+        - generic: =
+        - generic: μ
+        - generic: (
+        - generic: "N"
+        - generic: =
+        - generic: m
+        - generic: )
+        - generic: ","
+        - generic: t
+        - generic: m
+        - generic: =
+        - generic: μ
+        - generic: (
+        - generic: "N"
+        - generic: ≥
+        - generic: m
+        - generic: )
+        - generic: .
+      - text: f
+      - generic: m
+      - text: =
+      - text: "1"
+      - generic: "{N≥m}"
+      - text: ","
+      - text: p
+      - generic: m
+      - text: =
+      - generic: μ(N =
+      - text: m),
+      - text: t
+      - generic: m
+      - text: =
+      - generic: μ(N ≥
+      - generic: m).
+      - paragraph: Detailed balance gives
+      - math:
+        - generic: E
+        - generic: ^
+        - generic: (
+        - generic: f
+        - generic: m
+        - generic: )
+        - generic: =
+        - generic: stationary downward flux across
+        - generic: m
+        - generic: ≤
+        - generic: p
+        - generic: m
+        - generic: θ
+        - generic: .
+      - generic: E
+      - text: (
+      - text: f
+      - generic: m
+      - text: ) =
+      - generic: stationary downward flux across
+      - text: m ≤
+      - generic: θ
+      - text: p
+      - generic: m
+      - text: .
+      - paragraph: Meanwhile,
+      - math:
+        - generic: μ
+        - generic: ⁣
+        - generic: "["
+        - generic: a
+        - generic: ^
+        - generic: (
+        - generic: f
+        - generic: m
+        - generic: −
+        - generic: μ
+        - generic: f
+        - generic: m
+        - generic: )
+        - generic: "2"
+        - generic: "]"
+        - generic: ≥
+        - generic: (
+        - generic: "1"
+        - generic: −
+        - generic: t
+        - generic: m
+        - generic: )
+        - generic: "2"
+        - generic: K
+        - generic: p
+        - generic: m
+        - generic: E
+        - generic: "["
+        - generic: H
+        - generic: ∣
+        - generic: "N"
+        - generic: =
+        - generic: m
+        - generic: "]"
+        - generic: .
+      - text: μ
+      - generic: "["
+      - generic: a
+      - text: (
+      - text: f
+      - generic: m
+      - text: − μ
+      - text: f
+      - generic: m
+      - text: )
+      - generic: "2"
+      - generic: "]"
+      - text: ≥
+      - generic: (1 −
+      - text: t
+      - generic: m
+      - text: )
+      - generic: "2"
+      - text: K
+      - text: p
+      - generic: m
+      - text: E[H ∣
+      - generic: N =
+      - generic: m].
+      - paragraph: To estimate the conditional mean, the independent Poisson identities give
+      - math:
+        - generic: E
+        - generic: "["
+        - generic: X
+        - generic: (
+        - generic: X
+        - generic: −
+        - generic: "1"
+        - generic: )
+        - generic: ∣
+        - generic: "N"
+        - generic: =
+        - generic: m
+        - generic: "]"
+        - generic: =
+        - generic: P
+        - generic: (
+        - generic: "N"
+        - generic: =
+        - generic: m
+        - generic: −
+        - generic: "2"
+        - generic: )
+        - generic: P
+        - generic: (
+        - generic: "N"
+        - generic: =
+        - generic: m
+        - generic: )
+        - generic: =
+        - generic: "1"
+        - generic: θ
+        - generic: E
+        - generic: "["
+        - generic: H
+        - generic: ∣
+        - generic: "N"
+        - generic: =
+        - generic: m
+        - generic: "]"
+        - generic: .
+      - generic: E[X(X −
+      - generic: 1) ∣
+      - generic: N =
+      - generic: m] =
+      - generic: P(N = m)
+      - generic: P(N = m − 2)
+      - text: =
+      - generic: θ
+      - generic: "1"
+      - text: E[H ∣
+      - generic: N =
+      - generic: m].
+      - paragraph:
+        - text: Let
+        - math:
+          - generic: u
+          - generic: m
+          - generic: =
+          - generic: E
+          - generic: "["
+          - generic: X
+          - generic: ∣
+          - generic: "N"
+          - generic: =
+          - generic: m
+          - generic: "]"
+        - text: u
+        - generic: m
+        - text: =
+        - generic: E[X ∣
+        - generic: N =
+        - generic: m]
+        - text: and
+        - math:
+          - generic: v
+          - generic: m
+          - generic: =
+          - generic: E
+          - generic: "["
+          - generic: H
+          - generic: ∣
+          - generic: "N"
+          - generic: =
+          - generic: m
+          - generic: "]"
+        - text: v
+        - generic: m
+        - text: =
+        - generic: E[H ∣
+        - generic: N =
+        - generic: m]
+        - text: . Then
+      - math:
+        - generic: u
+        - generic: m
+        - generic: "2"
+        - generic: −
+        - generic: u
+        - generic: m
+        - generic: ≤
+        - generic: v
+        - generic: m
+        - generic: /
+        - generic: θ
+        - generic: ≤
+        - generic: m
+        - generic: /
+        - generic: (
+        - generic: "2"
+        - generic: θ
+        - generic: )
+        - generic: ","
+      - text: u
+      - generic: m
+      - generic: "2"
+      - text: −
+      - text: u
+      - generic: m
+      - text: ≤
+      - text: v
+      - generic: m
+      - text: /θ ≤
+      - generic: m/(2θ),
+      - paragraph:
+        - text: so
+        - math:
+          - generic: u
+          - generic: m
+          - generic: =
+          - generic: O
+          - generic: θ
+          - generic: (
+          - generic: m
+          - generic: )
+        - text: u
+        - generic: m
+        - text: =
+        - text: O
+        - generic: θ
+        - text: (
+        - generic: m
+        - text: )
+        - text: . Since
+        - math:
+          - generic: J
+          - generic: ≤
+          - generic: "2"
+        - generic: J ≤
+        - generic: "2"
+        - text: ","
+      - math:
+        - generic: v
+        - generic: m
+        - generic: =
+        - generic: m
+        - generic: −
+        - generic: u
+        - generic: m
+        - generic: −
+        - generic: E
+        - generic: "["
+        - generic: J
+        - generic: ∣
+        - generic: "N"
+        - generic: =
+        - generic: m
+        - generic: "]"
+        - generic: "2"
+        - generic: ≥
+        - generic: m
+        - generic: "4"
+      - text: v
+      - generic: m
+      - text: =
+      - generic: "2"
+      - text: m −
+      - text: u
+      - generic: m
+      - text: − E[J ∣ N = m]
+      - text: ≥
+      - generic: "4"
+      - generic: m
+      - paragraph:
+        - text: for all sufficiently large
+        - math:
+          - generic: m
+        - generic: m
+        - text: .
+      - paragraph:
+        - text: As
+        - math:
+          - generic: t
+          - generic: m
+          - generic: →
+          - generic: "0"
+        - text: t
+        - generic: m
+        - text: →
+        - generic: "0"
+        - text: ", this yields"
+      - math:
+        - generic: μ
+        - generic: ⁣
+        - generic: "["
+        - generic: a
+        - generic: ^
+        - generic: (
+        - generic: f
+        - generic: m
+        - generic: −
+        - generic: μ
+        - generic: f
+        - generic: m
+        - generic: )
+        - generic: "2"
+        - generic: "]"
+        - generic: ≥
+        - generic: K
+        - generic: m
+        - generic: "16"
+        - generic: p
+        - generic: m
+      - text: μ
+      - generic: "["
+      - generic: a
+      - text: (
+      - text: f
+      - generic: m
+      - text: − μ
+      - text: f
+      - generic: m
+      - text: )
+      - generic: "2"
+      - generic: "]"
+      - text: ≥
+      - generic: "16"
+      - generic: Km
+      - text: p
+      - generic: m
+      - paragraph:
+        - text: for all sufficiently large
+        - math:
+          - generic: m
+        - generic: m
+        - text: . Therefore,
+      - math:
+        - generic: μ
+        - generic: "["
+        - generic: a
+        - generic: ^
+        - generic: (
+        - generic: f
+        - generic: m
+        - generic: −
+        - generic: μ
+        - generic: f
+        - generic: m
+        - generic: )
+        - generic: "2"
+        - generic: "]"
+        - generic: E
+        - generic: ^
+        - generic: (
+        - generic: f
+        - generic: m
+        - generic: )
+        - generic: ≥
+        - generic: K
+        - generic: θ
+        - generic: m
+        - generic: "16"
+        - generic: ⟶
+        - generic: ∞
+        - generic: .
+      - generic: E
+      - text: (
+      - text: f
+      - generic: m
+      - text: )
+      - text: μ[
+      - generic: a
+      - text: (
+      - text: f
+      - generic: m
+      - text: − μ
+      - text: f
+      - generic: m
+      - text: )
+      - generic: "2"
+      - text: "]"
+      - text: ≥
+      - generic: "16"
+      - generic: Kθm
+      - text: ⟶
+      - generic: ∞.
+      - paragraph:
+        - strong: "Conclusion:"
+        - text: no finite constant
+        - math:
+          - generic: C
+        - generic: C
+        - text: can satisfy
+      - math:
+        - generic: μ
+        - generic: ⁣
+        - generic: "["
+        - generic: a
+        - generic: ^
+        - generic: (
+        - generic: h
+        - generic: −
+        - generic: μ
+        - generic: h
+        - generic: )
+        - generic: "2"
+        - generic: "]"
+        - generic: ≤
+        - generic: C
+        - generic: E
+        - generic: ^
+        - generic: (
+        - generic: h
+        - generic: )
+      - text: μ
+      - generic: "["
+      - generic: a
+      - text: (h − μh
+      - text: )
+      - generic: "2"
+      - generic: "]"
+      - text: ≤
+      - text: C
+      - generic: E
+      - text: (h)
+      - paragraph:
+        - text: for this elementary lift, for any
+        - math:
+          - generic: K
+          - generic: ","
+          - generic: θ
+          - generic: ">"
+          - generic: "0"
+        - generic: K, θ >
+        - generic: "0"
+        - text: .
+      - paragraph:
+        - text: "The reason is exact:"
+        - math:
+          - generic: H
+          - generic: ⇄
+          - generic: "2"
+          - generic: A
+        - generic: H ⇄
+        - generic: 2A
+        - text: generates increasingly many actual firings while contributing zero energy to every function constant on decoded fibres.
+      - paragraph: A common normalization making every rate at most one scales both sides equally and does not change the conclusion.
+      - separator
+      - heading "3. Dormant prefixes can destroy the ordinary spectral gap" [level=2]
+      - paragraph: Now take the original weakly reversible structure
+      - math:
+        - generic: R
+        - generic: =
+        - generic: "{"
+        - generic: B
+        - generic: ⇄
+        - generic: A
+        - generic: +
+        - generic: B
+        - generic: ","
+        - generic: "3"
+        - generic: A
+        - generic: +
+        - generic: B
+        - generic: +
+        - generic: C
+        - generic: ⇄
+        - generic: "4"
+        - generic: A
+        - generic: +
+        - generic: B
+        - generic: +
+        - generic: C
+        - generic: "}"
+        - generic: .
+      - generic: R =
+      - generic: "{B ⇄ A + B, 3A + B + C ⇄ 4A + B + C}"
+      - text: .
+      - paragraph:
+        - text: Add
+        - math:
+          - generic: w
+          - generic: =
+          - generic: A
+        - generic: w =
+        - generic: A
+        - text: to the first pair, so the catalytic table includes
+      - math:
+        - generic: A
+        - generic: +
+        - generic: B
+        - generic: ⇄
+        - generic: "2"
+        - generic: A
+        - generic: +
+        - generic: B
+        - generic: .
+      - generic: A +
+      - generic: B ⇄
+      - generic: 2A +
+      - generic: B.
+      - paragraph: Set nominal activities and original table rates equal to one.
+      - paragraph: On the actual communicating class
+      - math:
+        - generic: B
+        - generic: =
+        - generic: "1"
+        - generic: ","
+        - generic: C
+        - generic: =
+        - generic: "0"
+        - generic: ","
+      - generic: B =
+      - generic: 1, C =
+      - generic: 0,
+      - paragraph:
+        - text: the
+        - math:
+          - generic: C
+        - generic: C
+        - text: "-containing reactions are disabled, and the original"
+        - math:
+          - generic: A
+        - generic: A
+        - text: "-chain is exactly the preceding well-behaved chain:"
+      - math:
+        - generic: b
+        - generic: "n"
+        - generic: =
+        - generic: "1"
+        - generic: +
+        - generic: "n"
+        - generic: ","
+        - generic: d
+        - generic: "n"
+        - generic: =
+        - generic: "n"
+        - generic: "2"
+        - generic: .
+      - text: b
+      - generic: "n"
+      - text: =
+      - generic: 1 +
+      - text: n,
+      - text: d
+      - generic: "n"
+      - text: =
+      - text: "n"
+      - generic: "2"
+      - text: .
+      - heading "Prefix construction" [level=3]
+      - paragraph: Introduce
+      - math:
+        - generic: D
+        - generic: P
+        - generic: j
+        - generic: =
+        - generic: j
+        - generic: A
+        - generic: +
+        - generic: B
+        - generic: ","
+        - generic: j
+        - generic: =
+        - generic: "1"
+        - generic: ","
+        - generic: "2"
+        - generic: ","
+        - generic: "3"
+        - generic: ","
+        - generic: "4"
+        - generic: ","
+      - text: D
+      - text: P
+      - generic: j
+      - text: =
+      - generic: jA +
+      - generic: B, j =
+      - generic: 1, 2, 3, 4,
+      - paragraph: and
+      - math:
+        - generic: D
+        - generic: Q
+        - generic: "3"
+        - generic: =
+        - generic: "3"
+        - generic: A
+        - generic: +
+        - generic: B
+        - generic: +
+        - generic: C
+        - generic: ","
+        - generic: D
+        - generic: Q
+        - generic: "4"
+        - generic: =
+        - generic: "4"
+        - generic: A
+        - generic: +
+        - generic: B
+        - generic: +
+        - generic: C
+        - generic: .
+      - text: D
+      - text: Q
+      - generic: "3"
+      - text: =
+      - generic: 3A +
+      - generic: B +
+      - text: C, D
+      - text: Q
+      - generic: "4"
+      - text: =
+      - generic: 4A +
+      - generic: B +
+      - generic: C.
+      - paragraph: Use the binding/release channels
+      - math:
+        - generic: B
+        - generic: +
+        - generic: A
+        - generic: ⇄
+        - generic: P
+        - generic: "1"
+        - generic: with rates
+        - generic: K
+        - generic: θ
+        - generic: ","
+        - generic: K
+        - generic: ","
+      - generic: B +
+      - generic: A ⇄
+      - text: P
+      - generic: "1"
+      - generic: with rates
+      - text: Kθ, K,
+      - math:
+        - generic: P
+        - generic: j
+        - generic: +
+        - generic: A
+        - generic: ⇄
+        - generic: P
+        - generic: j
+        - generic: +
+        - generic: "1"
+        - generic: ","
+        - generic: j
+        - generic: =
+        - generic: "1"
+        - generic: ","
+        - generic: "2"
+        - generic: ","
+        - generic: "3"
+        - generic: ","
+        - generic: with rates
+        - generic: K
+        - generic: ","
+        - generic: K
+        - generic: ","
+      - text: P
+      - generic: j
+      - text: +
+      - generic: A ⇄
+      - text: P
+      - generic: j+1
+      - text: ", j ="
+      - text: 1, 2, 3,
+      - generic: with rates
+      - text: K, K,
+      - paragraph: and
+      - math:
+        - generic: P
+        - generic: "3"
+        - generic: +
+        - generic: C
+        - generic: ⇄
+        - generic: Q
+        - generic: "3"
+        - generic: ","
+        - generic: P
+        - generic: "4"
+        - generic: +
+        - generic: C
+        - generic: ⇄
+        - generic: Q
+        - generic: "4"
+        - generic: ","
+        - generic: with rates
+        - generic: K
+        - generic: ","
+        - generic: K
+        - generic: .
+      - text: P
+      - generic: "3"
+      - text: +
+      - generic: C ⇄
+      - text: Q
+      - generic: "3"
+      - text: ","
+      - text: P
+      - generic: "4"
+      - text: +
+      - generic: C ⇄
+      - text: Q
+      - generic: "4"
+      - text: ","
+      - generic: with rates
+      - text: K, K.
+      - paragraph: Use macro conversions
+      - math:
+        - generic: B
+        - generic: ⇄
+        - generic: P
+        - generic: "1"
+        - generic: with rates
+        - generic: "1"
+        - generic: ","
+        - generic: "1"
+        - generic: /
+        - generic: θ
+        - generic: ","
+      - generic: B ⇄
+      - text: P
+      - generic: "1"
+      - generic: with rates
+      - text: 1, 1/θ,
+      - math:
+        - generic: P
+        - generic: "1"
+        - generic: ⇄
+        - generic: P
+        - generic: "2"
+        - generic: with rates
+        - generic: "1"
+        - generic: /
+        - generic: θ
+        - generic: ","
+        - generic: "1"
+        - generic: /
+        - generic: θ
+        - generic: ","
+      - text: P
+      - generic: "1"
+      - text: ⇄
+      - text: P
+      - generic: "2"
+      - generic: with rates
+      - text: 1/θ, 1/θ,
+      - math:
+        - generic: Q
+        - generic: "3"
+        - generic: ⇄
+        - generic: Q
+        - generic: "4"
+        - generic: with rates
+        - generic: "1"
+        - generic: /
+        - generic: θ
+        - generic: ","
+        - generic: "1"
+        - generic: /
+        - generic: θ
+        - generic: .
+      - text: Q
+      - generic: "3"
+      - text: ⇄
+      - text: Q
+      - generic: "4"
+      - generic: with rates
+      - text: 1/θ, 1/θ.
+      - paragraph:
+        - text: Again every channel is elementary and the fine network is detailed balanced at original-species activities one and all auxiliary activities
+        - math:
+          - generic: θ
+        - generic: θ
+        - text: .
+      - paragraph:
+        - text: On the class
+        - math:
+          - generic: C
+          - generic: =
+          - generic: "0"
+        - generic: C =
+        - generic: "0"
+        - text: ", both"
+        - math:
+          - generic: Q
+          - generic: "3"
+          - generic: ","
+          - generic: Q
+          - generic: "4"
+        - text: Q
+        - generic: "3"
+        - text: ","
+        - text: Q
+        - generic: "4"
+        - text: are absent. But
+        - math:
+          - generic: P
+          - generic: "3"
+          - generic: ","
+          - generic: P
+          - generic: "4"
+        - text: P
+        - generic: "3"
+        - text: ","
+        - text: P
+        - generic: "4"
+        - text: remain available even though they are merely prefixes of the disabled
+        - math:
+          - generic: C
+        - generic: C
+        - text: "-containing complexes."
+      - paragraph: "The stationary law is:"
+      - list:
+        - math:
+          - generic: X
+          - generic: =
+          - generic: A
+          - generic: ∼
+          - generic: Pois
+          - generic: ⁡
+          - generic: (
+          - generic: "1"
+          - generic: )
+        - generic: X =
+        - generic: A ∼
+        - generic: Pois
+        - text: (1)
+        - text: ;
+        - text: independently, one marker
+        - math:
+          - generic: J
+          - generic: ∈
+          - generic: "{"
+          - generic: "0"
+          - generic: ","
+          - generic: "1"
+          - generic: ","
+          - generic: "2"
+          - generic: ","
+          - generic: "3"
+          - generic: ","
+          - generic: "4"
+          - generic: "}"
+        - generic: J ∈
+        - generic: "{0, 1, 2, 3, 4}"
+        - text: ", where"
+        - math:
+          - generic: J
+          - generic: =
+          - generic: "0"
+        - generic: J =
+        - generic: "0"
+        - text: denotes free
+        - math:
+          - generic: B
+        - generic: B
+        - text: and
+        - math:
+          - generic: J
+          - generic: =
+          - generic: j
+        - generic: J =
+        - generic: j
+        - text: denotes
+        - math:
+          - generic: P
+          - generic: j
+        - text: P
+        - generic: j
+        - text: ;
+        - text: marker weights are
+        - math:
+          - generic: (
+          - generic: "1"
+          - generic: ","
+          - generic: θ
+          - generic: ","
+          - generic: θ
+          - generic: ","
+          - generic: θ
+          - generic: ","
+          - generic: θ
+          - generic: )
+          - generic: .
+        - generic: (1, θ, θ, θ, θ).
+      - paragraph:
+        - text: The decoded population is
+        - math:
+          - generic: "N"
+          - generic: =
+          - generic: X
+          - generic: +
+          - generic: J
+        - generic: N =
+        - generic: X +
+        - generic: J
+        - text: . Define
+      - math:
+        - generic: q
+        - generic: "n"
+        - generic: =
+        - generic: "1"
+        - generic: +
+        - generic: θ
+        - generic: ∑
+        - generic: j
+        - generic: =
+        - generic: "1"
+        - generic: "4"
+        - generic: (
+        - generic: "n"
+        - generic: )
+        - generic: j
+        - generic: .
+      - text: q
+      - generic: "n"
+      - text: =
+      - generic: 1 +
+      - text: θ
+      - generic: j=1
+      - generic: ∑
+      - generic: "4"
+      - text: (n
+      - text: )
+      - generic: j
+      - text: .
+      - paragraph: Its stationary probability is
+      - math:
+        - generic: p
+        - generic: "n"
+        - generic: =
+        - generic: μ
+        - generic: (
+        - generic: "N"
+        - generic: =
+        - generic: "n"
+        - generic: )
+        - generic: =
+        - generic: e
+        - generic: −
+        - generic: "1"
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: "4"
+        - generic: θ
+        - generic: )
+        - generic: "n"
+        - generic: "!"
+        - generic: q
+        - generic: "n"
+        - generic: .
+      - text: p
+      - generic: "n"
+      - text: =
+      - generic: μ(N =
+      - generic: n) =
+      - generic: (1 + 4θ)n!
+      - text: e
+      - generic: −1
+      - text: q
+      - generic: "n"
+      - text: .
+      - paragraph: The conditional marker probabilities are
+      - math:
+        - generic: μ
+        - generic: (
+        - generic: J
+        - generic: =
+        - generic: j
+        - generic: ∣
+        - generic: "N"
+        - generic: =
+        - generic: "n"
+        - generic: )
+        - generic: =
+        - generic: θ
+        - generic: (
+        - generic: "n"
+        - generic: )
+        - generic: j
+        - generic: q
+        - generic: "n"
+        - generic: ","
+        - generic: j
+        - generic: =
+        - generic: "1"
+        - generic: ","
+        - generic: …
+        - generic: ","
+        - generic: "4"
+        - generic: ","
+      - generic: μ(J =
+      - generic: j ∣
+      - generic: N =
+      - generic: n) =
+      - text: q
+      - generic: "n"
+      - text: θ(n
+      - text: )
+      - generic: j
+      - text: ", j ="
+      - generic: 1, … , 4,
+      - paragraph:
+        - text: and
+        - math:
+          - generic: μ
+          - generic: (
+          - generic: J
+          - generic: =
+          - generic: "0"
+          - generic: ∣
+          - generic: "N"
+          - generic: =
+          - generic: "n"
+          - generic: )
+          - generic: =
+          - generic: "1"
+          - generic: /
+          - generic: q
+          - generic: "n"
+        - generic: μ(J =
+        - generic: 0 ∣
+        - generic: N =
+        - generic: n) =
+        - text: 1/
+        - text: q
+        - generic: "n"
+        - text: .
+      - heading "Exact decay of the aggregate downward rate" [level=3]
+      - paragraph:
+        - text: Decoded
+        - math:
+          - generic: A
+        - generic: A
+        - text: "-death occurs only through"
+      - math:
+        - generic: P
+        - generic: "1"
+        - generic: →
+        - generic: B
+        - generic: ","
+        - generic: P
+        - generic: "2"
+        - generic: →
+        - generic: P
+        - generic: "1"
+        - generic: ","
+      - text: P
+      - generic: "1"
+      - text: →
+      - text: B,
+      - text: P
+      - generic: "2"
+      - text: →
+      - text: P
+      - generic: "1"
+      - text: ","
+      - paragraph:
+        - text: both with rate
+        - math:
+          - generic: "1"
+          - generic: /
+          - generic: θ
+        - generic: 1/θ
+        - text: . Thus the conditional downward intensity is exactly
+      - math:
+        - generic: d
+        - generic: ‾
+        - generic: "n"
+        - generic: =
+        - generic: "n"
+        - generic: +
+        - generic: "n"
+        - generic: (
+        - generic: "n"
+        - generic: −
+        - generic: "1"
+        - generic: )
+        - generic: q
+        - generic: "n"
+        - generic: =
+        - generic: "n"
+        - generic: "2"
+        - generic: q
+        - generic: "n"
+        - generic: .
+      - generic: d
+      - generic: "n"
+      - text: =
+      - text: q
+      - generic: "n"
+      - generic: n + n(n − 1)
+      - text: =
+      - text: q
+      - generic: "n"
+      - text: "n"
+      - generic: "2"
+      - text: .
+      - paragraph:
+        - text: Since
+        - math:
+          - generic: q
+          - generic: "n"
+          - generic: ∼
+          - generic: θ
+          - generic: "n"
+          - generic: "4"
+        - text: q
+        - generic: "n"
+        - text: ∼
+        - text: θ
+        - text: "n"
+        - generic: "4"
+        - text: ","
+      - math:
+        - generic: d
+        - generic: ‾
+        - generic: "n"
+        - generic: ∼
+        - generic: "1"
+        - generic: θ
+        - generic: "n"
+        - generic: "2"
+        - generic: ⟶
+        - generic: "0."
+      - generic: d
+      - generic: "n"
+      - text: ∼
+      - text: θ
+      - text: "n"
+      - generic: "2"
+      - generic: "1"
+      - text: ⟶
+      - generic: "0."
+      - paragraph:
+        - text: For
+        - math:
+          - generic: f
+          - generic: m
+          - generic: =
+          - generic: "1"
+          - generic: "{"
+          - generic: "N"
+          - generic: ≥
+          - generic: m
+          - generic: "}"
+        - text: f
+        - generic: m
+        - text: =
+        - text: "1"
+        - generic: "{N≥m}"
+        - text: ", detailed balance gives"
+      - math:
+        - generic: E
+        - generic: ^
+        - generic: (
+        - generic: f
+        - generic: m
+        - generic: )
+        - generic: =
+        - generic: p
+        - generic: m
+        - generic: m
+        - generic: "2"
+        - generic: q
+        - generic: m
+        - generic: .
+      - generic: E
+      - text: (
+      - text: f
+      - generic: m
+      - text: ) =
+      - text: p
+      - generic: m
+      - text: q
+      - generic: m
+      - text: m
+      - generic: "2"
+      - text: .
+      - paragraph:
+        - text: Writing
+        - math:
+          - generic: t
+          - generic: m
+          - generic: =
+          - generic: μ
+          - generic: (
+          - generic: "N"
+          - generic: ≥
+          - generic: m
+          - generic: )
+        - text: t
+        - generic: m
+        - text: =
+        - generic: μ(N ≥
+        - generic: m)
+        - text: ", for sufficiently large"
+        - math:
+          - generic: m
+        - generic: m
+        - text: ","
+      - math:
+        - generic: Var
+        - generic: ⁡
+        - generic: μ
+        - generic: (
+        - generic: f
+        - generic: m
+        - generic: )
+        - generic: =
+        - generic: t
+        - generic: m
+        - generic: (
+        - generic: "1"
+        - generic: −
+        - generic: t
+        - generic: m
+        - generic: )
+        - generic: ≥
+        - generic: "1"
+        - generic: "2"
+        - generic: p
+        - generic: m
+        - generic: .
+      - generic: Var
+      - generic: μ
+      - text: (
+      - text: f
+      - generic: m
+      - text: ) =
+      - text: t
+      - generic: m
+      - text: (1 −
+      - text: t
+      - generic: m
+      - text: ) ≥
+      - generic: "2"
+      - generic: "1"
+      - text: p
+      - generic: m
+      - text: .
+      - paragraph: Hence
+      - math:
+        - generic: E
+        - generic: ^
+        - generic: (
+        - generic: f
+        - generic: m
+        - generic: )
+        - generic: Var
+        - generic: ⁡
+        - generic: μ
+        - generic: (
+        - generic: f
+        - generic: m
+        - generic: )
+        - generic: ≤
+        - generic: "2"
+        - generic: m
+        - generic: "2"
+        - generic: q
+        - generic: m
+        - generic: ⟶
+        - generic: "0."
+      - generic: Var
+      - generic: μ
+      - text: (
+      - text: f
+      - generic: m
+      - text: )
+      - generic: E
+      - text: (
+      - text: f
+      - generic: m
+      - text: )
+      - text: ≤
+      - text: q
+      - generic: m
+      - text: "2"
+      - text: m
+      - generic: "2"
+      - text: ⟶
+      - generic: "0."
+      - paragraph:
+        - strong: "Conclusion:"
+        - text: the fine nominal chain has
+        - strong:
+          - text: zero spectral gap for every
+          - math:
+            - generic: K
+            - generic: ","
+            - generic: θ
+            - generic: ">"
+            - generic: "0"
+          - generic: K, θ >
+          - generic: "0"
+        - text: .
+      - paragraph:
+        - text: "This is stronger than failure to obtain a polynomial comparison constant: no positive global"
+        - math:
+          - generic: L
+          - generic: "2"
+        - text: L
+        - generic: "2"
+        - text: spectral gap exists for this particular lift.
+      - heading "What this does and does not establish" [level=3]
+      - paragraph: "It establishes that the following implication is false without additional structural work:"
+      - blockquote:
+        - paragraph: “The original catalytic chain has strong activity-weighted coercivity; therefore its usual elementary prefix lift has a positive spectral gap.”
+      - paragraph:
+        - text: It does
+        - strong: not
+        - text: "establish failure of the user’s compiler contract. In particular:"
+      - list:
+        - text: the contract asks for mixing from the compiled canonical starting state, not a uniform global
+        - math:
+          - generic: L
+          - generic: "2"
+        - text: L
+        - generic: "2"
+        - text: gap;
+        - listitem: zero gap permits subgeometric mixing that could still give polynomial numerical costs for this task;
+        - text: adding active macro channels involving
+        - math:
+          - generic: P
+          - generic: "3"
+          - generic: ","
+          - generic: P
+          - generic: "4"
+        - text: P
+        - generic: "3"
+        - text: ","
+        - text: P
+        - generic: "4"
+        - text: can remove this example;
+        - listitem: changing the lift may prevent the sequestration.
+      - separator
+      - heading "4. Assessment of your conversion-only perturbation route" [level=2]
+      - paragraph:
+        - text: If each auxiliary has one defining reversible binding step, independent errors in those binding/release rates can be incorporated into altered auxiliary activities. Those activities are finite products of equilibrium-rate ratios, so their relative distortion is bounded by a fixed-
+        - math:
+          - generic: R
+        - generic: R
+        - text: power of
+        - math:
+          - generic: "1"
+          - generic: ±
+          - generic: δ
+        - generic: 1 ±
+        - generic: δ
+        - text: .
+      - paragraph:
+        - text: That leaves only macro-conversion errors relative to a suitably adjusted reference process. The relevant perturbation activity
+        - math:
+          - generic: b
+        - generic: b
+        - text: then counts macro conversions rather than all fine firings.
+      - paragraph:
+        - text: Neither counterexample above refutes coercivity weighted by
+        - math:
+          - generic: b
+        - generic: b
+        - text: ":"
+      - list:
+        - text: In the first example,
+        - math:
+          - generic: b
+        - generic: b
+        - text: is bounded while the troublesome assembly activity grows.
+        - text: In the second example,
+        - math:
+          - generic: b
+        - generic: b
+        - text: itself decreases in the sequestered tail, at the same order as the escape activity.
+      - paragraph:
+        - text: An argument using
+        - math:
+          - generic: b
+        - generic: b
+        - text: "-weighted coercivity would still need to address:"
+      - list:
+        - text: States with
+        - math:
+          - generic: b
+          - generic: =
+          - generic: "0"
+        - generic: b =
+        - generic: "0"
+        - text: ", and the appropriate positive extension or harmonic control through binding states."
+        - text: First-moment estimates through dual weights; ordinary unweighted
+        - math:
+          - generic: L
+          - generic: "2"
+        - text: L
+        - generic: "2"
+        - text: control may be unavailable.
+        - listitem: Mixing from canonical initialization without assuming a positive ordinary spectral gap.
+        - listitem: Total physical firings separately, using adequate fine-population moments.
+      - paragraph: I have no proof that these operations hold universally, and no universal negative showing that they cannot.
+
+---
+
+  - complementary:
+    - heading "Subagents" [level=2]
+    - button "Enter full view":
+    - button "Close panel":
+    - tabpanel "Subagents" [active]:
+      - button "Back to subagents":
+      - generic: Lift analysis
+      - heading "Status" [level=2]
+      - generic: Done
+      - heading "Final response" [level=2]
+      - heading "Result of this subtask" [level=2]
+      - paragraph:
+        - text: I can close the
+        - strong: entire nominal version
+        - text: of the elementary-lift contract on infinite communicating classes, with polynomial numerical rates, mixing time, auxiliary populations, and actual firing count. The proof uses analytical stopping only; the physical network remains autonomous and untruncated.
+      - paragraph:
+        - text: I can also absorb all binding-rate errors into an exactly complex-balanced reference process, and a finite-horizon likelihood argument then gives polynomially robust transient accuracy and activity bounds. What this does
+        - strong: not
+        - text: yet establish is positive recurrence and stationary accuracy of the actual perturbed process for arbitrarily long time. That is the remaining essential gap.
+      - paragraph: The nominal construction and its estimates are detailed below.
+      - separator
+      - heading "1. Fixed network and notation" [level=1]
+      - paragraph:
+        - text: Apply the accepted higher-molecularity compiler at a smaller accuracy, for example
+        - math:
+          - generic: ϵ
+          - generic: /
+          - generic: "16"
+        - generic: ϵ/16
+        - text: . Write its fixed catalytic table as
+      - math:
+        - generic: "Y"
+        - generic: r
+        - generic: ⟶
+        - generic: Z
+        - generic: r
+        - generic: ","
+        - generic: r
+        - generic: =
+        - generic: "1"
+        - generic: ","
+        - generic: …
+        - generic: ","
+        - generic: m
+        - generic: ","
+      - text: "Y"
+      - generic: r
+      - text: ⟶
+      - text: Z
+      - generic: r
+      - text: ", r ="
+      - generic: 1, … , m,
+      - paragraph:
+        - text: with nominal constants
+        - math:
+          - generic: "0"
+          - generic: <
+          - generic: κ
+          - generic: r
+          - generic: ≤
+          - generic: "1"
+        - generic: 0 <
+        - text: κ
+        - generic: r
+        - text: ≤
+        - generic: "1"
+        - text: ", complex balance at"
+        - math:
+          - generic: λ
+        - generic: λ
+        - text: ", and nominal mixing time"
+        - math:
+          - generic: T
+          - generic: "0"
+        - text: T
+        - generic: "0"
+        - text: . Its classes are the actual original classes.
+      - paragraph:
+        - text: Absorb the constant incurred by replacing
+        - math:
+          - generic: ϵ
+        - generic: ϵ
+        - text: with
+        - math:
+          - generic: ϵ
+          - generic: /
+          - generic: "16"
+        - generic: ϵ/16
+        - text: into fixed computable constants
+        - math:
+          - generic: C
+          - generic: ≥
+          - generic: "1"
+        - generic: C ≥
+        - generic: "1"
+        - text: ","
+        - math:
+          - generic: p
+          - generic: ∈
+          - generic: "N"
+        - generic: p ∈
+        - generic: "N"
+        - text: ", so that"
+      - math:
+        - generic: T
+        - generic: "0"
+        - generic: ","
+        - generic: max
+        - generic: ⁡
+        - generic: r
+        - generic: κ
+        - generic: r
+        - generic: −
+        - generic: "1"
+        - generic: ≤
+        - generic: C
+        - generic: W
+        - generic: p
+        - generic: .
+      - text: T
+      - generic: "0"
+      - text: ","
+      - generic: r
+      - generic: max
+      - text: κ
+      - generic: r
+      - generic: −1
+      - text: ≤
+      - text: C
+      - text: W
+      - generic: p
+      - text: .
+      - paragraph:
+        - text: Its nominal decoded law at
+        - math:
+          - generic: T
+          - generic: "0"
+        - text: T
+        - generic: "0"
+        - text: has TV and absolute coordinate-mean error at most
+        - math:
+          - generic: ϵ
+          - generic: /
+          - generic: "16"
+        - generic: ϵ/16
+        - text: .
+      - paragraph: Let
+      - math:
+        - generic: D
+        - generic: =
+        - generic: max
+        - generic: ⁡
+        - generic: ⁣
+        - generic: (
+        - generic: "1"
+        - generic: ","
+        - generic: max
+        - generic: ⁡
+        - generic: r
+        - generic: ∣
+        - generic: "Y"
+        - generic: r
+        - generic: ∣
+        - generic: "1"
+        - generic: ","
+        - generic: max
+        - generic: ⁡
+        - generic: r
+        - generic: ∣
+        - generic: Z
+        - generic: r
+        - generic: ∣
+        - generic: "1"
+        - generic: )
+        - generic: .
+      - generic: D =
+      - text: max
+      - generic: (
+      - text: 1,
+      - generic: r
+      - generic: max
+      - text: ∣
+      - text: "Y"
+      - generic: r
+      - text: ∣
+      - generic: "1"
+      - text: ","
+      - generic: r
+      - generic: max
+      - text: ∣
+      - text: Z
+      - generic: r
+      - text: ∣
+      - generic: "1"
+      - generic: )
+      - text: .
+      - paragraph:
+        - text: "Use the supplied prefix construction, with one important implementation detail: order each complex’s molecules canonically, share identical ordered prefixes, and give every auxiliary prefix a"
+        - strong: unique parent prefix
+        - text: . This makes the assembly graph a forest and is useful for the perturbation argument.
+      - paragraph: Let the auxiliary encoding vectors be
+      - math:
+        - generic: c
+        - generic: "1"
+        - generic: ","
+        - generic: …
+        - generic: ","
+        - generic: c
+        - generic: s
+        - generic: ","
+        - generic: "2"
+        - generic: ≤
+        - generic: ∣
+        - generic: c
+        - generic: j
+        - generic: ∣
+        - generic: "1"
+        - generic: ≤
+        - generic: D
+        - generic: ","
+      - text: c
+      - generic: "1"
+      - text: ", … ,"
+      - text: c
+      - generic: s
+      - text: ", 2 ≤"
+      - text: ∣
+      - text: c
+      - generic: j
+      - text: ∣
+      - generic: "1"
+      - text: ≤
+      - generic: D,
+      - paragraph:
+        - text: and let
+        - math:
+          - generic: E
+        - generic: E
+        - text: have these columns. Then
+      - math:
+        - generic: D
+        - generic: d
+        - generic: e
+        - generic: c
+        - generic: (
+        - generic: "n"
+        - generic: ","
+        - generic: a
+        - generic: )
+        - generic: =
+        - generic: "n"
+        - generic: +
+        - generic: E
+        - generic: a
+        - generic: .
+      - text: D
+      - generic: dec
+      - text: (n, a) =
+      - generic: n +
+      - generic: Ea.
+      - paragraph: Every auxiliary column is nonzero, so
+      - math:
+        - generic: ∣
+        - generic: (
+        - generic: "n"
+        - generic: ","
+        - generic: a
+        - generic: )
+        - generic: ∣
+        - generic: "1"
+        - generic: ≤
+        - generic: ∣
+        - generic: D
+        - generic: d
+        - generic: e
+        - generic: c
+        - generic: (
+        - generic: "n"
+        - generic: ","
+        - generic: a
+        - generic: )
+        - generic: ∣
+        - generic: "1"
+        - generic: .
+        - generic: (1)
+      - text: ∣(n, a)
+      - text: ∣
+      - generic: "1"
+      - text: ≤
+      - text: ∣
+      - text: D
+      - generic: dec
+      - text: (n, a)
+      - text: ∣
+      - generic: "1"
+      - text: .
+      - text: (
+      - generic: "1"
+      - text: )
+      - paragraph:
+        - text: Take auxiliary activities
+        - math:
+          - generic: θ
+          - generic: λ
+          - generic: c
+          - generic: j
+        - text: θ
+        - text: λ
+        - text: c
+        - generic: j
+        - text: . Raw first-binding/release rates are
+        - math:
+          - generic: K
+          - generic: θ
+          - generic: ","
+          - generic: K
+        - generic: Kθ, K
+        - text: ; later assembly/release rates are
+        - math:
+          - generic: K
+          - generic: ","
+          - generic: K
+        - generic: K, K
+        - text: . Replace
+        - math:
+          - generic: "Y"
+          - generic: r
+          - generic: →
+          - generic: Z
+          - generic: r
+        - text: "Y"
+        - generic: r
+        - text: →
+        - text: Z
+        - generic: r
+        - text: by its representative conversion with raw rate
+        - math:
+          - generic: κ
+          - generic: r
+          - generic: /
+          - generic: θ
+        - text: κ
+        - generic: r
+        - text: /θ
+        - text: if its source has order at least two, and
+        - math:
+          - generic: κ
+          - generic: r
+        - text: κ
+        - generic: r
+        - text: otherwise.
+      - paragraph: All physical reactions have at most two molecules on either side.
+      - paragraph: The exact graph claim is as supplied, and in fact
+      - math:
+        - generic: Γ
+        - generic: ^
+        - generic: =
+        - generic: "{"
+        - generic: (
+        - generic: "n"
+        - generic: ","
+        - generic: a
+        - generic: )
+        - generic: ":"
+        - generic: "n"
+        - generic: +
+        - generic: E
+        - generic: a
+        - generic: ∈
+        - generic: Γ
+        - generic: "}"
+        - generic: .
+        - generic: (2)
+      - generic: Γ
+      - text: =
+      - generic: "{(n, a) :"
+      - generic: n +
+      - generic: Ea ∈
+      - generic: "Γ}."
+      - text: (
+      - generic: "2"
+      - text: )
+      - paragraph:
+        - text: Indeed every fine state releases to its canonical encoding, and the reversed assembly path recovers it; canonical original edges lift using the
+        - math:
+          - generic: w
+          - generic: =
+          - generic: "0"
+        - generic: w =
+        - generic: "0"
+        - text: channels.
+      - separator
+      - heading "2. Infinite-class static error is polynomially controllable" [level=1]
+      - paragraph: Write
+      - math:
+        - generic: w
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: =
+        - generic: λ
+        - generic: x
+        - generic: x
+        - generic: "!"
+        - generic: ","
+        - generic: q
+        - generic: θ
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: =
+        - generic: ∑
+        - generic: a
+        - generic: ":"
+        - generic: E
+        - generic: a
+        - generic: ≤
+        - generic: x
+        - generic: θ
+        - generic: ∣
+        - generic: a
+        - generic: ∣
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: E
+        - generic: a
+        - generic: a
+        - generic: "!"
+        - generic: .
+      - generic: w(x) =
+      - generic: x!
+      - text: λ
+      - generic: x
+      - text: ","
+      - text: q
+      - generic: θ
+      - text: (x) =
+      - generic: a:Ea≤x
+      - generic: ∑
+      - generic: a!
+      - text: θ
+      - generic: ∣a∣
+      - text: (x
+      - text: )
+      - generic: Ea
+      - text: .
+      - paragraph: The fine product-form stationary measure has decoded law
+      - math:
+        - generic: ρ
+        - generic: θ
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: =
+        - generic: π
+        - generic: λ
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: q
+        - generic: θ
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: E
+        - generic: π
+        - generic: λ
+        - generic: q
+        - generic: θ
+        - generic: (
+        - generic: X
+        - generic: )
+        - generic: .
+        - generic: (3)
+      - text: ρ
+      - generic: θ
+      - text: (x) =
+      - text: E
+      - text: π
+      - generic: λ
+      - text: q
+      - generic: θ
+      - text: (X)
+      - text: π
+      - generic: λ
+      - text: (x)
+      - text: q
+      - generic: θ
+      - text: (x)
+      - text: .
+      - text: (
+      - generic: "3"
+      - text: )
+      - paragraph:
+        - text: The decisive point is to use the
+        - strong: exact compound-Poisson generating function
+        - text: ", not"
+        - math:
+          - generic: exp
+          - generic: ⁡
+          - generic: (
+          - generic: s
+          - generic: θ
+          - generic: ∣
+          - generic: x
+          - generic: ∣
+          - generic: D
+          - generic: )
+        - text: exp(sθ∣x
+        - text: ∣
+        - generic: D
+        - text: )
+        - text: "globally:"
+      - math:
+        - generic: ∑
+        - generic: x
+        - generic: ∈
+        - generic: "N"
+        - generic: d
+        - generic: w
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: q
+        - generic: θ
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: e
+        - generic: t
+        - generic: ∣
+        - generic: x
+        - generic: ∣
+        - generic: "1"
+        - generic: =
+        - generic: exp
+        - generic: ⁡
+        - generic: ⁣
+        - generic: (
+        - generic: e
+        - generic: t
+        - generic: ∑
+        - generic: i
+        - generic: λ
+        - generic: i
+        - generic: +
+        - generic: θ
+        - generic: ∑
+        - generic: j
+        - generic: =
+        - generic: "1"
+        - generic: s
+        - generic: λ
+        - generic: c
+        - generic: j
+        - generic: e
+        - generic: t
+        - generic: ∣
+        - generic: c
+        - generic: j
+        - generic: ∣
+        - generic: "1"
+        - generic: )
+        - generic: .
+        - generic: (4)
+      - text: x∈
+      - text: "N"
+      - generic: d
+      - generic: ∑
+      - text: w(x)
+      - text: q
+      - generic: θ
+      - text: (x)
+      - text: e
+      - text: t∣x
+      - text: ∣
+      - generic: "1"
+      - text: =
+      - text: exp
+      - generic: (
+      - text: e
+      - generic: t
+      - generic: i
+      - generic: ∑
+      - text: λ
+      - generic: i
+      - text: + θ
+      - generic: j=1
+      - generic: ∑
+      - generic: s
+      - text: λ
+      - text: c
+      - generic: j
+      - text: e
+      - text: t∣
+      - text: c
+      - generic: j
+      - text: ∣
+      - generic: "1"
+      - generic: )
+      - text: .
+      - text: (
+      - generic: "4"
+      - text: )
+      - paragraph: The known canonical state supplies the normalization bound
+      - math:
+        - generic: w
+        - generic: (
+        - generic: x
+        - generic: "0"
+        - generic: )
+        - generic: ≥
+        - generic: W
+        - generic: −
+        - generic: "2"
+        - generic: ∣
+        - generic: x
+        - generic: "0"
+        - generic: ∣
+        - generic: "1"
+        - generic: ","
+        - generic: (5)
+      - text: w(
+      - text: x
+      - generic: "0"
+      - text: ) ≥
+      - text: W
+      - text: −2∣
+      - text: x
+      - generic: "0"
+      - text: ∣
+      - generic: "1"
+      - text: ","
+      - text: (
+      - generic: "5"
+      - text: )
+      - paragraph:
+        - text: because
+        - math:
+          - generic: λ
+          - generic: i
+          - generic: −
+          - generic: "1"
+          - generic: ≤
+          - generic: W
+        - text: λ
+        - generic: i
+        - generic: −1
+        - text: ≤
+        - generic: W
+        - text: and
+        - math:
+          - generic: x
+          - generic: "0"
+          - generic: "!"
+          - generic: ≤
+          - generic: W
+          - generic: ∣
+          - generic: x
+          - generic: "0"
+          - generic: ∣
+          - generic: "1"
+        - text: x
+        - generic: "0"
+        - text: "! ≤"
+        - text: W
+        - text: ∣
+        - text: x
+        - generic: "0"
+        - text: ∣
+        - generic: "1"
+        - text: .
+      - paragraph: Assume
+      - math:
+        - generic: θ
+        - generic: s
+        - generic: W
+        - generic: D
+        - generic: ≤
+        - generic: "1."
+        - generic: (6)
+      - text: θs
+      - text: W
+      - generic: D
+      - text: ≤
+      - generic: "1."
+      - text: (
+      - generic: "6"
+      - text: )
+      - paragraph:
+        - text: At
+        - math:
+          - generic: t
+          - generic: =
+          - generic: "1"
+          - generic: /
+          - generic: D
+        - generic: t =
+        - generic: 1/D
+        - text: ", (4) and (5) give"
+      - math:
+        - generic: E
+        - generic: π
+        - generic: λ
+        - generic: "["
+        - generic: q
+        - generic: θ
+        - generic: (
+        - generic: X
+        - generic: )
+        - generic: e
+        - generic: ∣
+        - generic: X
+        - generic: ∣
+        - generic: "1"
+        - generic: /
+        - generic: D
+        - generic: "]"
+        - generic: ≤
+        - generic: exp
+        - generic: ⁡
+        - generic: (
+        - generic: "4"
+        - generic: W
+        - generic: "2"
+        - generic: )
+        - generic: .
+        - generic: (7)
+      - text: E
+      - text: π
+      - generic: λ
+      - generic: "["
+      - text: q
+      - generic: θ
+      - text: (X)
+      - text: e
+      - text: ∣X
+      - text: ∣
+      - generic: "1"
+      - text: /D
+      - generic: "]"
+      - text: ≤
+      - text: exp(4
+      - text: W
+      - generic: "2"
+      - text: ).
+      - text: (
+      - generic: "7"
+      - text: )
+      - paragraph:
+        - text: Here
+        - math:
+          - generic: W
+          - generic: ">"
+          - generic: "10"
+        - generic: W >
+        - generic: "10"
+        - text: ", so the elementary estimate"
+        - math:
+          - generic: "2"
+          - generic: W
+          - generic: log
+          - generic: ⁡
+          - generic: W
+          - generic: +
+          - generic: "3"
+          - generic: W
+          - generic: +
+          - generic: "3"
+          - generic: ≤
+          - generic: "4"
+          - generic: W
+          - generic: "2"
+        - text: 2W
+        - generic: log
+        - text: W +
+        - generic: 3W +
+        - generic: 3 ≤
+        - text: "4"
+        - text: W
+        - generic: "2"
+        - text: is ample.
+      - paragraph: For any
+      - math:
+        - generic: B
+        - generic: ≥
+        - generic: "16"
+        - generic: D
+        - generic: (
+        - generic: D
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: W
+        - generic: "2"
+        - generic: ","
+      - generic: B ≥
+      - generic: 16D(D +
+      - text: 1)
+      - text: W
+      - generic: "2"
+      - text: ","
+      - paragraph: we obtain
+      - math:
+        - generic: E
+        - generic: π
+        - generic: λ
+        - generic: "["
+        - generic: q
+        - generic: θ
+        - generic: (
+        - generic: X
+        - generic: )
+        - generic: (
+        - generic: ∣
+        - generic: X
+        - generic: ∣
+        - generic: "1"
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: "1"
+        - generic: "{"
+        - generic: ∣
+        - generic: X
+        - generic: ∣
+        - generic: "1"
+        - generic: ">"
+        - generic: B
+        - generic: "}"
+        - generic: "]"
+        - generic: ≤
+        - generic: (
+        - generic: "2"
+        - generic: D
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: e
+        - generic: "4"
+        - generic: W
+        - generic: "2"
+        - generic: −
+        - generic: B
+        - generic: /
+        - generic: (
+        - generic: "2"
+        - generic: D
+        - generic: )
+        - generic: ≤
+        - generic: ϵ
+        - generic: "32"
+        - generic: .
+        - generic: (8)
+      - text: E
+      - text: π
+      - generic: λ
+      - generic: "["
+      - text: q
+      - generic: θ
+      - text: (X)(∣X
+      - text: ∣
+      - generic: "1"
+      - text: + 1)
+      - text: "1"
+      - text: "{∣X"
+      - text: ∣
+      - generic: "1"
+      - text: ">B}"
+      - generic: "]"
+      - text: ≤
+      - generic: (2D +
+      - text: 1)
+      - text: e
+      - text: "4"
+      - text: W
+      - generic: "2"
+      - text: −B/(2D)
+      - text: ≤
+      - generic: "32"
+      - generic: ϵ
+      - text: .
+      - text: (
+      - generic: "8"
+      - text: )
+      - paragraph:
+        - text: The last inequality follows from
+        - math:
+          - generic: W
+          - generic: ≥
+          - generic: ϵ
+          - generic: −
+          - generic: "1"
+        - generic: W ≥
+        - text: ϵ
+        - generic: −1
+        - text: ; no class probability or normalizer is supplied or computed.
+      - paragraph:
+        - text: "On"
+        - math:
+          - generic: ∣
+          - generic: x
+          - generic: ∣
+          - generic: "1"
+          - generic: ≤
+          - generic: B
+        - text: ∣x
+        - text: ∣
+        - generic: "1"
+        - text: ≤
+        - generic: B
+        - text: ","
+      - math:
+        - generic: "1"
+        - generic: ≤
+        - generic: q
+        - generic: θ
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: ≤
+        - generic: e
+        - generic: s
+        - generic: θ
+        - generic: B
+        - generic: D
+        - generic: .
+      - generic: 1 ≤
+      - text: q
+      - generic: θ
+      - text: (x) ≤
+      - text: e
+      - text: sθ
+      - text: B
+      - generic: D
+      - text: .
+      - paragraph: Thus if
+      - math:
+        - generic: θ
+        - generic: ≤
+        - generic: ϵ
+        - generic: "128"
+        - generic: s
+        - generic: (
+        - generic: B
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: D
+        - generic: +
+        - generic: "1"
+        - generic: ","
+        - generic: (9)
+      - generic: θ ≤
+      - text: 128s(B + 1
+      - text: )
+      - generic: D+1
+      - generic: ϵ
+      - text: ","
+      - text: (
+      - generic: "9"
+      - text: )
+      - paragraph: then
+      - math:
+        - generic: q
+        - generic: θ
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: −
+        - generic: "1"
+        - generic: ≤
+        - generic: α
+        - generic: ","
+        - generic: α
+        - generic: =
+        - generic: ϵ
+        - generic: "64"
+        - generic: (
+        - generic: B
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: .
+        - generic: (10)
+      - text: q
+      - generic: θ
+      - text: (x) −
+      - generic: 1 ≤
+      - generic: α, α =
+      - generic: 64(B + 1)
+      - generic: ϵ
+      - text: .
+      - text: (
+      - generic: "10"
+      - text: )
+      - paragraph:
+        - text: Let
+        - math:
+          - generic: r
+          - generic: =
+          - generic: E
+          - generic: π
+          - generic: q
+          - generic: θ
+        - generic: r =
+        - text: E
+        - generic: π
+        - text: q
+        - generic: θ
+        - text: . Equations (8)–(10) yield
+      - math:
+        - generic: r
+        - generic: −
+        - generic: "1"
+        - generic: ≤
+        - generic: α
+        - generic: +
+        - generic: ϵ
+        - generic: "32"
+        - generic: B
+        - generic: ","
+        - generic: (11)
+      - generic: r −
+      - generic: 1 ≤
+      - generic: α +
+      - generic: 32B
+      - generic: ϵ
+      - text: ","
+      - text: (
+      - generic: "11"
+      - text: )
+      - math:
+        - generic: E
+        - generic: π
+        - generic: ∣
+        - generic: X
+        - generic: ∣
+        - generic: "1"
+        - generic: ≤
+        - generic: B
+        - generic: +
+        - generic: "1"
+        - generic: ","
+        - generic: (12)
+      - text: E
+      - generic: π
+      - text: ∣X
+      - text: ∣
+      - generic: "1"
+      - text: ≤
+      - generic: B +
+      - generic: 1,
+      - text: (
+      - generic: "12"
+      - text: )
+      - paragraph: and
+      - math:
+        - generic: E
+        - generic: π
+        - generic: "["
+        - generic: ∣
+        - generic: X
+        - generic: ∣
+        - generic: "1"
+        - generic: (
+        - generic: q
+        - generic: θ
+        - generic: −
+        - generic: "1"
+        - generic: )
+        - generic: "]"
+        - generic: ≤
+        - generic: B
+        - generic: α
+        - generic: +
+        - generic: ϵ
+        - generic: "32"
+        - generic: .
+        - generic: (13)
+      - text: E
+      - generic: π
+      - text: "[∣X"
+      - text: ∣
+      - generic: "1"
+      - text: (
+      - text: q
+      - generic: θ
+      - text: −
+      - generic: 1)] ≤
+      - generic: Bα +
+      - generic: "32"
+      - generic: ϵ
+      - text: .
+      - text: (
+      - generic: "13"
+      - text: )
+      - paragraph:
+        - text: Since
+        - math:
+          - generic: q
+          - generic: θ
+          - generic: ≥
+          - generic: "1"
+        - text: q
+        - generic: θ
+        - text: ≥
+        - generic: "1"
+        - text: ","
+      - math:
+        - generic: ∥
+        - generic: ρ
+        - generic: θ
+        - generic: −
+        - generic: π
+        - generic: ∥
+        - generic: T
+        - generic: V
+        - generic: ≤
+        - generic: r
+        - generic: −
+        - generic: "1"
+        - generic: <
+        - generic: ϵ
+        - generic: "8"
+        - generic: .
+        - generic: (14)
+      - text: ∥
+      - text: ρ
+      - generic: θ
+      - text: −
+      - text: π
+      - text: ∥
+      - generic: TV
+      - text: ≤
+      - generic: r −
+      - generic: 1 <
+      - generic: "8"
+      - generic: ϵ
+      - text: .
+      - text: (
+      - generic: "14"
+      - text: )
+      - paragraph: For each coordinate,
+      - math:
+        - generic: ∣
+        - generic: ρ
+        - generic: θ
+        - generic: X
+        - generic: i
+        - generic: −
+        - generic: π
+        - generic: X
+        - generic: i
+        - generic: ∣
+        - generic: ≤
+        - generic: E
+        - generic: π
+        - generic: "["
+        - generic: ∣
+        - generic: X
+        - generic: ∣
+        - generic: "1"
+        - generic: (
+        - generic: q
+        - generic: θ
+        - generic: −
+        - generic: "1"
+        - generic: )
+        - generic: "]"
+        - generic: +
+        - generic: (
+        - generic: r
+        - generic: −
+        - generic: "1"
+        - generic: )
+        - generic: E
+        - generic: π
+        - generic: ∣
+        - generic: X
+        - generic: ∣
+        - generic: "1"
+        - generic: ≤
+        - generic: α
+        - generic: (
+        - generic: "2"
+        - generic: B
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: +
+        - generic: ϵ
+        - generic: "32"
+        - generic: +
+        - generic: ϵ
+        - generic: (
+        - generic: B
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: "32"
+        - generic: B
+        - generic: ≤
+        - generic: ϵ
+        - generic: "8"
+        - generic: .
+        - generic: (15)
+      - text: ∣
+      - text: ρ
+      - generic: θ
+      - text: X
+      - generic: i
+      - text: − π
+      - text: X
+      - generic: i
+      - text: ∣
+      - text: ≤
+      - text: E
+      - generic: π
+      - text: "[∣X"
+      - text: ∣
+      - generic: "1"
+      - text: (
+      - text: q
+      - generic: θ
+      - text: − 1)] + (r − 1)
+      - text: E
+      - generic: π
+      - text: ∣X
+      - text: ∣
+      - generic: "1"
+      - text: ≤ α(2B + 1) +
+      - generic: "32"
+      - generic: ϵ
+      - text: +
+      - generic: 32B
+      - generic: ϵ(B + 1)
+      - text: ≤
+      - generic: "8"
+      - generic: ϵ
+      - text: .
+      - text: (
+      - generic: "15"
+      - text: )
+      - paragraph:
+        - text: This proves polynomial static approximation on
+        - strong: every
+        - text: class, including infinite classes.
+      - separator
+      - heading "3. A near- contraction gives polynomial nominal moments for all time" [level=1]:
+        - text: 3. A near-
+        - math:
+          - generic: L
+          - generic: "1"
+        - text: L
+        - generic: "1"
+        - text: contraction gives polynomial nominal moments for all time
+      - paragraph: This is useful independently of any mixing or spectral-gap estimate.
+      - paragraph:
+        - text: Let
+        - math:
+          - generic: μ
+        - generic: μ
+        - text: be the nominal fine stationary measure, and put
+      - math:
+        - generic: "N"
+        - generic: (
+        - generic: u
+        - generic: )
+        - generic: =
+        - generic: ∣
+        - generic: D
+        - generic: d
+        - generic: e
+        - generic: c
+        - generic: u
+        - generic: ∣
+        - generic: "1"
+        - generic: ","
+        - generic: H
+        - generic: =
+        - generic: "4"
+        - generic: W
+        - generic: "2"
+        - generic: ","
+        - generic: q
+        - generic: =
+        - generic: ⌈
+        - generic: H
+        - generic: ⌉
+        - generic: ","
+        - generic: r
+        - generic: =
+        - generic: q
+        - generic: q
+        - generic: −
+        - generic: "1"
+        - generic: .
+      - generic: N(u) =
+      - text: ∣
+      - text: D
+      - generic: dec
+      - text: u
+      - text: ∣
+      - generic: "1"
+      - text: ", H ="
+      - text: "4"
+      - text: W
+      - generic: "2"
+      - text: ", q ="
+      - generic: ⌈H⌉, r =
+      - generic: q − 1
+      - generic: q
+      - text: .
+      - paragraph: The same generating-function estimate gives
+      - math:
+        - generic: μ
+        - generic: (
+        - generic: e
+        - generic: "N"
+        - generic: /
+        - generic: D
+        - generic: )
+        - generic: ≤
+        - generic: e
+        - generic: H
+        - generic: ","
+        - generic: μ
+        - generic: (
+        - generic: j
+        - generic: (
+        - generic: x
+        - generic: "0"
+        - generic: )
+        - generic: )
+        - generic: ≥
+        - generic: e
+        - generic: −
+        - generic: H
+        - generic: .
+        - generic: (16)
+      - text: μ(
+      - text: e
+      - generic: N/D
+      - text: ) ≤
+      - text: e
+      - generic: H
+      - text: ", μ(j("
+      - text: x
+      - generic: "0"
+      - text: )) ≥
+      - text: e
+      - generic: −H
+      - text: .
+      - text: (
+      - generic: "16"
+      - text: )
+      - paragraph:
+        - text: For the density
+        - math:
+          - generic: f
+          - generic: t
+        - text: f
+        - generic: t
+        - text: of the process started at
+        - math:
+          - generic: j
+          - generic: (
+          - generic: x
+          - generic: "0"
+          - generic: )
+        - text: j(
+        - text: x
+        - generic: "0"
+        - text: )
+        - text: ", stationarity and Jensen imply contraction of the adjoint Markov semigroup in"
+        - math:
+          - generic: L
+          - generic: r
+          - generic: (
+          - generic: μ
+          - generic: )
+        - text: L
+        - generic: r
+        - text: (μ)
+        - text: ":"
+      - math:
+        - generic: ∥
+        - generic: f
+        - generic: t
+        - generic: ∥
+        - generic: L
+        - generic: r
+        - generic: (
+        - generic: μ
+        - generic: )
+        - generic: ≤
+        - generic: ∥
+        - generic: f
+        - generic: "0"
+        - generic: ∥
+        - generic: L
+        - generic: r
+        - generic: (
+        - generic: μ
+        - generic: )
+        - generic: =
+        - generic: μ
+        - generic: (
+        - generic: j
+        - generic: (
+        - generic: x
+        - generic: "0"
+        - generic: )
+        - generic: )
+        - generic: −
+        - generic: "1"
+        - generic: /
+        - generic: q
+        - generic: ≤
+        - generic: e
+        - generic: .
+        - generic: (17)
+      - text: ∥
+      - text: f
+      - generic: t
+      - text: ∥
+      - text: L
+      - generic: r
+      - text: (μ)
+      - text: ≤
+      - text: ∥
+      - text: f
+      - generic: "0"
+      - text: ∥
+      - text: L
+      - generic: r
+      - text: (μ)
+      - text: =
+      - text: μ(j(
+      - text: x
+      - generic: "0"
+      - text: )
+      - text: )
+      - generic: −1/q
+      - text: ≤
+      - generic: e.
+      - text: (
+      - generic: "17"
+      - text: )
+      - paragraph:
+        - text: For every fixed integer
+        - math:
+          - generic: h
+          - generic: ≥
+          - generic: "1"
+        - generic: h ≥
+        - generic: "1"
+        - text: ","
+      - math:
+        - generic: "N"
+        - generic: h
+        - generic: q
+        - generic: ≤
+        - generic: D
+        - generic: h
+        - generic: q
+        - generic: (
+        - generic: h
+        - generic: q
+        - generic: )
+        - generic: "!"
+        - generic: e
+        - generic: "N"
+        - generic: /
+        - generic: D
+        - generic: .
+      - text: "N"
+      - generic: hq
+      - text: ≤
+      - text: D
+      - generic: hq
+      - text: (hq)!
+      - text: e
+      - generic: N/D
+      - text: .
+      - paragraph:
+        - text: Hölder and (16)–(17) therefore give, for all
+        - math:
+          - generic: t
+          - generic: ≥
+          - generic: "0"
+        - generic: t ≥
+        - generic: "0"
+        - text: ","
+      - math:
+        - generic: E
+        - generic: j
+        - generic: (
+        - generic: x
+        - generic: "0"
+        - generic: )
+        - generic: "N"
+        - generic: (
+        - generic: Z
+        - generic: t
+        - generic: )
+        - generic: h
+        - generic: ≤
+        - generic: e
+        - generic: (
+        - generic: μ
+        - generic: "N"
+        - generic: h
+        - generic: q
+        - generic: )
+        - generic: "1"
+        - generic: /
+        - generic: q
+        - generic: ≤
+        - generic: e
+        - generic: "2"
+        - generic: (
+        - generic: D
+        - generic: h
+        - generic: q
+        - generic: )
+        - generic: h
+        - generic: ≤
+        - generic: "9"
+        - generic: (
+        - generic: "5"
+        - generic: D
+        - generic: h
+        - generic: )
+        - generic: h
+        - generic: W
+        - generic: "2"
+        - generic: h
+        - generic: .
+        - generic: (18)
+      - text: E
+      - text: j(
+      - text: x
+      - generic: "0"
+      - text: )
+      - text: N(
+      - text: Z
+      - generic: t
+      - text: )
+      - generic: h
+      - text: ≤ e
+      - generic: (
+      - text: μ
+      - text: "N"
+      - generic: hq
+      - generic: )
+      - generic: 1/q
+      - text: ≤
+      - text: e
+      - generic: "2"
+      - text: (Dhq
+      - text: )
+      - generic: h
+      - text: ≤ 9(5Dh
+      - text: )
+      - generic: h
+      - text: W
+      - generic: 2h
+      - text: .
+      - text: (
+      - generic: "18"
+      - text: )
+      - paragraph:
+        - text: The same estimate holds for the original nominal process; using
+        - math:
+          - generic: D
+          - generic: ≥
+          - generic: "1"
+        - generic: D ≥
+        - generic: "1"
+        - text: merely enlarges its constant.
+      - paragraph: It also bounds the stationary moments. In particular, with
+      - math:
+        - generic: A
+        - generic: h
+        - generic: =
+        - generic: "9"
+        - generic: (
+        - generic: "5"
+        - generic: D
+        - generic: h
+        - generic: )
+        - generic: h
+        - generic: ","
+        - generic: F
+        - generic: h
+        - generic: =
+        - generic: "2"
+        - generic: h
+        - generic: −
+        - generic: "1"
+        - generic: (
+        - generic: A
+        - generic: h
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: ","
+      - text: A
+      - generic: h
+      - text: =
+      - text: 9(5Dh
+      - text: )
+      - generic: h
+      - text: ","
+      - text: F
+      - generic: h
+      - text: =
+      - text: "2"
+      - generic: h−1
+      - text: (
+      - text: A
+      - generic: h
+      - text: +
+      - generic: 1),
+      - paragraph: we have
+      - math:
+        - generic: sup
+        - generic: ⁡
+        - generic: t
+        - generic: ≥
+        - generic: "0"
+        - generic: E
+        - generic: (
+        - generic: "N"
+        - generic: (
+        - generic: Z
+        - generic: t
+        - generic: )
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: h
+        - generic: ≤
+        - generic: F
+        - generic: h
+        - generic: W
+        - generic: "2"
+        - generic: h
+        - generic: .
+        - generic: (19)
+      - generic: t≥0
+      - generic: sup
+      - text: E(N(
+      - text: Z
+      - generic: t
+      - text: ) +
+      - text: "1"
+      - text: )
+      - generic: h
+      - text: ≤
+      - text: F
+      - generic: h
+      - text: W
+      - generic: 2h
+      - text: .
+      - text: (
+      - generic: "19"
+      - text: )
+      - paragraph:
+        - text: This avoids the exponentially large
+        - math:
+          - generic: L
+          - generic: "2"
+        - text: L
+        - generic: "2"
+        - text: norm of the initial point mass. It uses
+        - math:
+          - generic: r
+          - generic: −
+          - generic: "1"
+          - generic: ≍
+          - generic: W
+          - generic: −
+          - generic: "2"
+        - generic: r −
+        - generic: 1 ≍
+        - text: W
+        - generic: −2
+        - text: ", only as a proof parameter."
+      - paragraph: Because of (1), (18) also bounds every auxiliary population.
+      - separator
+      - heading "4. Explicit polynomial mixing of each bounded fast fibre" [level=1]
+      - paragraph:
+        - text: Fix a decoded state
+        - math:
+          - generic: x
+        - generic: x
+        - text: with
+        - math:
+          - generic: ∣
+          - generic: x
+          - generic: ∣
+          - generic: "1"
+          - generic: ≤
+          - generic: B
+        - text: ∣x
+        - text: ∣
+        - generic: "1"
+        - text: ≤
+        - generic: B
+        - text: . Remove the common factor
+        - math:
+          - generic: K
+        - generic: K
+        - text: from the binding generator and call the resulting generator
+        - math:
+          - generic: F
+          - generic: x
+        - text: F
+        - generic: x
+        - text: .
+      - paragraph: Its invariant probability on the fibre is
+      - math:
+        - generic: ν
+        - generic: x
+        - generic: (
+        - generic: a
+        - generic: )
+        - generic: =
+        - generic: "1"
+        - generic: q
+        - generic: θ
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: θ
+        - generic: ∣
+        - generic: a
+        - generic: ∣
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: E
+        - generic: a
+        - generic: a
+        - generic: "!"
+        - generic: .
+        - generic: (20)
+      - text: ν
+      - generic: x
+      - text: (a) =
+      - text: q
+      - generic: θ
+      - text: (x)
+      - generic: "1"
+      - generic: a!
+      - text: θ
+      - generic: ∣a∣
+      - text: (x
+      - text: )
+      - generic: Ea
+      - text: .
+      - text: (
+      - generic: "20"
+      - text: )
+      - paragraph: Assume
+      - math:
+        - generic: θ
+        - generic: (
+        - generic: B
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: D
+        - generic: ≤
+        - generic: "1"
+        - generic: "2"
+        - generic: ","
+        - generic: s
+        - generic: θ
+        - generic: B
+        - generic: D
+        - generic: ≤
+        - generic: "1."
+        - generic: (21)
+      - generic: θ(B +
+      - text: "1"
+      - text: )
+      - generic: D
+      - text: ≤
+      - generic: "2"
+      - generic: "1"
+      - text: ", sθ"
+      - text: B
+      - generic: D
+      - text: ≤
+      - generic: "1."
+      - text: (
+      - generic: "21"
+      - text: )
+      - paragraph:
+        - text: These are much weaker than the eventual choice of
+        - math:
+          - generic: θ
+        - generic: θ
+        - text: .
+      - heading "Release paths" [level=3]
+      - paragraph: From any fibre state, release one complete auxiliary at a time.
+      - paragraph:
+        - text: If one prefix with encoding
+        - math:
+          - generic: c
+        - generic: c
+        - text: is completely released, the endpoint weight ratio is
+      - math:
+        - generic: ν
+        - generic: x
+        - generic: (
+        - generic: a
+        - generic: −
+        - generic: e
+        - generic: c
+        - generic: )
+        - generic: ν
+        - generic: x
+        - generic: (
+        - generic: a
+        - generic: )
+        - generic: =
+        - generic: a
+        - generic: c
+        - generic: θ
+        - generic: "n"
+        - generic: "!"
+        - generic: (
+        - generic: "n"
+        - generic: +
+        - generic: c
+        - generic: )
+        - generic: "!"
+        - generic: ≥
+        - generic: "1"
+        - generic: θ
+        - generic: (
+        - generic: B
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: D
+        - generic: ≥
+        - generic: "2."
+        - generic: (22)
+      - text: ν
+      - generic: x
+      - text: (a)
+      - text: ν
+      - generic: x
+      - text: (a −
+      - text: e
+      - generic: c
+      - text: )
+      - text: =
+      - generic: θ
+      - text: a
+      - generic: c
+      - generic: (n + c)!
+      - generic: n!
+      - text: ≥
+      - text: θ(B + 1
+      - text: )
+      - generic: D
+      - generic: "1"
+      - text: ≥
+      - generic: "2."
+      - text: (
+      - generic: "22"
+      - text: )
+      - paragraph:
+        - text: During an individual partial release, the weight ratio is at least
+        - math:
+          - generic: (
+          - generic: B
+          - generic: +
+          - generic: "1"
+          - generic: )
+          - generic: −
+          - generic: "2"
+        - generic: (B +
+        - text: "1"
+        - text: )
+        - generic: −2
+        - text: . Consequently, throughout the at most
+        - math:
+          - generic: D
+        - generic: D
+        - text: partial releases of a single auxiliary, the weight stays at least
+      - math:
+        - generic: (
+        - generic: B
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: −
+        - generic: "2"
+        - generic: D
+      - generic: (B +
+      - text: "1"
+      - text: )
+      - generic: −2D
+      - paragraph: times its weight at the start of that auxiliary’s release. Complete releases increase the weight, so this loss bound holds relative to the initial state of the entire path.
+      - paragraph:
+        - text: The path length is at most
+        - math:
+          - generic: D
+          - generic: B
+        - generic: DB
+        - text: ", and the number of fibre states is at most"
+        - math:
+          - generic: (
+          - generic: B
+          - generic: +
+          - generic: "1"
+          - generic: )
+          - generic: s
+        - generic: (B +
+        - text: "1"
+        - text: )
+        - generic: s
+        - text: . Every release transition in
+        - math:
+          - generic: F
+          - generic: x
+        - text: F
+        - generic: x
+        - text: has rate at least one when used.
+      - paragraph: The anchored path inequality therefore gives
+      - math:
+        - generic: Var
+        - generic: ⁡
+        - generic: ν
+        - generic: x
+        - generic: h
+        - generic: ≤
+        - generic: D
+        - generic: B
+        - generic: (
+        - generic: B
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: s
+        - generic: +
+        - generic: "2"
+        - generic: D
+        - generic: E
+        - generic: F
+        - generic: x
+        - generic: (
+        - generic: h
+        - generic: ","
+        - generic: h
+        - generic: )
+        - generic: .
+        - generic: (23)
+      - generic: Var
+      - text: ν
+      - generic: x
+      - text: h ≤
+      - generic: DB(B +
+      - text: "1"
+      - text: )
+      - generic: s+2D
+      - text: E
+      - text: F
+      - generic: x
+      - text: (h, h).
+      - text: (
+      - generic: "23"
+      - text: )
+      - paragraph: No reciprocal minimum stationary probability enters this gap bound.
+      - paragraph: For the logarithmic initialization cost, (20)–(21) give
+      - math:
+        - generic: ν
+        - generic: x
+        - generic: (
+        - generic: a
+        - generic: )
+        - generic: ≥
+        - generic: e
+        - generic: −
+        - generic: "1"
+        - generic: (
+        - generic: θ
+        - generic: /
+        - generic: B
+        - generic: )
+        - generic: B
+        - generic: .
+        - generic: (24)
+      - text: ν
+      - generic: x
+      - text: (a) ≥
+      - text: e
+      - generic: −1
+      - text: (θ/B
+      - text: )
+      - generic: B
+      - text: .
+      - text: (
+      - generic: "24"
+      - text: )
+      - paragraph:
+        - text: Integrating the standard finite reversible
+        - math:
+          - generic: L
+          - generic: "2"
+        - text: L
+        - generic: "2"
+        - text: "-to-TV bound yields an explicit sup-norm Poisson-corrector bound. A safely enlarged expression is"
+      - math:
+        - generic: ∥
+        - generic: F
+        - generic: x
+        - generic: −
+        - generic: "1"
+        - generic: (
+        - generic: I
+        - generic: −
+        - generic: Π
+        - generic: x
+        - generic: )
+        - generic: ∥
+        - generic: ∞
+        - generic: →
+        - generic: ∞
+        - generic: ≤
+        - generic: C
+        - generic: F
+        - generic: ","
+        - generic: C
+        - generic: F
+        - generic: =
+        - generic: "8"
+        - generic: D
+        - generic: (
+        - generic: B
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: s
+        - generic: +
+        - generic: "2"
+        - generic: D
+        - generic: +
+        - generic: "4"
+        - generic: θ
+        - generic: −
+        - generic: "1"
+        - generic: ","
+        - generic: (25)
+      - text: F
+      - generic: x
+      - generic: −1
+      - text: (I −
+      - text: Π
+      - generic: x
+      - text: )
+      - generic: ∞→∞
+      - text: ≤
+      - text: C
+      - generic: F
+      - text: ","
+      - text: C
+      - generic: F
+      - text: =
+      - generic: 8D(B +
+      - text: "1"
+      - text: )
+      - generic: s+2D+4
+      - text: θ
+      - generic: −1
+      - text: ","
+      - text: (
+      - generic: "25"
+      - text: )
+      - paragraph:
+        - text: where
+        - math:
+          - generic: Π
+          - generic: x
+        - text: Π
+        - generic: x
+        - text: averages against
+        - math:
+          - generic: ν
+          - generic: x
+        - text: ν
+        - generic: x
+        - text: .
+      - paragraph: The actual intermediate estimates only require a logarithm of (24). Replacing that logarithm by a polynomial gives (25).
+      - separator
+      - heading "5. Exact averaged rates and a finite killed-process averaging bound" [level=1]
+      - paragraph: The following finite stopping is solely analytical. It does not modify the physical network.
+      - paragraph:
+        - text: Stop either process when its decoded total population leaves
+        - math:
+          - generic: "{"
+          - generic: "N"
+          - generic: ≤
+          - generic: B
+          - generic: "}"
+        - generic: "{N ≤"
+        - generic: "B}"
+        - text: ", and send it to one absorbing cemetery state. The fast binding process preserves"
+        - math:
+          - generic: "N"
+        - generic: "N"
+        - text: ", so it never causes killing. The finite state space can be defined mathematically without being enumerated by the compiler."
+      - paragraph:
+        - text: Let
+        - math:
+          - generic: S
+        - generic: S
+        - text: denote the raw conversion generator. On this stopped state space,
+      - math:
+        - generic: Q
+        - generic: =
+        - generic: K
+        - generic: F
+        - generic: +
+        - generic: S
+        - generic: .
+      - generic: Q =
+      - generic: KF +
+      - generic: S.
+      - paragraph: Every conversion source is empty or one fine molecule, so
+      - math:
+        - generic: sup
+        - generic: ⁡
+        - generic: u
+        - generic: b
+        - generic: S
+        - generic: (
+        - generic: u
+        - generic: )
+        - generic: ≤
+        - generic: M
+        - generic: ","
+        - generic: M
+        - generic: =
+        - generic: m
+        - generic: θ
+        - generic: −
+        - generic: "1"
+        - generic: (
+        - generic: B
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: .
+        - generic: (26)
+      - generic: u
+      - generic: sup
+      - text: b
+      - generic: S
+      - text: (u) ≤
+      - generic: M, M =
+      - text: m
+      - text: θ
+      - generic: −1
+      - text: (B +
+      - generic: 1).
+      - text: (
+      - generic: "26"
+      - text: )
+      - paragraph:
+        - text: In particular
+        - math:
+          - generic: ∥
+          - generic: S
+          - generic: ∥
+          - generic: ∞
+          - generic: →
+          - generic: ∞
+          - generic: ≤
+          - generic: "2"
+          - generic: M
+        - text: ∥S
+        - text: ∥
+        - generic: ∞→∞
+        - text: ≤
+        - generic: 2M
+        - text: .
+      - heading "Exact averaged generator" [level=3]
+      - paragraph:
+        - text: For a source complex
+        - math:
+          - generic: "Y"
+          - generic: r
+        - text: "Y"
+        - generic: r
+        - text: of order at least two,
+      - math:
+        - generic: E
+        - generic: ν
+        - generic: x
+        - generic: a
+        - generic: "Y"
+        - generic: r
+        - generic: =
+        - generic: θ
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: "Y"
+        - generic: r
+        - generic: q
+        - generic: θ
+        - generic: (
+        - generic: x
+        - generic: −
+        - generic: "Y"
+        - generic: r
+        - generic: )
+        - generic: q
+        - generic: θ
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: .
+      - text: E
+      - text: ν
+      - generic: x
+      - text: a
+      - text: "Y"
+      - generic: r
+      - text: =
+      - text: θ(x
+      - text: )
+      - text: "Y"
+      - generic: r
+      - text: q
+      - generic: θ
+      - text: (x)
+      - text: q
+      - generic: θ
+      - text: (x −
+      - text: "Y"
+      - generic: r
+      - text: )
+      - text: .
+      - paragraph: For a source original species, the corresponding identity is
+      - math:
+        - generic: E
+        - generic: ν
+        - generic: x
+        - generic: "n"
+        - generic: i
+        - generic: =
+        - generic: x
+        - generic: i
+        - generic: q
+        - generic: θ
+        - generic: (
+        - generic: x
+        - generic: −
+        - generic: e
+        - generic: i
+        - generic: )
+        - generic: q
+        - generic: θ
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: .
+      - text: E
+      - text: ν
+      - generic: x
+      - text: "n"
+      - generic: i
+      - text: =
+      - text: x
+      - generic: i
+      - text: q
+      - generic: θ
+      - text: (x)
+      - text: q
+      - generic: θ
+      - text: (x −
+      - text: e
+      - generic: i
+      - text: )
+      - text: .
+      - paragraph: Thus the exact averaged rate is
+      - math:
+        - generic: q
+        - generic: ‾
+        - generic: r
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: =
+        - generic: κ
+        - generic: r
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: "Y"
+        - generic: r
+        - generic: q
+        - generic: θ
+        - generic: (
+        - generic: x
+        - generic: −
+        - generic: "Y"
+        - generic: r
+        - generic: )
+        - generic: q
+        - generic: θ
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: .
+        - generic: (27)
+      - generic: q
+      - generic: r
+      - text: (x) =
+      - text: κ
+      - generic: r
+      - text: (x
+      - text: )
+      - text: "Y"
+      - generic: r
+      - text: q
+      - generic: θ
+      - text: (x)
+      - text: q
+      - generic: θ
+      - text: (x −
+      - text: "Y"
+      - generic: r
+      - text: )
+      - text: .
+      - text: (
+      - generic: "27"
+      - text: )
+      - paragraph: The formula includes source orders zero and one with the natural conventions.
+      - paragraph:
+        - text: Since
+        - math:
+          - generic: q
+          - generic: θ
+        - text: q
+        - generic: θ
+        - text: is coordinatewise nondecreasing,
+      - math:
+        - generic: "0"
+        - generic: ≤
+        - generic: "1"
+        - generic: −
+        - generic: q
+        - generic: θ
+        - generic: (
+        - generic: x
+        - generic: −
+        - generic: "Y"
+        - generic: r
+        - generic: )
+        - generic: q
+        - generic: θ
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: ≤
+        - generic: q
+        - generic: θ
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: −
+        - generic: "1"
+        - generic: ≤
+        - generic: "2"
+        - generic: s
+        - generic: θ
+        - generic: (
+        - generic: B
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: D
+        - generic: .
+      - generic: 0 ≤
+      - generic: 1 −
+      - text: q
+      - generic: θ
+      - text: (x)
+      - text: q
+      - generic: θ
+      - text: (x −
+      - text: "Y"
+      - generic: r
+      - text: )
+      - text: ≤
+      - text: q
+      - generic: θ
+      - text: (x) −
+      - generic: 1 ≤
+      - generic: 2sθ(B +
+      - text: "1"
+      - text: )
+      - generic: D
+      - text: .
+      - paragraph:
+        - text: Therefore, if
+        - math:
+          - generic: Q
+          - generic: h
+          - generic: i
+          - generic: g
+          - generic: h
+          - generic: B
+        - text: Q
+        - generic: high
+        - generic: B
+        - text: is the original higher-molecularity process killed at the same boundary,
+      - math:
+        - generic: ∥
+        - generic: Q
+        - generic: ‾
+        - generic: B
+        - generic: −
+        - generic: Q
+        - generic: h
+        - generic: i
+        - generic: g
+        - generic: h
+        - generic: B
+        - generic: ∥
+        - generic: ∞
+        - generic: →
+        - generic: ∞
+        - generic: ≤
+        - generic: "4"
+        - generic: s
+        - generic: m
+        - generic: θ
+        - generic: (
+        - generic: B
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: "2"
+        - generic: D
+        - generic: .
+        - generic: (28)
+      - text: ∥
+      - generic: Q
+      - generic: B
+      - text: −
+      - text: Q
+      - generic: high
+      - generic: B
+      - text: ∥
+      - generic: ∞→∞
+      - text: ≤
+      - generic: 4smθ(B +
+      - text: "1"
+      - text: )
+      - generic: 2D
+      - text: .
+      - text: (
+      - generic: "28"
+      - text: )
+      - paragraph: This also accounts for boundary-killing rates.
+      - heading "Averaging error" [level=3]
+      - paragraph:
+        - text: Let
+        - math:
+          - generic: U
+        - generic: U
+        - text: embed decoded functions as functions constant on each fibre, and let
+        - math:
+          - generic: Π
+        - generic: Π
+        - text: be fibre averaging. For a bounded decoded test function
+        - math:
+          - generic: g
+        - generic: g
+        - text: ", set"
+      - math:
+        - generic: f
+        - generic: s
+        - generic: =
+        - generic: U
+        - generic: e
+        - generic: (
+        - generic: T
+        - generic: −
+        - generic: s
+        - generic: )
+        - generic: Q
+        - generic: ‾
+        - generic: B
+        - generic: g
+        - generic: ","
+        - generic: h
+        - generic: s
+        - generic: =
+        - generic: (
+        - generic: I
+        - generic: −
+        - generic: Π
+        - generic: )
+        - generic: S
+        - generic: f
+        - generic: s
+        - generic: .
+      - text: f
+      - generic: s
+      - text: =
+      - text: U
+      - text: e
+      - text: (T−s)
+      - generic: Q
+      - generic: B
+      - text: g,
+      - text: h
+      - generic: s
+      - text: =
+      - generic: (I −
+      - text: Π)S
+      - text: f
+      - generic: s
+      - text: .
+      - paragraph:
+        - text: For
+        - math:
+          - generic: ∥
+          - generic: g
+          - generic: ∥
+          - generic: ∞
+          - generic: ≤
+          - generic: "1"
+        - text: ∥g
+        - text: ∥
+        - generic: ∞
+        - text: ≤
+        - generic: "1"
+        - text: ","
+      - math:
+        - generic: ∥
+        - generic: h
+        - generic: s
+        - generic: ∥
+        - generic: ∞
+        - generic: ≤
+        - generic: "4"
+        - generic: M
+        - generic: ","
+        - generic: ∥
+        - generic: ∂
+        - generic: s
+        - generic: h
+        - generic: s
+        - generic: ∥
+        - generic: ∞
+        - generic: ≤
+        - generic: "8"
+        - generic: M
+        - generic: "2"
+        - generic: .
+      - text: ∥
+      - text: h
+      - generic: s
+      - text: ∥
+      - generic: ∞
+      - text: ≤
+      - text: 4M, ∥
+      - text: ∂
+      - generic: s
+      - text: h
+      - generic: s
+      - text: ∥
+      - generic: ∞
+      - text: ≤
+      - text: "8"
+      - text: M
+      - generic: "2"
+      - text: .
+      - paragraph:
+        - text: Choose
+        - math:
+          - generic: χ
+          - generic: s
+        - text: χ
+        - generic: s
+        - text: solving
+        - math:
+          - generic: F
+          - generic: χ
+          - generic: s
+          - generic: =
+          - generic: h
+          - generic: s
+        - text: F
+        - text: χ
+        - generic: s
+        - text: =
+        - text: h
+        - generic: s
+        - text: ", with zero fibre means. From (25),"
+      - math:
+        - generic: ∥
+        - generic: χ
+        - generic: s
+        - generic: ∥
+        - generic: ∞
+        - generic: ≤
+        - generic: "4"
+        - generic: C
+        - generic: F
+        - generic: M
+        - generic: ","
+        - generic: ∥
+        - generic: ∂
+        - generic: s
+        - generic: χ
+        - generic: s
+        - generic: ∥
+        - generic: ∞
+        - generic: ≤
+        - generic: "8"
+        - generic: C
+        - generic: F
+        - generic: M
+        - generic: "2"
+        - generic: ","
+        - generic: ∥
+        - generic: S
+        - generic: χ
+        - generic: s
+        - generic: ∥
+        - generic: ∞
+        - generic: ≤
+        - generic: "8"
+        - generic: C
+        - generic: F
+        - generic: M
+        - generic: "2"
+        - generic: .
+      - text: ∥
+      - text: χ
+      - generic: s
+      - text: ∥
+      - generic: ∞
+      - text: ≤
+      - text: "4"
+      - text: C
+      - generic: F
+      - text: M, ∥
+      - text: ∂
+      - generic: s
+      - text: χ
+      - generic: s
+      - text: ∥
+      - generic: ∞
+      - text: ≤
+      - text: "8"
+      - text: C
+      - generic: F
+      - text: M
+      - generic: "2"
+      - text: ", ∥S"
+      - text: χ
+      - generic: s
+      - text: ∥
+      - generic: ∞
+      - text: ≤
+      - text: "8"
+      - text: C
+      - generic: F
+      - text: M
+      - generic: "2"
+      - text: .
+      - paragraph: Dynkin’s formula, including the absorbing cemetery state, gives
+      - math:
+        - generic: ∣
+        - generic: E
+        - generic: g
+        - generic: (
+        - generic: D
+        - generic: d
+        - generic: e
+        - generic: c
+        - generic: Z
+        - generic: T
+        - generic: B
+        - generic: )
+        - generic: −
+        - generic: E
+        - generic: g
+        - generic: (
+        - generic: X
+        - generic: ‾
+        - generic: T
+        - generic: B
+        - generic: )
+        - generic: ∣
+        - generic: ≤
+        - generic: "8"
+        - generic: C
+        - generic: F
+        - generic: (
+        - generic: M
+        - generic: +
+        - generic: "2"
+        - generic: T
+        - generic: M
+        - generic: "2"
+        - generic: )
+        - generic: K
+        - generic: .
+        - generic: (29)
+      - text: Eg(
+      - text: D
+      - generic: dec
+      - text: Z
+      - generic: T
+      - generic: B
+      - text: ) − Eg(
+      - generic: X
+      - generic: T
+      - generic: B
+      - text: )
+      - text: ≤
+      - generic: K
+      - text: "8"
+      - text: C
+      - generic: F
+      - text: (M + 2T
+      - text: M
+      - generic: "2"
+      - text: )
+      - text: .
+      - text: (
+      - generic: "29"
+      - text: )
+      - paragraph: The initial fine state may be canonical; it need not be equilibrated in its fibre. The endpoint corrector terms already account for initialization.
+      - paragraph:
+        - text: For an absolute first-moment test, take
+        - math:
+          - generic: g
+          - generic: (
+          - generic: x
+          - generic: )
+          - generic: =
+          - generic: x
+          - generic: i
+        - generic: g(x) =
+        - text: x
+        - generic: i
+        - text: inside the finite region and zero at the cemetery state. Its sup norm is at most
+        - math:
+          - generic: B
+        - generic: B
+        - text: ", so (28)–(29) incur only an additional factor"
+        - math:
+          - generic: B
+        - generic: B
+        - text: .
+      - separator
+      - heading "6. Resolving the apparent circularity in , and the exit estimate" [level=1]:
+        - text: 6. Resolving the apparent circularity in
+        - math:
+          - generic: B
+          - generic: ","
+          - generic: θ
+        - generic: B, θ
+        - text: ", and the exit estimate"
+      - paragraph: Here is one explicit choice showing that all powers can be fixed in advance.
+      - paragraph: Let
+      - math:
+        - generic: h
+        - generic: =
+        - generic: p
+        - generic: +
+        - generic: "4"
+        - generic: D
+        - generic: +
+        - generic: "16"
+        - generic: ","
+        - generic: A
+        - generic: =
+        - generic: "128"
+        - generic: s
+        - generic: m
+        - generic: .
+      - generic: h =
+      - generic: p +
+      - generic: 4D +
+      - generic: 16, A =
+      - generic: 128sm.
+      - paragraph: Set
+      - math:
+        - generic: B
+        - generic: =
+        - generic: ⌈
+        - generic: C
+        - generic: B
+        - generic: W
+        - generic: "4"
+        - generic: ⌉
+        - generic: ","
+        - generic: (30)
+      - generic: B =
+      - generic: ⌈
+      - text: C
+      - generic: B
+      - text: W
+      - generic: "4"
+      - generic: ⌉
+      - text: ","
+      - text: (
+      - generic: "30"
+      - text: )
+      - paragraph: and
+      - math:
+        - generic: θ
+        - generic: =
+        - generic: ϵ
+        - generic: A
+        - generic: (
+        - generic: T
+        - generic: "0"
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: (
+        - generic: B
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: "2"
+        - generic: D
+        - generic: +
+        - generic: "1"
+        - generic: .
+        - generic: (31)
+      - generic: θ =
+      - text: A(
+      - text: T
+      - generic: "0"
+      - text: + 1)(B + 1
+      - text: )
+      - generic: 2D+1
+      - generic: ϵ
+      - text: .
+      - text: (
+      - generic: "31"
+      - text: )
+      - paragraph: Then set
+      - math:
+        - generic: K
+        - generic: =
+        - generic: "1"
+        - generic: +
+        - generic: "1024"
+        - generic: C
+        - generic: F
+        - generic: (
+        - generic: B
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: (
+        - generic: M
+        - generic: +
+        - generic: "2"
+        - generic: T
+        - generic: "0"
+        - generic: M
+        - generic: "2"
+        - generic: )
+        - generic: ϵ
+        - generic: .
+        - generic: (32)
+      - generic: K =
+      - generic: 1 +
+      - generic: ϵ
+      - text: "1024"
+      - text: C
+      - generic: F
+      - text: (B + 1)(M + 2
+      - text: T
+      - generic: "0"
+      - text: M
+      - generic: "2"
+      - text: )
+      - text: .
+      - text: (
+      - generic: "32"
+      - text: )
+      - paragraph:
+        - text: Here
+        - math:
+          - generic: C
+          - generic: F
+          - generic: ","
+          - generic: M
+        - text: C
+        - generic: F
+        - text: ", M"
+        - text: are the explicit expressions in (25)–(26).
+      - paragraph:
+        - text: The constant
+        - math:
+          - generic: C
+          - generic: B
+        - text: C
+        - generic: B
+        - text: can be selected entirely from fixed data. For completeness, one sufficient recipe is the following.
+      - paragraph: Define
+      - math:
+        - generic: C
+        - generic: "2"
+        - generic: =
+        - generic: "900"
+        - generic: D
+        - generic: "2"
+        - generic: ","
+      - text: C
+      - generic: "2"
+      - text: =
+      - text: "900"
+      - text: D
+      - generic: "2"
+      - text: ","
+      - math:
+        - generic: K
+        - generic: f
+        - generic: i
+        - generic: "n"
+        - generic: e
+        - generic: =
+        - generic: A
+        - generic: m
+        - generic: C
+        - generic: (
+        - generic: C
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: "2"
+        - generic: h
+        - generic: +
+        - generic: "2"
+        - generic: D
+        - generic: F
+        - generic: h
+        - generic: ","
+      - text: K
+      - generic: fine
+      - text: =
+      - generic: AmC(C +
+      - text: 1)
+      - text: "2"
+      - generic: h+2D
+      - text: F
+      - generic: h
+      - text: ","
+      - math:
+        - generic: K
+        - generic: h
+        - generic: i
+        - generic: g
+        - generic: h
+        - generic: =
+        - generic: C
+        - generic: m
+        - generic: "2"
+        - generic: h
+        - generic: −
+        - generic: D
+        - generic: F
+        - generic: h
+        - generic: .
+      - text: K
+      - generic: high
+      - text: =
+      - text: Cm
+      - text: "2"
+      - generic: h−D
+      - text: F
+      - generic: h
+      - text: .
+      - paragraph:
+        - text: Choose an integer
+        - math:
+          - generic: C
+          - generic: B
+        - text: C
+        - generic: B
+        - text: at least
+      - math:
+        - generic: max
+        - generic: ⁡
+        - generic: ⁣
+        - generic: "{"
+        - generic: "16"
+        - generic: D
+        - generic: (
+        - generic: D
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: ","
+        - generic: "4"
+        - generic: D
+        - generic: ","
+        - generic: "1"
+        - generic: ","
+        - generic: "2"
+        - generic: "20"
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: C
+        - generic: "2"
+        - generic: )
+        - generic: (
+        - generic: K
+        - generic: f
+        - generic: i
+        - generic: "n"
+        - generic: e
+        - generic: +
+        - generic: K
+        - generic: h
+        - generic: i
+        - generic: g
+        - generic: h
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: "}"
+        - generic: .
+        - generic: (33)
+      - text: max
+      - generic: "{"
+      - text: 16D(D + 1), 4D, 1,
+      - text: "2"
+      - generic: "20"
+      - text: (1 +
+      - text: C
+      - generic: "2"
+      - text: )(
+      - text: K
+      - generic: fine
+      - text: +
+      - text: K
+      - generic: high
+      - text: + 1)
+      - generic: "}"
+      - text: .
+      - text: (
+      - generic: "33"
+      - text: )
+      - paragraph: These constants are deliberately loose.
+      - heading "Fine exit probability" [level=3]
+      - paragraph:
+        - text: The decoded total population changes only at conversion firings. Its jump size is at most
+        - math:
+          - generic: "2"
+          - generic: D
+        - generic: 2D
+        - text: ", and its conversion intensity is at most"
+      - math:
+        - generic: m
+        - generic: θ
+        - generic: −
+        - generic: "1"
+        - generic: (
+        - generic: "N"
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: .
+      - text: m
+      - text: θ
+      - generic: −1
+      - text: (N +
+      - generic: 1).
+      - paragraph: Consequently, the all-time moment bound (19) gives
+      - math:
+        - generic: P
+        - generic: (
+        - generic: τ
+        - generic: B
+        - generic: f
+        - generic: i
+        - generic: "n"
+        - generic: e
+        - generic: ≤
+        - generic: T
+        - generic: "0"
+        - generic: )
+        - generic: ≤
+        - generic: T
+        - generic: "0"
+        - generic: m
+        - generic: θ
+        - generic: −
+        - generic: "1"
+        - generic: (
+        - generic: "2"
+        - generic: B
+        - generic: )
+        - generic: h
+        - generic: −
+        - generic: "1"
+        - generic: F
+        - generic: h
+        - generic: W
+        - generic: "2"
+        - generic: h
+        - generic: ≤
+        - generic: K
+        - generic: f
+        - generic: i
+        - generic: "n"
+        - generic: e
+        - generic: W
+        - generic: "2"
+        - generic: p
+        - generic: +
+        - generic: "1"
+        - generic: +
+        - generic: "2"
+        - generic: h
+        - generic: B
+        - generic: "2"
+        - generic: D
+        - generic: +
+        - generic: "2"
+        - generic: −
+        - generic: h
+        - generic: ≤
+        - generic: K
+        - generic: f
+        - generic: i
+        - generic: "n"
+        - generic: e
+        - generic: C
+        - generic: B
+        - generic: "2"
+        - generic: D
+        - generic: +
+        - generic: "2"
+        - generic: −
+        - generic: h
+        - generic: W
+        - generic: −
+        - generic: "23"
+        - generic: .
+        - generic: (34)
+      - text: P(
+      - text: τ
+      - generic: B
+      - generic: fine
+      - text: ≤
+      - text: T
+      - generic: "0"
+      - text: )
+      - text: ≤
+      - text: T
+      - generic: "0"
+      - text: m
+      - text: θ
+      - generic: −1
+      - generic: (
+      - generic: B
+      - generic: "2"
+      - generic: )
+      - generic: h−1
+      - text: F
+      - generic: h
+      - text: W
+      - generic: 2h
+      - text: ≤
+      - text: K
+      - generic: fine
+      - text: W
+      - generic: 2p+1+2h
+      - text: B
+      - generic: 2D+2−h
+      - text: ≤
+      - text: K
+      - generic: fine
+      - text: C
+      - generic: B
+      - generic: 2D+2−h
+      - text: W
+      - generic: −23
+      - text: .
+      - text: (
+      - generic: "34"
+      - text: )
+      - paragraph:
+        - text: The exponent
+        - math:
+          - generic: −
+          - generic: "23"
+        - generic: −23
+        - text: comes from
+      - math:
+        - generic: "2"
+        - generic: p
+        - generic: +
+        - generic: "1"
+        - generic: +
+        - generic: "2"
+        - generic: h
+        - generic: +
+        - generic: "4"
+        - generic: (
+        - generic: "2"
+        - generic: D
+        - generic: +
+        - generic: "2"
+        - generic: −
+        - generic: h
+        - generic: )
+        - generic: =
+        - generic: "2"
+        - generic: p
+        - generic: +
+        - generic: "8"
+        - generic: D
+        - generic: +
+        - generic: "9"
+        - generic: −
+        - generic: "2"
+        - generic: h
+        - generic: =
+        - generic: −
+        - generic: "23."
+      - generic: 2p +
+      - generic: 1 +
+      - generic: 2h +
+      - generic: 4(2D +
+      - generic: 2 −
+      - generic: h) =
+      - generic: 2p +
+      - generic: 8D +
+      - generic: 9 −
+      - generic: 2h =
+      - generic: −23.
+      - paragraph:
+        - text: Thus decreasing
+        - math:
+          - generic: θ
+        - generic: θ
+        - text: when
+        - math:
+          - generic: B
+        - generic: B
+        - text: grows does not invalidate the tail estimate. The fixed high moment
+        - math:
+          - generic: h
+        - generic: h
+        - text: pays for it.
+      - heading "Original exit probability" [level=3]
+      - paragraph:
+        - text: The higher-molecularity total intensity is at most
+        - math:
+          - generic: m
+          - generic: (
+          - generic: "N"
+          - generic: +
+          - generic: "1"
+          - generic: )
+          - generic: D
+        - generic: m(N +
+        - text: "1"
+        - text: )
+        - generic: D
+        - text: ", so"
+      - math:
+        - generic: P
+        - generic: (
+        - generic: τ
+        - generic: B
+        - generic: h
+        - generic: i
+        - generic: g
+        - generic: h
+        - generic: ≤
+        - generic: T
+        - generic: "0"
+        - generic: )
+        - generic: ≤
+        - generic: K
+        - generic: h
+        - generic: i
+        - generic: g
+        - generic: h
+        - generic: C
+        - generic: B
+        - generic: D
+        - generic: −
+        - generic: h
+        - generic: W
+        - generic: p
+        - generic: +
+        - generic: "4"
+        - generic: D
+        - generic: −
+        - generic: "2"
+        - generic: h
+        - generic: ","
+        - generic: (35)
+      - text: P(
+      - text: τ
+      - generic: B
+      - generic: high
+      - text: ≤
+      - text: T
+      - generic: "0"
+      - text: ) ≤
+      - text: K
+      - generic: high
+      - text: C
+      - generic: B
+      - generic: D−h
+      - text: W
+      - generic: p+4D−2h
+      - text: ","
+      - text: (
+      - generic: "35"
+      - text: )
+      - paragraph:
+        - text: which decays even faster than
+        - math:
+          - generic: W
+          - generic: −
+          - generic: "23"
+        - text: W
+        - generic: −23
+        - text: .
+      - paragraph: With (33), both exit probabilities are bounded by
+      - math:
+        - generic: W
+        - generic: −
+        - generic: "23"
+        - generic: "2"
+        - generic: "20"
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: C
+        - generic: "2"
+        - generic: )
+        - generic: .
+        - generic: (36)
+      - text: "2"
+      - generic: "20"
+      - text: (1 +
+      - text: C
+      - generic: "2"
+      - text: )
+      - text: W
+      - generic: −23
+      - text: .
+      - text: (
+      - generic: "36"
+      - text: )
+      - paragraph: For absolute endpoint means, Cauchy–Schwarz and (18) give
+      - math:
+        - generic: E
+        - generic: "["
+        - generic: "N"
+        - generic: (
+        - generic: Z
+        - generic: T
+        - generic: "0"
+        - generic: )
+        - generic: "1"
+        - generic: "{"
+        - generic: τ
+        - generic: B
+        - generic: ≤
+        - generic: T
+        - generic: "0"
+        - generic: "}"
+        - generic: "]"
+        - generic: ≤
+        - generic: C
+        - generic: "2"
+        - generic: W
+        - generic: "2"
+        - generic: P
+        - generic: (
+        - generic: τ
+        - generic: B
+        - generic: ≤
+        - generic: T
+        - generic: "0"
+        - generic: )
+        - generic: ≤
+        - generic: ϵ
+        - generic: "1024"
+        - generic: .
+        - generic: (37)
+      - text: E
+      - generic: "["
+      - text: N(
+      - text: Z
+      - text: T
+      - generic: "0"
+      - text: )
+      - text: "1"
+      - text: "{"
+      - text: τ
+      - generic: B
+      - text: ≤
+      - text: T
+      - generic: "0"
+      - text: "}"
+      - generic: "]"
+      - text: ≤
+      - text: C
+      - generic: "2"
+      - text: W
+      - generic: "2"
+      - text: P(
+      - text: τ
+      - generic: B
+      - text: ≤
+      - text: T
+      - generic: "0"
+      - text: )
+      - text: ≤
+      - generic: "1024"
+      - generic: ϵ
+      - text: .
+      - text: (
+      - generic: "37"
+      - text: )
+      - paragraph: This pays for trajectories which leave and later re-enter the finite region as well.
+      - heading "Combining the comparisons" [level=3]
+      - paragraph:
+        - text: From (28) and (31), the killed averaged process and killed original process differ on a coordinate-mean test by at most
+        - math:
+          - generic: ϵ
+          - generic: /
+          - generic: "32"
+        - generic: ϵ/32
+        - text: .
+      - paragraph:
+        - text: From (29) and (32), the killed fine process and killed averaged process differ on such a test by at most
+        - math:
+          - generic: ϵ
+          - generic: /
+          - generic: "128"
+        - generic: ϵ/128
+        - text: .
+      - paragraph:
+        - text: The original process has target error at most
+        - math:
+          - generic: ϵ
+          - generic: /
+          - generic: "16"
+        - generic: ϵ/16
+        - text: ", and the two stopping errors are bounded by (37). Their sum is less than"
+        - math:
+          - generic: ϵ
+          - generic: /
+          - generic: "8"
+        - generic: ϵ/8
+        - text: . The TV bound is at least as easy.
+      - paragraph:
+        - text: Thus the actual untruncated
+        - strong: nominal
+        - text: fine process satisfies
+      - math:
+        - generic: ∥
+        - generic: L
+        - generic: (
+        - generic: D
+        - generic: d
+        - generic: e
+        - generic: c
+        - generic: Z
+        - generic: T
+        - generic: "0"
+        - generic: )
+        - generic: −
+        - generic: π
+        - generic: λ
+        - generic: ∥
+        - generic: T
+        - generic: V
+        - generic: <
+        - generic: ϵ
+        - generic: "8"
+        - generic: ","
+      - text: ∥L(
+      - text: D
+      - generic: dec
+      - text: Z
+      - text: T
+      - generic: "0"
+      - text: ) −
+      - text: π
+      - generic: λ
+      - text: ∥
+      - generic: TV
+      - text: <
+      - generic: "8"
+      - generic: ϵ
+      - text: ","
+      - paragraph: and
+      - math:
+        - generic: max
+        - generic: ⁡
+        - generic: i
+        - generic: ∣
+        - generic: E
+        - generic: (
+        - generic: D
+        - generic: d
+        - generic: e
+        - generic: c
+        - generic: Z
+        - generic: T
+        - generic: "0"
+        - generic: )
+        - generic: i
+        - generic: −
+        - generic: E
+        - generic: π
+        - generic: X
+        - generic: i
+        - generic: ∣
+        - generic: <
+        - generic: ϵ
+        - generic: "8"
+        - generic: ","
+        - generic: (38)
+      - generic: i
+      - generic: max
+      - text: ∣E(
+      - text: D
+      - generic: dec
+      - text: Z
+      - text: T
+      - generic: "0"
+      - text: )
+      - generic: i
+      - text: −
+      - text: E
+      - generic: π
+      - text: X
+      - generic: i
+      - text: ∣
+      - text: <
+      - generic: "8"
+      - generic: ϵ
+      - text: ","
+      - text: (
+      - generic: "38"
+      - text: )
+      - paragraph: in raw time.
+      - separator
+      - heading "7. Rate normalization and all nominal resource costs" [level=1]
+      - paragraph:
+        - text: Equation (32) ensures
+        - math:
+          - generic: K
+          - generic: ≥
+          - generic: θ
+          - generic: −
+          - generic: "1"
+        - generic: K ≥
+        - text: θ
+        - generic: −1
+        - text: . Since
+        - math:
+          - generic: κ
+          - generic: r
+          - generic: ≤
+          - generic: "1"
+        - text: κ
+        - generic: r
+        - text: ≤
+        - generic: "1"
+        - text: ", every raw channel rate constant is at most"
+        - math:
+          - generic: K
+        - generic: K
+        - text: .
+      - paragraph:
+        - text: Divide all rates by
+        - math:
+          - generic: K
+        - generic: K
+        - text: ", and output physical time"
+      - math:
+        - generic: T
+        - generic: =
+        - generic: K
+        - generic: T
+        - generic: "0"
+        - generic: .
+        - generic: (39)
+      - generic: T =
+      - text: K
+      - text: T
+      - generic: "0"
+      - text: .
+      - text: (
+      - generic: "39"
+      - text: )
+      - paragraph: The resulting constants are all at most one. Their reciprocals are bounded by
+      - math:
+        - generic: max
+        - generic: ⁡
+        - generic: "{"
+        - generic: θ
+        - generic: −
+        - generic: "1"
+        - generic: ","
+        - generic: K
+        - generic: max
+        - generic: ⁡
+        - generic: r
+        - generic: κ
+        - generic: r
+        - generic: −
+        - generic: "1"
+        - generic: "}"
+        - generic: ","
+      - text: "max{"
+      - text: θ
+      - generic: −1
+      - text: ", K"
+      - generic: r
+      - generic: max
+      - text: κ
+      - generic: r
+      - generic: −1
+      - text: "},"
+      - paragraph:
+        - text: which is polynomial in
+        - math:
+          - generic: W
+        - generic: W
+        - text: .
+      - paragraph:
+        - text: The total number of fine channels is
+        - math:
+          - generic: "2"
+          - generic: s
+          - generic: +
+          - generic: m
+        - generic: 2s +
+        - generic: m
+        - text: . Every raw intensity is at most
+        - math:
+          - generic: K
+          - generic: (
+          - generic: "N"
+          - generic: +
+          - generic: "1"
+          - generic: )
+          - generic: "2"
+        - generic: K(N +
+        - text: "1"
+        - text: )
+        - generic: "2"
+        - text: ", including null, binding, release, and parallel firings. Therefore the expected actual firing count by raw time"
+        - math:
+          - generic: T
+          - generic: "0"
+        - text: T
+        - generic: "0"
+        - text: ", equivalently physical time"
+        - math:
+          - generic: K
+          - generic: T
+          - generic: "0"
+        - text: K
+        - text: T
+        - generic: "0"
+        - text: ", is at most"
+      - math:
+        - generic: (
+        - generic: "2"
+        - generic: s
+        - generic: +
+        - generic: m
+        - generic: )
+        - generic: K
+        - generic: T
+        - generic: "0"
+        - generic: F
+        - generic: "2"
+        - generic: W
+        - generic: "4"
+        - generic: .
+        - generic: (40)
+      - generic: (2s +
+      - text: m)K
+      - text: T
+      - generic: "0"
+      - text: F
+      - generic: "2"
+      - text: W
+      - generic: "4"
+      - text: .
+      - text: (
+      - generic: "40"
+      - text: )
+      - paragraph: Every such firing is counted.
+      - paragraph: "The population bounds are even stronger than needed:"
+      - math:
+        - generic: sup
+        - generic: ⁡
+        - generic: t
+        - generic: ≥
+        - generic: "0"
+        - generic: E
+        - generic: ∣
+        - generic: Z
+        - generic: t
+        - generic: ∣
+        - generic: "1"
+        - generic: ≤
+        - generic: "45"
+        - generic: D
+        - generic: W
+        - generic: "2"
+        - generic: ","
+        - generic: E
+        - generic: μ
+        - generic: ∣
+        - generic: Z
+        - generic: ∣
+        - generic: "1"
+        - generic: ≤
+        - generic: "45"
+        - generic: D
+        - generic: W
+        - generic: "2"
+        - generic: .
+        - generic: (41)
+      - generic: t≥0
+      - generic: sup
+      - text: E∣
+      - text: Z
+      - generic: t
+      - text: ∣
+      - generic: "1"
+      - text: ≤
+      - text: 45D
+      - text: W
+      - generic: "2"
+      - text: ","
+      - text: E
+      - generic: μ
+      - text: ∣Z
+      - text: ∣
+      - generic: "1"
+      - text: ≤
+      - text: 45D
+      - text: W
+      - generic: "2"
+      - text: .
+      - text: (
+      - generic: "41"
+      - text: )
+      - paragraph: "A crude numerical exponent read off from these formulas is:"
+      - math:
+        - generic: θ
+        - generic: −
+        - generic: "1"
+        - generic: =
+        - generic: O
+        - generic: R
+        - generic: (
+        - generic: W
+        - generic: p
+        - generic: +
+        - generic: "8"
+        - generic: D
+        - generic: +
+        - generic: "5"
+        - generic: )
+        - generic: ","
+      - text: θ
+      - generic: −1
+      - text: =
+      - text: O
+      - generic: R
+      - text: (
+      - text: W
+      - generic: p+8D+5
+      - text: ),
+      - math:
+        - generic: K
+        - generic: =
+        - generic: O
+        - generic: R
+        - generic: (
+        - generic: W
+        - generic: "4"
+        - generic: p
+        - generic: +
+        - generic: "4"
+        - generic: s
+        - generic: +
+        - generic: "32"
+        - generic: D
+        - generic: +
+        - generic: "44"
+        - generic: )
+        - generic: ","
+      - generic: K =
+      - text: O
+      - generic: R
+      - text: (
+      - text: W
+      - generic: 4p+4s+32D+44
+      - text: ),
+      - math:
+        - generic: T
+        - generic: ","
+        - generic: max
+        - generic: ⁡
+        - generic: e
+        - generic: k
+        - generic: e
+        - generic: −
+        - generic: "1"
+        - generic: =
+        - generic: O
+        - generic: R
+        - generic: (
+        - generic: W
+        - generic: "5"
+        - generic: p
+        - generic: +
+        - generic: "4"
+        - generic: s
+        - generic: +
+        - generic: "32"
+        - generic: D
+        - generic: +
+        - generic: "44"
+        - generic: )
+        - generic: ","
+      - text: T,
+      - generic: e
+      - generic: max
+      - text: k
+      - generic: e
+      - generic: −1
+      - text: =
+      - text: O
+      - generic: R
+      - text: (
+      - text: W
+      - generic: 5p+4s+32D+44
+      - text: ),
+      - math:
+        - generic: E
+        - generic: "["
+        - generic: all firings through
+        - generic: T
+        - generic: "]"
+        - generic: =
+        - generic: O
+        - generic: R
+        - generic: (
+        - generic: W
+        - generic: "5"
+        - generic: p
+        - generic: +
+        - generic: "4"
+        - generic: s
+        - generic: +
+        - generic: "32"
+        - generic: D
+        - generic: +
+        - generic: "48"
+        - generic: )
+        - generic: .
+        - generic: (42)
+      - text: E[
+      - generic: all firings through
+      - text: T] =
+      - text: O
+      - generic: R
+      - text: (
+      - text: W
+      - generic: 5p+4s+32D+48
+      - text: ).
+      - text: (
+      - generic: "42"
+      - text: )
+      - paragraph: The compiler never enumerates the ball, fibres, communicating class, or a finite generator. It evaluates fixed-degree rational formulas. Their binary lengths are polynomial in the input length and the accepted compiler’s output lengths. Fixed preprocessing constants in (33) are explicit and computable from the accepted constants and fixed network.
+      - heading "Nonexplosion" [level=3]
+      - paragraph: "There is also a simple general fact:"
+      - blockquote:
+        - paragraph: Any finite mass-action network with at most two reactants and at most two products per channel is nonexplosive for every finite positive rate vector.
+      - paragraph:
+        - text: The total fine molecule count can increase only through zero-order or first-order channels. Its upward rate is bounded by
+        - math:
+          - generic: C
+          - generic: (
+          - generic: "1"
+          - generic: +
+          - generic: ∣
+          - generic: Z
+          - generic: ∣
+          - generic: "1"
+          - generic: )
+        - generic: C(1 +
+        - text: ∣Z
+        - text: ∣
+        - generic: "1"
+        - text: )
+        - text: ", so it is dominated by a linear immigration–birth process. At bounded total population there are finitely many states and bounded total firing rate, including null channels."
+      - paragraph: For the nominal process, the complex-balanced product form is finite, has finite exit-rate mean, and is supported on the irreducible class (2). Hence nominal positive recurrence and uniqueness follow.
+      - separator
+      - heading "8. Exact absorption of binding-rate errors" [level=1]
+      - paragraph: The parent’s proposed absorption lemma is valid.
+      - paragraph:
+        - text: Let every binding/release constant be independently perturbed by a factor in
+        - math:
+          - generic: "["
+          - generic: "1"
+          - generic: −
+          - generic: δ
+          - generic: ","
+          - generic: "1"
+          - generic: +
+          - generic: δ
+          - generic: "]"
+        - generic: "[1 −"
+        - generic: δ, 1 +
+        - generic: δ]
+        - text: ", and put"
+      - math:
+        - generic: ρ
+        - generic: =
+        - generic: "1"
+        - generic: +
+        - generic: δ
+        - generic: "1"
+        - generic: −
+        - generic: δ
+        - generic: .
+      - generic: ρ =
+      - generic: 1 − δ
+      - generic: 1 + δ
+      - text: .
+      - paragraph:
+        - text: Keep the original species activities at
+        - math:
+          - generic: λ
+          - generic: i
+        - text: λ
+        - generic: i
+        - text: ". Define each prefix activity recursively from its unique assembly parent:"
+      - math:
+        - generic: c
+        - generic: P
+        - generic: ′
+        - generic: =
+        - generic: k
+        - generic: ~
+        - generic: b
+        - generic: i
+        - generic: "n"
+        - generic: d
+        - generic: k
+        - generic: ~
+        - generic: r
+        - generic: e
+        - generic: l
+        - generic: e
+        - generic: a
+        - generic: s
+        - generic: e
+        - generic: c
+        - generic: p
+        - generic: a
+        - generic: r
+        - generic: e
+        - generic: "n"
+        - generic: t
+        - generic: ′
+        - generic: λ
+        - generic: i
+        - generic: .
+        - generic: (43)
+      - text: c
+      - generic: P
+      - generic: ′
+      - text: =
+      - generic: k
+      - generic: release
+      - generic: k
+      - generic: bind
+      - text: c
+      - generic: parent
+      - generic: ′
+      - text: λ
+      - generic: i
+      - text: .
+      - text: (
+      - generic: "43"
+      - text: )
+      - paragraph:
+        - text: For the first prefix, use the product of the corresponding two original activities. Then every perturbed binding/release pair is
+        - strong: exactly detailed balanced
+        - text: at
+        - math:
+          - generic: c
+          - generic: ′
+        - text: c
+        - generic: ′
+        - text: .
+      - paragraph:
+        - text: For a prefix of order at most
+        - math:
+          - generic: D
+        - generic: D
+        - text: ","
+      - math:
+        - generic: ρ
+        - generic: −
+        - generic: (
+        - generic: D
+        - generic: −
+        - generic: "1"
+        - generic: )
+        - generic: ≤
+        - generic: c
+        - generic: P
+        - generic: ′
+        - generic: θ
+        - generic: λ
+        - generic: c
+        - generic: P
+        - generic: ≤
+        - generic: ρ
+        - generic: D
+        - generic: −
+        - generic: "1"
+        - generic: .
+        - generic: (44)
+      - text: ρ
+      - generic: −(D−1)
+      - text: ≤
+      - text: θ
+      - text: λ
+      - text: c
+      - generic: P
+      - text: c
+      - generic: P
+      - generic: ′
+      - text: ≤
+      - text: ρ
+      - generic: D−1
+      - text: .
+      - text: (
+      - generic: "44"
+      - text: )
+      - paragraph: "Now define reference conversion constants by preserving the nominal complex flux:"
+      - math:
+        - generic: k
+        - generic: r
+        - generic: r
+        - generic: e
+        - generic: f
+        - generic: =
+        - generic: k
+        - generic: r
+        - generic: "n"
+        - generic: o
+        - generic: m
+        - generic: c
+        - generic: rep
+        - generic: ⁡
+        - generic: (
+        - generic: "Y"
+        - generic: r
+        - generic: )
+        - generic: "n"
+        - generic: o
+        - generic: m
+        - generic: c
+        - generic: rep
+        - generic: ⁡
+        - generic: (
+        - generic: "Y"
+        - generic: r
+        - generic: )
+        - generic: ′
+        - generic: .
+        - generic: (45)
+      - text: k
+      - generic: r
+      - generic: ref
+      - text: =
+      - text: k
+      - generic: r
+      - generic: nom
+      - text: c
+      - generic: rep
+      - text: (
+      - text: "Y"
+      - generic: r
+      - text: )
+      - generic: ′
+      - text: c
+      - generic: rep
+      - text: (
+      - text: "Y"
+      - generic: r
+      - text: )
+      - generic: nom
+      - text: .
+      - text: (
+      - generic: "45"
+      - text: )
+      - paragraph: For empty or original-species sources, the ratio is one.
+      - paragraph:
+        - text: The reference process uses the
+        - strong: actual perturbed binding constants
+        - text: and the conversion constants (45). It is exactly complex balanced at
+        - math:
+          - generic: c
+          - generic: ′
+        - text: c
+        - generic: ′
+        - text: .
+      - paragraph: The actual conversion constants satisfy
+      - math:
+        - generic: ρ
+        - generic: −
+        - generic: D
+        - generic: ≤
+        - generic: k
+        - generic: ~
+        - generic: r
+        - generic: k
+        - generic: r
+        - generic: r
+        - generic: e
+        - generic: f
+        - generic: ≤
+        - generic: ρ
+        - generic: D
+        - generic: .
+        - generic: (46)
+      - text: ρ
+      - generic: −D
+      - text: ≤
+      - text: k
+      - generic: r
+      - generic: ref
+      - generic: k
+      - generic: r
+      - text: ≤
+      - text: ρ
+      - generic: D
+      - text: .
+      - text: (
+      - generic: "46"
+      - text: )
+      - paragraph:
+        - text: For
+        - math:
+          - generic: δ
+          - generic: ≤
+          - generic: "1"
+          - generic: /
+          - generic: (
+          - generic: "8"
+          - generic: D
+          - generic: )
+        - generic: δ ≤
+        - generic: 1/(8D)
+        - text: ", their relative difference is at most"
+        - math:
+          - generic: "8"
+          - generic: D
+          - generic: δ
+        - generic: 8Dδ
+        - text: .
+      - paragraph:
+        - text: The reference decoded weight is the same
+        - math:
+          - generic: q
+        - generic: q
+        - text: "-formula with coefficients"
+        - math:
+          - generic: θ
+          - generic: r
+          - generic: j
+        - text: θ
+        - text: r
+        - generic: j
+        - text: ", where"
+        - math:
+          - generic: r
+          - generic: j
+          - generic: ∈
+          - generic: "["
+          - generic: ρ
+          - generic: −
+          - generic: D
+          - generic: ","
+          - generic: ρ
+          - generic: D
+          - generic: "]"
+        - text: r
+        - generic: j
+        - text: ∈
+        - text: "["
+        - text: ρ
+        - generic: −D
+        - text: ","
+        - text: ρ
+        - generic: D
+        - text: "]"
+        - text: . These coefficients are within a factor two of
+        - math:
+          - generic: θ
+        - generic: θ
+        - text: . All static and moment estimates above extend after fixed enlargements of constants.
+      - paragraph:
+        - text: "The bounded-fibre release proof also extends: endpoint weights gain at least"
+        - math:
+          - generic: "1"
+          - generic: /
+          - generic: "["
+          - generic: "2"
+          - generic: θ
+          - generic: (
+          - generic: B
+          - generic: +
+          - generic: "1"
+          - generic: )
+          - generic: D
+          - generic: "]"
+        - generic: 1/[2θ(B +
+        - text: "1"
+        - text: )
+        - generic: D
+        - text: "]"
+        - text: ", intermediate ratios lose only another fixed factor per prefix step, and perturbed release rates are at least half nominal. A fixed factor"
+        - math:
+          - generic: "2"
+          - generic: O
+          - generic: (
+          - generic: D
+          - generic: )
+        - text: "2"
+        - generic: O(D)
+        - text: in
+        - math:
+          - generic: C
+          - generic: F
+        - text: C
+        - generic: F
+        - text: and
+        - math:
+          - generic: K
+        - generic: K
+        - text: suffices. The exact averaged reference rates retain (27), with the adjusted
+        - math:
+          - generic: q
+        - generic: q
+        - text: ", because the factor"
+        - math:
+          - generic: c
+          - generic: P
+          - generic: ′
+        - text: c
+        - generic: P
+        - generic: ′
+        - text: cancels against (45).
+      - separator
+      - heading "9. A further finite-horizon robust estimate" [level=1]
+      - paragraph: This is a useful strengthening, but it does not solve the stationary problem.
+      - paragraph: After the absorption above, actual and reference processes have identical binding reactions and differ only in conversion multipliers
+      - math:
+        - generic: r
+        - generic: e
+        - generic: =
+        - generic: k
+        - generic: ~
+        - generic: e
+        - generic: /
+        - generic: k
+        - generic: e
+        - generic: r
+        - generic: e
+        - generic: f
+        - generic: ","
+        - generic: ∣
+        - generic: r
+        - generic: e
+        - generic: −
+        - generic: "1"
+        - generic: ∣
+        - generic: ≤
+        - generic: η
+        - generic: ","
+        - generic: η
+        - generic: ≤
+        - generic: "8"
+        - generic: D
+        - generic: δ
+        - generic: .
+      - text: r
+      - generic: e
+      - text: =
+      - generic: k
+      - generic: e
+      - text: /
+      - text: k
+      - generic: e
+      - generic: ref
+      - text: ", ∣"
+      - text: r
+      - generic: e
+      - text: −
+      - generic: 1∣ ≤
+      - generic: η, η ≤
+      - generic: 8Dδ.
+      - paragraph: Their reference conversion activity satisfies
+      - math:
+        - generic: b
+        - generic: r
+        - generic: e
+        - generic: f
+        - generic: (
+        - generic: u
+        - generic: )
+        - generic: ≤
+        - generic: C
+        - generic: R
+        - generic: θ
+        - generic: −
+        - generic: "1"
+        - generic: (
+        - generic: "N"
+        - generic: (
+        - generic: u
+        - generic: )
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: .
+        - generic: (47)
+      - text: b
+      - generic: ref
+      - text: (u) ≤
+      - text: C
+      - generic: R
+      - text: θ
+      - generic: −1
+      - text: (N(u) +
+      - generic: 1).
+      - text: (
+      - generic: "47"
+      - text: )
+      - paragraph:
+        - text: Let
+        - math:
+          - generic: R
+          - generic: t
+        - text: R
+        - generic: t
+        - text: be the marked-path likelihood of the actual process relative to the reference. Both are nonexplosive by the elementary-network argument.
+      - paragraph: A counting-process exponential-martingale calculation gives
+      - math:
+        - generic: E
+        - generic: r
+        - generic: e
+        - generic: f
+        - generic: R
+        - generic: t
+        - generic: "2"
+        - generic: ≤
+        - generic: "["
+        - generic: E
+        - generic: r
+        - generic: e
+        - generic: f
+        - generic: exp
+        - generic: ⁡
+        - generic: ⁣
+        - generic: (
+        - generic: "11"
+        - generic: η
+        - generic: "2"
+        - generic: ∫
+        - generic: "0"
+        - generic: t
+        - generic: b
+        - generic: r
+        - generic: e
+        - generic: f
+        - generic: (
+        - generic: Z
+        - generic: s
+        - generic: )
+        - generic: d
+        - generic: s
+        - generic: )
+        - generic: "]"
+        - generic: "1"
+        - generic: /
+        - generic: "2"
+        - generic: .
+        - generic: (48)
+      - text: E
+      - generic: ref
+      - text: R
+      - generic: t
+      - generic: "2"
+      - text: ≤
+      - generic: "["
+      - text: E
+      - generic: ref
+      - text: exp
+      - generic: (
+      - text: "11"
+      - text: η
+      - generic: "2"
+      - text: ∫
+      - generic: "0"
+      - generic: t
+      - text: b
+      - generic: ref
+      - text: (
+      - text: Z
+      - generic: s
+      - text: ) ds
+      - generic: )
+      - generic: "]"
+      - generic: 1/2
+      - text: .
+      - text: (
+      - generic: "48"
+      - text: )
+      - paragraph:
+        - text: "To verify the coefficient: write"
+        - math:
+          - generic: R
+          - generic: t
+          - generic: "2"
+        - text: R
+        - generic: t
+        - generic: "2"
+        - text: as the square root of the exponential local martingale with rate multiplier
+        - math:
+          - generic: r
+          - generic: e
+          - generic: "4"
+        - text: r
+        - generic: e
+        - generic: "4"
+        - text: ", times the compensator exponential. Cauchy–Schwarz and"
+      - math:
+        - generic: r
+        - generic: "4"
+        - generic: −
+        - generic: "1"
+        - generic: −
+        - generic: "4"
+        - generic: (
+        - generic: r
+        - generic: −
+        - generic: "1"
+        - generic: )
+        - generic: =
+        - generic: "6"
+        - generic: (
+        - generic: r
+        - generic: −
+        - generic: "1"
+        - generic: )
+        - generic: "2"
+        - generic: +
+        - generic: "4"
+        - generic: (
+        - generic: r
+        - generic: −
+        - generic: "1"
+        - generic: )
+        - generic: "3"
+        - generic: +
+        - generic: (
+        - generic: r
+        - generic: −
+        - generic: "1"
+        - generic: )
+        - generic: "4"
+        - generic: ≤
+        - generic: "11"
+        - generic: η
+        - generic: "2"
+      - text: r
+      - generic: "4"
+      - text: −
+      - generic: 1 −
+      - generic: 4(r −
+      - generic: 1) =
+      - generic: 6(r −
+      - text: "1"
+      - text: )
+      - generic: "2"
+      - text: +
+      - generic: 4(r −
+      - text: "1"
+      - text: )
+      - generic: "3"
+      - text: +
+      - generic: (r −
+      - text: "1"
+      - text: )
+      - generic: "4"
+      - text: ≤
+      - text: "11"
+      - text: η
+      - generic: "2"
+      - paragraph: give (48).
+      - paragraph:
+        - text: The near-
+        - math:
+          - generic: L
+          - generic: "1"
+        - text: L
+        - generic: "1"
+        - text: argument above gives uniformly in reference time
+      - math:
+        - generic: E
+        - generic: r
+        - generic: e
+        - generic: f
+        - generic: e
+        - generic: a
+        - generic: (
+        - generic: "N"
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: ≤
+        - generic: "1"
+        - generic: +
+        - generic: C
+        - generic: R
+        - generic: a
+        - generic: W
+        - generic: "2"
+        - generic: ","
+        - generic: "0"
+        - generic: ≤
+        - generic: a
+        - generic: ≤
+        - generic: "1"
+        - generic: "2"
+        - generic: D
+        - generic: q
+        - generic: .
+        - generic: (49)
+      - text: E
+      - generic: ref
+      - text: e
+      - generic: a(N+1)
+      - text: ≤
+      - generic: 1 +
+      - text: C
+      - generic: R
+      - text: a
+      - text: W
+      - generic: "2"
+      - text: ", 0 ≤"
+      - generic: a ≤
+      - generic: 2Dq
+      - generic: "1"
+      - text: .
+      - text: (
+      - generic: "49"
+      - text: )
+      - paragraph:
+        - text: For example, differentiate the exponential and use Hölder plus the remaining half of the exponential-moment budget to bound
+        - math:
+          - generic: E
+          - generic: "["
+          - generic: (
+          - generic: "N"
+          - generic: +
+          - generic: "1"
+          - generic: )
+          - generic: e
+          - generic: a
+          - generic: (
+          - generic: "N"
+          - generic: +
+          - generic: "1"
+          - generic: )
+          - generic: "]"
+          - generic: ≤
+          - generic: C
+          - generic: R
+          - generic: D
+          - generic: q
+        - generic: E[(N +
+        - text: 1)
+        - text: e
+        - generic: a(N+1)
+        - text: "] ≤"
+        - text: C
+        - generic: R
+        - text: Dq
+        - text: .
+      - paragraph:
+        - text: Jensen in time, (47)–(49), and
+        - math:
+          - generic: q
+          - generic: =
+          - generic: O
+          - generic: (
+          - generic: W
+          - generic: "2"
+          - generic: )
+        - generic: q =
+        - text: O(
+        - text: W
+        - generic: "2"
+        - text: )
+        - text: imply, provided
+      - math:
+        - generic: η
+        - generic: "2"
+        - generic: T
+        - generic: "0"
+        - generic: θ
+        - generic: −
+        - generic: "1"
+        - generic: ≤
+        - generic: c
+        - generic: R
+        - generic: W
+        - generic: −
+        - generic: "2"
+        - generic: ","
+      - text: η
+      - generic: "2"
+      - text: T
+      - generic: "0"
+      - text: θ
+      - generic: −1
+      - text: ≤
+      - text: c
+      - generic: R
+      - text: W
+      - generic: −2
+      - text: ","
+      - paragraph: that
+      - math:
+        - generic: E
+        - generic: r
+        - generic: e
+        - generic: f
+        - generic: (
+        - generic: R
+        - generic: t
+        - generic: −
+        - generic: "1"
+        - generic: )
+        - generic: "2"
+        - generic: ≤
+        - generic: C
+        - generic: R
+        - generic: η
+        - generic: "2"
+        - generic: T
+        - generic: "0"
+        - generic: θ
+        - generic: −
+        - generic: "1"
+        - generic: W
+        - generic: "2"
+        - generic: ","
+        - generic: "0"
+        - generic: ≤
+        - generic: t
+        - generic: ≤
+        - generic: T
+        - generic: "0"
+        - generic: .
+        - generic: (50)
+      - text: E
+      - generic: ref
+      - text: (
+      - text: R
+      - generic: t
+      - text: −
+      - text: "1"
+      - text: )
+      - generic: "2"
+      - text: ≤
+      - text: C
+      - generic: R
+      - text: η
+      - generic: "2"
+      - text: T
+      - generic: "0"
+      - text: θ
+      - generic: −1
+      - text: W
+      - generic: "2"
+      - text: ", 0 ≤"
+      - generic: t ≤
+      - text: T
+      - generic: "0"
+      - text: .
+      - text: (
+      - generic: "50"
+      - text: )
+      - paragraph: Consequently,
+      - math:
+        - generic: ∥
+        - generic: L
+        - generic: a
+        - generic: c
+        - generic: t
+        - generic: (
+        - generic: D
+        - generic: d
+        - generic: e
+        - generic: c
+        - generic: Z
+        - generic: t
+        - generic: )
+        - generic: −
+        - generic: L
+        - generic: r
+        - generic: e
+        - generic: f
+        - generic: (
+        - generic: D
+        - generic: d
+        - generic: e
+        - generic: c
+        - generic: Z
+        - generic: t
+        - generic: )
+        - generic: ∥
+        - generic: T
+        - generic: V
+        - generic: ≤
+        - generic: C
+        - generic: R
+        - generic: η
+        - generic: T
+        - generic: "0"
+        - generic: θ
+        - generic: −
+        - generic: "1"
+        - generic: W
+        - generic: ","
+        - generic: (51)
+      - text: ∥
+      - text: L
+      - generic: act
+      - text: (
+      - text: D
+      - generic: dec
+      - text: Z
+      - generic: t
+      - text: ) −
+      - text: L
+      - generic: ref
+      - text: (
+      - text: D
+      - generic: dec
+      - text: Z
+      - generic: t
+      - text: )
+      - text: ∥
+      - generic: TV
+      - text: ≤
+      - text: C
+      - generic: R
+      - text: η
+      - text: T
+      - generic: "0"
+      - text: θ
+      - generic: −1
+      - text: W,
+      - text: (
+      - generic: "51"
+      - text: )
+      - paragraph: and
+      - math:
+        - generic: max
+        - generic: ⁡
+        - generic: i
+        - generic: ∣
+        - generic: E
+        - generic: a
+        - generic: c
+        - generic: t
+        - generic: (
+        - generic: D
+        - generic: d
+        - generic: e
+        - generic: c
+        - generic: Z
+        - generic: t
+        - generic: )
+        - generic: i
+        - generic: −
+        - generic: E
+        - generic: r
+        - generic: e
+        - generic: f
+        - generic: (
+        - generic: D
+        - generic: d
+        - generic: e
+        - generic: c
+        - generic: Z
+        - generic: t
+        - generic: )
+        - generic: i
+        - generic: ∣
+        - generic: ≤
+        - generic: C
+        - generic: R
+        - generic: η
+        - generic: T
+        - generic: "0"
+        - generic: θ
+        - generic: −
+        - generic: "1"
+        - generic: W
+        - generic: "3"
+        - generic: .
+        - generic: (52)
+      - generic: i
+      - generic: max
+      - text: ∣
+      - text: E
+      - generic: act
+      - text: (
+      - text: D
+      - generic: dec
+      - text: Z
+      - generic: t
+      - text: )
+      - generic: i
+      - text: −
+      - text: E
+      - generic: ref
+      - text: (
+      - text: D
+      - generic: dec
+      - text: Z
+      - generic: t
+      - text: )
+      - generic: i
+      - text: ∣ ≤
+      - text: C
+      - generic: R
+      - text: η
+      - text: T
+      - generic: "0"
+      - text: θ
+      - generic: −1
+      - text: W
+      - generic: "3"
+      - text: .
+      - text: (
+      - generic: "52"
+      - text: )
+      - paragraph: Choosing, for example,
+      - math:
+        - generic: η
+        - generic: ≤
+        - generic: ϵ
+        - generic: θ
+        - generic: C
+        - generic: R
+        - generic: (
+        - generic: T
+        - generic: "0"
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: W
+        - generic: "3"
+        - generic: (53)
+      - generic: η ≤
+      - text: C
+      - generic: R
+      - text: (
+      - text: T
+      - generic: "0"
+      - text: + 1)
+      - text: W
+      - generic: "3"
+      - generic: ϵθ
+      - text: (
+      - generic: "53"
+      - text: )
+      - paragraph: is a rational polynomial numerical tolerance and safely pays these estimates.
+      - paragraph:
+        - text: Moreover, Hölder with (48) and the reference
+        - math:
+          - generic: "2"
+          - generic: h
+        - generic: 2h
+        - text: "-moment bound gives actual moments"
+      - math:
+        - generic: sup
+        - generic: ⁡
+        - generic: "0"
+        - generic: ≤
+        - generic: t
+        - generic: ≤
+        - generic: T
+        - generic: "0"
+        - generic: E
+        - generic: a
+        - generic: c
+        - generic: t
+        - generic: "N"
+        - generic: (
+        - generic: Z
+        - generic: t
+        - generic: )
+        - generic: h
+        - generic: ≤
+        - generic: C
+        - generic: R
+        - generic: ","
+        - generic: h
+        - generic: W
+        - generic: "2"
+        - generic: h
+        - generic: .
+        - generic: (54)
+      - text: 0≤t≤
+      - text: T
+      - generic: "0"
+      - generic: sup
+      - text: E
+      - generic: act
+      - text: N(
+      - text: Z
+      - generic: t
+      - text: )
+      - generic: h
+      - text: ≤
+      - text: C
+      - generic: R,h
+      - text: W
+      - generic: 2h
+      - text: .
+      - text: (
+      - generic: "54"
+      - text: )
+      - paragraph: Thus actual transient population bounds and all actual firing counts through the compiled time remain polynomial uniformly over admitted errors.
+      - paragraph:
+        - text: This is a finite-horizon statement. Its permitted
+        - math:
+          - generic: η
+        - generic: η
+        - text: depends on
+        - math:
+          - generic: T
+          - generic: "0"
+        - text: T
+        - generic: "0"
+        - text: ; it cannot be sent to arbitrary time with a fixed nonzero tolerance.
+      - separator
+      - heading "Remaining obstacle" [level=2]
+      - paragraph:
+        - text: The preceding estimates do
+        - strong: not
+        - text: prove that every admitted perturbed process is positive recurrent, or that its stationary decoded law and moments are close to the target.
+      - paragraph: "After exact binding-error absorption, the unresolved analytic step can be stated sharply:"
+      - blockquote:
+        - paragraph: Establish a quantitative infinite-class recurrence/stationary perturbation theorem for the complex-balanced prefix reference process under small independent errors in its unary/zero-source conversion rates.
+      - paragraph: The perturbation acts through conversion activity
+      - math:
+        - generic: b
+        - generic: c
+        - generic: o
+        - generic: "n"
+        - generic: v
+        - generic: (
+        - generic: u
+        - generic: )
+        - generic: ≤
+        - generic: C
+        - generic: R
+        - generic: θ
+        - generic: −
+        - generic: "1"
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: "N"
+        - generic: (
+        - generic: u
+        - generic: )
+        - generic: )
+        - generic: ","
+      - text: b
+      - generic: conv
+      - text: (u) ≤
+      - text: C
+      - generic: R
+      - text: θ
+      - generic: −1
+      - text: (1 +
+      - generic: N(u)),
+      - paragraph:
+        - text: so an
+        - strong: all-firing
+        - text: weighted Poincaré inequality is unnecessary. A suitable conversion-activity weighted inequality would suffice for the usual form-perturbation route.
+      - paragraph:
+        - text: However, the bounded-fibre argument above cannot simply be continued to infinity. At large decoded populations,
+        - math:
+          - generic: θ
+          - generic: (
+          - generic: B
+          - generic: +
+          - generic: "1"
+          - generic: )
+          - generic: D
+        - generic: θ(B +
+        - text: "1"
+        - text: )
+        - generic: D
+        - text: is no longer small, and the canonical point may have exponentially small conditional fibre weight
+        - math:
+          - generic: q
+          - generic: θ
+          - generic: (
+          - generic: x
+          - generic: )
+          - generic: −
+          - generic: "1"
+        - text: q
+        - generic: θ
+        - text: (x
+        - text: )
+        - generic: −1
+        - text: . Anchoring all fibres to the canonical state would therefore be invalid. A global proof needs fibre averages, a different recurrence argument, or a redesigned elementary lift.
+      - paragraph: Accordingly, the full universal robust statement remains unresolved by this work, but the nominal infinite-class compiler and polynomial finite-horizon robustness have concrete quantitative proofs rather than only qualitative small-parameter limits.
