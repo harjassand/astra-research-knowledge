@@ -1,0 +1,962 @@
+## Verdict
+
+**Yes, on the accepted well-mixed compiler premise.** The reflecting-convex extension can be completed with universal polynomial costs.
+
+The missing ingredient is a **short-interval comparison followed by a telescoping argument for conditional expectations**. It replaces the long synchronous-coupling estimate that grows exponentially in \(\Lambda g\).
+
+For a chemical-free gap of length \(g\), the argument gives a conditional contact error of the form
+\[
+b(g)+W\left[\delta(1+g)+\delta^{2/9}\right],
+\]
+where
+\[
+\int_0^\infty b(g)\,dg\le I
+\]
+and \(I,W\) are explicit rational polynomials in the charged geometric and transport parameters. The exponent \(2/9\) is deliberately conservative, but it is fixed. That is sufficient for a polynomial fault tolerance.
+
+I give the construction and the remaining proofs below. The comparison intervals and controlled couplings are used only in the proof; the emitted system receives no resets or additional controls.
+
+---
+
+# 1. The emitted compiler
+
+Run the accepted conservative well-mixed compiler at accuracy
+\[
+\eta=\epsilon/4.
+\]
+
+Denote its coefficients by \(b_e\), its activities by \(\widetilde a_s\), and its clock by \(H_{\rm kin}\). Thus \(0<b_e\le1\).
+
+For each emitted release channel, add the permitted hidden self-reverse unary-null rejection branch. Let \(M\) be the total directed-channel count after these additions.
+
+Compute exactly
+\[
+V=\operatorname{Vol}_3(\Omega)
+\]
+and
+\[
+q=
+\frac{
+\operatorname{Vol}_6
+\{(x,y)\in\Omega^2:\ |x-y|_\infty\le r\}
+}{V(2r)^3}.
+\tag{1}
+\]
+The paid fixed-dimensional algorithm is described in Section 10. Use the supplied bound
+\[
+\frac{\kappa^6}{4096}\le q\le1.
+\tag{2}
+\]
+
+Set
+\[
+v=(2r)^3,\qquad T=H_{\rm kin}\tau.
+\]
+
+Define the following rational quantities:
+\[
+\ell_0=\frac{d_0}{16(1+\Lambda)},
+\qquad
+G=\frac{64}{d_0\ell_0},
+\tag{3}
+\]
+\[
+B_{\rm mix}=2^{16}\kappa^{-2}G,
+\qquad
+I=\ell_0+\frac{10(1+B_{\rm mix})}{d_0},
+\tag{4}
+\]
+\[
+W=2^{20}
+\left(1+\kappa^{-2}G+\frac{G}{\ell_0}+r^{-1}\right),
+\tag{5}
+\]
+and
+\[
+L_*=
+\frac{4(1+M)(1+N_0)^2(1+8/v)}{q},
+\qquad
+J=1+L_*T.
+\tag{6}
+\]
+
+Choose
+\[
+\boxed{
+h=
+\left\lceil
+\max\left\{
+1,\ q^{-1},\
+\frac{16L_*IJ}{\epsilon}
+\right\}
+\right\rceil
+}
+\tag{7}
+\]
+and
+\[
+\boxed{
+\delta=
+\left[
+\frac{\epsilon}
+{2^{10}WJ(1+hT)}
+\right]^9.
+}
+\tag{8}
+\]
+In particular, \(0<\delta<1/4\).
+
+Emit
+\[
+\boxed{H=hH_{\rm kin}.}
+\tag{9}
+\]
+
+The chemical coefficients are:
+
+| Channel | Emitted coefficient |
+|---|---:|
+| Binding \(2\to1\) | \(b_e/(hq)\) |
+| Its successful reverse release | \(b_{\bar e}/(hq)\) |
+| That release’s hidden rejection branch | \(b_{\bar e}/(hq)\) |
+| Other unary channels | \(b_e/h\) |
+| Global \(0\to0\) channels | \(b_e/h\) |
+
+Every coefficient is positive and at most one because \(h\ge q^{-1}\).
+
+The decoder, activities, original-label map and original reverse pairings come from the accepted compiler. Each added rejection branch is hidden and self-reverse. Its presence depends only on the chemical structure.
+
+---
+
+# 2. The nominal reflected model exists, including at corners
+
+The existence issue can be reduced exactly to normal reflection in a moving convex domain.
+
+On a fixed-species interval, put
+\[
+R(t)=D(t)^{-1/2},
+\qquad
+Y_t=R(t)(X_t-c),
+\qquad
+C_t=R(t)(\Omega-c).
+\]
+
+Because \(D\) is Lipschitz and uniformly positive definite, \(R\) is absolutely continuous, with
+\[
+\|R'(t)\|\le C\Lambda d_0^{-3/2}
+\quad\text{a.e.}
+\]
+
+The nominal equation becomes
+\[
+dY_t
+=
+\sqrt2\,dW_t
++B(t)Y_t\,dt
+-\sum_fD(t)^{1/2}n_f\,dL_f(t),
+\qquad
+B(t)=R'(t)D(t)^{1/2}.
+\tag{10}
+\]
+
+The corresponding outward unit normal of \(C_t\) is
+\[
+\nu_f(t)=
+\frac{D(t)^{1/2}n_f}
+{|D(t)^{1/2}n_f|}.
+\]
+Thus the last term in (10) is normal reflection, with clock
+\[
+d\widehat L_f=|D(t)^{1/2}n_f|\,dL_f.
+\]
+
+The domains \(C_t\) are bounded convex sets, are Lipschitz in Hausdorff distance, and satisfy
+\[
+B_\kappa(0)\subset C_t.
+\]
+The constant interior path \(0\) therefore stays uniformly separated from their boundaries.
+
+These conditions fit the normal-reflection existence theorem for time-dependent convex domains: the deterministic Skorokhod theorem allows nonsmooth convex boundaries, and the reflected-SDE theorem allows measurable-time coefficients with state Lipschitz and growth bounds. Here the transformed diffusion is constant and the drift is bounded linear on every finite horizon. Theorems 2.1 and 3.1 of Jarni–Missaoui–Ouknine provide such a formulation, with the relevant hypotheses explicitly satisfied by this transformation. [arxiv.org](https://arxiv.org/html/2406.05807v1?utm_source=chatgpt.com)
+
+This establishes nominal existence and uniqueness from every point of the closed container. Concatenating at chemical firings gives the nominal particle model; the bounded firing intensity proved below prevents accumulation of those firings.
+
+At corners, the regulator lies in the cone generated by active face normals. A measurable conic decomposition supplies the face clocks. Redundant inequalities cause no uncontrolled cancellation: for every active unit normal,
+\[
+(x-c)\cdot n_f\ge\kappa.
+\tag{11}
+\]
+Consequently, a nonnegative combination of active normals cannot vanish unless all its coefficients vanish. The wall estimate below bounds the sum of the face clocks, including any admissible decomposition.
+
+The existence theorem is used qualitatively. The accuracy and wall costs will be proved separately with explicit polynomial bounds.
+
+---
+
+# 3. Short intervals give a dimension-independent perturbation estimate
+
+Consider any chemical-free interval of length
+\[
+\ell\le\ell_0.
+\]
+
+Condition on its preceding full history. Select one particle or an ordered pair. Start nominal reflected particles from their actual positions and use the same underlying Brownian innovations.
+
+For a pair, write
+\[
+\Delta=Q-Y,\qquad
+\mathcal D(t)=\operatorname{diag}(D_i(t),D_j(t)),
+\]
+and test the difference with
+\[
+E(t)=\Delta^\top\mathcal D(t)^{-1}\Delta.
+\]
+
+## 3.1 Both reflection contributions have the correct sign
+
+When an actual particle \(Q_i\) lies on a face, its contribution is
+\[
+-2(Q_i-Y_i)\cdot n_f\,dL_{if}\le0,
+\]
+because \(Y_i\in\Omega\) and the domain is convex.
+
+When the nominal particle \(Y_i\) reflects, its contribution is
+\[
+2(Q_i-Y_i)\cdot n_f\,dL^Y_{if}\le0.
+\]
+
+These signs hold separately for every active face, including at corners. They use precisely the specified boundary law \(D_s(t)n_f\), which is retained under faults.
+
+## 3.2 The remaining terms are controlled on a short interval
+
+The metric derivative satisfies the quadratic-form bound
+\[
+\frac{d}{dt}\mathcal D^{-1}
+\preceq
+\frac{\Lambda}{d_0}\mathcal D^{-1}.
+\]
+
+For the full covariance matrices, the square-root identity gives
+\[
+\|\sqrt A-\sqrt{A_0}\|_{\rm op}
+\le\delta\sqrt{d_0}.
+\tag{12}
+\]
+
+Projecting onto the selected six coordinates makes the noise contribution to the metric quadratic variation at most \(12\delta^2\,dt\), independently of the total particle number.
+
+The imposed drift contributes at most
+\[
+d_0^{-1}E+2\delta^2.
+\]
+
+After localization and expectation,
+\[
+\frac{d}{dt}\mathbb EE(t)
+\le
+\frac{\Lambda+1}{d_0}\mathbb EE(t)+14\delta^2.
+\]
+The interval length in (3) keeps the exponential factor universally bounded. A convenient resulting bound is
+\[
+\boxed{
+\mathbb E|Q(\ell)-Y(\ell)|^2
+\le64\delta^2\ell.
+}
+\tag{13}
+\]
+
+This conditional estimate permits arbitrary predictable correlations with all other particles. It also applies to a single selected particle.
+
+---
+
+# 4. Nominal smoothing needs only a short initial interval
+
+Let \(P^0_{s,t}\) denote the nominal reflected evolution of one particle or a pair.
+
+The needed smoothing estimate is
+\[
+\operatorname{Lip}(P^0_{s,s+\ell}f)
+\le
+\frac{C}{\sqrt{d_0\ell}}\|f\|_\infty,
+\qquad 0<\ell\le\ell_0.
+\tag{14}
+\]
+
+There is a direct proof that works at polytope corners.
+
+Start two nominal processes \(X,Y\) from \(x,y\), with the same Brownian noise. For the proof, give \(Y\) the additional drift
+\[
+b_t=\frac{X_t-Y_t}{\ell-t},
+\qquad t<\ell.
+\]
+
+Their time-dependent metric distance satisfies
+\[
+R_t
+\le
+R_0e^{\Lambda t/(2d_0)}
+\frac{\ell-t}{\ell}.
+\tag{15}
+\]
+Thus the processes meet at time \(\ell\), and the apparently singular feedback is bounded along the constructed path.
+
+One first constructs the coupled process up to \(\ell-\zeta\). Equation (15), together with the finite wall-variation estimate for bounded drift, permits extension as \(\zeta\downarrow0\).
+
+The Girsanov integrand obeys
+\[
+\left|(\sqrt{2\mathcal D(t)})^{-1}b_t\right|^2
+=
+\frac{R_t^2}{2(\ell-t)^2}.
+\]
+Its energy is bounded deterministically by
+\[
+\frac{R_0^2e^{\Lambda\ell/d_0}}{2\ell}
+\le
+\frac{C|x-y|^2}{d_0\ell}.
+\tag{16}
+\]
+
+Under the changed measure, \(Y\) is nominal from \(y\). Under the original measure, \(X\) is nominal from \(x\), and their endpoints coincide. Pinsker’s inequality proves (14).
+
+For every interval of length at least \(\ell_0/2\), apply (14) only to its first \(\ell_0/2\) units, followed by the \(L^\infty\) contraction of the remaining nominal evolution. Consequently,
+\[
+\boxed{
+\operatorname{Lip}(P^0_{s,t}f)
+\le G\|f\|_\infty,
+\qquad t-s\ge\ell_0/2,
+}
+\tag{17}
+\]
+with the rational \(G\) in (3).
+
+**The constant in (17) does not grow with \(t-s\).** This is what makes the long-gap argument polynomial.
+
+---
+
+# 5. Mixing and contact anti-concentration with polynomial constants
+
+Put
+\[
+\mu(dx)=dx/V.
+\]
+
+The nominal conormal evolution preserves \(\mu\). Its weak form is
+\[
+\mathcal E_t(f,g)
+=
+\int_\Omega\nabla f^\top D(t)\nabla g\,d\mu,
+\qquad
+\operatorname{Dom}\mathcal E_t=H^1(\Omega).
+\tag{18}
+\]
+
+The form is symmetric, preserves constants, and gives the usual nonautonomous Neumann evolution and energy identity. The fixed form domain \(H^1(\Omega)\) is the Neumann realization even when the coefficients vary with time. [Wiley Online Library](https://onlinelibrary.wiley.com/doi/full/10.1002/mma.5978?utm_source=chatgpt.com)
+
+## 5.1 A geometric lower bound for small balls
+
+For every \(x\in\Omega\) and \(0<\rho\le1\),
+\[
+\boxed{
+\mu(B(x,\rho)\cap\Omega)
+\ge
+\frac{\kappa^3\rho^3}{1024}.
+}
+\tag{19}
+\]
+
+To see this, contract the inscribed ball toward \(x\) by the factor \(\rho/5\). Convexity keeps that smaller ball inside \(\Omega\); the bounds on the container place it inside \(B(x,\rho)\). Its volume, divided by \(V\le8\), gives (19).
+
+## 5.2 Uniform mixing from every starting point
+
+Convex-domain Poincaré and \(\operatorname{diam}\Omega\le2\sqrt3\) give
+\[
+\operatorname{Var}_\mu f
+\le2\int_\Omega|\nabla f|^2\,d\mu.
+\tag{20}
+\]
+The classical diameter bound is \(\operatorname{diam}(\Omega)^2/\pi^2\), so the constant \(2\) is sufficient here. [arxiv.org](https://arxiv.org/abs/1309.6211?utm_source=chatgpt.com)
+
+For \(\|f\|_\infty\le1\), the backward energy identity therefore gives
+\[
+\|P^0_{s,s+g}f-\mu f\|_2^2
+\le e^{-d_0g}.
+\tag{21}
+\]
+
+For \(g\ge\ell_0/2\), the function on the left has Lipschitz constant at most \(G\). If its maximum absolute value is \(M_f\), it remains at least \(M_f/2\) in absolute value on a ball of radius \(M_f/(2G)\). Equation (19) yields
+\[
+M_f^5
+\le
+2^{15}G^3\kappa^{-3}
+\|P^0_{s,s+g}f-\mu f\|_2^2.
+\]
+
+This proves a uniform single-particle TV bound. For two nominal particles, independence gives the corresponding product bound.
+
+The following envelope covers both:
+\[
+\boxed{
+b(g)=\min\{1,B_{\rm mix}e^{-d_0g/10}\},
+\qquad
+\int_0^\infty b(g)\,dg\le I.
+}
+\tag{22}
+\]
+
+The constants are those in (4). For \(g<\ell_0/2\), the envelope equals one and covers arbitrary initial placement.
+
+## 5.3 A weak anti-concentration bound suffices
+
+For a measurable set \(E\subset\Omega\), let
+\[
+u=P^0_{s,s+\ell}1_E,
+\qquad \ell\in[\ell_0/2,\ell_0].
+\]
+Then
+\[
+0\le u\le1,\qquad
+\operatorname{Lip}u\le G,\qquad
+\int u\,d\mu=\mu(E).
+\]
+
+Applying (19) near a maximum gives
+\[
+\boxed{
+(\max u)^4
+\le2^{14}G^3\kappa^{-3}\mu(E).
+}
+\tag{23}
+\]
+
+Consider now the discontinuity set of
+\[
+f_r(x,y)=1_{\{|y-x|_\infty\le r\}}.
+\]
+Conditional on the first nominal endpoint, the relevant boundary tube for the second endpoint lies in six slabs. A tube corresponding to pair displacement error at most \(w\) has total slab volume at most \(72w\).
+
+Since \(V\ge\kappa^3\), (23) and nominal independence imply
+\[
+\Pr(\text{nominal endpoint pair lies in that tube})
+\le64\kappa^{-2}G\,w^{1/4}.
+\tag{24}
+\]
+
+Combine (24) with (13) and Markov’s inequality:
+\[
+\Pr(f_r(Q)\ne f_r(Y))
+\le
+64\delta^2\ell/w^2
++
+64\kappa^{-2}G\,w^{1/4}.
+\]
+Taking \(w=\delta^{8/9}\) gives
+\[
+\boxed{
+\Pr(f_r(Q)\ne f_r(Y))
+\le128\kappa^{-2}G\,\delta^{2/9}.
+}
+\tag{25}
+\]
+
+This proves the needed contact estimate without a heat-density estimate at corners.
+
+For release acceptance,
+\[
+w_r(x)=\int_\Omega K_r(y-x)\,dy
+\]
+satisfies
+\[
+0\le w_r\le1,\qquad
+\operatorname{Lip}(w_r)\le6/r.
+\tag{26}
+\]
+The same holds for \(1-w_r\). Their terminal comparisons therefore use (13) directly.
+
+---
+
+# 6. The long-gap conditional occupation estimate
+
+Fix a chemical-free gap \(g\ge\ell_0\). Divide it into
+\[
+n=\lceil g/\ell_0\rceil
+\]
+equal intervals of length
+\[
+\ell=g/n\in[\ell_0/2,\ell_0].
+\]
+
+For a terminal observable \(f\), define
+\[
+f_j=P^0_{t_j,g}f.
+\]
+The exact identity
+\[
+\begin{aligned}
+\mathbb Ef(Q_g)-P^0_{0,g}f(Q_0)
+=
+\sum_{j=1}^n
+\mathbb E\left[
+f_j(Q_{t_j})
+-
+P^0_{t_{j-1},t_j}f_j(Q_{t_{j-1}})
+\right]
+\end{aligned}
+\tag{27}
+\]
+holds even when the actual process depends on its entire history.
+
+For every term except the last, the remaining nominal interval has length at least \(\ell_0/2\). Equations (13) and (17) bound their total by
+\[
+8G\delta\sqrt{\ell_0}\,\lceil g/\ell_0\rceil
+\le
+8G\delta(1+g/\ell_0).
+\tag{28}
+\]
+
+Use (25) for the last contact-indicator term, and (26) for successful and rejected release probabilities.
+
+Combining with nominal mixing, the rational \(W\) in (5) gives
+\[
+\boxed{
+\left|
+\mathbb Ef(Q_g)-\pi f
+\right|
+\le
+b(g)+W\left[\delta(1+g)+\delta^{2/9}\right].
+}
+\tag{29}
+\]
+
+Here:
+
+- \(f=f_r\) and \(\pi=\mu^{\otimes2}\) for a binding contact;
+- \(f=w_r\) or \(1-w_r\), and \(\pi=\mu\), for release branches.
+
+For \(g<\ell_0\), the trivial bound is covered by \(b(g)=1\).
+
+Most importantly, (29) is valid **conditional on the preceding full history and the next independent proposal gap**. The actual pair need not be Markov, independent, stationary or reversible.
+
+No error is propagated by a long synchronous coupling. Earlier local errors are tested against smoothed nominal future observables.
+
+---
+
+# 7. Complete timed-path coupling, including failed attempts
+
+## 7.1 The correct reference process
+
+After the \(q\)-normalization, uniform averaging gives the original fine kinetic rates:
+\[
+\mathbb E_{\mu^{\otimes2}}[VK_r(Y-X)]=q,
+\qquad
+\mathbb E_\mu[w_r(X)]=q.
+\tag{30}
+\]
+
+Use a reference marked count process containing:
+
+- each original fine channel at its kinetic rate \(b_e\);
+- for every release, a hidden unary-null rejection mark at logical rate
+  \[
+  b_{\bar e}\frac{1-q}{q}
+  \]
+  per eligible parent.
+
+These added null marks do not alter the reference count process or any original-labelled firing. Their logical rates may exceed one; they belong to the proof reference process. The emitted coefficients remain those in Section 1.
+
+Successful and rejected releases are separate marks throughout the coupling.
+
+## 7.2 A deterministic intensity bound
+
+Conservation gives \(n(t)\le N_0\). Since \(V\le8\), every actual history satisfies
+\[
+\lambda_{\rm all}(t)
+\le
+\frac{L_*}{h}.
+\tag{31}
+\]
+
+This bound includes binding, successful release, rejected release, ordinary unary events, hidden marks and global null events, with all their independent faulty multipliers.
+
+Augment any admitted realization by rejected proposals so that the combined proposal intensity is the constant \(L_*/h\).
+
+The accepted torus proposal argument applies here: reflection contributes finite variation and does not change the Brownian/count joint-characteristic argument. Future proposal gaps are independent of future Brownian innovations relative to the full past.
+
+## 7.3 Conditional channel probabilities
+
+At a proposal, average the actual channel probabilities over the motion during its preceding gap. Equation (29) controls the spatial terms.
+
+For example, the binding discrepancy has amplitude
+\[
+\frac{b_eK_e(u)}{qL_*}\frac{V}{v},
+\]
+where \(K_e(u)\) is the ordered eligible-pair count. Successful and rejected releases have the corresponding amplitudes bounded by \(b_eK_e(u)/(qL_*)\).
+
+The definition of \(L_*\) pays their sum. Chemical multipliers add a further term bounded by \(\delta\). Thus the complete channel-plus-rejection distribution has discrepancy at most
+\[
+b(g)+W[\delta(1+g)+\delta^{2/9}]+\delta.
+\tag{32}
+\]
+
+Couple these channel marginals maximally, retaining the actual trajectory, chosen tuple, successful placement or rejected attempt, and all subsequent policy decisions.
+
+Agreement preserves the fine count state and the exact channel mark at the exact proposal time.
+
+## 7.4 Accumulation over the horizon
+
+Put \(S=hT\). The renewal estimate for the mixing contribution gives
+\[
+\mathbb E\sum_{\text{proposals before }S}b(G_j)
+\le
+\frac{L_*I}{h}(1+L_*T).
+\]
+
+All gaps ending before \(S\) are at most \(S\). Therefore
+\[
+\boxed{
+E_{\rm spatial}
+\le
+\frac{L_*I}{h}J
++
+WJ\left[\delta(1+S)+\delta^{2/9}\right]
++
+J\delta.
+}
+\tag{33}
+\]
+
+This bounds total variation of the complete fine timed marked chemical path.
+
+Let
+\[
+z=\frac{\epsilon}{2^{10}WJ(1+S)},
+\qquad \delta=z^9.
+\]
+Then
+\[
+\frac{L_*I}{h}J\le\epsilon/16,
+\]
+\[
+WJ\delta^{2/9}
+=
+\frac{\epsilon^2}{2^{20}WJ(1+S)^2}
+\le\epsilon/2^{20},
+\]
+and
+\[
+WJ(1+S)\delta\le\epsilon/2^{90}.
+\]
+The remaining \(J\delta\) is smaller than that last bound. Hence
+\[
+E_{\rm spatial}<\epsilon/8.
+\tag{34}
+\]
+
+Decode and hide the private marks. Total variation contracts under this observation map. Adding the kinetic error \(\epsilon/4\),
+\[
+\boxed{
+d_{\rm TV}(\text{entire observed path},X)
+<
+3\epsilon/8
+<
+\epsilon.
+}
+\tag{35}
+\]
+
+No initial wait or later waiting time is removed. Original null and parallel marks retain their exact rescaled times.
+
+---
+
+# 8. Balance, graph and spatial support
+
+## 8.1 Exact nominal spatial balance
+
+For a binding pair \(A+B\rightleftarrows C\), the forward Palm flux has scalar factor
+\[
+c_eV
+\frac{\widetilde a_A}{V}
+\frac{\widetilde a_B}{V}
+=
+\frac{c_e\widetilde a_A\widetilde a_B}{V}.
+\]
+
+The successful reverse flux has scalar factor
+\[
+\frac{c_{\bar e}\widetilde a_C}{V}.
+\]
+
+Both use the same measure
+\[
+1_{\{x,x+z\in\Omega\}}K_r(z)\,dx\,dz
+\]
+and the same anchored configuration pair. Their equality follows from
+\[
+c_e\widetilde a_A\widetilde a_B
+=
+c_{\bar e}\widetilde a_C.
+\tag{36}
+\]
+
+For \(2A\), the ordered factorial Palm identity gives \(\widetilde a_A^2\), with no division by two.
+
+A rejected release is a diagonal configuration transition. Its hidden self-reverse flux is therefore symmetric, including its position-dependent rejection probability. Unary and global-null fluxes inherit their detailed-balance identities.
+
+Each reverse pair is scaled by the same factor: \(1/(hq)\) for binding/release and \(1/h\) for ordinary unary or global-null pairs. Thus all required algebraic certificates remain exact.
+
+The nominal diffusion symmetry follows from (18). Restricting to an invariant chemical class preserves the flux and diffusion identities; the compiler never computes the restriction’s normalizer.
+
+## 8.2 Exact all-state chemical graph
+
+The only structural additions are hidden self-loops. All inherited channels retain positive coefficients. Thus
+\[
+\boxed{
+u\leadsto v
+\iff
+Pu\leadsto Pv
+}
+\tag{37}
+\]
+continues to hold for every finite fine count state, with the same class preimages.
+
+All decoder, enabling, conservation and label conditions are inherited. No species or channel is removed using the geometry or initialized population.
+
+## 8.3 Positive spatial support for every finite allowed count path
+
+Fix any finite count state and interior target positions \(y_i\). By convexity,
+\[
+\phi_i(t)=(1-t/T)x_i+(t/T)y_i
+\]
+stays in \(\Omega\), even if the initial \(x_i\) lies at a corner.
+
+A drift-only Girsanov change of measure can replace the imposed drift by
+\[
+(y_i-x_i)/T.
+\]
+Uniform ellipticity makes the finite-horizon measure change valid.
+
+Testing the error from \(\phi\) in the nominal inverse-matrix metric makes every reflection term nonpositive. Its expected squared error at \(T\) is bounded by
+\[
+CnT\,e^{\Lambda T/d_0}.
+\]
+For sufficiently small positive \(T\), there is positive probability of reaching the prescribed interior neighborhoods during a proposal-free gap. The change of measure transfers this positivity to the actual law.
+
+Choose those neighborhoods to enable the requested next channel:
+
+- a selected binding pair close together near the certified interior ball;
+- a release parent where an open set of offsets succeeds;
+- a rejection parent sufficiently near a genuine facet that an open set of offsets exits;
+- any positions for an enabled ordinary unary or global-null mark.
+
+Every desired branch then has positive probability before leaving its supporting open set. Iteration proves the required finite-path support, including rejected attempts.
+
+The initialization remains exactly \(x_0\), with zero auxiliaries and arbitrary positions. If \(N_0=0\), the population remains empty and any enabled global null marks are still included.
+
+---
+
+# 9. Actual untruncated event, movement and wall costs
+
+These estimates apply to every admitted realization for every physical \(t\ge0\).
+
+Conservation gives
+\[
+|Z(t)|_1\le N_0
+\quad\text{pathwise}.
+\tag{38}
+\]
+
+The intensity bound (31) proves nonexplosion and
+\[
+\boxed{
+\mathbb EF_{\rm all}(t)\le\frac{L_*}{h}t,
+\qquad
+\mathbb EF_{\rm all}(H\tau)\le L_*T.
+}
+\tag{39}
+\]
+The chosen \(h\) also gives \(L_*/h\le1\).
+
+Particle-time, continuous quadratic variation and imposed-drift variation satisfy
+\[
+\int_0^t|Z(s)|_1\,ds\le N_0t,
+\tag{40}
+\]
+\[
+\sum_{\text{lifetimes, coordinates}}[Q]_t
+=
+\int_0^t2\operatorname{tr}A(s)\,ds
+\le9N_0t,
+\tag{41}
+\]
+\[
+\sum_{\text{lifetimes}}\int|v_i(s)|\,ds
+\le\delta N_0t.
+\tag{42}
+\]
+
+The reaction-placement charge is at most
+\[
+\sqrt3\,rF_{\rm all}(t).
+\tag{43}
+\]
+
+For the wall cost, use
+\[
+\Phi(t)=
+\sum_{\text{current particles}}
+\frac12(Q_i-c)^\top D_{s(i)}(t)^{-1}(Q_i-c).
+\]
+
+The relevant bounds are explicit:
+
+- \(0\le\Phi(0)\le6N_0/d_0\);
+- the time derivative contributes at most \(6\Lambda N_0/d_0^2\);
+- the diffusion term contributes at most \(5N_0\);
+- imposed drift contributes at most \(4\delta N_0/d_0\);
+- each chemical firing changes the potential by at most \(18/d_0\);
+- each face clock contributes at most \(-\kappa\,dL_{if}\).
+
+Localization, expectation and removal of the stopping times give
+\[
+\boxed{
+\begin{aligned}
+\mathbb EW_{\rm wall}(t)
+\le\frac1\kappa\bigg[
+&\frac{6N_0}{d_0}
++
+N_0\left(
+\frac{6\Lambda}{d_0^2}
++5+\frac{4\delta}{d_0}
+\right)t\\
+&+\frac{18}{d_0}\mathbb EF_{\rm all}(t)
+\bigg].
+\end{aligned}
+}
+\tag{44}
+\]
+
+Here \(|D_s(t)n_f|\le1\) was used. There is no multiplier depending on the number of faces.
+
+In particular, writing \(R=\mathsf R_{\rm num}\) and using \(\mathbb EF_{\rm all}(t)\le t\),
+\[
+\boxed{
+\mathbb EW_{\rm wall}(t)
+\le40R^5(1+t).
+}
+\tag{45}
+\]
+
+The initial term is appropriate for arbitrary boundary starts. No estimate proportional only to \(t\) is needed for wall push.
+
+---
+
+# 10. Exact geometry and universal polynomial costs
+
+## 10.1 Paid finite-dimensional volume computation
+
+The algorithm for (1) uses dimensions three and six only.
+
+For each relevant polytope, it:
+
+1. enumerates vertices from independent fixed-size sets of bounding hyperplanes;
+2. tests each candidate against all inequalities;
+3. enumerates and deduplicates faces by their vertex sets;
+4. forms rational face barycenters;
+5. triangulates using chains of faces and cones to a known rational interior point;
+6. sums absolute rational determinants.
+
+The interior points are \(c\) for \(\Omega\) and \((c,c)\) for the six-dimensional acceptance polytope.
+
+In dimension at most six, crude bounds suffice: \(O(F^6)\) vertices and faces, at most \(O(F^{36})\) face-chain simplices, and polynomial rational description lengths. A naïve exact implementation can be bounded by a fixed bit exponent such as \(150\). Redundant facets are handled by the feasibility tests and deduplication.
+
+Unit normals have exact finite algebraic descriptions
+\[
+n_f=\frac{a_f}{\sqrt{a_f^\top a_f}}
+\]
+from the rational inequality vectors. No normal approximation is introduced.
+
+These are finite compiler computations. The reflected evolution operators and the couplings used in the proof are never evaluated by the compiler.
+
+## 10.2 Variable order is paid
+
+Reducing the kinetic error budget changes its \(U\) by at most a factor four:
+\[
+U_{\epsilon/4}\le4U_\epsilon.
+\]
+Therefore
+\[
+\Gamma_{\epsilon/4}\le4^D\Gamma_\epsilon
+\le\Xi\Gamma_\epsilon
+\le R^2.
+\tag{46}
+\]
+
+The invocation of the accepted primitive thus has numerical charge at most a universal multiple of \(R^2\).
+
+Fix its computable universal constants. As in the accepted torus assembly, structural independence also gives a numerical channel-count bound. Hence, for a fixed universal \(p_0\ge2\) and computable \(C_0\),
+\[
+M,\ H_{\rm kin},\
+\max_e b_e^{-1},\
+\max_s(\widetilde a_s+\widetilde a_s^{-1}),\
+\max_{i,s}P_{is}
+\le C_0R^{p_0}.
+\tag{47}
+\]
+
+Adding one rejection branch per release changes this only by a constant factor.
+
+## 10.3 Explicit exponent accounting
+
+The construction gives the following conservative bounds.
+
+| Quantity | Bound up to a computable universal constant |
+|---|---:|
+| \(\ell_0^{-1}\) | \(R^2\) |
+| \(G\) | \(R^3\) |
+| \(B_{\rm mix},W\) | \(R^5\) |
+| \(I\) | \(R^6\) |
+| \(q^{-1}\) | \(R^6\) |
+| \(L_*\) | \(R^{p_0+11}\) |
+| \(T\) | \(R^{p_0+1}\) |
+| \(J\) | \(R^{2p_0+12}\) |
+| \(h\) | \(R^{3p_0+30}\) |
+| \(H\) | \(R^{4p_0+30}\) |
+| \(H\tau\) | \(R^{4p_0+31}\) |
+| \(\max_e c_e^{-1}\) | \(R^{4p_0+30}\) |
+| \(\delta^{-1}\) | \(R^{54p_0+441}\) |
+| \(\mathbb EF_{\rm all}(H\tau)\) | \(R^{2p_0+12}\) |
+| \(\mathbb EW_{\rm wall}(H\tau)\) | \(R^{4p_0+36}\) |
+
+For binding and release,
+\[
+c_e^{-1}=hq/b_e\le h/b_e,
+\]
+so no additional reciprocal-\(q\) factor is needed in that row.
+
+A safe common exponent is
+\[
+\boxed{p=54p_0+450.}
+\tag{48}
+\]
+
+The constants are obtained by finite arithmetic and fixed powers from the displayed integers and the accepted primitive’s fixed constants. Thus a universal \(C\) is explicitly computable.
+
+All further compiler operations are exact rational arithmetic: binary computation of \(N_0\), volume ratios, comparisons, a ceiling, coefficient scaling and a fixed ninth power. Their bit costs fit
+\[
+C(1+L+R)^p.
+\]
+
+No \(N_0\)-particle list, population ball or communicating class is enumerated. No geometric volume in dimension proportional to particle number is computed.
+
+---
+
+## Established result
+
+The reflecting-wall extension has a constructive affirmative under the accepted kinetic premise. Its additional conditional occupation estimate is
+\[
+\boxed{
+b(g)+W\left[\delta(1+g)+\delta^{2/9}\right],
+\qquad
+\int b\le I,
+}
+\]
+with explicit polynomial \(I,W\).
+
+That estimate closes the complete timed-mark coupling while allowing the actual faults to depend on the full hidden history. Together with the exact \(q\)-normalization, explicit rejection branches, reflected existence argument and wall-potential estimate, the compiler satisfies the full stated accuracy, balance, graph, initialization, binary, event, movement and wall-push requirements.
