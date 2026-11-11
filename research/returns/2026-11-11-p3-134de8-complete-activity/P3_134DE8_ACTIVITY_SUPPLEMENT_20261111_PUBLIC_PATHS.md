@@ -1,0 +1,4540 @@
+## Expanded current activity
+
+you may use all subagents avaible"
+    - generic: …
+    - button "Show more":
+      - generic: Show more
+    - button "Copy message":
+    - button "Share prompt":
+    - button "Edit message":
+    - button "Worked for 10m 38s" [expanded] [active]:
+      - generic: Worked for 10m 38s
+    - paragraph: I’ll focus on total variation for the full timed, labelled path, including null events and the hidden state left after each observed event. I’ll work in parallel on a quantitative averaging theorem and a uniform audit of the elementary construction and its costs.
+    - region "Subagent activity":
+      - button "Path averaging"
+      - text: ","
+      - button "Uniform design"
+      - text: and
+      - button "Adversarial audit"
+      - text: started working
+    - generic: Searched 15 websites
+    - paragraph: Constructed a Poisson coupling and bounded mismatches
+    - paragraph: Checked hidden-path coupling and zero-source handling
+    - paragraph: Derived prefix fibre bounds and counted private prefixes
+    - paragraph: Formalized constrained partition and derived source-A ratios
+    - paragraph: Checked transition formula and reachability
+    - paragraph: Checked physical rate scaling and derived a lower bound
+    - paragraph: Verified parameter bounds and exact normalization
+    - paragraph: Checked constants and bounded channel encoding
+    - paragraph: Chose explicit theta bounds
+    - paragraph: Verified theta bias bounds
+    - paragraph: Bounded H’s polynomial exponent
+    - paragraph: Verified coupling bounds
+    - paragraph: Proposed uniform exponent bounds
+    - paragraph: Bounded operation counts and output bitlengths
+    - paragraph: There is a direct full-path comparison. A proof-only Poisson proposal clock lets the fine process and an averaged chain use exactly the same candidate event times. Fibre mixing bounds the chance that they choose different labels, giving a path-TV bound that includes the initial assembly delay, null events, and the hidden state after each event. No physical residence time is removed.
+    - region "Subagent activity":
+      - button "Uniform design"
+      - text: and
+      - button "Adversarial audit"
+      - text: updated
+    - paragraph: Checked tagged-prefix bounds and expected births
+    - region "Subagent activity":
+      - button "Path averaging"
+      - text: finished
+    - paragraph: Proved the atom bound and bounded the Poisson rate
+    - paragraph: Refined marked-path coupling
+    - paragraph: Checked closed-form bitcounts and chose canonical complex order
+    - paragraph: Chose q_* notation
+    - paragraph: Checked fiber-weight bounds
+    - paragraph: Verified coupling bounds
+    - paragraph: Refined the coupling bound
+    - region "Subagent activity":
+      - button "Uniform design"
+      - text: finished
+    - paragraph: Verified rational bit bounds and refined duplicate-label handling
+    - paragraph: Specified private complex chains
+    - paragraph: Specified malformed-input handling and built prefix network
+    - generic: Searching arxiv.org
+    - region "Subagent activity":
+      - button "Adversarial audit"
+      - text: finished
+    - paragraph: Checked conditional gap coupling
+    - paragraph: Checked input-size bounds
+    - paragraph: Checked encoding consistency
+    - paragraph: Verified the renewal identity
+    - paragraph: Checked coupling proof bounds
+    - paragraph: Checked bit-complexity bounds
+    - 
+
+## Available current helper panels
+
+  - complementary:
+    - heading "Subagents" [level=2]
+    - button "Enter full view":
+    - button "Close panel":
+    - tabpanel "Subagents" [active]:
+      - button "Back to subagents":
+      - generic: Path averaging
+      - heading "Status" [level=2]
+      - generic: Done
+      - heading "Final response" [level=2]
+      - heading "Full timed marked-path averaging lemma" [level=2]
+      - paragraph: The open averaging interface closes with an analytical Poisson uniformization of the central channels.
+      - paragraph: Let the fine nominal process have generator
+      - math:
+        - generic: Q
+        - generic: =
+        - generic: F
+        - generic: +
+        - generic: C
+        - generic: ","
+      - generic: Q =
+      - generic: F +
+      - generic: C,
+      - paragraph:
+        - text: where
+        - math:
+          - generic: F
+        - generic: F
+        - text: consists of hidden, decoder-preserving channels, and
+        - math:
+          - generic: C
+        - generic: C
+        - text: consists of all channels carrying original labels, including genuine null and parallel labels.
+      - paragraph:
+        - text: For decoded state
+        - math:
+          - generic: x
+        - generic: x
+        - text: ", let"
+        - math:
+          - generic: F
+          - generic: x
+          - generic: (
+          - generic: t
+          - generic: )
+        - text: F
+        - generic: x
+        - text: (t)
+        - text: be the hidden semigroup on its fibre, and let
+        - math:
+          - generic: π
+          - generic: x
+        - text: π
+        - generic: x
+        - text: be its invariant law. Assume
+      - math:
+        - generic: d
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ":"
+        - generic: =
+        - generic: sup
+        - generic: ⁡
+        - generic: x
+        - generic: ","
+        - generic: u
+        - generic: ":"
+        - generic: P
+        - generic: u
+        - generic: =
+        - generic: x
+        - generic: ∥
+        - generic: F
+        - generic: x
+        - generic: (
+        - generic: t
+        - generic: ;
+        - generic: u
+        - generic: ","
+        - generic: ⋅
+        - generic: )
+        - generic: −
+        - generic: π
+        - generic: x
+        - generic: ∥
+        - generic: T
+        - generic: V
+        - generic: ","
+        - generic: I
+        - generic: ":"
+        - generic: =
+        - generic: ∫
+        - generic: "0"
+        - generic: ∞
+        - generic: d
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: d
+        - generic: t
+        - generic: <
+        - generic: ∞
+        - generic: .
+      - generic: d(t) :=
+      - generic: "x,u: Pu=x"
+      - generic: sup
+      - text: ∥
+      - text: F
+      - generic: x
+      - text: (t; u, ⋅) −
+      - text: π
+      - generic: x
+      - text: ∥
+      - generic: TV
+      - text: ", I :="
+      - text: ∫
+      - generic: "0"
+      - generic: ∞
+      - text: d(t) dt <
+      - generic: ∞.
+      - paragraph:
+        - text: Let the fine central intensities be
+        - math:
+          - generic: λ
+          - generic: e
+          - generic: (
+          - generic: u
+          - generic: )
+        - text: λ
+        - generic: e
+        - text: (u)
+        - text: ", and suppose"
+      - math:
+        - generic: ∑
+        - generic: e
+        - generic: ∈
+        - generic: C
+        - generic: λ
+        - generic: e
+        - generic: (
+        - generic: u
+        - generic: )
+        - generic: ≤
+        - generic: Λ
+      - generic: e∈C
+      - generic: ∑
+      - text: λ
+      - generic: e
+      - text: (u) ≤
+      - generic: Λ
+      - paragraph: uniformly on the conserved state space. Define averaged labelled rates
+      - math:
+        - generic: λ
+        - generic: ˉ
+        - generic: r
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: =
+        - generic: ∑
+        - generic: e
+        - generic: ":"
+        - generic: ℓ
+        - generic: (
+        - generic: e
+        - generic: )
+        - generic: =
+        - generic: r
+        - generic: π
+        - generic: x
+        - generic: λ
+        - generic: e
+        - generic: .
+      - generic: λ
+      - text: ˉ
+      - generic: r
+      - text: (x) =
+      - generic: e:ℓ(e)=r
+      - generic: ∑
+      - text: π
+      - generic: x
+      - text: λ
+      - generic: e
+      - text: .
+      - paragraph:
+        - text: Then, from
+        - strong: any initial fine encoding
+        - math:
+          - generic: u
+          - generic: "0"
+        - text: u
+        - generic: "0"
+        - text: ", the complete decoded central marked path satisfies"
+      - math:
+        - generic: TV
+        - generic: ⁡
+        - generic: (
+        - generic: L
+        - generic: (
+        - generic: decoded marked fine path on
+        - generic: "["
+        - generic: "0"
+        - generic: ","
+        - generic: τ
+        - generic: "]"
+        - generic: )
+        - generic: ","
+        - generic: L
+        - generic: (
+        - generic: averaged marked chain on
+        - generic: "["
+        - generic: "0"
+        - generic: ","
+        - generic: τ
+        - generic: "]"
+        - generic: )
+        - generic: )
+        - generic: ≤
+        - generic: Λ
+        - generic: I
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: Λ
+        - generic: τ
+        - generic: )
+        - generic: .
+        - generic: (A)
+      - generic: TV
+      - generic: (
+      - text: L
+      - generic: (
+      - generic: decoded marked fine path on
+      - text: "[0, τ]"
+      - generic: )
+      - text: ", L"
+      - generic: (
+      - generic: averaged marked chain on
+      - text: "[0, τ]"
+      - generic: )
+      - generic: )
+      - text: ≤ ΛI(1 + Λτ).
+      - text: (
+      - generic: A
+      - text: )
+      - paragraph:
+        - text: The averaged chain starts at
+        - math:
+          - generic: P
+          - generic: u
+          - generic: "0"
+        - text: P
+        - text: u
+        - generic: "0"
+        - text: . The comparison retains exact event times and all original labels.
+      - heading "Proof" [level=3]
+      - paragraph:
+        - text: Introduce, solely for the proof, an independent Poisson proposal clock of rate
+        - math:
+          - generic: Λ
+        - generic: Λ
+        - text: . Write its times
+        - math:
+          - generic: T
+          - generic: j
+        - text: T
+        - generic: j
+        - text: ", gaps"
+        - math:
+          - generic: S
+          - generic: j
+          - generic: =
+          - generic: T
+          - generic: j
+          - generic: −
+          - generic: T
+          - generic: j
+          - generic: −
+          - generic: "1"
+        - text: S
+        - generic: j
+        - text: =
+        - text: T
+        - generic: j
+        - text: −
+        - text: T
+        - generic: j−1
+        - text: ", and"
+        - math:
+          - generic: T
+          - generic: "0"
+          - generic: =
+          - generic: "0"
+        - text: T
+        - generic: "0"
+        - text: =
+        - generic: "0"
+        - text: .
+      - paragraph: "The fine process has the following exact representation:"
+      - list:
+        - listitem: Between proposal times, run only its hidden fibre dynamics.
+        - text: At a proposal, given fine state
+        - math:
+          - generic: u
+        - generic: u
+        - text: ", choose central channel"
+        - math:
+          - generic: e
+        - generic: e
+        - text: with probability
+        - math:
+          - generic: λ
+          - generic: e
+          - generic: (
+          - generic: u
+          - generic: )
+          - generic: /
+          - generic: Λ
+        - text: λ
+        - generic: e
+        - text: (u)/Λ
+        - text: .
+        - listitem: Choose rejection with the remaining probability.
+        - listitem: An accepted central channel fires with its actual mark and state update. A rejected proposal is not a physical firing.
+      - paragraph: This is ordinary thinning/uniformization and gives exactly the original fine CTMC, including its central null marks.
+      - paragraph:
+        - text: Suppose the two decoded proposal histories have agreed so far. They currently share decoded state
+        - math:
+          - generic: x
+        - generic: x
+        - text: . Condition on the
+        - strong: complete joint past
+        - text: and on the next gap
+        - math:
+          - generic: S
+          - generic: j
+          - generic: =
+          - generic: s
+        - text: S
+        - generic: j
+        - text: =
+        - generic: s
+        - text: . The actual fine postproposal state from the preceding step is some known
+        - math:
+          - generic: u
+        - generic: u
+        - text: ", while the next fine preproposal endpoint has law"
+        - math:
+          - generic: F
+          - generic: x
+          - generic: (
+          - generic: s
+          - generic: ;
+          - generic: u
+          - generic: ","
+          - generic: ⋅
+          - generic: )
+        - text: F
+        - generic: x
+        - text: (s; u, ⋅)
+        - text: .
+      - paragraph:
+        - text: Maximally couple this endpoint with a fresh variable
+        - math:
+          - generic: V
+          - generic: j
+        - text: V
+        - generic: j
+        - text: whose marginal is
+        - math:
+          - generic: π
+          - generic: x
+        - text: π
+        - generic: x
+        - text: . The mismatch probability is at most
+        - math:
+          - generic: d
+          - generic: (
+          - generic: s
+          - generic: )
+        - generic: d(s)
+        - text: . Crucially, this marginal statement holds conditional on both the past
+        - strong: and the gap
+        - text: .
+      - paragraph:
+        - text: "This can be constructed without altering the fine hidden path law: first sample the hidden fine path normally, then use a maximal-coupling conditional kernel to extend its endpoint to"
+        - math:
+          - generic: V
+          - generic: j
+        - text: V
+        - generic: j
+        - text: . The conditional endpoint coupling need not be a physical mechanism.
+      - paragraph: Draw a fresh common uniform mark and apply the central channel/rejection kernel to the two endpoints. If the endpoints agree, the channel or rejection marks agree. Thus an accepted original label occurs at exactly the same proposal time and makes the same decoded update.
+      - paragraph:
+        - text: For the averaged process, conditional on the past and the gap, the probability of original label
+        - math:
+          - generic: r
+        - generic: r
+        - text: is
+      - math:
+        - generic: ∑
+        - generic: e
+        - generic: ":"
+        - generic: ℓ
+        - generic: (
+        - generic: e
+        - generic: )
+        - generic: =
+        - generic: r
+        - generic: π
+        - generic: x
+        - generic: λ
+        - generic: e
+        - generic: Λ
+        - generic: =
+        - generic: λ
+        - generic: ˉ
+        - generic: r
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: Λ
+        - generic: .
+      - generic: e:ℓ(e)=r
+      - generic: ∑
+      - generic: Λ
+      - text: π
+      - generic: x
+      - text: λ
+      - generic: e
+      - text: =
+      - generic: Λ
+      - generic: λ
+      - text: ˉ
+      - generic: r
+      - text: (x)
+      - text: .
+      - paragraph: It does not depend on the gap. Hence its marginal is exactly the averaged marked CTMC.
+      - paragraph: "A rejection can bias the fine hidden state, and an accepted null event can do the same through conditioning. This creates no difficulty: at the next proposal the starting fine state is arbitrary, and the contraction bound is uniform over all starting states. After the first mismatch, continue with any coupling preserving both marginals."
+      - paragraph: Therefore path mismatch probability is bounded by
+      - math:
+        - generic: E
+        - generic: ∑
+        - generic: j
+        - generic: ":"
+        - generic: T
+        - generic: j
+        - generic: ≤
+        - generic: τ
+        - generic: d
+        - generic: (
+        - generic: S
+        - generic: j
+        - generic: )
+        - generic: .
+      - text: E
+      - text: "j:"
+      - text: T
+      - generic: j
+      - text: ≤τ
+      - generic: ∑
+      - text: d(
+      - text: S
+      - generic: j
+      - text: ).
+      - paragraph: The exact renewal identity is
+      - math:
+        - generic: E
+        - generic: ∑
+        - generic: j
+        - generic: ":"
+        - generic: T
+        - generic: j
+        - generic: ≤
+        - generic: τ
+        - generic: d
+        - generic: (
+        - generic: S
+        - generic: j
+        - generic: )
+        - generic: =
+        - generic: ∫
+        - generic: "0"
+        - generic: τ
+        - generic: Λ
+        - generic: e
+        - generic: −
+        - generic: Λ
+        - generic: s
+        - generic: d
+        - generic: (
+        - generic: s
+        - generic: )
+        - generic: "["
+        - generic: "1"
+        - generic: +
+        - generic: Λ
+        - generic: (
+        - generic: τ
+        - generic: −
+        - generic: s
+        - generic: )
+        - generic: "]"
+        - generic: d
+        - generic: s
+        - generic: .
+      - text: E
+      - text: "j:"
+      - text: T
+      - generic: j
+      - text: ≤τ
+      - generic: ∑
+      - text: d(
+      - text: S
+      - generic: j
+      - text: ) =
+      - text: ∫
+      - generic: "0"
+      - generic: τ
+      - text: Λ
+      - text: e
+      - generic: −Λs
+      - text: d(s)
+      - generic: "["
+      - text: 1 +
+      - generic: Λ(τ −
+      - text: s)
+      - generic: "]"
+      - text: ds.
+      - paragraph:
+        - text: Indeed, after integrating over a gap
+        - math:
+          - generic: s
+        - generic: s
+        - text: ", the expected number of possible preceding proposal times in"
+        - math:
+          - generic: "["
+          - generic: "0"
+          - generic: ","
+          - generic: τ
+          - generic: −
+          - generic: s
+          - generic: "]"
+        - generic: "[0, τ −"
+        - generic: s]
+        - text: ", including time zero, is"
+        - math:
+          - generic: "1"
+          - generic: +
+          - generic: Λ
+          - generic: (
+          - generic: τ
+          - generic: −
+          - generic: s
+          - generic: )
+        - generic: 1 +
+        - generic: Λ(τ −
+        - generic: s)
+        - text: . This is at most
+      - math:
+        - generic: Λ
+        - generic: I
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: Λ
+        - generic: τ
+        - generic: )
+        - generic: ","
+      - generic: ΛI(1 +
+      - generic: Λτ),
+      - paragraph: proving (A).
+      - paragraph: "There is no final endpoint correction: after the last accepted central event, all remaining hidden firings preserve the decoder. Agreement of every proposal’s accepted label/rejection therefore gives equality of the entire decoded marked path, including the endpoint."
+      - paragraph:
+        - text: The proposal clock and the
+        - math:
+          - generic: π
+          - generic: x
+        - text: π
+        - generic: x
+        - text: draws are analytical coupling variables. They are neither emitted reactions nor algorithms used by the compiler. No normalizer or exact-law sampler is required operationally.
+      - separator
+      - heading "Application to the supplied prefix fibre" [level=2]
+      - paragraph: The common canonical atom implies
+      - math:
+        - generic: Dob
+        - generic: ⁡
+        - generic: (
+        - generic: F
+        - generic: x
+        - generic: (
+        - generic: h
+        - generic: )
+        - generic: )
+        - generic: ≤
+        - generic: "1"
+        - generic: "2"
+        - generic: ","
+        - generic: h
+        - generic: =
+        - generic: "16"
+        - generic: B
+        - generic: C
+        - generic: D
+        - generic: (
+        - generic: B
+        - generic: )
+        - generic: K
+        - generic: .
+      - generic: Dob
+      - text: (
+      - text: F
+      - generic: x
+      - text: (h)) ≤
+      - generic: "2"
+      - generic: "1"
+      - text: ", h ="
+      - generic: K
+      - text: 16B
+      - text: C
+      - generic: D
+      - text: (B)
+      - text: .
+      - paragraph: Hence
+      - math:
+        - generic: d
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ≤
+        - generic: "2"
+        - generic: −
+        - generic: ⌊
+        - generic: t
+        - generic: /
+        - generic: h
+        - generic: ⌋
+        - generic: ","
+        - generic: I
+        - generic: ≤
+        - generic: "2"
+        - generic: h
+        - generic: .
+      - generic: d(t) ≤
+      - text: "2"
+      - generic: −⌊t/h⌋
+      - text: ", I ≤"
+      - generic: 2h.
+      - paragraph: Taking
+      - math:
+        - generic: Λ
+        - generic: =
+        - generic: m
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: B
+        - generic: )
+        - generic: θ
+        - generic: ","
+        - generic: m
+        - generic: =
+        - generic: ∣
+        - generic: R
+        - generic: ∣
+        - generic: ","
+      - generic: Λ =
+      - generic: θ
+      - generic: m(1 + B)
+      - text: ", m ="
+      - generic: ∣R∣,
+      - paragraph: gives the concrete full-path bound
+      - math:
+        - generic: TV
+        - generic: ⁡
+        - generic: (
+        - generic: fine decoded path
+        - generic: ","
+        - generic: averaged path
+        - generic: )
+        - generic: ≤
+        - generic: "32"
+        - generic: Λ
+        - generic: B
+        - generic: C
+        - generic: D
+        - generic: (
+        - generic: B
+        - generic: )
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: Λ
+        - generic: τ
+        - generic: )
+        - generic: K
+        - generic: .
+        - generic: (B)
+      - generic: TV
+      - text: (
+      - generic: fine decoded path
+      - text: ","
+      - generic: averaged path
+      - text: ) ≤
+      - generic: K
+      - text: 32ΛB
+      - text: C
+      - generic: D
+      - text: (B)(1 + Λτ)
+      - text: .
+      - text: (
+      - generic: B
+      - text: )
+      - paragraph: Thus, for example,
+      - math:
+        - generic: K
+        - generic: =
+        - generic: "1"
+        - generic: +
+        - generic: "128"
+        - generic: ϵ
+        - generic: −
+        - generic: "1"
+        - generic: Λ
+        - generic: B
+        - generic: C
+        - generic: D
+        - generic: (
+        - generic: B
+        - generic: )
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: Λ
+        - generic: τ
+        - generic: )
+      - generic: K =
+      - generic: 1 +
+      - text: "128"
+      - text: ϵ
+      - generic: −1
+      - text: ΛB
+      - text: C
+      - generic: D
+      - text: (B)(1 +
+      - generic: Λτ)
+      - paragraph:
+        - text: pays at most
+        - math:
+          - generic: ϵ
+          - generic: /
+          - generic: "4"
+        - generic: ϵ/4
+        - text: .
+      - paragraph: This argument handles the initial assembly layer, every subsequent post-event layer, all original null marks, and all parallel labels. It does not discard internal residence time.
+      - separator
+      - heading "Averaged law versus prescribed original law" [level=2]
+      - paragraph:
+        - text: The supplied exact averaged formula gives, when
+        - math:
+          - generic: S
+          - generic: θ
+          - generic: B
+          - generic: D
+          - generic: ≤
+          - generic: "1"
+        - text: Sθ
+        - text: B
+        - generic: D
+        - text: ≤
+        - generic: "1"
+        - text: ","
+      - math:
+        - generic: ∣
+        - generic: λ
+        - generic: ˉ
+        - generic: r
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: −
+        - generic: k
+        - generic: r
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: "y"
+        - generic: r
+        - generic: ∣
+        - generic: ≤
+        - generic: "2"
+        - generic: S
+        - generic: θ
+        - generic: B
+        - generic: D
+        - generic: k
+        - generic: r
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: "y"
+        - generic: r
+        - generic: .
+      - text: ∣
+      - generic: λ
+      - text: ˉ
+      - generic: r
+      - text: (x) −
+      - text: k
+      - generic: r
+      - text: (x
+      - text: )
+      - text: "y"
+      - generic: r
+      - text: ∣ ≤
+      - text: 2Sθ
+      - text: B
+      - generic: D
+      - text: k
+      - generic: r
+      - text: (x
+      - text: )
+      - text: "y"
+      - generic: r
+      - text: .
+      - paragraph:
+        - text: Since every conserved decoded population has
+        - math:
+          - generic: ∣
+          - generic: x
+          - generic: ∣
+          - generic: "1"
+          - generic: ≤
+          - generic: B
+        - text: ∣x
+        - text: ∣
+        - generic: "1"
+        - text: ≤
+        - generic: B
+        - text: ","
+      - math:
+        - generic: ∑
+        - generic: r
+        - generic: k
+        - generic: r
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: "y"
+        - generic: r
+        - generic: ≤
+        - generic: m
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: B
+        - generic: )
+        - generic: D
+        - generic: .
+      - generic: r
+      - generic: ∑
+      - text: k
+      - generic: r
+      - text: (x
+      - text: )
+      - text: "y"
+      - generic: r
+      - text: ≤
+      - generic: m(1 +
+      - text: B
+      - text: )
+      - generic: D
+      - text: .
+      - paragraph: Marked common-intensity coupling therefore gives
+      - math:
+        - generic: TV
+        - generic: ⁡
+        - generic: (
+        - generic: averaged marked path
+        - generic: ","
+        - generic: original marked path
+        - generic: )
+        - generic: ≤
+        - generic: "2"
+        - generic: S
+        - generic: m
+        - generic: θ
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: B
+        - generic: )
+        - generic: "2"
+        - generic: D
+        - generic: τ
+        - generic: .
+        - generic: (C)
+      - generic: TV
+      - text: (
+      - generic: averaged marked path
+      - text: ","
+      - generic: original marked path
+      - text: ) ≤
+      - generic: 2Smθ(1 +
+      - text: B
+      - text: )
+      - generic: 2D
+      - text: τ.
+      - text: (
+      - generic: C
+      - text: )
+      - paragraph: One safe choice is
+      - math:
+        - generic: θ
+        - generic: =
+        - generic: min
+        - generic: ⁡
+        - generic: "{"
+        - generic: "1"
+        - generic: ","
+        - generic: "1"
+        - generic: "1024"
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: M
+        - generic: )
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: B
+        - generic: )
+        - generic: "3"
+        - generic: C
+        - generic: D
+        - generic: (
+        - generic: B
+        - generic: )
+        - generic: ","
+        - generic: ϵ
+        - generic: "16"
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: S
+        - generic: )
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: m
+        - generic: )
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: B
+        - generic: )
+        - generic: "2"
+        - generic: D
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: τ
+        - generic: )
+        - generic: "}"
+        - generic: .
+      - generic: θ =
+      - text: min
+      - generic: "{"
+      - text: 1,
+      - text: 1024(1 + M)(1 + B
+      - text: )
+      - generic: "3"
+      - text: C
+      - generic: D
+      - text: (B)
+      - generic: "1"
+      - text: ","
+      - text: 16(1 + S)(1 + m)(1 + B
+      - text: )
+      - generic: 2D
+      - text: (1 + τ)
+      - generic: ϵ
+      - generic: "}"
+      - text: .
+      - paragraph:
+        - text: It satisfies the fibre hypothesis and makes (C) at most
+        - math:
+          - generic: ϵ
+          - generic: /
+          - generic: "8"
+        - generic: ϵ/8
+        - text: .
+      - separator
+      - heading "Uniform numerical degrees" [level=2]
+      - paragraph:
+        - text: These choices have the following coarse bounds, with constants depending only on
+        - math:
+          - generic: D
+        - generic: D
+        - text: ":"
+      - math:
+        - generic: θ
+        - generic: −
+        - generic: "1"
+        - generic: ≤
+        - generic: C
+        - generic: D
+        - generic: W
+        - generic: "2"
+        - generic: D
+        - generic: +
+        - generic: "4"
+        - generic: ","
+        - generic: Λ
+        - generic: ≤
+        - generic: C
+        - generic: D
+        - generic: W
+        - generic: "2"
+        - generic: D
+        - generic: +
+        - generic: "6"
+        - generic: ","
+        - generic: K
+        - generic: ","
+        - generic: H
+        - generic: =
+        - generic: "1"
+        - generic: +
+        - generic: K
+        - generic: +
+        - generic: θ
+        - generic: −
+        - generic: "1"
+        - generic: ≤
+        - generic: C
+        - generic: D
+        - generic: W
+        - generic: "5"
+        - generic: D
+        - generic: +
+        - generic: "14"
+        - generic: ","
+        - generic: H
+        - generic: τ
+        - generic: ≤
+        - generic: C
+        - generic: D
+        - generic: W
+        - generic: "5"
+        - generic: D
+        - generic: +
+        - generic: "15"
+        - generic: .
+      - text: θ
+      - generic: −1
+      - generic: Λ
+      - text: K,
+      - text: H = 1 + K +
+      - text: θ
+      - generic: −1
+      - generic: Hτ
+      - text: ≤
+      - text: C
+      - generic: D
+      - text: W
+      - generic: 2D+4
+      - text: ","
+      - text: ≤
+      - text: C
+      - generic: D
+      - text: W
+      - generic: 2D+6
+      - text: ","
+      - text: ≤
+      - text: C
+      - generic: D
+      - text: W
+      - generic: 5D+14
+      - text: ","
+      - text: ≤
+      - text: C
+      - generic: D
+      - text: W
+      - generic: 5D+15
+      - text: .
+      - paragraph:
+        - text: For
+        - math:
+          - generic: m
+          - generic: ">"
+          - generic: "0"
+        - generic: m >
+        - generic: "0"
+        - text: ", the displayed"
+        - math:
+          - generic: K
+        - generic: K
+        - text: also gives
+        - math:
+          - generic: K
+          - generic: θ
+          - generic: ≥
+          - generic: "1"
+        - generic: Kθ ≥
+        - generic: "1"
+        - text: . Thus all raw assembly coefficients are at least
+        - math:
+          - generic: "1"
+        - generic: "1"
+        - text: ", and every raw central coefficient is at least the corresponding"
+        - math:
+          - generic: k
+          - generic: r
+        - text: k
+        - generic: r
+        - text: . Consequently,
+      - math:
+        - generic: max
+        - generic: ⁡
+        - generic: e
+        - generic: c
+        - generic: e
+        - generic: −
+        - generic: "1"
+        - generic: ≤
+        - generic: H
+        - generic: max
+        - generic: ⁡
+        - generic: r
+        - generic: k
+        - generic: r
+        - generic: −
+        - generic: "1"
+        - generic: ≤
+        - generic: C
+        - generic: D
+        - generic: W
+        - generic: "5"
+        - generic: D
+        - generic: +
+        - generic: "15"
+        - generic: .
+      - generic: e
+      - generic: max
+      - text: c
+      - generic: e
+      - generic: −1
+      - text: ≤
+      - text: H
+      - generic: r
+      - generic: max
+      - text: k
+      - generic: r
+      - generic: −1
+      - text: ≤
+      - text: C
+      - generic: D
+      - text: W
+      - generic: 5D+15
+      - text: .
+      - paragraph:
+        - text: With
+        - math:
+          - generic: m
+          - generic: f
+          - generic: =
+          - generic: O
+          - generic: (
+          - generic: D
+          - generic: m
+          - generic: )
+        - text: m
+        - generic: f
+        - text: =
+        - generic: O(Dm)
+        - text: ", choosing"
+      - math:
+        - generic: δ
+        - generic: =
+        - generic: min
+        - generic: ⁡
+        - generic: "{"
+        - generic: "1"
+        - generic: "2"
+        - generic: ","
+        - generic: ϵ
+        - generic: "8"
+        - generic: m
+        - generic: f
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: B
+        - generic: )
+        - generic: "2"
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: H
+        - generic: τ
+        - generic: )
+        - generic: "}"
+      - generic: δ =
+      - text: min
+      - generic: "{"
+      - generic: "2"
+      - generic: "1"
+      - text: ","
+      - text: "8"
+      - text: m
+      - generic: f
+      - text: (1 + B
+      - text: )
+      - generic: "2"
+      - text: (1 + Hτ)
+      - generic: ϵ
+      - generic: "}"
+      - paragraph: pays the all-marked predictable-fault comparison, and
+      - math:
+        - generic: δ
+        - generic: −
+        - generic: "1"
+        - generic: ≤
+        - generic: C
+        - generic: D
+        - generic: W
+        - generic: "5"
+        - generic: D
+        - generic: +
+        - generic: "19"
+        - generic: .
+      - text: δ
+      - generic: −1
+      - text: ≤
+      - text: C
+      - generic: D
+      - text: W
+      - generic: 5D+19
+      - text: .
+      - paragraph:
+        - text: An overall numerical exponent such as
+        - math:
+          - generic: p
+          - generic: D
+          - generic: =
+          - generic: "5"
+          - generic: D
+          - generic: +
+          - generic: "25"
+        - text: p
+        - generic: D
+        - text: =
+        - generic: 5D +
+        - generic: "25"
+        - text: has ample room for these bounds, the entire firing count over
+        - math:
+          - generic: H
+          - generic: τ
+        - generic: Hτ
+        - text: ", and straightforward polynomial-bit rational arithmetic. Empty reaction lists can be handled separately."
+- status
+- status
+
+---
+
+  - complementary:
+    - heading "Subagents" [level=2]
+    - button "Enter full view":
+    - button "Close panel":
+    - tabpanel "Subagents" [active]:
+      - button "Back to subagents":
+      - generic: Uniform design
+      - heading "Status" [level=2]
+      - generic: Done
+      - heading "Final response" [level=2]
+      - heading "Audit conclusion" [level=2]
+      - paragraph: The private-prefix construction satisfies the full structural contract, and the proposed uniform parameter ledger is valid. There is no need for a controller, Gröbner computation, class enumeration, or an input-dependent species list.
+      - heading "1. Fixed elementary construction and exact directed classes" [level=3]
+      - paragraph:
+        - text: For each distinct complex
+        - math:
+          - generic: c
+        - generic: c
+        - text: of order
+        - math:
+          - generic: q
+          - generic: ≥
+          - generic: "2"
+        - generic: q ≥
+        - generic: "2"
+        - text: ", choose an ordering"
+        - math:
+          - generic: A
+          - generic: i
+          - generic: "1"
+          - generic: ","
+          - generic: …
+          - generic: ","
+          - generic: A
+          - generic: i
+          - generic: q
+        - text: A
+        - text: i
+        - generic: "1"
+        - text: ", … ,"
+        - text: A
+        - text: i
+        - generic: q
+        - text: and introduce private species
+      - math:
+        - generic: P
+        - generic: c
+        - generic: ","
+        - generic: "2"
+        - generic: ","
+        - generic: …
+        - generic: ","
+        - generic: P
+        - generic: c
+        - generic: ","
+        - generic: q
+        - generic: .
+      - text: P
+      - generic: c,2
+      - text: ", … ,"
+      - text: P
+      - generic: c,q
+      - text: .
+      - paragraph: Do not identify equal prefix population vectors belonging to different chains. Private chains ensure that each prefix has at most one hidden upward extension.
+      - paragraph: Use
+      - math:
+        - generic: A
+        - generic: i
+        - generic: "1"
+        - generic: +
+        - generic: A
+        - generic: i
+        - generic: "2"
+        - generic: ⇄
+        - generic: P
+        - generic: c
+        - generic: ","
+        - generic: "2"
+        - generic: ","
+        - generic: P
+        - generic: c
+        - generic: ","
+        - generic: j
+        - generic: −
+        - generic: "1"
+        - generic: +
+        - generic: A
+        - generic: i
+        - generic: j
+        - generic: ⇄
+        - generic: P
+        - generic: c
+        - generic: ","
+        - generic: j
+        - generic: .
+      - text: A
+      - text: i
+      - generic: "1"
+      - text: +
+      - text: A
+      - text: i
+      - generic: "2"
+      - text: ⇄
+      - text: P
+      - generic: c,2
+      - text: ","
+      - text: P
+      - generic: c,j−1
+      - text: +
+      - text: A
+      - text: i
+      - generic: j
+      - text: ⇄
+      - text: P
+      - generic: c,j
+      - text: .
+      - paragraph:
+        - text: The decoder column of
+        - math:
+          - generic: P
+          - generic: c
+          - generic: ","
+          - generic: j
+        - text: P
+        - generic: c,j
+        - text: is the population of its
+        - math:
+          - generic: j
+        - generic: j
+        - text: "-molecule prefix. Thus every column is nonzero."
+      - paragraph: For a complex of order one, its representative is the original species; for zero, its representative is the empty complex. Emit one central channel
+      - math:
+        - generic: rep
+        - generic: ⁡
+        - generic: (
+        - generic: "y"
+        - generic: r
+        - generic: )
+        - generic: ⟶
+        - generic: rep
+        - generic: ⁡
+        - generic: (
+        - generic: z
+        - generic: r
+        - generic: )
+      - generic: rep
+      - text: (
+      - text: "y"
+      - generic: r
+      - text: ) ⟶
+      - generic: rep
+      - text: (
+      - text: z
+      - generic: r
+      - text: )
+      - paragraph:
+        - text: for each original label
+        - math:
+          - generic: r
+        - generic: r
+        - text: ", retaining separate null and parallel labels."
+      - paragraph:
+        - text: Positive conservation weights imply that a reaction involving the zero complex must be
+        - math:
+          - generic: "0"
+          - generic: →
+          - generic: "0"
+        - generic: 0 →
+        - generic: "0"
+        - text: ; it is represented by the original-labelled channel
+        - math:
+          - generic: ∅
+          - generic: →
+          - generic: ∅
+        - generic: ∅ →
+        - generic: ∅
+        - text: .
+      - paragraph:
+        - text: Every fine state
+        - math:
+          - generic: u
+        - generic: u
+        - text: can be hidden-released to
+        - math:
+          - generic: j
+          - generic: (
+          - generic: P
+          - generic: u
+          - generic: )
+        - generic: j(Pu)
+        - text: . Reversing this release sequence gives a hidden path back to
+        - math:
+          - generic: u
+        - generic: u
+        - text: . Consequently,
+      - math:
+        - generic: u
+        - generic: ⇝
+        - generic: v
+        - generic: ⟺
+        - generic: P
+        - generic: u
+        - generic: ⇝
+        - generic: P
+        - generic: v
+        - generic: .
+      - generic: u ⇝
+      - generic: v ⟺
+      - generic: Pu ⇝
+      - generic: Pv.
+      - paragraph:
+        - text: The forward implication follows by projecting fine edges; the reverse follows by releasing, lifting an original path, and reassembling. In particular,
+        - strong: every fine communicating class is precisely the full preimage of its original communicating class
+        - text: .
+      - paragraph:
+        - text: With
+        - math:
+          - generic: m
+          - generic: =
+          - generic: ∣
+          - generic: R
+          - generic: ∣
+        - generic: m =
+        - generic: ∣R∣
+        - text: ","
+        - math:
+          - generic: M
+          - generic: ≤
+          - generic: "2"
+          - generic: m
+        - generic: M ≤
+        - generic: 2m
+        - text: complex types, and
+      - math:
+        - generic: S
+        - generic: =
+        - generic: ∑
+        - generic: c
+        - generic: ":"
+        - generic: ∣
+        - generic: c
+        - generic: ∣
+        - generic: ≥
+        - generic: "2"
+        - generic: (
+        - generic: ∣
+        - generic: c
+        - generic: ∣
+        - generic: −
+        - generic: "1"
+        - generic: )
+        - generic: ≤
+        - generic: "2"
+        - generic: m
+        - generic: (
+        - generic: D
+        - generic: −
+        - generic: "1"
+        - generic: )
+        - generic: ","
+      - generic: S =
+      - generic: "c: ∣c∣≥2"
+      - generic: ∑
+      - text: (∣c∣ −
+      - generic: 1) ≤
+      - generic: 2m(D −
+      - generic: 1),
+      - paragraph: the bounds are
+      - math:
+        - generic: s
+        - generic: =
+        - generic: d
+        - generic: +
+        - generic: S
+        - generic: ","
+        - generic: m
+        - generic: f
+        - generic: =
+        - generic: m
+        - generic: +
+        - generic: "2"
+        - generic: S
+        - generic: ≤
+        - generic: (
+        - generic: "4"
+        - generic: D
+        - generic: −
+        - generic: "3"
+        - generic: )
+        - generic: m
+        - generic: .
+      - generic: s =
+      - generic: d +
+      - text: S,
+      - text: m
+      - generic: f
+      - text: =
+      - generic: m +
+      - generic: 2S ≤
+      - generic: (4D −
+      - generic: 3)m.
+      - paragraph:
+        - text: Every hidden channel preserves
+        - math:
+          - generic: P
+        - generic: P
+        - text: ; each central channel has decoded change
+        - math:
+          - generic: z
+          - generic: r
+          - generic: −
+          - generic: "y"
+          - generic: r
+        - text: z
+        - generic: r
+        - text: −
+        - text: "y"
+        - generic: r
+        - text: . Hence every channel conserves
+        - math:
+          - generic: ω
+          - generic: ⋅
+          - generic: P
+        - generic: ω ⋅
+        - generic: P
+        - text: ", and"
+      - math:
+        - generic: ∣
+        - generic: Z
+        - generic: t
+        - generic: ∣
+        - generic: "1"
+        - generic: ≤
+        - generic: ω
+        - generic: ⋅
+        - generic: P
+        - generic: Z
+        - generic: t
+        - generic: =
+        - generic: ω
+        - generic: ⋅
+        - generic: x
+        - generic: "0"
+        - generic: ≤
+        - generic: B
+      - text: ∣
+      - text: Z
+      - generic: t
+      - text: ∣
+      - generic: "1"
+      - text: ≤
+      - generic: ω ⋅
+      - text: P
+      - text: Z
+      - generic: t
+      - text: =
+      - generic: ω ⋅
+      - text: x
+      - generic: "0"
+      - text: ≤
+      - generic: B
+      - paragraph: pathwise for every fault rule.
+      - heading "2. Fibre distribution and averaged marks" [level=3]
+      - paragraph:
+        - text: Give first assembly/release coefficients
+        - math:
+          - generic: K
+          - generic: θ
+          - generic: ","
+          - generic: K
+        - generic: Kθ, K
+        - text: ", and later assembly/release coefficients"
+        - math:
+          - generic: K
+          - generic: ","
+          - generic: K
+        - generic: K, K
+        - text: . The hidden fibre law at decoded state
+        - math:
+          - generic: x
+        - generic: x
+        - text: is
+      - math:
+        - generic: ν
+        - generic: x
+        - generic: (
+        - generic: u
+        - generic: )
+        - generic: =
+        - generic: θ
+        - generic: ∣
+        - generic: a
+        - generic: ∣
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: E
+        - generic: a
+        - generic: /
+        - generic: a
+        - generic: "!"
+        - generic: q
+        - generic: θ
+        - generic: (
+        - generic: x
+        - generic: )
+      - text: ν
+      - generic: x
+      - text: (u) =
+      - text: q
+      - generic: θ
+      - text: (x)
+      - text: θ
+      - generic: ∣a∣
+      - text: (x
+      - text: )
+      - generic: Ea
+      - text: /a!
+      - paragraph: in auxiliary-count coordinates, with
+      - math:
+        - generic: q
+        - generic: θ
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: =
+        - generic: ∑
+        - generic: E
+        - generic: a
+        - generic: ≤
+        - generic: x
+        - generic: θ
+        - generic: ∣
+        - generic: a
+        - generic: ∣
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: E
+        - generic: a
+        - generic: a
+        - generic: "!"
+        - generic: .
+      - text: q
+      - generic: θ
+      - text: (x) =
+      - generic: Ea≤x
+      - generic: ∑
+      - generic: a!
+      - text: θ
+      - generic: ∣a∣
+      - text: (x
+      - text: )
+      - generic: Ea
+      - text: .
+      - paragraph:
+        - text: Use raw central coefficient
+        - math:
+          - generic: k
+          - generic: r
+          - generic: /
+          - generic: θ
+        - text: k
+        - generic: r
+        - text: /θ
+        - text: when
+        - math:
+          - generic: ∣
+          - generic: "y"
+          - generic: r
+          - generic: ∣
+          - generic: ≥
+          - generic: "2"
+        - text: ∣
+        - text: "y"
+        - generic: r
+        - text: ∣ ≥
+        - generic: "2"
+        - text: ", and"
+        - math:
+          - generic: k
+          - generic: r
+        - text: k
+        - generic: r
+        - text: otherwise. Then the exact averaged rate is
+      - math:
+        - generic: λ
+        - generic: ˉ
+        - generic: r
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: =
+        - generic: k
+        - generic: r
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: "y"
+        - generic: r
+        - generic: q
+        - generic: θ
+        - generic: (
+        - generic: x
+        - generic: −
+        - generic: "y"
+        - generic: r
+        - generic: )
+        - generic: q
+        - generic: θ
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: .
+      - generic: λ
+      - text: ˉ
+      - generic: r
+      - text: (x) =
+      - text: k
+      - generic: r
+      - text: (x
+      - text: )
+      - text: "y"
+      - generic: r
+      - text: q
+      - generic: θ
+      - text: (x)
+      - text: q
+      - generic: θ
+      - text: (x −
+      - text: "y"
+      - generic: r
+      - text: )
+      - text: .
+      - paragraph: This includes genuine null labels.
+      - paragraph:
+        - text: For
+        - math:
+          - generic: P
+          - generic: u
+          - generic: =
+          - generic: x
+        - generic: Pu =
+        - generic: x
+        - text: ","
+        - math:
+          - generic: ∣
+          - generic: x
+          - generic: ∣
+          - generic: "1"
+          - generic: ≤
+          - generic: B
+        - text: ∣x
+        - text: ∣
+        - generic: "1"
+        - text: ≤
+        - generic: B
+        - text: ", so"
+      - math:
+        - generic: "1"
+        - generic: ≤
+        - generic: q
+        - generic: θ
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: ≤
+        - generic: e
+        - generic: S
+        - generic: θ
+        - generic: B
+        - generic: D
+        - generic: .
+      - generic: 1 ≤
+      - text: q
+      - generic: θ
+      - text: (x) ≤
+      - text: e
+      - text: Sθ
+      - text: B
+      - generic: D
+      - text: .
+      - paragraph:
+        - text: Moreover,
+        - math:
+          - generic: q
+          - generic: θ
+          - generic: (
+          - generic: x
+          - generic: −
+          - generic: "y"
+          - generic: )
+          - generic: ≤
+          - generic: q
+          - generic: θ
+          - generic: (
+          - generic: x
+          - generic: )
+        - text: q
+        - generic: θ
+        - text: (x −
+        - generic: y) ≤
+        - text: q
+        - generic: θ
+        - text: (x)
+        - text: ", since every falling factorial term is coordinatewise increasing. Thus the averaged rates are at most the original rates, and the supplied relative-error bound"
+        - math:
+          - generic: "2"
+          - generic: S
+          - generic: θ
+          - generic: B
+          - generic: D
+        - text: 2Sθ
+        - text: B
+        - generic: D
+        - text: is safe.
+      - heading "3. Proposed uniform parameter choices pass" [level=3]
+      - paragraph: Put
+      - math:
+        - generic: U
+        - generic: =
+        - generic: "1"
+        - generic: +
+        - generic: B
+        - generic: ","
+        - generic: C
+        - generic: D
+        - generic: (
+        - generic: B
+        - generic: )
+        - generic: =
+        - generic: D
+        - generic: "["
+        - generic: "8"
+        - generic: U
+        - generic: "]"
+        - generic: D
+        - generic: −
+        - generic: "1"
+        - generic: ","
+        - generic: c
+        - generic: D
+        - generic: =
+        - generic: D
+        - generic: "8"
+        - generic: D
+        - generic: −
+        - generic: "1"
+        - generic: .
+      - generic: U =
+      - generic: 1 +
+      - text: B,
+      - text: C
+      - generic: D
+      - text: (B) =
+      - text: D[8U
+      - text: "]"
+      - generic: D−1
+      - text: ","
+      - text: c
+      - generic: D
+      - text: =
+      - text: D
+      - text: "8"
+      - generic: D−1
+      - text: .
+      - paragraph:
+        - text: For
+        - math:
+          - generic: m
+          - generic: ≥
+          - generic: "1"
+        - generic: m ≥
+        - generic: "1"
+        - text: ", take"
+      - math:
+        - generic: a
+        - generic: =
+        - generic: θ
+        - generic: −
+        - generic: "1"
+        - generic: =
+        - generic: "1"
+        - generic: +
+        - generic: "1024"
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: M
+        - generic: )
+        - generic: U
+        - generic: "3"
+        - generic: C
+        - generic: D
+        - generic: (
+        - generic: B
+        - generic: )
+        - generic: +
+        - generic: "32"
+        - generic: ϵ
+        - generic: −
+        - generic: "1"
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: S
+        - generic: )
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: m
+        - generic: )
+        - generic: U
+        - generic: "2"
+        - generic: D
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: τ
+        - generic: )
+        - generic: ","
+      - generic: a =
+      - text: θ
+      - generic: −1
+      - text: =
+      - generic: 1 +
+      - generic: 1024(1 +
+      - text: M)
+      - text: U
+      - generic: "3"
+      - text: C
+      - generic: D
+      - text: (B) +
+      - text: "32"
+      - text: ϵ
+      - generic: −1
+      - text: (1 +
+      - generic: S)(1 +
+      - text: m)
+      - text: U
+      - generic: 2D
+      - text: (1 +
+      - generic: τ),
+      - math:
+        - generic: Λ
+        - generic: =
+        - generic: m
+        - generic: U
+        - generic: a
+        - generic: ","
+      - generic: Λ =
+      - generic: mUa,
+      - math:
+        - generic: K
+        - generic: =
+        - generic: "1"
+        - generic: +
+        - generic: a
+        - generic: +
+        - generic: "512"
+        - generic: ϵ
+        - generic: −
+        - generic: "1"
+        - generic: B
+        - generic: C
+        - generic: D
+        - generic: (
+        - generic: B
+        - generic: )
+        - generic: Λ
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: Λ
+        - generic: τ
+        - generic: )
+        - generic: ","
+      - generic: K =
+      - generic: 1 +
+      - generic: a +
+      - text: "512"
+      - text: ϵ
+      - generic: −1
+      - text: B
+      - text: C
+      - generic: D
+      - text: (B)Λ(1 +
+      - generic: Λτ),
+      - math:
+        - generic: H
+        - generic: =
+        - generic: "1"
+        - generic: +
+        - generic: K
+        - generic: +
+        - generic: a
+        - generic: .
+      - generic: H =
+      - generic: 1 +
+      - generic: K +
+      - generic: a.
+      - paragraph:
+        - text: The first term in
+        - math:
+          - generic: a
+        - generic: a
+        - text: enforces the accepted fast-fibre atom estimate. The averaged-versus-original marked-path error is at most
+      - math:
+        - generic: "2"
+        - generic: S
+        - generic: m
+        - generic: θ
+        - generic: U
+        - generic: "2"
+        - generic: D
+        - generic: τ
+        - generic: ≤
+        - generic: ϵ
+        - generic: /
+        - generic: "16."
+      - text: 2Smθ
+      - text: U
+      - generic: 2D
+      - text: τ ≤
+      - generic: ϵ/16.
+      - paragraph: For the independently established uniformization comparison,
+      - math:
+        - generic: TV
+        - generic: ⁡
+        - generic: (
+        - generic: fine decoded marked path
+        - generic: ","
+        - generic: averaged path
+        - generic: )
+        - generic: ≤
+        - generic: "2"
+        - generic: Λ
+        - generic: h
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: Λ
+        - generic: τ
+        - generic: )
+        - generic: ","
+        - generic: h
+        - generic: =
+        - generic: "16"
+        - generic: B
+        - generic: C
+        - generic: D
+        - generic: (
+        - generic: B
+        - generic: )
+        - generic: K
+        - generic: ","
+      - generic: TV
+      - text: (
+      - generic: fine decoded marked path
+      - text: ","
+      - generic: averaged path
+      - text: ) ≤
+      - generic: 2Λh(1 +
+      - generic: Λτ), h =
+      - generic: K
+      - text: 16B
+      - text: C
+      - generic: D
+      - text: (B)
+      - text: ","
+      - paragraph:
+        - text: the coefficient
+        - math:
+          - generic: "512"
+        - generic: "512"
+        - text: gives another error at most
+        - math:
+          - generic: ϵ
+          - generic: /
+          - generic: "16"
+        - generic: ϵ/16
+        - text: .
+      - paragraph:
+        - text: Since
+        - math:
+          - generic: K
+          - generic: ≥
+          - generic: a
+        - generic: K ≥
+        - generic: a
+        - text: ", the first assembly raw coefficient satisfies"
+        - math:
+          - generic: K
+          - generic: θ
+          - generic: ≥
+          - generic: "1"
+        - generic: Kθ ≥
+        - generic: "1"
+        - text: . Every raw coefficient is therefore at least
+        - math:
+          - generic: k
+          - generic: min
+          - generic: ⁡
+        - text: k
+        - generic: min
+        - text: ", and every raw coefficient is at most"
+        - math:
+          - generic: H
+        - generic: H
+        - text: . After division by
+        - math:
+          - generic: H
+        - generic: H
+        - text: ","
+      - math:
+        - generic: "0"
+        - generic: <
+        - generic: c
+        - generic: e
+        - generic: ≤
+        - generic: "1"
+        - generic: ","
+        - generic: max
+        - generic: ⁡
+        - generic: e
+        - generic: c
+        - generic: e
+        - generic: −
+        - generic: "1"
+        - generic: ≤
+        - generic: H
+        - generic: k
+        - generic: min
+        - generic: ⁡
+        - generic: −
+        - generic: "1"
+        - generic: .
+      - generic: 0 <
+      - text: c
+      - generic: e
+      - text: ≤
+      - text: 1,
+      - generic: e
+      - generic: max
+      - text: c
+      - generic: e
+      - generic: −1
+      - text: ≤
+      - text: H
+      - text: k
+      - generic: min
+      - generic: −1
+      - text: .
+      - paragraph: Finally,
+      - math:
+        - generic: δ
+        - generic: =
+        - generic: ϵ
+        - generic: "16"
+        - generic: m
+        - generic: f
+        - generic: U
+        - generic: "2"
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: H
+        - generic: τ
+        - generic: )
+      - generic: δ =
+      - text: "16"
+      - text: m
+      - generic: f
+      - text: U
+      - generic: "2"
+      - text: (1 + Hτ)
+      - generic: ϵ
+      - paragraph:
+        - text: is positive and below
+        - math:
+          - generic: "1"
+          - generic: /
+          - generic: "2"
+        - generic: 1/2
+        - text: ", and the complete fine marked coupling under predictable faults costs at most"
+        - math:
+          - generic: ϵ
+          - generic: /
+          - generic: "16"
+        - generic: ϵ/16
+        - text: . Total path error is consequently at most
+        - math:
+          - generic: "3"
+          - generic: ϵ
+          - generic: /
+          - generic: "16"
+          - generic: <
+          - generic: ϵ
+        - generic: 3ϵ/16 <
+        - generic: ϵ
+        - text: .
+      - heading "4. Explicit numerical degrees" [level=3]
+      - paragraph: Let
+      - math:
+        - generic: a
+        - generic: D
+        - generic: =
+        - generic: "4096"
+        - generic: c
+        - generic: D
+        - generic: ","
+        - generic: h
+        - generic: D
+        - generic: =
+        - generic: "2"
+        - generic: +
+        - generic: "2"
+        - generic: a
+        - generic: D
+        - generic: +
+        - generic: "512"
+        - generic: c
+        - generic: D
+        - generic: a
+        - generic: D
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: a
+        - generic: D
+        - generic: )
+        - generic: .
+      - text: a
+      - generic: D
+      - text: =
+      - text: "4096"
+      - text: c
+      - generic: D
+      - text: ","
+      - text: h
+      - generic: D
+      - text: =
+      - generic: 2 +
+      - text: "2"
+      - text: a
+      - generic: D
+      - text: +
+      - text: "512"
+      - text: c
+      - generic: D
+      - text: a
+      - generic: D
+      - text: (1 +
+      - text: a
+      - generic: D
+      - text: ).
+      - paragraph: "Then the proposed bounds are correct:"
+      - math:
+        - generic: a
+        - generic: ≤
+        - generic: a
+        - generic: D
+        - generic: W
+        - generic: "2"
+        - generic: D
+        - generic: +
+        - generic: "4"
+        - generic: ","
+        - generic: Λ
+        - generic: ≤
+        - generic: a
+        - generic: D
+        - generic: W
+        - generic: "2"
+        - generic: D
+        - generic: +
+        - generic: "6"
+        - generic: ","
+      - generic: a ≤
+      - text: a
+      - generic: D
+      - text: W
+      - generic: 2D+4
+      - text: ", Λ ≤"
+      - text: a
+      - generic: D
+      - text: W
+      - generic: 2D+6
+      - text: ","
+      - math:
+        - generic: K
+        - generic: ","
+        - generic: H
+        - generic: ≤
+        - generic: h
+        - generic: D
+        - generic: W
+        - generic: "5"
+        - generic: D
+        - generic: +
+        - generic: "14"
+        - generic: ","
+      - generic: K, H ≤
+      - text: h
+      - generic: D
+      - text: W
+      - generic: 5D+14
+      - text: ","
+      - math:
+        - generic: H
+        - generic: τ
+        - generic: ","
+        - generic: max
+        - generic: ⁡
+        - generic: e
+        - generic: c
+        - generic: e
+        - generic: −
+        - generic: "1"
+        - generic: ≤
+        - generic: h
+        - generic: D
+        - generic: W
+        - generic: "5"
+        - generic: D
+        - generic: +
+        - generic: "15"
+        - generic: ","
+      - text: Hτ,
+      - generic: e
+      - generic: max
+      - text: c
+      - generic: e
+      - generic: −1
+      - text: ≤
+      - text: h
+      - generic: D
+      - text: W
+      - generic: 5D+15
+      - text: ","
+      - math:
+        - generic: δ
+        - generic: −
+        - generic: "1"
+        - generic: ≤
+        - generic: "64"
+        - generic: D
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: h
+        - generic: D
+        - generic: )
+        - generic: W
+        - generic: "5"
+        - generic: D
+        - generic: +
+        - generic: "19"
+        - generic: .
+      - text: δ
+      - generic: −1
+      - text: ≤
+      - generic: 64D(1 +
+      - text: h
+      - generic: D
+      - text: )
+      - text: W
+      - generic: 5D+19
+      - text: .
+      - paragraph: Because every normalized actual channel intensity is at most
+      - math:
+        - generic: "3"
+        - generic: "2"
+        - generic: U
+        - generic: "2"
+        - generic: ","
+      - generic: "2"
+      - generic: "3"
+      - text: U
+      - generic: "2"
+      - text: ","
+      - math:
+        - generic: E
+        - generic: "["
+        - generic: all firings on
+        - generic: "["
+        - generic: "0"
+        - generic: ","
+        - generic: t
+        - generic: "]"
+        - generic: "]"
+        - generic: ≤
+        - generic: "3"
+        - generic: "2"
+        - generic: m
+        - generic: f
+        - generic: U
+        - generic: "2"
+        - generic: t
+        - generic: ","
+      - text: E[
+      - generic: all firings on
+      - text: "[0, t]] ≤"
+      - generic: "2"
+      - generic: "3"
+      - text: m
+      - generic: f
+      - text: U
+      - generic: "2"
+      - text: t,
+      - paragraph: and
+      - math:
+        - generic: E
+        - generic: "["
+        - generic: all firings on
+        - generic: "["
+        - generic: "0"
+        - generic: ","
+        - generic: H
+        - generic: τ
+        - generic: "]"
+        - generic: "]"
+        - generic: ≤
+        - generic: "6"
+        - generic: D
+        - generic: h
+        - generic: D
+        - generic: W
+        - generic: "5"
+        - generic: D
+        - generic: +
+        - generic: "18"
+        - generic: .
+      - text: E[
+      - generic: all firings on
+      - text: "[0, Hτ]] ≤"
+      - text: 6D
+      - text: h
+      - generic: D
+      - text: W
+      - generic: 5D+18
+      - text: .
+      - paragraph: These include all hidden assembly/release and all genuine null/parallel events.
+      - heading "5. Uniform binary cost" [level=3]
+      - paragraph: There are no network-dependent searches. Private chains can even be assigned to complex occurrences if one wants to avoid deduplication entirely.
+      - paragraph:
+        - text: For ordinary explicit binary input,
+        - math:
+          - generic: d
+          - generic: ","
+          - generic: m
+          - generic: ≤
+          - generic: L
+        - generic: d, m ≤
+        - generic: L
+        - text: . Computing
+        - math:
+          - generic: B
+        - generic: B
+        - text: ", checking conservation, writing the fixed-order prefix chains and decoder, and computing the displayed rational rates can be implemented with"
+      - math:
+        - generic: "2"
+        - generic: "20"
+        - generic: (
+        - generic: D
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: "2"
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: L
+        - generic: )
+        - generic: "4"
+      - text: "2"
+      - text: 20(D+1
+      - text: )
+      - generic: "2"
+      - text: (1 +
+      - text: L
+      - text: )
+      - generic: "4"
+      - paragraph:
+        - text: bit operations and memory. This deliberately generous bound also covers dense decoder/channel output. Numerical intermediate bit lengths are
+        - math:
+          - generic: O
+          - generic: (
+          - generic: (
+          - generic: D
+          - generic: +
+          - generic: "1"
+          - generic: )
+          - generic: "2"
+          - generic: (
+          - generic: "1"
+          - generic: +
+          - generic: L
+          - generic: )
+          - generic: )
+        - generic: O((D +
+        - text: "1"
+        - text: )
+        - generic: "2"
+        - text: (1 +
+        - generic: L))
+        - text: ; there are polynomially many arithmetic/output slots. Output rational numbers may be reduced by Euclid within the same bound.
+      - paragraph:
+        - text: The numerical prefactors above also lie below
+        - math:
+          - generic: "2"
+          - generic: "20"
+          - generic: (
+          - generic: D
+          - generic: +
+          - generic: "1"
+          - generic: )
+          - generic: "2"
+        - text: "2"
+        - text: 20(D+1
+        - text: )
+        - generic: "2"
+        - text: for
+        - math:
+          - generic: D
+          - generic: ≥
+          - generic: "3"
+        - generic: D ≥
+        - generic: "3"
+        - text: . Thus the suggested explicit pair
+      - math:
+        - generic: p
+        - generic: D
+        - generic: =
+        - generic: "5"
+        - generic: D
+        - generic: +
+        - generic: "25"
+        - generic: ","
+        - generic: A
+        - generic: D
+        - generic: =
+        - generic: "2"
+        - generic: "100"
+        - generic: (
+        - generic: D
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: "3"
+      - text: p
+      - generic: D
+      - text: = 5D + 25,
+      - text: A
+      - generic: D
+      - text: =
+      - text: "2"
+      - text: 100(D+1
+      - text: )
+      - generic: "3"
+      - paragraph: safely covers both physical and binary requirements.
+      - paragraph:
+        - text: For
+        - math:
+          - generic: m
+          - generic: =
+          - generic: "0"
+        - generic: m =
+        - generic: "0"
+        - text: ", emit the identity decoder, no channels,"
+        - math:
+          - generic: H
+          - generic: =
+          - generic: "1"
+        - generic: H =
+        - generic: "1"
+        - text: ", and"
+        - math:
+          - generic: δ
+          - generic: =
+          - generic: "1"
+          - generic: /
+          - generic: "2"
+        - generic: δ =
+        - generic: 1/2
+        - text: . This handles the empty maximum convention exactly.
+- status
+- status
+
+---
+
+  - complementary:
+    - heading "Subagents" [level=2]
+    - button "Enter full view":
+    - button "Close panel":
+    - tabpanel "Subagents" [active]:
+      - button "Back to subagents":
+      - generic: Adversarial audit
+      - heading "Status" [level=2]
+      - generic: Done
+      - heading "Final response" [level=2]
+      - heading "Audit conclusion" [level=2]
+      - paragraph:
+        - text: The universal compiler appears
+        - strong: affirmative
+        - text: ", and the supplied fast-fibre estimate is sufficient to close the full timed marked-path interface. A direct"
+        - strong: central uniformization coupling
+        - text: gives the needed path-space total variation theorem. It includes exact event times, original null marks, parallel labels, arbitrary post-event fine states, and the initial boundary layer.
+      - paragraph: I found no obstruction to the stated graph, conservation, uniformity, or predictable-fault requirements.
+      - paragraph:
+        - text: The key structural condition is to keep intermediate prefixes
+        - strong: private to their entire complex-type chain
+        - text: . Equal decoded payloads do not justify identifying species from different chains.
+      - separator
+      - heading "1. Full marked-path averaging theorem" [level=2]
+      - paragraph:
+        - text: Let
+        - math:
+          - generic: E
+          - generic: =
+          - generic: ⨆
+          - generic: x
+          - generic: E
+          - generic: x
+        - generic: E =
+        - text: ⨆
+        - generic: x
+        - text: E
+        - generic: x
+        - text: be the finite fine state space partitioned by decoder fibres.
+      - paragraph: "Assume:"
+      - list:
+        - math:
+          - generic: A
+          - generic: x
+        - text: A
+        - generic: x
+        - text: is the fast hidden generator on
+        - math:
+          - generic: E
+          - generic: x
+        - text: E
+        - generic: x
+        - text: ", with invariant law"
+        - math:
+          - generic: π
+          - generic: x
+        - text: π
+        - generic: x
+        - text: ;
+        - text: central labelled channels have rates
+        - math:
+          - generic: λ
+          - generic: r
+          - generic: (
+          - generic: u
+          - generic: )
+        - text: λ
+        - generic: r
+        - text: (u)
+        - text: ", change the decoded state by the prescribed"
+        - math:
+          - generic: ν
+          - generic: r
+        - text: ν
+        - generic: r
+        - text: ", and satisfy"
+        - math:
+          - generic: ∑
+          - generic: r
+          - generic: λ
+          - generic: r
+          - generic: (
+          - generic: u
+          - generic: )
+          - generic: ≤
+          - generic: Λ
+          - generic: ;
+        - generic: r
+        - generic: ∑
+        - text: λ
+        - generic: r
+        - text: (u) ≤
+        - generic: Λ;
+        - text: the fast kernels satisfy
+        - math:
+          - generic: sup
+          - generic: ⁡
+          - generic: x
+          - generic: sup
+          - generic: ⁡
+          - generic: u
+          - generic: ","
+          - generic: v
+          - generic: ∈
+          - generic: E
+          - generic: x
+          - generic: ∥
+          - generic: F
+          - generic: x
+          - generic: (
+          - generic: s
+          - generic: )
+          - generic: (
+          - generic: u
+          - generic: ","
+          - generic: ⋅
+          - generic: )
+          - generic: −
+          - generic: F
+          - generic: x
+          - generic: (
+          - generic: s
+          - generic: )
+          - generic: (
+          - generic: v
+          - generic: ","
+          - generic: ⋅
+          - generic: )
+          - generic: ∥
+          - generic: T
+          - generic: V
+          - generic: ≤
+          - generic: d
+          - generic: (
+          - generic: s
+          - generic: )
+          - generic: ","
+          - generic: κ
+          - generic: =
+          - generic: ∫
+          - generic: "0"
+          - generic: ∞
+          - generic: d
+          - generic: (
+          - generic: s
+          - generic: )
+          - generic: d
+          - generic: s
+          - generic: <
+          - generic: ∞
+          - generic: .
+        - generic: x
+        - generic: sup
+        - text: u,v∈
+        - text: E
+        - generic: x
+        - generic: sup
+        - text: ∥
+        - text: F
+        - generic: x
+        - text: (s)(u, ⋅) −
+        - text: F
+        - generic: x
+        - text: (s)(v, ⋅)
+        - text: ∥
+        - generic: TV
+        - text: ≤
+        - generic: d(s), κ =
+        - text: ∫
+        - generic: "0"
+        - generic: ∞
+        - text: d(s) ds <
+        - generic: ∞.
+      - paragraph: Define
+      - math:
+        - generic: λ
+        - generic: ˉ
+        - generic: r
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: =
+        - generic: ∑
+        - generic: u
+        - generic: ∈
+        - generic: E
+        - generic: x
+        - generic: π
+        - generic: x
+        - generic: (
+        - generic: u
+        - generic: )
+        - generic: λ
+        - generic: r
+        - generic: (
+        - generic: u
+        - generic: )
+        - generic: .
+      - generic: λ
+      - text: ˉ
+      - generic: r
+      - text: (x) =
+      - text: u∈
+      - text: E
+      - generic: x
+      - generic: ∑
+      - text: π
+      - generic: x
+      - text: (u)
+      - text: λ
+      - generic: r
+      - text: (u).
+      - paragraph:
+        - text: Then, from
+        - strong: any initial fine state
+        - math:
+          - generic: u
+          - generic: "0"
+          - generic: ∈
+          - generic: E
+          - generic: x
+          - generic: "0"
+        - text: u
+        - generic: "0"
+        - text: ∈
+        - text: E
+        - text: x
+        - generic: "0"
+        - text: ","
+      - math:
+        - generic: ∥
+        - generic: L
+        - generic: (
+        - generic: complete central marked path up to
+        - generic: τ
+        - generic: )
+        - generic: −
+        - generic: L
+        - generic: (
+        - generic: X
+        - generic: ˉ
+        - generic: marked path up to
+        - generic: τ
+        - generic: )
+        - generic: ∥
+        - generic: T
+        - generic: V
+        - generic: ≤
+        - generic: Λ
+        - generic: κ
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: Λ
+        - generic: τ
+        - generic: )
+        - generic: .
+        - generic: (A)
+      - text: L(
+      - generic: complete central marked path up to
+      - text: τ) − L(
+      - generic: X
+      - text: ˉ
+      - generic: marked path up to
+      - text: τ)
+      - generic: TV
+      - text: ≤ Λκ(1 + Λτ).
+      - text: (
+      - generic: A
+      - text: )
+      - paragraph:
+        - text: Here
+        - math:
+          - generic: X
+          - generic: ˉ
+        - generic: X
+        - text: ˉ
+        - text: has marked intensities
+        - math:
+          - generic: λ
+          - generic: ˉ
+          - generic: r
+        - generic: λ
+        - text: ˉ
+        - generic: r
+        - text: . Null labels remain genuine counted marks.
+      - heading "Proof by analytical proposals" [level=3]
+      - paragraph:
+        - text: Introduce a proof-only Poisson proposal clock of rate
+        - math:
+          - generic: Λ
+        - generic: Λ
+        - text: . Its gaps
+        - math:
+          - generic: S
+          - generic: i
+        - text: S
+        - generic: i
+        - text: are independent
+        - math:
+          - generic: Exp
+          - generic: ⁡
+          - generic: (
+          - generic: Λ
+          - generic: )
+        - generic: Exp
+        - text: (Λ)
+        - text: .
+      - paragraph: "Between proposals, the actual fine process evolves according to the fast fibre generator. At a proposal:"
+      - list:
+        - text: Its endpoint is
+        - math:
+          - generic: U
+          - generic: ∼
+          - generic: F
+          - generic: x
+          - generic: (
+          - generic: s
+          - generic: )
+          - generic: (
+          - generic: u
+          - generic: ","
+          - generic: ⋅
+          - generic: )
+          - generic: .
+        - generic: U ∼
+        - text: F
+        - generic: x
+        - text: (s)(u, ⋅).
+        - text: Couple
+        - math:
+          - generic: U
+        - generic: U
+        - text: maximally to
+        - math:
+          - generic: V
+          - generic: ∼
+          - generic: π
+          - generic: x
+        - generic: V ∼
+        - text: π
+        - generic: x
+        - text: ", so"
+        - math:
+          - generic: P
+          - generic: (
+          - generic: U
+          - generic: ≠
+          - generic: V
+          - generic: )
+          - generic: ≤
+          - generic: d
+          - generic: (
+          - generic: s
+          - generic: )
+          - generic: .
+        - text: P(U
+        - generic: 
+        - text: =
+        - generic: V) ≤
+        - generic: d(s).
+        - text: With an independent common uniform random variable, choose label
+        - math:
+          - generic: r
+        - generic: r
+        - text: with probabilities
+        - math:
+          - generic: λ
+          - generic: r
+          - generic: (
+          - generic: U
+          - generic: )
+          - generic: Λ
+          - generic: and
+          - generic: λ
+          - generic: r
+          - generic: (
+          - generic: V
+          - generic: )
+          - generic: Λ
+          - generic: ","
+        - generic: Λ
+        - text: λ
+        - generic: r
+        - text: (U)
+        - generic: and
+        - generic: Λ
+        - text: λ
+        - generic: r
+        - text: (V)
+        - text: ","
+        - text: respectively, with the remaining probability a rejected proposal.
+      - paragraph: "The fine marginal is exact: the proposal mechanism is ordinary uniformization of its central channels, interleaved with its exact hidden evolution."
+      - paragraph:
+        - text: Conditional on the full coupled history at the
+        - strong: previous proposal
+        - text: and on the new gap
+        - math:
+          - generic: s
+        - generic: s
+        - text: ","
+        - math:
+          - generic: V
+        - generic: V
+        - text: has marginal
+        - math:
+          - generic: π
+          - generic: x
+        - text: π
+        - generic: x
+        - text: . Therefore the second process’s label probabilities are
+      - math:
+        - generic: λ
+        - generic: ˉ
+        - generic: r
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: Λ
+        - generic: ","
+      - generic: Λ
+      - generic: λ
+      - text: ˉ
+      - generic: r
+      - text: (x)
+      - text: ","
+      - paragraph:
+        - text: independent of
+        - math:
+          - generic: s
+        - generic: s
+        - text: . This establishes the exact averaged marked CTMC marginal. There is no need for the conditional hidden distribution given the observed output history to be stationary.
+      - paragraph:
+        - text: Whenever
+        - math:
+          - generic: U
+          - generic: =
+          - generic: V
+        - generic: U =
+        - generic: V
+        - text: ", the two label/rejection decisions agree. An accepted central event occurs at the"
+        - strong: same exact proposal time
+        - text: in both processes. After an accepted event, the actual fine state can be arbitrary in the new fibre; the next coupling starts from that state.
+      - paragraph:
+        - text: Flagging every failure
+        - math:
+          - generic: U
+          - generic: ≠
+          - generic: V
+        - text: U
+        - generic: 
+        - text: =
+        - generic: V
+        - text: is conservative. Thus
+      - math:
+        - generic: P
+        - generic: f
+        - generic: a
+        - generic: i
+        - generic: l
+        - generic: ≤
+        - generic: E
+        - generic: ∑
+        - generic: i
+        - generic: ":"
+        - generic: T
+        - generic: i
+        - generic: ≤
+        - generic: τ
+        - generic: d
+        - generic: (
+        - generic: S
+        - generic: i
+        - generic: )
+        - generic: .
+      - text: P
+      - generic: fail
+      - text: ≤
+      - text: E
+      - text: "i:"
+      - text: T
+      - generic: i
+      - text: ≤τ
+      - generic: ∑
+      - text: d(
+      - text: S
+      - generic: i
+      - text: ).
+      - paragraph: The Poisson renewal calculation gives the exact expression
+      - math:
+        - generic: E
+        - generic: ∑
+        - generic: i
+        - generic: ":"
+        - generic: T
+        - generic: i
+        - generic: ≤
+        - generic: τ
+        - generic: d
+        - generic: (
+        - generic: S
+        - generic: i
+        - generic: )
+        - generic: =
+        - generic: ∫
+        - generic: "0"
+        - generic: τ
+        - generic: Λ
+        - generic: e
+        - generic: −
+        - generic: Λ
+        - generic: s
+        - generic: d
+        - generic: (
+        - generic: s
+        - generic: )
+        - generic: "["
+        - generic: "1"
+        - generic: +
+        - generic: Λ
+        - generic: (
+        - generic: τ
+        - generic: −
+        - generic: s
+        - generic: )
+        - generic: "]"
+        - generic: d
+        - generic: s
+        - generic: .
+      - text: E
+      - text: "i:"
+      - text: T
+      - generic: i
+      - text: ≤τ
+      - generic: ∑
+      - text: d(
+      - text: S
+      - generic: i
+      - text: ) =
+      - text: ∫
+      - generic: "0"
+      - generic: τ
+      - text: Λ
+      - text: e
+      - generic: −Λs
+      - text: d(s)[1 +
+      - generic: Λ(τ −
+      - generic: s)] ds.
+      - paragraph: Consequently,
+      - math:
+        - generic: P
+        - generic: f
+        - generic: a
+        - generic: i
+        - generic: l
+        - generic: ≤
+        - generic: Λ
+        - generic: κ
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: Λ
+        - generic: τ
+        - generic: )
+        - generic: ","
+      - text: P
+      - generic: fail
+      - text: ≤
+      - generic: Λκ(1 +
+      - generic: Λτ),
+      - paragraph: proving (A).
+      - paragraph: Rejected proposals are analytical random variables, not emitted physical firings. No physical residence time is deleted and no actual central mark is erased.
+      - separator
+      - heading "2. Applying the supplied fast-fibre estimate" [level=2]
+      - paragraph: The common canonical atom at time
+      - math:
+        - generic: h
+        - generic: =
+        - generic: "16"
+        - generic: B
+        - generic: C
+        - generic: D
+        - generic: (
+        - generic: B
+        - generic: )
+        - generic: K
+      - generic: h =
+      - generic: K
+      - text: 16B
+      - text: C
+      - generic: D
+      - text: (B)
+      - paragraph:
+        - text: gives Dobrushin coefficient at most
+        - math:
+          - generic: "1"
+          - generic: /
+          - generic: "2"
+        - generic: 1/2
+        - text: . Semigroup submultiplicativity then yields
+      - math:
+        - generic: d
+        - generic: (
+        - generic: s
+        - generic: )
+        - generic: ≤
+        - generic: "2"
+        - generic: −
+        - generic: ⌊
+        - generic: s
+        - generic: /
+        - generic: h
+        - generic: ⌋
+        - generic: ","
+        - generic: ∫
+        - generic: "0"
+        - generic: ∞
+        - generic: d
+        - generic: (
+        - generic: s
+        - generic: )
+        - generic: d
+        - generic: s
+        - generic: ≤
+        - generic: "2"
+        - generic: h
+        - generic: .
+      - generic: d(s) ≤
+      - text: "2"
+      - generic: −⌊s/h⌋
+      - text: ","
+      - text: ∫
+      - generic: "0"
+      - generic: ∞
+      - text: d(s) ds ≤
+      - generic: 2h.
+      - paragraph: Therefore
+      - math:
+        - generic: TV
+        - generic: ⁡
+        - generic: (
+        - generic: nominal decoded full path
+        - generic: ","
+        - generic: averaged full path
+        - generic: )
+        - generic: ≤
+        - generic: "2"
+        - generic: Λ
+        - generic: h
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: Λ
+        - generic: τ
+        - generic: )
+        - generic: =
+        - generic: "32"
+        - generic: B
+        - generic: C
+        - generic: D
+        - generic: (
+        - generic: B
+        - generic: )
+        - generic: Λ
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: Λ
+        - generic: τ
+        - generic: )
+        - generic: K
+        - generic: .
+        - generic: (B)
+      - generic: TV
+      - text: (
+      - generic: nominal decoded full path
+      - text: ","
+      - generic: averaged full path
+      - text: ) ≤ 2Λh(1 + Λτ) =
+      - generic: K
+      - text: 32B
+      - text: C
+      - generic: D
+      - text: (B)Λ(1 + Λτ)
+      - text: .
+      - text: (
+      - generic: B
+      - text: )
+      - paragraph: This is precisely the desired open interface.
+      - heading "Fast-fibre atom audit" [level=3]
+      - paragraph: The supplied atom estimate can be justified without inferring a uniform endpoint occupation bound from mean lifetimes.
+      - paragraph:
+        - text: At time
+        - math:
+          - generic: h
+          - generic: =
+          - generic: "16"
+          - generic: B
+          - generic: C
+          - generic: D
+          - generic: /
+          - generic: K
+        - generic: h =
+        - text: 16B
+        - text: C
+        - generic: D
+        - text: /K
+        - text: ", the expected number of surviving lineages present initially is at most"
+      - math:
+        - generic: B
+        - generic: C
+        - generic: D
+        - generic: /
+        - generic: K
+        - generic: h
+        - generic: ≤
+        - generic: "1"
+        - generic: "16"
+        - generic: .
+      - text: B
+      - generic: h
+      - text: C
+      - generic: D
+      - text: /K
+      - text: ≤
+      - generic: "16"
+      - generic: "1"
+      - text: .
+      - paragraph:
+        - text: The expected number of new first-assembly births during the
+        - strong: entire
+        - text: interval
+        - math:
+          - generic: "["
+          - generic: "0"
+          - generic: ","
+          - generic: h
+          - generic: "]"
+        - generic: "[0, h]"
+        - text: is at most
+      - math:
+        - generic: "2"
+        - generic: K
+        - generic: θ
+        - generic: M
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: B
+        - generic: )
+        - generic: "2"
+        - generic: h
+        - generic: =
+        - generic: "32"
+        - generic: θ
+        - generic: M
+        - generic: B
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: B
+        - generic: )
+        - generic: "2"
+        - generic: C
+        - generic: D
+        - generic: .
+      - generic: 2KθM(1 +
+      - text: B
+      - text: )
+      - generic: "2"
+      - text: h =
+      - generic: 32θMB(1 +
+      - text: B
+      - text: )
+      - generic: "2"
+      - text: C
+      - generic: D
+      - text: .
+      - paragraph:
+        - text: The stated restriction on
+        - math:
+          - generic: θ
+        - generic: θ
+        - text: bounds this by
+        - math:
+          - generic: "1"
+          - generic: /
+          - generic: "32"
+        - generic: 1/32
+        - text: . A union bound therefore gives a canonical atom substantially larger than
+        - math:
+          - generic: "1"
+          - generic: /
+          - generic: "2"
+        - generic: 1/2
+        - text: .
+      - paragraph:
+        - text: The tagged lifetime estimate is network-size independent only if each prefix has one upward continuation in its own private chain. Sharing an intermediate between chains may create
+        - math:
+          - generic: M
+        - generic: M
+        - text: "-dependent upward branching and must be avoided."
+      - separator
+      - heading "3. Exact directed reachability and every communicating class" [level=2]
+      - paragraph:
+        - text: For every fine state
+        - math:
+          - generic: u
+        - generic: u
+        - text: ", reversible hidden releases connect it to"
+        - math:
+          - generic: j
+          - generic: (
+          - generic: P
+          - generic: u
+          - generic: )
+        - generic: j(Pu)
+        - text: . Reversing such a release path connects
+        - math:
+          - generic: j
+          - generic: (
+          - generic: P
+          - generic: u
+          - generic: )
+        - generic: j(Pu)
+        - text: back to
+        - math:
+          - generic: u
+        - generic: u
+        - text: .
+      - paragraph:
+        - text: Every central label
+        - math:
+          - generic: r
+        - generic: r
+        - text: is enabled only when its representative source is present, which ensures
+        - math:
+          - generic: P
+          - generic: u
+          - generic: ≥
+          - generic: "y"
+          - generic: r
+        - generic: Pu ≥
+        - text: "y"
+        - generic: r
+        - text: . Its decoded increment is
+        - math:
+          - generic: z
+          - generic: r
+          - generic: −
+          - generic: "y"
+          - generic: r
+        - text: z
+        - generic: r
+        - text: −
+        - text: "y"
+        - generic: r
+        - text: .
+      - paragraph:
+        - text: Conversely, from a canonical state with
+        - math:
+          - generic: x
+          - generic: ≥
+          - generic: "y"
+          - generic: r
+        - generic: x ≥
+        - text: "y"
+        - generic: r
+        - text: ", assemble its source representative, fire the central channel labelled"
+        - math:
+          - generic: r
+        - generic: r
+        - text: ", then release its product representative. This realizes the original labelled edge between canonical encodings."
+      - paragraph:
+        - text: Hence, for arbitrary fine states
+        - math:
+          - generic: u
+          - generic: ","
+          - generic: v
+        - generic: u, v
+        - text: ","
+      - math:
+        - generic: u
+        - generic: ⇝
+        - generic: v
+        - generic: ⟺
+        - generic: P
+        - generic: u
+        - generic: ⇝
+        - generic: P
+        - generic: v
+        - generic: .
+        - generic: (C)
+      - generic: u ⇝ v ⟺ Pu ⇝ Pv.
+      - text: (
+      - generic: C
+      - text: )
+      - paragraph:
+        - text: The forward direction erases hidden moves. The reverse direction releases
+        - math:
+          - generic: u
+        - generic: u
+        - text: ", lifts an original directed path, and reverses a release path into"
+        - math:
+          - generic: v
+        - generic: v
+        - text: .
+      - paragraph: Thus each fine SCC is exactly the preimage of an original SCC. This proves every communicating-class statement, without weak reversibility.
+      - paragraph: "Every decoder column is nonzero: originals have identity columns, and auxiliary prefixes encode complexes of order at least two. The zero complex is represented by the actual empty complex, never by a zero-payload species."
+      - paragraph:
+        - text: Conservation holds for every fine reaction. Since every column has positive integer
+        - math:
+          - generic: ω
+        - generic: ω
+        - text: "-weight,"
+      - math:
+        - generic: ∣
+        - generic: Z
+        - generic: t
+        - generic: ∣
+        - generic: "1"
+        - generic: ≤
+        - generic: ω
+        - generic: ⋅
+        - generic: P
+        - generic: Z
+        - generic: t
+        - generic: =
+        - generic: ω
+        - generic: ⋅
+        - generic: x
+        - generic: "0"
+        - generic: ≤
+        - generic: B
+      - text: ∣
+      - text: Z
+      - generic: t
+      - text: ∣
+      - generic: "1"
+      - text: ≤
+      - generic: ω ⋅
+      - text: P
+      - text: Z
+      - generic: t
+      - text: =
+      - generic: ω ⋅
+      - text: x
+      - generic: "0"
+      - text: ≤
+      - generic: B
+      - paragraph: pathwise for every fault family.
+      - separator
+      - heading "4. Audit of your proposed parameter ledger" [level=2]
+      - paragraph: "Your proposed definitions work:"
+      - math:
+        - generic: U
+        - generic: =
+        - generic: "1"
+        - generic: +
+        - generic: B
+        - generic: ","
+        - generic: C
+        - generic: =
+        - generic: D
+        - generic: (
+        - generic: "8"
+        - generic: U
+        - generic: )
+        - generic: D
+        - generic: −
+        - generic: "1"
+        - generic: ","
+        - generic: a
+        - generic: =
+        - generic: θ
+        - generic: −
+        - generic: "1"
+        - generic: =
+        - generic: "1"
+        - generic: +
+        - generic: "1024"
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: M
+        - generic: )
+        - generic: U
+        - generic: "3"
+        - generic: C
+        - generic: +
+        - generic: "32"
+        - generic: ϵ
+        - generic: −
+        - generic: "1"
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: S
+        - generic: )
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: m
+        - generic: )
+        - generic: U
+        - generic: "2"
+        - generic: D
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: τ
+        - generic: )
+        - generic: ","
+        - generic: Λ
+        - generic: =
+        - generic: m
+        - generic: U
+        - generic: a
+        - generic: ","
+        - generic: K
+        - generic: =
+        - generic: "1"
+        - generic: +
+        - generic: a
+        - generic: +
+        - generic: "512"
+        - generic: ϵ
+        - generic: −
+        - generic: "1"
+        - generic: B
+        - generic: C
+        - generic: Λ
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: Λ
+        - generic: τ
+        - generic: )
+        - generic: ","
+        - generic: H
+        - generic: =
+        - generic: "1"
+        - generic: +
+        - generic: K
+        - generic: +
+        - generic: a
+        - generic: .
+        - generic: (D)
+      - generic: U
+      - generic: C
+      - text: a =
+      - text: θ
+      - generic: −1
+      - generic: Λ
+      - generic: K
+      - generic: H
+      - generic: = 1 + B,
+      - text: = D(8U
+      - text: )
+      - generic: D−1
+      - text: ","
+      - text: = 1 + 1024(1 + M)
+      - text: U
+      - generic: "3"
+      - text: C + 32
+      - text: ϵ
+      - generic: −1
+      - text: (1 + S)(1 + m)
+      - text: U
+      - generic: 2D
+      - text: (1 + τ),
+      - generic: = mUa,
+      - text: = 1 + a + 512
+      - text: ϵ
+      - generic: −1
+      - text: BCΛ(1 + Λτ),
+      - generic: = 1 + K + a.
+      - text: (
+      - generic: D
+      - text: )
+      - paragraph:
+        - text: Here
+        - math:
+          - generic: m
+          - generic: =
+          - generic: ∣
+          - generic: R
+          - generic: ∣
+        - generic: m =
+        - generic: ∣R∣
+        - text: ","
+        - math:
+          - generic: M
+          - generic: ≤
+          - generic: "2"
+          - generic: m
+        - generic: M ≤
+        - generic: 2m
+        - text: ", and"
+        - math:
+          - generic: S
+          - generic: ≤
+          - generic: "2"
+          - generic: m
+          - generic: (
+          - generic: D
+          - generic: −
+          - generic: "1"
+          - generic: )
+        - generic: S ≤
+        - generic: 2m(D −
+        - generic: 1)
+        - text: . Branch on
+        - math:
+          - generic: m
+          - generic: =
+          - generic: "0"
+        - generic: m =
+        - generic: "0"
+        - text: before using any denominator involving
+        - math:
+          - generic: m
+          - generic: f
+        - text: m
+        - generic: f
+        - text: .
+      - heading "Averaged-rate error" [level=3]
+      - paragraph: The supplied partition formula gives
+      - math:
+        - generic: ∣
+        - generic: λ
+        - generic: ˉ
+        - generic: r
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: λ
+        - generic: r
+        - generic: (
+        - generic: x
+        - generic: )
+        - generic: −
+        - generic: "1"
+        - generic: ∣
+        - generic: ≤
+        - generic: "2"
+        - generic: S
+        - generic: θ
+        - generic: B
+        - generic: D
+        - generic: .
+      - text: λ
+      - generic: r
+      - text: (x)
+      - generic: λ
+      - text: ˉ
+      - generic: r
+      - text: (x)
+      - text: − 1
+      - text: ≤
+      - text: 2Sθ
+      - text: B
+      - generic: D
+      - text: .
+      - paragraph:
+        - text: The original total intensity is at most
+        - math:
+          - generic: m
+          - generic: B
+          - generic: D
+        - text: m
+        - text: B
+        - generic: D
+        - text: ", so marked common-intensity coupling gives"
+      - math:
+        - generic: TV
+        - generic: ⁡
+        - generic: (
+        - generic: averaged full path
+        - generic: ","
+        - generic: original full path
+        - generic: )
+        - generic: ≤
+        - generic: "2"
+        - generic: S
+        - generic: m
+        - generic: θ
+        - generic: B
+        - generic: "2"
+        - generic: D
+        - generic: τ
+        - generic: ≤
+        - generic: ϵ
+        - generic: "16"
+        - generic: .
+        - generic: (E)
+      - generic: TV
+      - text: (
+      - generic: averaged full path
+      - text: ","
+      - generic: original full path
+      - text: ) ≤
+      - text: 2Smθ
+      - text: B
+      - generic: 2D
+      - text: τ ≤
+      - generic: "16"
+      - generic: ϵ
+      - text: .
+      - text: (
+      - generic: E
+      - text: )
+      - paragraph: Null and parallel labels are included in this sum.
+      - heading "Nominal averaging" [level=3]
+      - paragraph: From (B) and (D),
+      - math:
+        - generic: TV
+        - generic: ⁡
+        - generic: (
+        - generic: nominal full path
+        - generic: ","
+        - generic: averaged full path
+        - generic: )
+        - generic: ≤
+        - generic: ϵ
+        - generic: "16"
+        - generic: .
+        - generic: (F)
+      - generic: TV
+      - text: (
+      - generic: nominal full path
+      - text: ","
+      - generic: averaged full path
+      - text: ) ≤
+      - generic: "16"
+      - generic: ϵ
+      - text: .
+      - text: (
+      - generic: F
+      - text: )
+      - heading "Faults" [level=3]
+      - paragraph:
+        - text: After normalization,
+        - math:
+          - generic: c
+          - generic: e
+          - generic: ≤
+          - generic: "1"
+        - text: c
+        - generic: e
+        - text: ≤
+        - generic: "1"
+        - text: . Since
+        - math:
+          - generic: "N"
+          - generic: ≤
+          - generic: B
+        - generic: N ≤
+        - generic: B
+        - text: ", a full-fine marked coupling against the nominal process gives, over physical time"
+        - math:
+          - generic: H
+          - generic: τ
+        - generic: Hτ
+        - text: ","
+      - math:
+        - generic: P
+        - generic: f
+        - generic: a
+        - generic: u
+        - generic: l
+        - generic: t
+        - generic: m
+        - generic: i
+        - generic: s
+        - generic: m
+        - generic: a
+        - generic: t
+        - generic: c
+        - generic: h
+        - generic: ≤
+        - generic: δ
+        - generic: m
+        - generic: f
+        - generic: U
+        - generic: "2"
+        - generic: H
+        - generic: τ
+        - generic: .
+      - text: P
+      - text: fault
+      - text: mismatch
+      - text: ≤
+      - text: δ
+      - text: m
+      - generic: f
+      - text: U
+      - generic: "2"
+      - text: Hτ.
+      - paragraph: Thus
+      - math:
+        - generic: δ
+        - generic: =
+        - generic: ϵ
+        - generic: "16"
+        - generic: m
+        - generic: f
+        - generic: U
+        - generic: "2"
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: H
+        - generic: τ
+        - generic: )
+        - generic: (G)
+      - generic: δ =
+      - text: "16"
+      - text: m
+      - generic: f
+      - text: U
+      - generic: "2"
+      - text: (1 + Hτ)
+      - generic: ϵ
+      - text: (
+      - generic: G
+      - text: )
+      - paragraph:
+        - text: pays another
+        - math:
+          - generic: ϵ
+          - generic: /
+          - generic: "16"
+        - generic: ϵ/16
+        - text: ", is positive, and is below"
+        - math:
+          - generic: "1"
+          - generic: /
+          - generic: "2"
+        - generic: 1/2
+        - text: .
+      - paragraph: This coupling must flag mismatches of hidden null marks as well, because later faults may read those marks. The proposed bound does so.
+      - paragraph:
+        - text: The triangle inequality therefore leaves a large safety margin below
+        - math:
+          - generic: ϵ
+        - generic: ϵ
+        - text: .
+      - heading "Reciprocal rates" [level=3]
+      - paragraph:
+        - text: Because
+        - math:
+          - generic: K
+          - generic: ≥
+          - generic: a
+          - generic: =
+          - generic: θ
+          - generic: −
+          - generic: "1"
+        - generic: K ≥
+        - generic: a =
+        - text: θ
+        - generic: −1
+        - text: ","
+      - math:
+        - generic: K
+        - generic: θ
+        - generic: ≥
+        - generic: "1."
+      - generic: Kθ ≥
+      - generic: "1."
+      - paragraph:
+        - text: All hidden raw coefficients are at least one. A higher-order central coefficient
+        - math:
+          - generic: k
+          - generic: r
+          - generic: /
+          - generic: θ
+        - text: k
+        - generic: r
+        - text: /θ
+        - text: is at least
+        - math:
+          - generic: k
+          - generic: r
+        - text: k
+        - generic: r
+        - text: ", and lower-order central coefficients equal"
+        - math:
+          - generic: k
+          - generic: r
+        - text: k
+        - generic: r
+        - text: . Therefore
+      - math:
+        - generic: max
+        - generic: ⁡
+        - generic: e
+        - generic: c
+        - generic: e
+        - generic: −
+        - generic: "1"
+        - generic: ≤
+        - generic: H
+        - generic: max
+        - generic: ⁡
+        - generic: r
+        - generic: k
+        - generic: r
+        - generic: −
+        - generic: "1"
+        - generic: .
+        - generic: (H)
+      - generic: e
+      - generic: max
+      - text: c
+      - generic: e
+      - generic: −1
+      - text: ≤
+      - text: H
+      - generic: r
+      - generic: max
+      - text: k
+      - generic: r
+      - generic: −1
+      - text: .
+      - text: (
+      - generic: H
+      - text: )
+      - separator
+      - heading "5. Explicit uniform degree bounds" [level=2]
+      - paragraph: Let
+      - math:
+        - generic: c
+        - generic: D
+        - generic: =
+        - generic: D
+        - generic: "8"
+        - generic: D
+        - generic: −
+        - generic: "1"
+        - generic: ","
+        - generic: a
+        - generic: D
+        - generic: =
+        - generic: "1"
+        - generic: +
+        - generic: "2048"
+        - generic: c
+        - generic: D
+        - generic: +
+        - generic: "64"
+        - generic: D
+        - generic: .
+      - text: c
+      - generic: D
+      - text: =
+      - text: D
+      - text: "8"
+      - generic: D−1
+      - text: ","
+      - text: a
+      - generic: D
+      - text: =
+      - generic: 1 +
+      - text: "2048"
+      - text: c
+      - generic: D
+      - text: +
+      - generic: 64D.
+      - paragraph: Then your definitions imply
+      - math:
+        - generic: a
+        - generic: ≤
+        - generic: a
+        - generic: D
+        - generic: W
+        - generic: "2"
+        - generic: D
+        - generic: +
+        - generic: "4"
+        - generic: ","
+        - generic: Λ
+        - generic: ≤
+        - generic: a
+        - generic: D
+        - generic: W
+        - generic: "2"
+        - generic: D
+        - generic: +
+        - generic: "6"
+        - generic: .
+      - generic: a ≤
+      - text: a
+      - generic: D
+      - text: W
+      - generic: 2D+4
+      - text: ", Λ ≤"
+      - text: a
+      - generic: D
+      - text: W
+      - generic: 2D+6
+      - text: .
+      - paragraph: One valid choice is
+      - math:
+        - generic: h
+        - generic: D
+        - generic: =
+        - generic: "2"
+        - generic: +
+        - generic: "2"
+        - generic: a
+        - generic: D
+        - generic: +
+        - generic: "512"
+        - generic: c
+        - generic: D
+        - generic: a
+        - generic: D
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: a
+        - generic: D
+        - generic: )
+        - generic: ","
+      - text: h
+      - generic: D
+      - text: =
+      - generic: 2 +
+      - text: "2"
+      - text: a
+      - generic: D
+      - text: +
+      - text: "512"
+      - text: c
+      - generic: D
+      - text: a
+      - generic: D
+      - text: (1 +
+      - text: a
+      - generic: D
+      - text: ),
+      - paragraph: for which
+      - math:
+        - generic: H
+        - generic: ≤
+        - generic: h
+        - generic: D
+        - generic: W
+        - generic: "5"
+        - generic: D
+        - generic: +
+        - generic: "14"
+        - generic: .
+      - generic: H ≤
+      - text: h
+      - generic: D
+      - text: W
+      - generic: 5D+14
+      - text: .
+      - paragraph: Consequently,
+      - math:
+        - generic: H
+        - generic: τ
+        - generic: ≤
+        - generic: h
+        - generic: D
+        - generic: W
+        - generic: "5"
+        - generic: D
+        - generic: +
+        - generic: "15"
+        - generic: ","
+        - generic: max
+        - generic: ⁡
+        - generic: e
+        - generic: c
+        - generic: e
+        - generic: −
+        - generic: "1"
+        - generic: ≤
+        - generic: h
+        - generic: D
+        - generic: W
+        - generic: "5"
+        - generic: D
+        - generic: +
+        - generic: "15"
+        - generic: ","
+        - generic: δ
+        - generic: −
+        - generic: "1"
+        - generic: ≤
+        - generic: "64"
+        - generic: D
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: h
+        - generic: D
+        - generic: )
+        - generic: W
+        - generic: "5"
+        - generic: D
+        - generic: +
+        - generic: "19"
+        - generic: .
+        - generic: (I)
+      - generic: Hτ
+      - generic: e
+      - generic: max
+      - text: c
+      - generic: e
+      - generic: −1
+      - text: δ
+      - generic: −1
+      - text: ≤
+      - text: h
+      - generic: D
+      - text: W
+      - generic: 5D+15
+      - text: ","
+      - text: ≤
+      - text: h
+      - generic: D
+      - text: W
+      - generic: 5D+15
+      - text: ","
+      - text: ≤ 64D(1 +
+      - text: h
+      - generic: D
+      - text: )
+      - text: W
+      - generic: 5D+19
+      - text: .
+      - text: (
+      - generic: I
+      - text: )
+      - paragraph: There are at most
+      - math:
+        - generic: m
+        - generic: f
+        - generic: ≤
+        - generic: (
+        - generic: "4"
+        - generic: D
+        - generic: −
+        - generic: "3"
+        - generic: )
+        - generic: m
+      - text: m
+      - generic: f
+      - text: ≤
+      - generic: (4D −
+      - generic: 3)m
+      - paragraph: physical channels. Uniformly under all faults,
+      - math:
+        - generic: E
+        - generic: "["
+        - generic: all firings on
+        - generic: "["
+        - generic: "0"
+        - generic: ","
+        - generic: t
+        - generic: "]"
+        - generic: "]"
+        - generic: ≤
+        - generic: "3"
+        - generic: "2"
+        - generic: m
+        - generic: f
+        - generic: U
+        - generic: "2"
+        - generic: t
+        - generic: .
+        - generic: (J)
+      - text: E[
+      - generic: all firings on
+      - text: "[0, t]] ≤"
+      - generic: "2"
+      - generic: "3"
+      - text: m
+      - generic: f
+      - text: U
+      - generic: "2"
+      - text: t.
+      - text: (
+      - generic: J
+      - text: )
+      - paragraph: In particular,
+      - math:
+        - generic: E
+        - generic: "["
+        - generic: all firings on
+        - generic: "["
+        - generic: "0"
+        - generic: ","
+        - generic: H
+        - generic: τ
+        - generic: "]"
+        - generic: "]"
+        - generic: ≤
+        - generic: "6"
+        - generic: D
+        - generic: h
+        - generic: D
+        - generic: W
+        - generic: "5"
+        - generic: D
+        - generic: +
+        - generic: "18"
+        - generic: .
+      - text: E[
+      - generic: all firings on
+      - text: "[0, Hτ]] ≤"
+      - text: 6D
+      - text: h
+      - generic: D
+      - text: W
+      - generic: 5D+18
+      - text: .
+      - paragraph: Thus
+      - math:
+        - generic: p
+        - generic: D
+        - generic: =
+        - generic: "5"
+        - generic: D
+        - generic: +
+        - generic: "25"
+        - generic: ","
+        - generic: A
+        - generic: D
+        - generic: =
+        - generic: "2"
+        - generic: "100"
+        - generic: (
+        - generic: D
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: "3"
+      - text: p
+      - generic: D
+      - text: =
+      - generic: 5D +
+      - text: 25,
+      - text: A
+      - generic: D
+      - text: =
+      - text: "2"
+      - text: 100(D+1
+      - text: )
+      - generic: "3"
+      - paragraph: are comfortably oversized for the physical estimates.
+      - paragraph:
+        - text: For ordinary explicit binary vector/list input, reading, validation, private-chain construction, exact rational arithmetic, and output require polynomial bit work with degree at most a small absolute constant. The above
+        - math:
+          - generic: p
+          - generic: D
+        - text: p
+        - generic: D
+        - text: and
+        - math:
+          - generic: A
+          - generic: D
+        - text: A
+        - generic: D
+        - text: also dominate those costs. No Gröbner search, state enumeration, minimum stationary probability, or gap computation occurs.
+      - separator
+      - heading "Remaining presentation cautions" [level=2]
+      - list:
+        - text: Call the proposal clock
+        - strong: analytical uniformization
+        - text: ", and explicitly state that it does not add a physical reservoir or controller."
+        - listitem: Explain the averaged marginal at proposal epochs, conditional on the previous coupled history and the new gap. Do not incorrectly claim the equilibrium sample stays independent after revealing the entire fine interval path.
+        - listitem: Preserve original null events as accepted labelled proposals; erase only hidden physical labels in the output.
+        - listitem: Keep all intermediate prefix species private across chains.
+        - text: Handle
+        - math:
+          - generic: m
+          - generic: =
+          - generic: "0"
+        - generic: m =
+        - generic: "0"
+        - text: separately.
+        - text: State the standard explicit input representation; the vector entries of
+        - math:
+          - generic: ω
+        - generic: ω
+        - text: and
+        - math:
+          - generic: x
+          - generic: "0"
+        - text: x
+        - generic: "0"
+        - text: are part of the complete binary input. There is no hidden claim that an explicitly listed
+        - math:
+          - generic: d
+        - generic: d
+        - text: "-species output can be generated in time polynomial in"
+        - math:
+          - generic: log
+          - generic: ⁡
+          - generic: d
+        - generic: log
+        - text: d
+        - text: from a hypothetical succinctly compressed vector input.
+- status
+- status
