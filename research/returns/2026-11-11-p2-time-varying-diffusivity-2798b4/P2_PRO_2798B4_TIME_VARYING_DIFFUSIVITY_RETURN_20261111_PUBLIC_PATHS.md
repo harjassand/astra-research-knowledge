@@ -1,0 +1,8264 @@
+# P2 complete available return
+
+Chat: https://chatgpt.com/c/6af2d0d2-f500-83ec-a7d0-20e80bd42677  
+Model visible: Pro. User turn: bf11faa2-3cb3-4cf3-b15e-5aef177afc83; final: 2798b4f1-036a-5ca7-8916-f327ac9a2929.
+
+Actual prompt: `P2_FULL_TIME_VARYING_DIFFUSIVITY_ENSEMBLE_MHD_PRO_20261111.txt` (SHA-256 e1dcbf59e968ac6f358d51e8d3a080e331dcfc13fb72c802cf4fd42e97ad0c50).
+
+Full final copied through current UI, UTF-8 27977 bytes, SHA-256 081270febd01fdf420705b9e45701a3409ef04933b53a4b586f31859106e62ea. UI-copy capture is not a database-byte claim. The expanded current activity and three current helper final panels follow; accessibility-rendered mathematics may fragment or repeat. Six earlier chat-wide helper panels are already captured in `.astra-dispatch/sources/Focused_allocation_20261103/P2_PRO_7D2DFD_MAGNETIC_FLUX_RETURN_20261111.md` (SHA-256 4903894b9cc4cc195a64deb2520726d9c00e265eba9831a4fd10cfaac31103c3), rather than reread. UI Outputs showed no outputs; no ZIP was visible. Existing source and transfer holds remain.
+
+## Complete UI-copied final
+
+**Yes. The accepted constant-parameter, unknown-flux construction extends to the stated Lipschitz time-dependent ensemble with one force and fixed polynomial resource bounds.**
+
+The main new estimate is a full-space comparison for the magnetic evolution over a macrointerval:
+\[
+\boxed{
+\|S(T,0)-R(T,0)\|_{H^1\to H^1}
+\le
+C G^8\left[\left(\frac{\ell}{T}\right)^{1/4}+\beta\right]
++12G^2\Lambda\ell .
+}                                                               \tag{1}
+\]
+Here \(S\) is the exact pulled-back diffusion evolution with the actual time-dependent resistivity, \(R\) is a product of commuting heat evolutions, \(\ell\) is the maximum complete stirring-cell length, and \(\beta\) bounds the fraction occupied by velocity resets. The quantity \(G\) is a computable polynomial envelope for spatial coefficients, inverse ellipticity, and energy estimates. It is independent of clock compression and cell counts.
+
+The estimate holds on the entire solenoidal \(H^1\) space, including constants. Its weaker averaging rate still gives polynomial costs. The viscosity-affine constructions acquire additional errors proportional to \(\Lambda\), which can be paid without multiplying a loss after every word.
+
+Below is the construction and the verification of the new interfaces. The fixed spatial tables, contracting words, lowering certificates, and two-stage target synthesis are taken from your accepted construction.
+
+## 1. Conventions and effective bounds
+
+Write
+\[
+\mathcal B(v,z)=P[(v\cdot\nabla)z],\qquad
+C_vz=(v\cdot\nabla)z-(z\cdot\nabla)v.
+\]
+For a nominal carrier \(w\), define
+\[
+(Q_w)_t=-L_wQ_w,\qquad
+(\mathcal M_w)_t=-C_w\mathcal M_w.
+\]
+The induction map \(\mathcal M_w\) preserves solenoidality and magnetic means. An exact underlying flow return gives
+\[
+\mathcal M_w(t_{\rm end})=I
+\]
+on the full solenoidal space, including constants.
+
+Use rational coarse bounds
+\[
+\nu_0=\frac1{\lceil\nu_-^{-1}\rceil},\qquad
+\rho_0=\frac1{\lceil\rho_-^{-1}\rceil},\qquad
+\mu_0=\min(\nu_0,\rho_0),
+\]
+and put
+\[
+M_0=\lceil M\rceil,\quad
+\tau_0=\frac1{\lceil\tau^{-1}\rceil},\quad
+\epsilon_0=\frac1{\lceil\epsilon^{-1}\rceil},\quad
+\Lambda_0=\lceil\Lambda\rceil.
+\]
+It suffices to cover values in \([\nu_0,1]\times[\rho_0,1]\) and temporal Lipschitz constant \(\Lambda_0\).
+
+All constants and polynomial envelopes below are generated in fixed precomputation from the accepted certificate and finitely many additional spatial derivative and energy estimates. No displayed \(C\), \(P\), or exponent is allowed to depend on the actual coefficient functions, the unknown mean, or a variable target catalogue.
+
+The compiler never evaluates a coefficient function. Frozen values appearing below are proof variables used after an arbitrary admissible pair of functions has been fixed.
+
+## 2. Stirring references: freeze within a complete signed cell
+
+Divide the stirring schedule into complete cells, each containing the signed sine/cosine/cyclic collection and its inserted velocity resets.
+
+For cell \(I_j=[t_j,t_{j+1}]\), use in the proof
+\[
+\nu_j=\nu(t_j).
+\]
+Within that cell, use the corrected constant-viscosity Stokes reference with parameter \(\nu_j\) for every stirring orientation. The physical force remains
+\[
+f=a h^{-2}r''(t/h)F.
+\]
+Thus all orientations in a cell have the common scalar phase profile required for exact averaging. Each corrected reference has zero endpoint velocity and zero net shear impulse.
+
+The actual momentum equation differs from this reference by the additional source
+\[
+[\nu(t)-\nu_j]\Delta\bar w_{\nu_j}.
+\]
+Since the cell length is \(O(h)\), while the reference velocity has height \(O(a/h)\),
+\[
+\|[\nu(t)-\nu_j]\Delta\bar w_{\nu_j}\|_{H^m}
+\le C_m\Lambda_0a.                                             \tag{2}
+\]
+This is generally not small pointwise. Its local time budget is
+\[
+\boxed{
+\|[\nu-\nu_j]\Delta\bar w_{\nu_j}\|_{L^2_tH^m_x}
+\le C_m\Lambda_0a\sqrt h .
+}                                                               \tag{3}
+\]
+
+This source belongs in the local mechanical energy estimate. It need not fit inside the small physical disturbance tolerance.
+
+The Lorentz force is retained in full. With \(u=w+v\),
+\[
+\begin{aligned}
+v_t-\nu(t)\Delta v+L_wv
+&=-\mathcal B(v,v)+\mathcal B(B,B)+h_u+R,\\
+B_t-\rho(t)\Delta B+C_wB
+&=-C_vB+h_B.
+\end{aligned}                                                    \tag{4}
+\]
+For arbitrary magnetic mean,
+\[
+\|\mathcal B(B,B)\|_2
+\le C\|B\|_{H^1}^{3/2}\|B\|_{H^2}^{1/2}.
+\]
+Consequently, the accepted short-phase Lorentz estimate remains valid with a budget for the **total** \(B\):
+\[
+\text{velocity increment}
+\le P(G,\nu_0^{-1},\rho_0^{-1})K_\star^2h^{1/4}.                 \tag{5}
+\]
+The additional source (3) contributes a polynomial multiple of
+\(\Lambda_0a\sqrt h\). Both can be made smaller than the allocated velocity error by rational polynomial caps on \(h\).
+
+## 3. The pulled-back magnetic forms have a common domain
+
+Let the nominal carrier exclude its small viscosity-affine correction, which remains part of the perturbation velocity. Define
+\[
+A(t)=\rho(t)\mathcal M_w(t)^{-1}\Delta\mathcal M_w(t).
+\]
+
+The conjugated Laplacian is a differential operator
+\[
+A(t)z
+=\rho(t)\left[
+g^{ij}(t,x)\partial_{ij}z+
+b^j(t,x)\partial_jz+c(t,x)z
+\right].                                                       \tag{6}
+\]
+Its principal metric \(g^{ij}\) is scalar in the vector components and positive definite. Magnetic stretching contributes to the lower-order matrix coefficients.
+
+During a stirring phase, the geometry is one shear with impulse \(O(a)\). During a reset, every completed underlying return word disappears from the current induction map. Only one partial fixed word remains. Therefore spatial coefficient derivatives and inverse ellipticity have fixed polynomial bounds independent of durations and repetition counts.
+
+For the form argument, one may first work on the full vector spaces
+\[
+\mathscr H=H^1(\mathbb T^3;\mathbb R^3),\qquad
+\mathscr V=H^2(\mathbb T^3;\mathbb R^3),
+\]
+then restrict to the invariant solenoidal subspace. With \(J=I-\Delta\), set
+\[
+\mathfrak a_t(z,y)
+=-\langle A(t)z,Jy\rangle_{L^2}.
+\]
+Finite spatial integration by parts gives, after enlarging a computable polynomial envelope \(G\),
+\[
+|\mathfrak a_t(z,y)|
+\le G\|z\|_{H^2}\|y\|_{H^2},                                  \tag{7}
+\]
+and
+\[
+\operatorname{Re}\mathfrak a_t(z,z)
+\ge G^{-1}\|z\|_{H^2}^2-G\|z\|_{H^1}^2.                        \tag{8}
+\]
+The lower-order term accommodates constants. No temporal derivative of a coefficient is taken.
+
+These are precisely common-domain boundedness and quasi-coercivity hypotheses for the variational evolution. The measurable-form framework supplies evolution in \(L^2(\mathscr V)\cap H^1(\mathscr V')\) and continuity in \(\mathscr H\). [uni-ulm.de](https://www.uni-ulm.de/fileadmin/website_uni_ulm/mawi.inst.020/arendt/downloads/publications/preprints/ADLO5-11.pdf?utm_source=chatgpt.com)
+
+### Freeze resistivity in the comparison evolution
+
+Set
+\[
+\rho_j=\rho(t_j),\qquad
+\widetilde A(t)=\rho_j\mathcal M_w(t)^{-1}\Delta\mathcal M_w(t)
+\quad(t\in I_j).
+\]
+If every cell has length at most \(\ell\), then
+\[
+|\rho(t)-\rho_j|\le\Lambda_0\ell.
+\]
+The forms of \(A\) and \(\widetilde A\) share (7)–(8), and their difference is bounded by
+\[
+G\Lambda_0\ell\,\|z\|_{H^2}\|y\|_{H^2}.
+\]
+Your variational comparison therefore gives, on a whole macrointerval with \(GT\le1\),
+\[
+\boxed{
+\|S(T,0)-\widetilde S(T,0)\|_{H^1\to H^1}
+\le12G^2\Lambda_0\ell .
+}                                                               \tag{9}
+\]
+This is one comparison over the macrointerval. There is no cell-count multiplier.
+
+## 4. Averaging nonidentical cells on the full \(H^1\) space
+
+It remains to compare \(\widetilde S\) with heat evolution when the frozen values vary from cell to cell. The following argument does that directly.
+
+### Spatial smoothing
+
+At the finitely many required integer orders, spatial energy estimates have the form
+\[
+E_m'(t)+G^{-1}E_{m+1}(t)\le GE_m(t),
+\qquad E_m=\|z\|_{H^m}^2.                                     \tag{10}
+\]
+For \(T\le c/G\), integration and time-weighted combinations at orders \(1,2,3\) give
+\[
+\|\widetilde S(t,s)\|_{H^1\to H^2}
+\le CG^{1/2}(t-s)^{-1/2},                                     \tag{11}
+\]
+\[
+\|\widetilde S(t,s)\|_{H^1\to H^3}
+\le CG(t-s)^{-1},                                              \tag{12}
+\]
+and
+\[
+\int_s^t\|\widetilde S(r,s)x\|_{H^2}^2\,dr
+\le CG\|x\|_{H^1}^2.                                          \tag{13}
+\]
+The estimates hold with constants included. They can be proved for Fourier Galerkin systems and passed to the limit.
+
+This uses the particular spatially smooth differential operators in (6). It does not infer abstract \(H\)-maximal regularity from temporal measurability; Fackler’s counterexamples show why that broader inference would be invalid. [numdam.org](https://www.numdam.org/item/10.1016/j.anihpc.2016.05.001.pdf?utm_source=chatgpt.com)
+
+### Cellwise averages and zero-endpoint primitives
+
+On cell \(I_j\), write
+\[
+\frac1{\ell_j}\int_{I_j}\widetilde A(t)\,dt=D_j+E_j,
+\qquad D_j=d_j\Delta.
+\]
+The signed stirring identity gives the scalar heat part. Including a baseline heat contribution during resets, one has
+\[
+d_j\ge c\rho_0a^2,                                            \tag{14}
+\]
+provided the reset fraction is at most a fixed small number.
+
+The remaining reset average \(E_j\) has differential coefficient and form bounds at most \(CG\beta\).
+
+Define
+\[
+K(t)=\int_{t_j}^t
+\bigl(\widetilde A(s)-D_j-E_j\bigr)\,ds.
+\]
+It vanishes at both endpoints of every cell, and its second-order differential coefficients have size \(O(G\ell)\). In particular,
+\[
+\|K(t)\|_{H^3\to H^1}\le CG\ell.                               \tag{15}
+\]
+Its \(H^1\)-adjoint has the same bound. Indeed,
+\[
+K^\dagger=J^{-1}K^*J,
+\]
+and \(K^*:H^1\to H^{-1}\) has norm \(O(G\ell)\).
+
+Let \(D(t)=D_j\) on cell \(j\), and let \(R\) be its evolution. The heat factors commute:
+\[
+R(T,0)=
+\exp\left[\left(\sum_j\ell_jd_j\right)\Delta\right].             \tag{16}
+\]
+The compiler never computes the \(d_j\). Only their uniform lower bound is used.
+
+### Duality estimate
+
+For \(x,y\in H^1\), put
+\[
+z(t)=\widetilde S(t,0)x,\qquad
+v(t)=R(T,t)y.
+\]
+Forward-backward duality gives
+\[
+\langle(\widetilde S(T,0)-R(T,0))x,y\rangle_{H^1}
+=
+\int_0^T
+\langle(\widetilde A(t)-D(t))z(t),v(t)\rangle_{H^1}\,dt.         \tag{17}
+\]
+
+The \(E_j\) contribution is at most
+\[
+CG^2\beta\,\|x\|_{H^1}\|y\|_{H^1}
+\]
+by the two energy bounds.
+
+For the remaining contribution, choose endpoint layers of length \(d\le T/4\). On these layers, (11)–(13) bound the integral by
+\[
+CG^c\sqrt{d/T}\,
+\|x\|_{H^1}\|y\|_{H^1}.                                       \tag{18}
+\]
+
+On \([d,T-d]\), integrate \(K_t\) by parts. The endpoint terms are bounded by \(CG^c\ell/d\). The interior terms contain
+\[
+K\widetilde A z,\qquad Kz,\qquad v_t=-D(t)v.
+\]
+Using (12), (15), and the bound for \(K^\dagger\), their integrands are at most
+\[
+\frac{CG^c\ell}{t(T-t)}
+\,\|x\|_{H^1}\|y\|_{H^1}.
+\]
+Since
+\[
+\int_d^{T-d}\frac{dt}{t(T-t)}\le C/d,
+\]
+the interior contribution is also bounded by \(CG^c\ell/d\).
+
+No cell-boundary terms survive: \(K\) is zero at every such boundary. Choosing
+\[
+d=\sqrt{\ell T},\qquad \ell\le T/16,
+\]
+gives, with a conservative fixed power,
+\[
+\boxed{
+\|\widetilde S(T,0)-R(T,0)\|_{H^1\to H^1}
+\le CG^8\left[(\ell/T)^{1/4}+\beta\right].
+}                                                               \tag{19}
+\]
+All identities can be justified first in Galerkin systems. Equations (9) and (19) prove (1).
+
+This comparison permits arbitrary different frozen values in different cells and includes the constant magnetic modes.
+
+## 5. Harmonic bias and nonlinear physical realization
+
+By (14)–(16), every comparison heat operator fixes constants and contracts mean-zero fields by a uniform gap
+\[
+\gamma\ge c\rho_0a^2T
+\]
+when the macrointerval is short enough.
+
+Let \(S_k\) be the exact magnetic diffusion evolution over macrointerval \(k\). These operators need not be identical. If
+\[
+\|S_k-R_k\|_{H^1\to H^1}\le\delta\le\gamma/2,
+\]
+then their mean-zero norms are at most \(1-\gamma/2\). Because they preserve means,
+\[
+\|b_{k+1}\|_{H^1}
+\le(1-\gamma/2)\|b_k\|_{H^1}+\delta |H|.
+\]
+Hence
+\[
+\boxed{
+\|b_n\|_{H^1}
+\le(1-\gamma/2)^n\|b_0\|_{H^1}
++\frac{2\delta M}{\gamma}.
+}                                                               \tag{20}
+\]
+
+For erasure accuracy \(q\), it suffices to require
+\[
+\delta\le\frac{q\gamma}{C K_0},
+\qquad
+n=\left\lceil\frac{C K_0}{q\gamma}\right\rceil,
+\qquad K_0\ge C(M_0+1).                                       \tag{21}
+\]
+Using (1), sufficient rational caps are
+\[
+\beta\le\frac{q\gamma}{CG^8K_0},                               \tag{22}
+\]
+\[
+\ell\le T\left(\frac{q\gamma}{CG^8K_0}\right)^4,
+\qquad
+\ell\le\frac{q\gamma}{CG^2\Lambda_0K_0}.                        \tag{23}
+\]
+
+### Coupling to the actual velocity
+
+For the actual magnetic field, set
+\[
+c=\mathcal M_w^{-1}B,\qquad
+\widetilde v=\mathcal M_w^{-1}(u-w).
+\]
+Then
+\[
+c_t=A(t)c-C_{\widetilde v}c+\mathcal M_w^{-1}h_B.               \tag{24}
+\]
+The last two terms have zero mean, even when \(c\) has mean \(H\), and
+\[
+\|C_{\widetilde v}c\|_{H^{-3/4}}
+\le C\|\widetilde v\|_{H^1}\|c\|_{H^1}.                        \tag{25}
+\]
+
+The spatial energy estimates, their adjoints, and interpolation give the needed local negative-order smoothing. For example, one obtains an \(H^{-3/4}\to H^1\) bound with time singularity \((t-s)^{-7/8}\), which is integrable. Products of the nonidentical macro evolutions contract on mean-zero inputs. Thus the global Duhamel kernel has a computable polynomial bound \(\mathcal J\) in \(G\) and \(T^{-1}\).
+
+The same coupled bootstrap takes the form
+\[
+Z:=\sup_t\|c(t)\|_{H^1}
+\le CK_0+CG\mathcal J(rZ+\eta_{\rm eff}).                       \tag{26}
+\]
+Choose
+\[
+r\le\frac{q}{CG\mathcal J K_0},
+\qquad
+\eta_{\rm eff}\le\frac{q}{CG\mathcal J}.
+\]
+The local velocity estimate, now including (3), and the resets keep \(u-w\) within \(r\). Equation (26) bounds the total magnetic field and makes the nonlinear endpoint error \(O(q)\).
+
+This closes the Lorentz and induction estimates together. The favorable linear average is therefore realized by the coupled physical equation.
+
+## 6. Velocity resets with a continuous time-dependent corrector
+
+The viscosity-affine cancellation must be modified.
+
+Let \(w\) execute \(n\) copies of the accepted translated superword, each with impulses \(O(s)\). Use the continuous proof corrector
+\[
+a_t+L_wa=\nu(t)\Delta w,\qquad a(0)=0.                          \tag{27}
+\]
+The force remains \(f=w_t\).
+
+For a complete word on \(I_j=[t_j,t_{j+1}]\), of duration \(d_j\), freeze viscosity only in its endpoint calculation. The affine map is
+\[
+a(t_{j+1})
+=W(s)a(t_j)+\nu(t_j)b(s)+r_j,
+\]
+where the accepted superword has
+\[
+\|b(s)\|_{H^m}\le C_ms^5.
+\]
+The new remainder is
+\[
+r_j=\int_{I_j}Q_w(t_{j+1},t)
+[\nu(t)-\nu(t_j)]\Delta w(t)\,dt.
+\]
+Since the integrated carrier norm is \(O(s)\),
+\[
+\boxed{\|r_j\|_{H^m}\le C_m\Lambda_0d_js.}                     \tag{28}
+\]
+
+Stable forward repetition, with \(\delta=\sum_jd_j\), gives
+\[
+\|a(\delta)\|_{H^m}
+\le C_m(ns^5+\Lambda_0s\delta)e^{C_mns^5},
+\]
+and
+\[
+\sup_t\|a(t)\|_{H^m}
+\le C_m(s+ns^5+\Lambda_0s\delta)e^{C_mns^5}.                    \tag{29}
+\]
+The extra term depends on total physical duration, not on the number of words.
+
+For a required affine allowance \(q_a\), retain the old \(ns^5\) cap and add
+\[
+s\le\frac{q_a}{C(1+\Lambda_0)}.
+\]
+Because \(\delta\le1\), this controls the new contribution. The choice is polynomial and does not create a dependency between duration and word count.
+
+Most importantly, the exact residual identity survives:
+\[
+f-\left[(w+a)_t-\nu(t)\Delta(w+a)
++\mathcal B(w+a,w+a)\right]
+=\nu(t)\Delta a-\mathcal B(a,a).                               \tag{30}
+\]
+There is no derivative of \(\nu\).
+
+For the magnetic mean, use \(B_*=\mathcal M_wH\) when identifying smooth reference sources. Complete words return \(B_*\) to \(H\), and partial words satisfy
+\[
+\|B_*-H\|_{H^m}\le C_msM.
+\]
+The previously paid Lorentz and induction estimates apply with (29). Subsequent unforced smoothing uses the lower bounds \(\nu_0,\rho_0\).
+
+## 7. Fixed-depth lowering under variable viscosity
+
+For a lowering excursion \(\zeta=b(t)\xi\), keep
+\[
+\theta_t=\nu(t)\Delta\zeta-\mathcal B(\zeta,\zeta)-g_1.          \tag{31}
+\]
+Suppose each cell has zero scalar integral, \(|b|\le A_{\rm low}\), and maximum length \(\ell_{\rm low}\).
+
+On one cell,
+\[
+\begin{aligned}
+\left\|\int_I\nu(t)\Delta\zeta(t)\,dt\right\|_{H^m}
+&=
+\left\|\int_I[\nu(t)-\nu(t_I)]b(t)\Delta\xi\,dt\right\|_{H^m}\\
+&\le P(\xi)\Lambda_0 A_{\rm low}|I|^2.
+\end{aligned}
+\]
+Over total duration \(T_{\rm low}\), these endpoint contributions sum to at most
+\[
+P(\xi)\Lambda_0 A_{\rm low}T_{\rm low}\ell_{\rm low}.
+\]
+A partial cell contributes \(P(\xi)A_{\rm low}\ell_{\rm low}\). Thus the corrector estimate becomes
+\[
+\boxed{
+\sup\|\theta\|_{H^m}
+\le P(\xi)\left[
+\delta_0+\ell_{\rm low}
+\bigl(A_{\rm low}^2+A_{\rm low}(1+\Lambda_0T_{\rm low})\bigr)
+\right].
+}                                                               \tag{32}
+\]
+
+The remaining \(L_\zeta\theta\) interaction adds the same polynomial amplitude factor as before. Choose the cell length after the nominal amplitude and tolerance:
+\[
+\ell_{\rm low}\le
+\frac{\sigma_{\rm low}}
+ {P(A_{\rm low},K_\star,M_0,\mu_0^{-1})(1+\Lambda_0)}.
+\]
+The induction loop still returns exactly on the full magnetic space. Multiplication of its diffusion defects by \(\rho(t)\) uses only \(0<\rho_0\le\rho(t)\le1\).
+
+The erasing catalogue’s lowering depth stays fixed. No new spatial actuator or synthesis stage is introduced.
+
+## 8. The target writer
+
+Truncate and round the input target as in the accepted construction, using
+\[
+N=\left\lceil\frac{16M_0}{\epsilon_0}\right\rceil,
+\]
+to obtain a rational solenoidal \(\widetilde V_N\) with
+\[
+\|V-\widetilde V_N\|_2\le\epsilon_0/8.
+\]
+The retained catalogue and all required spatial norms have polynomial bounds. Large input frequencies are discarded by binary comparisons.
+
+### Closed writing leaves
+
+For a complete shear palindrome of duration \(h\), use
+\[
+(v_\nu)_t+L_wv_\nu
+=\nu(t)\Delta w+f_{\rm seed},
+\qquad v_\nu(0)=v_{\rm pref}.                                  \tag{33}
+\]
+Its partial smooth norms are polynomial and independent of \(h\), because
+\[
+\int_0^h\|\Delta w(t)\|_{H^m}\,dt
+\]
+has a polynomial impulse bound.
+
+Let \(\widetilde v\) solve the same equation with frozen coefficient \(\nu(0)\). The accepted affine palindrome gives its intended endpoint exactly. Their difference satisfies
+\[
+(v_\nu-\widetilde v)_t+L_w(v_\nu-\widetilde v)
+=[\nu(t)-\nu(0)]\Delta w,
+\]
+so
+\[
+\boxed{
+\|v_\nu(h)-\widetilde v(h)\|_{H^m}
+\le P\Lambda_0h.
+}                                                               \tag{34}
+\]
+
+Use
+\[
+u_*=w+v_\nu,\qquad B_*=\mathcal M_wH.
+\]
+The magnetic reference returns exactly to \(H\). The smooth sources remain
+\[
+R_u=\nu(t)\Delta v_\nu-\mathcal B(v_\nu,v_\nu)
++\mathcal B(B_*,B_*),
+\]
+\[
+R_B=\rho(t)\Delta B_*-C_{v_\nu}B_*.
+\]
+Their norms are polynomial, independently of the leaf duration.
+
+The conjugated energy estimate therefore gives
+\[
+\boxed{
+e_{\rm out}
+\le(1+Ph)e_{\rm in}
++P\sqrt h(1+\eta)+P\Lambda_0h.
+}                                                               \tag{35}
+\]
+At the next leaf, start the proof reference from the known intended prefix and count (34) as incoming error. Unknown smooth endpoint prefixes are not fed into later norm calculations.
+
+For \(N_{\rm op}\) allocated leaves and writer budget \(e_{\rm write}\), sufficient caps include
+\[
+h\le
+\min\left\{
+P^{-1},
+\frac{e_{\rm write}^2}{C N_{\rm op}^2P^2},
+\frac{e_{\rm write}}{C N_{\rm op}\Lambda_0P}
+\right\}.                                                       \tag{36}
+\]
+
+### Quadratic holds
+
+For a hold with intended increment \(\lambda\), use
+\[
+\alpha^2h=\lambda,\qquad
+\alpha h=\sqrt{\lambda h},
+\]
+and
+\[
+(v_\nu)_t+\alpha L_\xi v_\nu
+=\nu(t)\alpha\Delta\xi-\alpha^2\mathcal B(\xi,\xi).
+\]
+Only the integrated quantities \(\alpha h\) and \(\alpha^2h\) enter the reference bounds. The proof uses \(\nu(t)\le1\), so no freezing is necessary.
+
+With \(B_*=\mathcal M_{\alpha t}H\), the same hold estimate remains:
+\[
+e_{\rm out}\le
+(1+P\sqrt h)e_{\rm in}+P\sqrt h(1+\eta).
+\]
+The polynomial \(P\) is fixed before choosing that hold’s duration. Rational amplitude approximation is paid by the existing writer routine. Inner synthesis is scheduled after the outer amplitude is selected.
+
+The variable target writer retains its two quadratic stages.
+
+## 9. A rational schedule with polynomial bounds
+
+Here is an explicit order of choices.
+
+Put
+\[
+X=2+M_0+\nu_0^{-1}+\rho_0^{-1}
++\tau_0^{-1}+\epsilon_0^{-1}+\Lambda_0\le CR.
+\]
+Choose
+\[
+q=cX^{-10},\qquad K_0=C(M_0+1),
+\]
+\[
+a=\left\lceil\frac{CK_0}{\rho_0\tau_0q}\right\rceil,
+\qquad g=c_\star\rho_0a^2.
+\]
+Compute the spatial and energy envelope \(G\), and set
+\[
+T_0=\min\left\{
+\tau_0/100,\,(100G)^{-1},\,(100g)^{-1}
+\right\},
+\qquad
+\gamma=gT_0/C.
+\]
+Choose a certified polynomial bound \(\mathcal J=P(G,T_0^{-1})\) for the global magnetic kernel, then
+\[
+r=\frac{q}{CG\mathcal J K_0},\qquad
+r_0=\frac r{CG^2},\qquad
+K_\star=CGK_0.
+\]
+
+Take
+\[
+\beta\le\frac{q\gamma}{CG^8K_0}.
+\]
+Choose the stirring phase length \(h\) small enough that its complete cell length \(\ell\le Ch\) satisfies (23), together with
+\[
+h\le
+\min\left\{
+T_0/1000,\,
+\left(\frac{r}{CGK_\star^2}\right)^8,\,
+\left(\frac{r}{CG(1+\Lambda_0a)}\right)^2,\,
+h_\star,\,(Ca)^{-1}
+\right\}.                                                       \tag{37}
+\]
+Also include the fixed rational local-existence and coercivity caps from the accepted energy certificate.
+
+Compile each inserted reset with duration at most \(\beta h\), adding the affine cap following (29). All reset parameters are selected after their incoming bounds and allocated duration.
+
+Use an integer number of cells to make an actual macro duration in \([T_0/2,T_0]\). Repeat
+\[
+n=\left\lceil\frac{CK_0}{q\gamma}\right\rceil
+\]
+macros. Their total duration is bounded by
+\[
+nT_0\le \frac{CK_0}{qg}+T_0,
+\]
+which is a small fraction of \(\tau_0\) by the choice of \(a\).
+
+Initial and final velocity resets complete the joint eraser. Allocate lowering errors below its strict margins. The eraser then gives
+\[
+\left(\|u\|_{H^1}^2+\|B-H\|_{H^1}^2\right)^{1/2}\le q.
+\]
+
+A suitable preliminary noise tolerance is
+\[
+\eta_0=\min\left\{
+1,\frac{q}{CG\mathcal J},c\mu_0q
+\right\}.
+\]
+Reserve fixed fractions for physical disturbances, force rounding, and synthesis errors, and output a positive rational \(\eta\le\eta_0/C\).
+
+Every choice is a rational minimum, ceiling, fixed power, product, or reciprocal of an explicitly positive quantity. The schedule has no dependence on sampled coefficient values.
+
+## 10. Waiting, endpoint, and every weak realization
+
+Place an unforced interval between the eraser and writer so that the writer ends exactly at \(\tau\).
+
+Writing \(B=H+b\), the constant-field couplings cancel:
+\[
+\langle D^\alpha u,(H\cdot\nabla)D^\alpha b\rangle
++
+\langle D^\alpha b,(H\cdot\nabla)D^\alpha u\rangle=0.
+\]
+The dissipative terms are
+\[
+\nu(t)\|\nabla u\|_{H^1}^2+
+\rho(t)\|\nabla b\|_{H^1}^2
+\ge
+\mu_0\bigl(\|\nabla u\|_{H^1}^2+\|\nabla b\|_{H^1}^2\bigr).
+\]
+No derivative of either coefficient appears. Thus the small-fluctuation waiting estimate holds with \(q\ll\mu_0\) and \(\eta\le c\mu_0q\).
+
+The writer yields, with the allocated errors,
+\[
+\left(
+\|u(\tau)-\widetilde V_N\|_{H^1}^2+
+\|B(\tau)-H\|_{H^1}^2
+\right)^{1/2}
+\le4q+\epsilon_0/4.
+\]
+Adding the target truncation error gives
+\[
+\left(
+\|u(\tau)-V\|_2^2+
+\|B(\tau)-H\|_2^2
+\right)^{1/2}
+<\epsilon.
+\]
+
+For each arbitrary admitted coefficient pair, initial pair, and disturbance, direct Galerkin \(H^1/H^2\) estimates construct and continue the controlled strong solution through this finite schedule. Scalar time-dependent diffusivities multiply spatial diffusion and remain bounded below; no coefficient derivatives enter these fixed Sobolev energies.
+
+Weak–strong uniqueness compares this solution with any Leray–Hopf realization for the same actual functions, data, and disturbance. The difference dissipation is weighted by those same positive functions. Their magnetic means agree. Any finite uniqueness exponential multiplies zero initial discrepancy; it is not used to choose \(\eta\).
+
+Consequently, every admitted realization has the asserted endpoint, with the prescribed one-sided total-energy trace.
+
+## 11. Complete compiler and resource accounting
+
+The emitted forces retain the same forms:
+
+| Operation | Emitted mechanical force |
+|---|---|
+| Stirring phase | \(a h^{-2}r''F\) |
+| Velocity-reset word | \(w_t\) |
+| Lowering excursion | \(\zeta_t+g_0\) |
+| Writing leaf | \(w_t+f_{\rm seed}\) |
+| Quadratic hold or waiting interval | \(0\) |
+
+The unknown functions occur only in proof references and estimates.
+
+The compiler performs target canonicalization and truncation, calculates the rational schedule, compiles resets and stirring phases, applies fixed-depth lowering, compiles the two-stage writer, inserts the final waiting interval, performs the paid rational approximations, and emits the twelve coefficient lists and \(\eta\).
+
+The new quantitative costs are:
+
+| Interface | Additional error or requirement |
+|---|---|
+| Magnetic coefficient freezing | \(12G^2\Lambda_0\ell\) |
+| Nonidentical-cell averaging | \(CG^8(\ell/T)^{1/4}\) |
+| Stirring reference | \(P\Lambda_0a\sqrt h\) locally |
+| Repeated velocity-reset words | \(P\Lambda_0s\delta\) |
+| Closed writing leaf | \(P\Lambda_0h\) |
+| Lowering primitive | \(P\Lambda_0A_{\rm low}T_{\rm low}\ell_{\rm low}\) |
+
+Each introduces only a fixed polynomial refinement. No new frequency-dependent depth is introduced.
+
+The fixed precomputation computes the necessary spatial bounds by differentiating the finite carrier formulas to fixed orders, using the accepted explicit Sobolev constants and rational bounds for fixed transcendental constants. It records all constants and the finite operation cost. No PDE or norm oracle is involved.
+
+Propagate two explicit polynomial majorants through the resulting finite compiler:
+
+- \(E_{\rm phys}(R)\) for reciprocal tolerances and physical force bounds;
+- \(E_{\rm bit}(L+R)\) for arithmetic, memory, output, interval counts, degrees, and rational bit lengths.
+
+Fixed powers multiply degrees, products add degrees, and loops multiply operation bounds by their proved polynomial counts. The eraser lowering depth and writer synthesis depth are fixed. Set
+\[
+p=\max\{1,\deg E_{\rm phys},\deg E_{\rm bit}\},
+\]
+and compute a fixed integer \(A\) dominating their coefficient sums and all recorded precomputation costs, with a further fixed allowance for forming \(A,p\).
+
+All quantitative exponentials are bounded by fixed constants: short-macro factors satisfy \(GT\le c\), reset factors use bounded \(ns^5\), and writer factors use bounded sums of allocated local errors. There is no exponential in accumulated physical strain in the robustness budget.
+
+Target coefficient heights are handled by exact canonicalization followed by absolute-error rounding. Large frequencies are discarded without enumeration. Exact placement at the input endpoint can retain \(L\) bits without increasing physical amplitudes. The given implementations retain ordinary rational time polynomials of degree at most four.
+
+Thus
+\[
+\eta^{-1},\qquad
+\sup_t\|f(t)\|_{W^{1,\infty}},\qquad
+\int_0^\tau\|f(t)\|_{W^{1,\infty}}\,dt
+\le AR^p,
+\]
+and every required binary resource is at most \(A(L+R)^p\).
+
+The same finite output works for every admissible pair of Lipschitz coefficient functions, every conserved mean allowed by the initial bound, every admitted disturbance, and every energy-admissible realization. No coefficient value or magnetic mean is observed or supplied to the compiler.
+
+## Current expanded visible activity (accessibility snapshot)
+
+Worked for 58m 22s
+    - paragraph: I’ll check where time variation breaks the constant-parameter construction, especially the viscosity-affine cancellations and magnetic averaging. I’ll use the supplied Lipschitz bound to choose shorter blocks, while checking that the resulting errors remain polynomial after the full schedule is composed.
+    - region "Subagent activity":
+      - button "Time averaging"
+      - text: ","
+      - button "Time writer reset"
+      - text: and
+      - button "Time audit"
+      - text: started working
+    - generic: Searching 2 websites
+    - region "Subagent activity":
+      - button "Time writer reset"
+      - text: ","
+      - button "Time averaging"
+      - text: and
+      - button "Time audit"
+      - text: finished
+    - paragraph: Refined phase-error and diffusion-freeze error bounds
+    - paragraph: Checked the H1 form
+    - paragraph: Checked variational hypotheses
+    - paragraph: Derived a cellwise telescope and constructed variable-rho heat factors
+    - paragraph: Checked uniform smoothing and built a spectral-cutoff estimate
+    - paragraph: Developed averaging proof
+    - paragraph: Bounded endpoint drift and selected the error scale
+    - paragraph: Bounded frozen-viscosity remainders and errors
+    - paragraph: Refined variable-viscosity bounds and derived actual-time Stokes response
+    - paragraph: Estimated frozen-reference residuals
+    - paragraph: Checked coefficient bounds and frozen values
+    - paragraph: Checked averaging proof
+    - paragraph: Checked reset-operator energy bounds and full-space S-form theory
+    - paragraph: Checked variational operator bounds
+    - paragraph: Derived Galerkin smoothing estimates
+    - paragraph: Audited adjoint smoothing
+    - paragraph: Set H to H1(T³) using full A
+    - paragraph: Prepared and checked the pre-lowering averaging audit
+    - paragraph: Checked local strong-solution regularity and bounded G for macroaveraging
+    - paragraph: Derived global kernel bounds by selecting h within constraints
+    - paragraph: Chose contraction parameters
+    - paragraph: Checked transformed energy estimates
+    - paragraph: Checked reset invariants
+    - paragraph:
+      - text: "The key linear estimate is now in place: a magnetic macro-block can be compared on the full"
+      - math:
+        - generic: H
+        - generic: "1"
+      - text: H
+      - generic: "1"
+      - text: space with a product of commuting heat evolutions, even when the frozen coefficient values differ from cell to cell. The bound has no factor proportional to the cell count. For viscosity, continuous proof correctors give drift errors of order
+      - math:
+        - generic: Λ
+        - generic: s
+        - generic: δ
+      - generic: Λsδ
+      - text: across a reset and
+      - math:
+        - generic: Λ
+        - generic: h
+      - generic: Λh
+      - text: times a polynomial bound across a writing leaf.
+    - paragraph: Audited explicit exponent bounds
+    - paragraph: Defined rational parameter bounds and combined coercivity caps
+    - paragraph: Combined step-size bounds
+    - paragraph: Calibrated reset parameters and checked reset count bounds
+    - paragraph: Verified pulled-back operators
+    - paragraph: Refined time correction and wrote explicit bounds
+    - generic: Searching www.numdam.org
+    - paragraph: Set step-size bound and clarified δ parameter choice
+    - paragraph: Checked the new sΛ cap and verified cellwise error bounds
+    - paragraph: Clarified leaf reset bounds
+    - paragraph: Prepared rational square-root rounding
+    - paragraph: Framed extension criteria and compiled the error table
+    - paragraph: Checked finite precomputation bounds and fixed input-independent constants
+    - paragraph: Checked construction resource bounds and mean-zero preservation
+    - paragraph:
+      - text: The remaining steps fit the same schedule. Each complete writing leaf has an added endpoint error bounded by
+      - math:
+        - generic: P
+        - generic: Λ
+        - generic: h
+      - generic: PΛh
+      - text: ", and the lowering scheme has an added viscous error bounded by"
+      - math:
+        - generic: P
+        - generic: Λ
+        - generic: A
+        - generic: T
+        - generic: ℓ
+      - generic: PΛA Tℓ
+      - text: "; both can be paid by shorter intervals. The stirring reference needs a separate local budget: its new source is"
+      - math:
+        - generic: O
+        - generic: (
+        - generic: Λ
+        - generic: a
+        - generic: )
+      - generic: O(Λa)
+      - text: pointwise, but
+      - math:
+        - generic: O
+        - generic: (
+        - generic: Λ
+        - generic: a
+        - generic: h
+        - generic: )
+      - text: O(Λa
+      - generic: h
+      - text: )
+      - text: in the energy estimate. It does not need to fit inside the small disturbance tolerance
+      - math:
+        - generic: η
+      - generic: η
+      - text: .
+    - paragraph: Defined rational precomputation and computed finite derivative bounds
+    - paragraph: Defined algorithm Γ and bounded phase-force resources
+    - paragraph: Verified polynomial error bounds and refined coercivity assumptions
+    - 
+
+## Current helper final panels (accessibility snapshots)
+
+  - complementary:
+    - heading "Subagents" [level=2]
+    - button "Enter full view":
+    - button "Close panel":
+    - tabpanel "Subagents" [active]:
+      - button "Back to subagents":
+      - generic: Time averaging
+      - heading "Status" [level=2]
+      - generic: Done
+      - heading "Final response" [level=2]
+      - 'heading "Result: a complete non-autonomous full-space magnetic averaging bridge" [level=2]'
+      - paragraph: The magnetic part can be proved with a slightly weaker averaging rate than the old constant-parameter estimate. The weaker rate still gives fixed polynomial costs and removes the need to assume that the old identical-cell telescope automatically extends.
+      - paragraph: The resulting whole-macro estimate is
+      - math:
+        - generic: ∥
+        - generic: S
+        - generic: a
+        - generic: c
+        - generic: t
+        - generic: u
+        - generic: a
+        - generic: l
+        - generic: (
+        - generic: T
+        - generic: ","
+        - generic: "0"
+        - generic: )
+        - generic: −
+        - generic: R
+        - generic: (
+        - generic: T
+        - generic: ","
+        - generic: "0"
+        - generic: )
+        - generic: ∥
+        - generic: H
+        - generic: "1"
+        - generic: →
+        - generic: H
+        - generic: "1"
+        - generic: ≤
+        - generic: C
+        - generic: G
+        - generic: "8"
+        - generic: "["
+        - generic: (
+        - generic: ℓ
+        - generic: T
+        - generic: )
+        - generic: "1"
+        - generic: /
+        - generic: "4"
+        - generic: +
+        - generic: β
+        - generic: "]"
+        - generic: +
+        - generic: "12"
+        - generic: G
+        - generic: "2"
+        - generic: Λ
+        - generic: ℓ
+        - generic: .
+        - generic: (1)
+      - text: ∥
+      - text: S
+      - generic: actual
+      - text: (T, 0) − R(T, 0)
+      - text: ∥
+      - text: H
+      - generic: "1"
+      - text: →
+      - text: H
+      - generic: "1"
+      - text: ≤ C
+      - text: G
+      - generic: "8"
+      - generic: "["
+      - generic: (
+      - generic: T
+      - generic: ℓ
+      - generic: )
+      - generic: 1/4
+      - text: + β
+      - generic: "]"
+      - text: + 12
+      - text: G
+      - generic: "2"
+      - text: Λℓ.
+      - text: (
+      - generic: "1"
+      - text: )
+      - paragraph: "Here:"
+      - list:
+        - math:
+          - generic: S
+          - generic: a
+          - generic: c
+          - generic: t
+          - generic: u
+          - generic: a
+          - generic: l
+        - text: S
+        - generic: actual
+        - text: is the exact pulled-back magnetic diffusion evolution with the actual
+        - math:
+          - generic: ρ
+          - generic: (
+          - generic: t
+          - generic: )
+        - generic: ρ(t)
+        - text: ;
+        - math:
+          - generic: R
+        - generic: R
+        - text: is a product of commuting heat factors, fixes constants, and has a uniform mean-zero gap;
+        - math:
+          - generic: ℓ
+        - generic: ℓ
+        - text: is the maximum full signed microcell length;
+        - text: resets occupy a fraction at most
+        - math:
+          - generic: β
+        - generic: β
+        - text: of each cell;
+        - math:
+          - generic: G
+        - generic: G
+        - text: is a fixed polynomial envelope for spatial coefficients, inverse ellipticity, form bounds, and fixed-order spatial energy estimates;
+        - math:
+          - generic: T
+          - generic: ≤
+          - generic: c
+          - generic: /
+          - generic: G
+        - generic: T ≤
+        - generic: c/G
+        - text: ;
+        - text: the estimate holds on the
+        - strong:
+          - text: entire solenoidal
+          - math:
+            - generic: H
+            - generic: "1"
+          - text: H
+          - generic: "1"
+          - text: space
+        - text: ", including constants."
+      - paragraph:
+        - text: No time derivatives of the pulled-back coefficients, no
+        - math:
+          - generic: H
+        - generic: H
+        - text: "-maximal regularity theorem, and no multiplication of an error by the number of cells are used."
+      - heading "1. Reference choice" [level=3]
+      - paragraph:
+        - text: Freeze the viscosity
+        - strong: in the proof
+        - text: "once per complete signed stirring cell:"
+      - math:
+        - generic: ν
+        - generic: j
+        - generic: =
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: j
+        - generic: )
+        - generic: .
+      - text: ν
+      - generic: j
+      - text: =
+      - text: ν(
+      - text: t
+      - generic: j
+      - text: ).
+      - paragraph:
+        - text: Use the old corrected constant-viscosity Stokes reference with parameter
+        - math:
+          - generic: ν
+          - generic: j
+        - text: ν
+        - generic: j
+        - text: for all twelve signed/sine-cosine/cyclic phases in that cell. Thus all those phases have the identical scalar profile required for exact averaging.
+      - paragraph: "The emitted force is unchanged:"
+      - math:
+        - generic: f
+        - generic: =
+        - generic: a
+        - generic: h
+        - generic: −
+        - generic: "2"
+        - generic: r
+        - generic: ′
+        - generic: ′
+        - generic: (
+        - generic: t
+        - generic: /
+        - generic: h
+        - generic: )
+        - generic: F
+        - generic: .
+      - generic: f =
+      - text: a
+      - text: h
+      - generic: −2
+      - text: r
+      - generic: ′′
+      - text: (t/h)F.
+      - paragraph: The reference is never evaluated by the compiler.
+      - paragraph: For each stirring phase, the difference between the actual equation and this reference adds
+      - math:
+        - generic: (
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: −
+        - generic: ν
+        - generic: j
+        - generic: )
+        - generic: Δ
+        - generic: w
+        - generic: ˉ
+        - generic: ν
+        - generic: j
+        - generic: .
+      - generic: (ν(t) −
+      - text: ν
+      - generic: j
+      - text: )Δ
+      - generic: w
+      - text: ˉ
+      - text: ν
+      - generic: j
+      - text: .
+      - paragraph:
+        - text: Since the full cell has length
+        - math:
+          - generic: ℓ
+          - generic: ≤
+          - generic: C
+          - generic: h
+        - generic: ℓ ≤
+        - generic: Ch
+        - text: ","
+      - math:
+        - generic: ∥
+        - generic: (
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: −
+        - generic: ν
+        - generic: j
+        - generic: )
+        - generic: Δ
+        - generic: w
+        - generic: ˉ
+        - generic: ν
+        - generic: j
+        - generic: ∥
+        - generic: H
+        - generic: m
+        - generic: ≤
+        - generic: C
+        - generic: m
+        - generic: Λ
+        - generic: a
+      - generic: ∥(ν(t) −
+      - text: ν
+      - generic: j
+      - text: )Δ
+      - generic: w
+      - text: ˉ
+      - text: ν
+      - generic: j
+      - text: ∥
+      - text: H
+      - generic: m
+      - text: ≤
+      - text: C
+      - generic: m
+      - text: Λa
+      - paragraph:
+        - text: at each needed fixed order. Its
+        - math:
+          - generic: L
+          - generic: t
+          - generic: "2"
+          - generic: L
+          - generic: x
+          - generic: "2"
+        - text: L
+        - generic: t
+        - generic: "2"
+        - text: L
+        - generic: x
+        - generic: "2"
+        - text: budget is
+      - math:
+        - generic: C
+        - generic: Λ
+        - generic: a
+        - generic: h
+        - generic: .
+      - text: CΛa
+      - generic: h
+      - text: .
+      - paragraph: This is a local smooth source to be paid in the velocity estimate, not a contribution that must fit the physical disturbance tolerance.
+      - paragraph: A useful local smallness cap is consequently
+      - math:
+        - generic: h
+        - generic: ≤
+        - generic: (
+        - generic: r
+        - generic: C
+        - generic: G
+        - generic: Λ
+        - generic: a
+        - generic: )
+        - generic: "2"
+        - generic: ","
+      - generic: h ≤
+      - generic: (
+      - generic: CGΛa
+      - generic: r
+      - generic: )
+      - generic: "2"
+      - text: ","
+      - paragraph: in addition to the old Lorentz and corrected-reference caps.
+      - paragraph:
+        - strong: "Important:"
+        - text: reset carriers must freeze viscosity on their own short reset/word clock, not inherit the frozen value from the entire surrounding cell. Otherwise a
+        - math:
+          - generic: Λ
+          - generic: ℓ
+          - generic: /
+          - generic: d
+          - generic: r
+          - generic: e
+          - generic: s
+          - generic: e
+          - generic: t
+        - text: Λℓ/
+        - text: d
+        - generic: reset
+        - text: source can appear. This is the reset issue assigned to the other agent.
+      - heading "2. The actual magnetic forms have a common domain" [level=3]
+      - paragraph:
+        - text: Let
+        - math:
+          - generic: w
+        - generic: w
+        - text: denote the nominal reference carrier, excluding its small viscosity-affine correction. Put
+      - math:
+        - generic: A
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: =
+        - generic: ρ
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: M
+        - generic: w
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: −
+        - generic: "1"
+        - generic: Δ
+        - generic: M
+        - generic: w
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: .
+      - generic: A(t) =
+      - text: ρ(t)
+      - text: M
+      - generic: w
+      - text: (t
+      - text: )
+      - generic: −1
+      - text: Δ
+      - text: M
+      - generic: w
+      - text: (t).
+      - paragraph: Conjugating the Laplacian by a vector-field pushforward gives a second-order differential operator
+      - math:
+        - generic: A
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: q
+        - generic: =
+        - generic: ρ
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: "["
+        - generic: g
+        - generic: i
+        - generic: j
+        - generic: (
+        - generic: t
+        - generic: ","
+        - generic: x
+        - generic: )
+        - generic: ∂
+        - generic: i
+        - generic: j
+        - generic: q
+        - generic: +
+        - generic: b
+        - generic: j
+        - generic: (
+        - generic: t
+        - generic: ","
+        - generic: x
+        - generic: )
+        - generic: ∂
+        - generic: j
+        - generic: q
+        - generic: +
+        - generic: c
+        - generic: (
+        - generic: t
+        - generic: ","
+        - generic: x
+        - generic: )
+        - generic: q
+        - generic: "]"
+        - generic: .
+        - generic: (2)
+      - generic: A(t)q =
+      - text: ρ(t)
+      - generic: "["
+      - text: g
+      - generic: ij
+      - text: (t, x)
+      - text: ∂
+      - generic: ij
+      - text: q +
+      - text: b
+      - generic: j
+      - text: (t, x)
+      - text: ∂
+      - generic: j
+      - text: q + c(t, x)q
+      - generic: "]"
+      - text: .
+      - text: (
+      - generic: "2"
+      - text: )
+      - paragraph:
+        - text: The principal matrix
+        - math:
+          - generic: g
+          - generic: i
+          - generic: j
+        - text: g
+        - generic: ij
+        - text: is scalar in the vector components and positive definite. The stretching matrices cancel in the principal symbol.
+      - paragraph: "The nominal geometry is uniformly controlled:"
+      - list:
+        - text: in a stirring phase, it is one fundamental shear of impulse
+        - math:
+          - generic: O
+          - generic: (
+          - generic: a
+          - generic: )
+        - generic: O(a)
+        - text: ;
+        - listitem: in a reset, all completed underlying return words disappear, leaving one partial fixed word;
+        - listitem: the viscosity-affine correction stays in the perturbation velocity.
+      - paragraph: Hence coefficient derivatives and inverse ellipticity through every required fixed order have polynomial bounds independent of the number of cells and the compressed durations.
+      - paragraph: Take
+      - math:
+        - generic: H
+        - generic: =
+        - generic: H
+        - generic: s
+        - generic: o
+        - generic: l
+        - generic: "1"
+        - generic: (
+        - generic: T
+        - generic: "3"
+        - generic: )
+        - generic: ","
+        - generic: V
+        - generic: =
+        - generic: H
+        - generic: s
+        - generic: o
+        - generic: l
+        - generic: "2"
+        - generic: (
+        - generic: T
+        - generic: "3"
+        - generic: )
+        - generic: ","
+      - generic: H =
+      - text: H
+      - generic: sol
+      - generic: "1"
+      - text: (
+      - text: T
+      - generic: "3"
+      - text: ), V =
+      - text: H
+      - generic: sol
+      - generic: "2"
+      - text: (
+      - text: T
+      - generic: "3"
+      - text: ),
+      - paragraph: including constants. Define
+      - math:
+        - generic: a
+        - generic: t
+        - generic: (
+        - generic: u
+        - generic: ","
+        - generic: v
+        - generic: )
+        - generic: =
+        - generic: −
+        - generic: ⟨
+        - generic: A
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: u
+        - generic: ","
+        - generic: (
+        - generic: I
+        - generic: −
+        - generic: Δ
+        - generic: )
+        - generic: v
+        - generic: ⟩
+        - generic: L
+        - generic: "2"
+        - generic: .
+        - generic: (3)
+      - text: a
+      - generic: t
+      - text: (u, v) =
+      - generic: −⟨A(t)u, (I −
+      - text: Δ)v
+      - text: ⟩
+      - text: L
+      - generic: "2"
+      - text: .
+      - text: (
+      - generic: "3"
+      - text: )
+      - paragraph:
+        - text: This is the weak extension of
+        - math:
+          - generic: −
+          - generic: ⟨
+          - generic: A
+          - generic: (
+          - generic: t
+          - generic: )
+          - generic: u
+          - generic: ","
+          - generic: v
+          - generic: ⟩
+          - generic: H
+          - generic: "1"
+        - text: −⟨A(t)u, v
+        - text: ⟩
+        - text: H
+        - generic: "1"
+        - text: . It obeys
+      - math:
+        - generic: ∣
+        - generic: a
+        - generic: t
+        - generic: (
+        - generic: u
+        - generic: ","
+        - generic: v
+        - generic: )
+        - generic: ∣
+        - generic: ≤
+        - generic: G
+        - generic: ∥
+        - generic: u
+        - generic: ∥
+        - generic: H
+        - generic: "2"
+        - generic: ∥
+        - generic: v
+        - generic: ∥
+        - generic: H
+        - generic: "2"
+        - generic: ","
+        - generic: (4)
+      - text: ∣
+      - text: a
+      - generic: t
+      - text: (u, v)∣ ≤
+      - text: G∥u
+      - text: ∥
+      - text: H
+      - generic: "2"
+      - text: ∥v
+      - text: ∥
+      - text: H
+      - generic: "2"
+      - text: ","
+      - text: (
+      - generic: "4"
+      - text: )
+      - paragraph:
+        - text: and, after enlarging the fixed polynomial envelope
+        - math:
+          - generic: G
+        - generic: G
+        - text: ","
+      - math:
+        - generic: Re
+        - generic: ⁡
+        - generic: a
+        - generic: t
+        - generic: (
+        - generic: u
+        - generic: ","
+        - generic: u
+        - generic: )
+        - generic: ≥
+        - generic: G
+        - generic: −
+        - generic: "1"
+        - generic: ∥
+        - generic: u
+        - generic: ∥
+        - generic: H
+        - generic: "2"
+        - generic: "2"
+        - generic: −
+        - generic: G
+        - generic: ∥
+        - generic: u
+        - generic: ∥
+        - generic: H
+        - generic: "1"
+        - generic: "2"
+        - generic: .
+        - generic: (5)
+      - generic: Re
+      - text: a
+      - generic: t
+      - text: (u, u) ≥
+      - text: G
+      - generic: −1
+      - text: ∥u
+      - text: ∥
+      - text: H
+      - generic: "2"
+      - generic: "2"
+      - text: −
+      - text: G∥u
+      - text: ∥
+      - text: H
+      - generic: "1"
+      - generic: "2"
+      - text: .
+      - text: (
+      - generic: "5"
+      - text: )
+      - paragraph:
+        - text: These estimates hold on the full space. The negative
+        - math:
+          - generic: H
+          - generic: "1"
+        - text: H
+        - generic: "1"
+        - text: term accommodates the undissipated constants.
+      - paragraph: "Integration by parts establishes (5): the leading terms give positive first- and second-derivative energies, and coefficient commutators are absorbed by Young’s inequality. No temporal derivative occurs."
+      - heading "3. Freeze resistivity by the supplied variational comparison" [level=3]
+      - paragraph:
+        - text: On cell
+        - math:
+          - generic: j
+        - generic: j
+        - text: ", define"
+      - math:
+        - generic: ρ
+        - generic: j
+        - generic: =
+        - generic: ρ
+        - generic: (
+        - generic: t
+        - generic: j
+        - generic: )
+        - generic: ","
+        - generic: A
+        - generic: ~
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: =
+        - generic: ρ
+        - generic: j
+        - generic: M
+        - generic: w
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: −
+        - generic: "1"
+        - generic: Δ
+        - generic: M
+        - generic: w
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: .
+      - text: ρ
+      - generic: j
+      - text: =
+      - text: ρ(
+      - text: t
+      - generic: j
+      - text: ),
+      - generic: A
+      - text: (t) =
+      - text: ρ
+      - generic: j
+      - text: M
+      - generic: w
+      - text: (t
+      - text: )
+      - generic: −1
+      - text: Δ
+      - text: M
+      - generic: w
+      - text: (t).
+      - paragraph: Then
+      - math:
+        - generic: ∣
+        - generic: ρ
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: −
+        - generic: ρ
+        - generic: j
+        - generic: ∣
+        - generic: ≤
+        - generic: Λ
+        - generic: ℓ
+        - generic: .
+      - generic: ∣ρ(t) −
+      - text: ρ
+      - generic: j
+      - text: ∣ ≤
+      - generic: Λℓ.
+      - paragraph:
+        - text: The forms of
+        - math:
+          - generic: A
+        - generic: A
+        - text: and
+        - math:
+          - generic: A
+          - generic: ~
+        - generic: A
+        - text: have the same domain
+        - math:
+          - generic: V
+        - generic: V
+        - text: ", common bounds (4)–(5), and"
+      - math:
+        - generic: ∣
+        - generic: a
+        - generic: t
+        - generic: (
+        - generic: u
+        - generic: ","
+        - generic: v
+        - generic: )
+        - generic: −
+        - generic: a
+        - generic: ~
+        - generic: t
+        - generic: (
+        - generic: u
+        - generic: ","
+        - generic: v
+        - generic: )
+        - generic: ∣
+        - generic: ≤
+        - generic: G
+        - generic: Λ
+        - generic: ℓ
+        - generic: ∥
+        - generic: u
+        - generic: ∥
+        - generic: H
+        - generic: "2"
+        - generic: ∥
+        - generic: v
+        - generic: ∥
+        - generic: H
+        - generic: "2"
+        - generic: .
+      - text: ∣
+      - text: a
+      - generic: t
+      - text: (u, v) −
+      - generic: a
+      - generic: t
+      - text: (u, v)∣ ≤
+      - text: GΛℓ∥u
+      - text: ∥
+      - text: H
+      - generic: "2"
+      - text: ∥v
+      - text: ∥
+      - text: H
+      - generic: "2"
+      - text: .
+      - paragraph: The supplied whole-macro variational comparison therefore gives
+      - math:
+        - generic: ∥
+        - generic: S
+        - generic: a
+        - generic: c
+        - generic: t
+        - generic: u
+        - generic: a
+        - generic: l
+        - generic: (
+        - generic: T
+        - generic: ","
+        - generic: "0"
+        - generic: )
+        - generic: −
+        - generic: S
+        - generic: ~
+        - generic: (
+        - generic: T
+        - generic: ","
+        - generic: "0"
+        - generic: )
+        - generic: ∥
+        - generic: H
+        - generic: "1"
+        - generic: →
+        - generic: H
+        - generic: "1"
+        - generic: ≤
+        - generic: "12"
+        - generic: G
+        - generic: "2"
+        - generic: Λ
+        - generic: ℓ
+        - generic: (6)
+      - text: ∥
+      - text: S
+      - generic: actual
+      - text: (T, 0) −
+      - generic: S
+      - text: (T, 0)
+      - text: ∥
+      - text: H
+      - generic: "1"
+      - text: →
+      - text: H
+      - generic: "1"
+      - text: ≤ 12
+      - text: G
+      - generic: "2"
+      - text: Λℓ
+      - text: (
+      - generic: "6"
+      - text: )
+      - paragraph:
+        - text: when
+        - math:
+          - generic: G
+          - generic: T
+          - generic: ≤
+          - generic: "1"
+        - generic: GT ≤
+        - generic: "1"
+        - text: .
+      - paragraph: This is one global comparison. It is not a sum of cellwise rough-data comparison errors.
+      - heading "4. Uniform spatial smoothing without temporal maximal regularity" [level=3]
+      - paragraph:
+        - text: For
+        - math:
+          - generic: A
+          - generic: ~
+          - generic: (
+          - generic: t
+          - generic: )
+        - generic: A
+        - text: (t)
+        - text: ", spatial energy estimates at orders"
+        - math:
+          - generic: m
+          - generic: =
+          - generic: "1"
+          - generic: ","
+          - generic: "2"
+          - generic: ","
+          - generic: "3"
+        - generic: m =
+        - generic: 1, 2, 3
+        - text: have the form
+      - math:
+        - generic: E
+        - generic: m
+        - generic: ′
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: +
+        - generic: G
+        - generic: −
+        - generic: "1"
+        - generic: E
+        - generic: m
+        - generic: +
+        - generic: "1"
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ≤
+        - generic: G
+        - generic: E
+        - generic: m
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ","
+        - generic: E
+        - generic: m
+        - generic: =
+        - generic: ∥
+        - generic: u
+        - generic: ∥
+        - generic: H
+        - generic: m
+        - generic: "2"
+        - generic: .
+        - generic: (7)
+      - text: E
+      - generic: m
+      - generic: ′
+      - text: (t) +
+      - text: G
+      - generic: −1
+      - text: E
+      - generic: m+1
+      - text: (t) ≤
+      - text: G
+      - text: E
+      - generic: m
+      - text: (t),
+      - text: E
+      - generic: m
+      - text: =
+      - text: ∥u
+      - text: ∥
+      - text: H
+      - generic: m
+      - generic: "2"
+      - text: .
+      - text: (
+      - generic: "7"
+      - text: )
+      - paragraph: They use only spatial coefficient derivatives.
+      - paragraph:
+        - text: For
+        - math:
+          - generic: T
+          - generic: ≤
+          - generic: c
+          - generic: /
+          - generic: G
+        - generic: T ≤
+        - generic: c/G
+        - text: ", (7), followed by multiplication of the"
+        - math:
+          - generic: m
+          - generic: =
+          - generic: "2"
+        - generic: m =
+        - generic: "2"
+        - text: estimate by
+        - math:
+          - generic: t
+        - generic: t
+        - text: ", and of the"
+        - math:
+          - generic: m
+          - generic: =
+          - generic: "3"
+        - generic: m =
+        - generic: "3"
+        - text: estimate by
+        - math:
+          - generic: t
+          - generic: "2"
+        - text: t
+        - generic: "2"
+        - text: ", gives"
+      - math:
+        - generic: ∥
+        - generic: S
+        - generic: ~
+        - generic: (
+        - generic: t
+        - generic: ","
+        - generic: s
+        - generic: )
+        - generic: ∥
+        - generic: H
+        - generic: "1"
+        - generic: →
+        - generic: H
+        - generic: "2"
+        - generic: ≤
+        - generic: C
+        - generic: G
+        - generic: "1"
+        - generic: /
+        - generic: "2"
+        - generic: (
+        - generic: t
+        - generic: −
+        - generic: s
+        - generic: )
+        - generic: −
+        - generic: "1"
+        - generic: /
+        - generic: "2"
+        - generic: ","
+        - generic: (8)
+      - text: ∥
+      - generic: S
+      - text: (t, s)
+      - text: ∥
+      - text: H
+      - generic: "1"
+      - text: →
+      - text: H
+      - generic: "2"
+      - text: ≤
+      - text: C
+      - text: G
+      - generic: 1/2
+      - text: (t −
+      - text: s
+      - text: )
+      - generic: −1/2
+      - text: ","
+      - text: (
+      - generic: "8"
+      - text: )
+      - math:
+        - generic: ∥
+        - generic: S
+        - generic: ~
+        - generic: (
+        - generic: t
+        - generic: ","
+        - generic: s
+        - generic: )
+        - generic: ∥
+        - generic: H
+        - generic: "1"
+        - generic: →
+        - generic: H
+        - generic: "3"
+        - generic: ≤
+        - generic: C
+        - generic: G
+        - generic: (
+        - generic: t
+        - generic: −
+        - generic: s
+        - generic: )
+        - generic: −
+        - generic: "1"
+        - generic: ","
+        - generic: (9)
+      - text: ∥
+      - generic: S
+      - text: (t, s)
+      - text: ∥
+      - text: H
+      - generic: "1"
+      - text: →
+      - text: H
+      - generic: "3"
+      - text: ≤
+      - generic: CG(t −
+      - text: s
+      - text: )
+      - generic: −1
+      - text: ","
+      - text: (
+      - generic: "9"
+      - text: )
+      - paragraph: and
+      - math:
+        - generic: ∫
+        - generic: s
+        - generic: t
+        - generic: ∥
+        - generic: S
+        - generic: ~
+        - generic: (
+        - generic: r
+        - generic: ","
+        - generic: s
+        - generic: )
+        - generic: x
+        - generic: ∥
+        - generic: H
+        - generic: "2"
+        - generic: "2"
+        - generic: d
+        - generic: r
+        - generic: ≤
+        - generic: C
+        - generic: G
+        - generic: ∥
+        - generic: x
+        - generic: ∥
+        - generic: H
+        - generic: "1"
+        - generic: "2"
+        - generic: .
+        - generic: (10)
+      - text: ∫
+      - generic: s
+      - generic: t
+      - text: ∥
+      - generic: S
+      - text: (r, s)x
+      - text: ∥
+      - text: H
+      - generic: "2"
+      - generic: "2"
+      - text: dr ≤
+      - text: CG∥x
+      - text: ∥
+      - text: H
+      - generic: "1"
+      - generic: "2"
+      - text: .
+      - text: (
+      - generic: "10"
+      - text: )
+      - paragraph:
+        - text: Inhomogeneous norms are permitted because
+        - math:
+          - generic: T
+          - generic: ≤
+          - generic: "1"
+        - generic: T ≤
+        - generic: "1"
+        - text: ; constant modes contribute bounded terms.
+      - paragraph:
+        - text: These estimates can be established first for Fourier Galerkin systems, uniformly in the cutoff, then passed to the limit. This avoids any appeal to abstract
+        - math:
+          - generic: H
+        - generic: H
+        - text: "-maximal regularity."
+      - heading "5. Averaging with arbitrary frozen cell parameters" [level=3]
+      - paragraph:
+        - text: Within cell
+        - math:
+          - generic: j
+        - generic: j
+        - text: ", all stirring phases use the same frozen"
+        - math:
+          - generic: ν
+          - generic: j
+        - text: ν
+        - generic: j
+        - text: ", and"
+        - math:
+          - generic: A
+          - generic: ~
+        - generic: A
+        - text: has the constant prefactor
+        - math:
+          - generic: ρ
+          - generic: j
+        - text: ρ
+        - generic: j
+        - text: .
+      - paragraph:
+        - text: Let
+        - math:
+          - generic: θ
+          - generic: j
+          - generic: ≤
+          - generic: β
+        - text: θ
+        - generic: j
+        - text: ≤
+        - generic: β
+        - text: be the reset fraction of that cell. The signed stirring average is scalar heat, so define
+      - math:
+        - generic: D
+        - generic: j
+        - generic: =
+        - generic: d
+        - generic: j
+        - generic: Δ
+        - generic: ","
+      - text: D
+      - generic: j
+      - text: =
+      - text: d
+      - generic: j
+      - text: Δ,
+      - paragraph:
+        - text: where
+        - math:
+          - generic: d
+          - generic: j
+        - text: d
+        - generic: j
+        - text: is the stirring heat coefficient weighted by
+        - math:
+          - generic: "1"
+          - generic: −
+          - generic: θ
+          - generic: j
+        - generic: 1 −
+        - text: θ
+        - generic: j
+        - text: ", plus"
+        - math:
+          - generic: ρ
+          - generic: j
+          - generic: θ
+          - generic: j
+        - text: ρ
+        - generic: j
+        - text: θ
+        - generic: j
+        - text: for a baseline reset heat term. Then
+      - math:
+        - generic: d
+        - generic: j
+        - generic: ≥
+        - generic: c
+        - generic: ρ
+        - generic: "0"
+        - generic: a
+        - generic: "2"
+        - generic: .
+        - generic: (11)
+      - text: d
+      - generic: j
+      - text: ≥
+      - text: c
+      - text: ρ
+      - generic: "0"
+      - text: a
+      - generic: "2"
+      - text: .
+      - text: (
+      - generic: "11"
+      - text: )
+      - paragraph: The average remaining reset operator is
+      - math:
+        - generic: E
+        - generic: j
+        - generic: =
+        - generic: "1"
+        - generic: ℓ
+        - generic: j
+        - generic: ∫
+        - generic: I
+        - generic: j
+        - generic: A
+        - generic: ~
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: d
+        - generic: t
+        - generic: −
+        - generic: D
+        - generic: j
+        - generic: .
+      - text: E
+      - generic: j
+      - text: =
+      - text: ℓ
+      - generic: j
+      - generic: "1"
+      - text: ∫
+      - text: I
+      - generic: j
+      - generic: A
+      - text: (t) dt −
+      - text: D
+      - generic: j
+      - text: .
+      - paragraph:
+        - text: Its differential coefficient bounds, and corresponding form bound, are at most
+        - math:
+          - generic: C
+          - generic: G
+          - generic: β
+        - generic: CGβ
+        - text: .
+      - paragraph: Define the cellwise primitive
+      - math:
+        - generic: K
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: =
+        - generic: ∫
+        - generic: t
+        - generic: j
+        - generic: t
+        - generic: (
+        - generic: A
+        - generic: ~
+        - generic: (
+        - generic: s
+        - generic: )
+        - generic: −
+        - generic: D
+        - generic: j
+        - generic: −
+        - generic: E
+        - generic: j
+        - generic: )
+        - generic: d
+        - generic: s
+        - generic: .
+        - generic: (12)
+      - generic: K(t) =
+      - text: ∫
+      - text: t
+      - generic: j
+      - generic: t
+      - generic: (
+      - generic: A
+      - text: (s) −
+      - text: D
+      - generic: j
+      - text: −
+      - text: E
+      - generic: j
+      - generic: )
+      - text: ds.
+      - text: (
+      - generic: "12"
+      - text: )
+      - paragraph:
+        - text: It vanishes at both endpoints of every cell. Its second-order differential coefficient norms are
+        - math:
+          - generic: O
+          - generic: (
+          - generic: G
+          - generic: ℓ
+          - generic: )
+        - generic: O(Gℓ)
+        - text: ", uniformly across cells, even though"
+        - math:
+          - generic: ν
+          - generic: j
+          - generic: ","
+          - generic: ρ
+          - generic: j
+        - text: ν
+        - generic: j
+        - text: ","
+        - text: ρ
+        - generic: j
+        - text: vary arbitrarily.
+      - paragraph: Consequently,
+      - math:
+        - generic: ∥
+        - generic: K
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ∥
+        - generic: H
+        - generic: "3"
+        - generic: →
+        - generic: H
+        - generic: "1"
+        - generic: ≤
+        - generic: C
+        - generic: G
+        - generic: ℓ
+        - generic: .
+        - generic: (13)
+      - text: ∥K(t)
+      - text: ∥
+      - text: H
+      - generic: "3"
+      - text: →
+      - text: H
+      - generic: "1"
+      - text: ≤
+      - generic: CGℓ.
+      - text: (
+      - generic: "13"
+      - text: )
+      - paragraph:
+        - text: Its
+        - math:
+          - generic: H
+          - generic: "1"
+        - text: H
+        - generic: "1"
+        - text: "-adjoint has the same bound. Indeed, writing"
+        - math:
+          - generic: J
+          - generic: =
+          - generic: I
+          - generic: −
+          - generic: Δ
+        - generic: J =
+        - generic: I −
+        - generic: Δ
+        - text: ","
+      - math:
+        - generic: K
+        - generic: †
+        - generic: H
+        - generic: "1"
+        - generic: =
+        - generic: J
+        - generic: −
+        - generic: "1"
+        - generic: K
+        - generic: ∗
+        - generic: J
+      - text: K
+      - text: †
+      - text: H
+      - generic: "1"
+      - text: =
+      - text: J
+      - generic: −1
+      - text: K
+      - generic: ∗
+      - text: J
+      - paragraph: with the solenoidal projection understood. Since
+      - math:
+        - generic: K
+        - generic: ∗
+        - generic: ":"
+        - generic: H
+        - generic: "1"
+        - generic: →
+        - generic: H
+        - generic: −
+        - generic: "1"
+      - text: K
+      - generic: ∗
+      - text: ":"
+      - text: H
+      - generic: "1"
+      - text: →
+      - text: H
+      - generic: −1
+      - paragraph:
+        - text: has norm
+        - math:
+          - generic: O
+          - generic: (
+          - generic: G
+          - generic: ℓ
+          - generic: )
+        - generic: O(Gℓ)
+        - text: ","
+      - math:
+        - generic: ∥
+        - generic: K
+        - generic: †
+        - generic: H
+        - generic: "1"
+        - generic: ∥
+        - generic: H
+        - generic: "3"
+        - generic: →
+        - generic: H
+        - generic: "1"
+        - generic: ≤
+        - generic: C
+        - generic: G
+        - generic: ℓ
+        - generic: .
+        - generic: (14)
+      - text: ∥
+      - text: K
+      - text: †
+      - text: H
+      - generic: "1"
+      - text: ∥
+      - text: H
+      - generic: "3"
+      - text: →
+      - text: H
+      - generic: "1"
+      - text: ≤
+      - generic: CGℓ.
+      - text: (
+      - generic: "14"
+      - text: )
+      - paragraph:
+        - text: Let
+        - math:
+          - generic: D
+          - generic: (
+          - generic: t
+          - generic: )
+          - generic: =
+          - generic: D
+          - generic: j
+        - generic: D(t) =
+        - text: D
+        - generic: j
+        - text: on cell
+        - math:
+          - generic: j
+        - generic: j
+        - text: ", and let"
+        - math:
+          - generic: R
+        - generic: R
+        - text: "be its evolution. All factors commute:"
+      - math:
+        - generic: R
+        - generic: (
+        - generic: T
+        - generic: ","
+        - generic: "0"
+        - generic: )
+        - generic: =
+        - generic: exp
+        - generic: ⁡
+        - generic: "["
+        - generic: (
+        - generic: ∑
+        - generic: j
+        - generic: ℓ
+        - generic: j
+        - generic: d
+        - generic: j
+        - generic: )
+        - generic: Δ
+        - generic: "]"
+        - generic: .
+        - generic: (15)
+      - generic: R(T, 0) =
+      - text: exp
+      - generic: "["
+      - generic: (
+      - generic: j
+      - generic: ∑
+      - text: ℓ
+      - generic: j
+      - text: d
+      - generic: j
+      - generic: )
+      - text: Δ
+      - generic: "]"
+      - text: .
+      - text: (
+      - generic: "15"
+      - text: )
+      - heading "6. Direct full-space duality estimate" [level=3]
+      - paragraph:
+        - text: For
+        - math:
+          - generic: x
+          - generic: ","
+          - generic: "y"
+          - generic: ∈
+          - generic: H
+          - generic: s
+          - generic: o
+          - generic: l
+          - generic: "1"
+        - generic: x, y ∈
+        - text: H
+        - generic: sol
+        - generic: "1"
+        - text: ", set"
+      - math:
+        - generic: u
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: =
+        - generic: S
+        - generic: ~
+        - generic: (
+        - generic: t
+        - generic: ","
+        - generic: "0"
+        - generic: )
+        - generic: x
+        - generic: ","
+        - generic: v
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: =
+        - generic: R
+        - generic: (
+        - generic: T
+        - generic: ","
+        - generic: t
+        - generic: )
+        - generic: "y"
+        - generic: .
+      - generic: u(t) =
+      - generic: S
+      - text: (t, 0)x, v(t) =
+      - generic: R(T, t)y.
+      - paragraph: Forward/backward duality gives
+      - math:
+        - generic: ⟨
+        - generic: (
+        - generic: S
+        - generic: ~
+        - generic: (
+        - generic: T
+        - generic: ","
+        - generic: "0"
+        - generic: )
+        - generic: −
+        - generic: R
+        - generic: (
+        - generic: T
+        - generic: ","
+        - generic: "0"
+        - generic: )
+        - generic: )
+        - generic: x
+        - generic: ","
+        - generic: "y"
+        - generic: ⟩
+        - generic: H
+        - generic: "1"
+        - generic: =
+        - generic: ∫
+        - generic: "0"
+        - generic: T
+        - generic: ⟨
+        - generic: (
+        - generic: A
+        - generic: ~
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: −
+        - generic: D
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: )
+        - generic: u
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ","
+        - generic: v
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ⟩
+        - generic: H
+        - generic: "1"
+        - generic: d
+        - generic: t
+        - generic: .
+        - generic: (16)
+      - text: ⟨(
+      - generic: S
+      - text: (T, 0) −
+      - text: R(T, 0))x, y
+      - text: ⟩
+      - text: H
+      - generic: "1"
+      - text: =
+      - text: ∫
+      - generic: "0"
+      - generic: T
+      - text: ⟨(
+      - generic: A
+      - text: (t) −
+      - text: D(t))u(t), v(t)
+      - text: ⟩
+      - text: H
+      - generic: "1"
+      - text: dt.
+      - text: (
+      - generic: "16"
+      - text: )
+      - paragraph:
+        - text: The
+        - math:
+          - generic: E
+          - generic: j
+        - text: E
+        - generic: j
+        - text: "part is bounded by the two energy estimates:"
+      - math:
+        - generic: ∣
+        - generic: ∫
+        - generic: "0"
+        - generic: T
+        - generic: ⟨
+        - generic: E
+        - generic: j
+        - generic: u
+        - generic: ","
+        - generic: v
+        - generic: ⟩
+        - generic: H
+        - generic: "1"
+        - generic: d
+        - generic: t
+        - generic: ∣
+        - generic: ≤
+        - generic: C
+        - generic: G
+        - generic: "2"
+        - generic: β
+        - generic: ∥
+        - generic: x
+        - generic: ∥
+        - generic: H
+        - generic: "1"
+        - generic: ∥
+        - generic: "y"
+        - generic: ∥
+        - generic: H
+        - generic: "1"
+        - generic: .
+        - generic: (17)
+      - text: ∫
+      - generic: "0"
+      - generic: T
+      - text: ⟨
+      - text: E
+      - generic: j
+      - text: u, v
+      - text: ⟩
+      - text: H
+      - generic: "1"
+      - text: dt
+      - text: ≤
+      - text: C
+      - text: G
+      - generic: "2"
+      - text: β∥x
+      - text: ∥
+      - text: H
+      - generic: "1"
+      - text: ∥y
+      - text: ∥
+      - text: H
+      - generic: "1"
+      - text: .
+      - text: (
+      - generic: "17"
+      - text: )
+      - paragraph:
+        - text: For the
+        - math:
+          - generic: K
+          - generic: t
+        - text: K
+        - generic: t
+        - text: part, choose an endpoint layer length
+        - math:
+          - generic: d
+          - generic: ≤
+          - generic: T
+          - generic: /
+          - generic: "4"
+        - generic: d ≤
+        - generic: T/4
+        - text: .
+      - paragraph:
+        - text: "On"
+        - math:
+          - generic: "["
+          - generic: "0"
+          - generic: ","
+          - generic: d
+          - generic: "]"
+        - generic: "[0, d]"
+        - text: and
+        - math:
+          - generic: "["
+          - generic: T
+          - generic: −
+          - generic: d
+          - generic: ","
+          - generic: T
+          - generic: "]"
+        - generic: "[T −"
+        - generic: d, T]
+        - text: ", the"
+        - math:
+          - generic: H
+          - generic: "2"
+        - text: H
+        - generic: "2"
+        - text: smoothing and energy estimates yield
+      - math:
+        - generic: endpoint contribution
+        - generic: ≤
+        - generic: C
+        - generic: G
+        - generic: c
+        - generic: d
+        - generic: /
+        - generic: T
+        - generic: ∥
+        - generic: x
+        - generic: ∥
+        - generic: H
+        - generic: "1"
+        - generic: ∥
+        - generic: "y"
+        - generic: ∥
+        - generic: H
+        - generic: "1"
+        - generic: .
+        - generic: (18)
+      - generic: endpoint contribution
+      - text: ≤
+      - text: C
+      - text: G
+      - generic: c
+      - generic: d/T
+      - text: ∥x
+      - text: ∥
+      - text: H
+      - generic: "1"
+      - text: ∥y
+      - text: ∥
+      - text: H
+      - generic: "1"
+      - text: .
+      - text: (
+      - generic: "18"
+      - text: )
+      - paragraph:
+        - text: "On"
+        - math:
+          - generic: "["
+          - generic: d
+          - generic: ","
+          - generic: T
+          - generic: −
+          - generic: d
+          - generic: "]"
+        - generic: "[d, T −"
+        - generic: d]
+        - text: ", integrate"
+        - math:
+          - generic: K
+          - generic: t
+        - text: K
+        - generic: t
+        - text: "by parts:"
+      - math:
+        - generic: ∫
+        - generic: d
+        - generic: T
+        - generic: −
+        - generic: d
+        - generic: ⟨
+        - generic: K
+        - generic: t
+        - generic: u
+        - generic: ","
+        - generic: v
+        - generic: ⟩
+        - generic: H
+        - generic: "1"
+        - generic: d
+        - generic: t
+        - generic: =
+        - generic: "["
+        - generic: ⟨
+        - generic: K
+        - generic: u
+        - generic: ","
+        - generic: v
+        - generic: ⟩
+        - generic: H
+        - generic: "1"
+        - generic: "]"
+        - generic: d
+        - generic: T
+        - generic: −
+        - generic: d
+        - generic: −
+        - generic: ∫
+        - generic: d
+        - generic: T
+        - generic: −
+        - generic: d
+        - generic: ⟨
+        - generic: K
+        - generic: A
+        - generic: ~
+        - generic: u
+        - generic: ","
+        - generic: v
+        - generic: ⟩
+        - generic: H
+        - generic: "1"
+        - generic: d
+        - generic: t
+        - generic: −
+        - generic: ∫
+        - generic: d
+        - generic: T
+        - generic: −
+        - generic: d
+        - generic: ⟨
+        - generic: K
+        - generic: u
+        - generic: ","
+        - generic: v
+        - generic: t
+        - generic: ⟩
+        - generic: H
+        - generic: "1"
+        - generic: d
+        - generic: t
+        - generic: .
+      - text: ∫
+      - generic: d
+      - generic: T−d
+      - text: ⟨
+      - text: K
+      - generic: t
+      - text: u, v
+      - text: ⟩
+      - text: H
+      - generic: "1"
+      - text: dt =
+      - text: "[⟨Ku, v"
+      - text: ⟩
+      - text: H
+      - generic: "1"
+      - text: "]"
+      - generic: d
+      - generic: T−d
+      - text: −
+      - text: ∫
+      - generic: d
+      - generic: T−d
+      - text: ⟨K
+      - generic: A
+      - text: u, v
+      - text: ⟩
+      - text: H
+      - generic: "1"
+      - text: dt
+      - text: −
+      - text: ∫
+      - generic: d
+      - generic: T−d
+      - text: ⟨Ku,
+      - text: v
+      - generic: t
+      - text: ⟩
+      - text: H
+      - generic: "1"
+      - text: dt.
+      - paragraph:
+        - text: Use (13)–(14),
+        - math:
+          - generic: u
+          - generic: t
+          - generic: =
+          - generic: A
+          - generic: ~
+          - generic: u
+        - text: u
+        - generic: t
+        - text: =
+        - generic: A
+        - text: u
+        - text: ","
+        - math:
+          - generic: v
+          - generic: t
+          - generic: =
+          - generic: −
+          - generic: D
+          - generic: v
+        - text: v
+        - generic: t
+        - text: =
+        - generic: −Dv
+        - text: ", and the"
+        - math:
+          - generic: H
+          - generic: "3"
+        - text: H
+        - generic: "3"
+        - text: bounds. The two interior integrands are bounded by
+      - math:
+        - generic: C
+        - generic: G
+        - generic: "4"
+        - generic: ℓ
+        - generic: "["
+        - generic: t
+        - generic: (
+        - generic: T
+        - generic: −
+        - generic: t
+        - generic: )
+        - generic: "]"
+        - generic: −
+        - generic: "1"
+        - generic: ∥
+        - generic: x
+        - generic: ∥
+        - generic: H
+        - generic: "1"
+        - generic: ∥
+        - generic: "y"
+        - generic: ∥
+        - generic: H
+        - generic: "1"
+        - generic: .
+      - text: C
+      - text: G
+      - generic: "4"
+      - text: ℓ [t(T −
+      - text: t)
+      - text: "]"
+      - generic: −1
+      - text: ∥x
+      - text: ∥
+      - text: H
+      - generic: "1"
+      - text: ∥y
+      - text: ∥
+      - text: H
+      - generic: "1"
+      - text: .
+      - paragraph: Since
+      - math:
+        - generic: ∫
+        - generic: d
+        - generic: T
+        - generic: −
+        - generic: d
+        - generic: d
+        - generic: t
+        - generic: t
+        - generic: (
+        - generic: T
+        - generic: −
+        - generic: t
+        - generic: )
+        - generic: ≤
+        - generic: C
+        - generic: /
+        - generic: d
+        - generic: ","
+      - text: ∫
+      - generic: d
+      - generic: T−d
+      - generic: t(T − t)
+      - generic: dt
+      - text: ≤
+      - generic: C/d,
+      - paragraph: the interior and cut-endpoint terms are bounded by
+      - math:
+        - generic: C
+        - generic: G
+        - generic: c
+        - generic: ℓ
+        - generic: /
+        - generic: d
+        - generic: ∥
+        - generic: x
+        - generic: ∥
+        - generic: H
+        - generic: "1"
+        - generic: ∥
+        - generic: "y"
+        - generic: ∥
+        - generic: H
+        - generic: "1"
+        - generic: .
+        - generic: (19)
+      - text: C
+      - text: G
+      - generic: c
+      - text: ℓ/d ∥x
+      - text: ∥
+      - text: H
+      - generic: "1"
+      - text: ∥y
+      - text: ∥
+      - text: H
+      - generic: "1"
+      - text: .
+      - text: (
+      - generic: "19"
+      - text: )
+      - paragraph:
+        - text: All integrations can be justified in Galerkin systems and passed to the limit. In particular, the calculation needs only
+        - math:
+          - generic: u
+          - generic: ","
+          - generic: v
+          - generic: ∈
+          - generic: H
+          - generic: "3"
+        - generic: u, v ∈
+        - text: H
+        - generic: "3"
+        - text: in the interior, not
+        - math:
+          - generic: H
+          - generic: "5"
+        - text: H
+        - generic: "5"
+        - text: .
+      - paragraph: Taking
+      - math:
+        - generic: d
+        - generic: =
+        - generic: ℓ
+        - generic: T
+        - generic: ","
+        - generic: ℓ
+        - generic: ≤
+        - generic: T
+        - generic: /
+        - generic: "16"
+        - generic: ","
+      - generic: d =
+      - generic: ℓT
+      - text: ", ℓ ≤"
+      - generic: T/16,
+      - paragraph: gives
+      - math:
+        - generic: ∥
+        - generic: S
+        - generic: ~
+        - generic: (
+        - generic: T
+        - generic: ","
+        - generic: "0"
+        - generic: )
+        - generic: −
+        - generic: R
+        - generic: (
+        - generic: T
+        - generic: ","
+        - generic: "0"
+        - generic: )
+        - generic: ∥
+        - generic: H
+        - generic: "1"
+        - generic: →
+        - generic: H
+        - generic: "1"
+        - generic: ≤
+        - generic: C
+        - generic: G
+        - generic: "8"
+        - generic: "["
+        - generic: (
+        - generic: ℓ
+        - generic: T
+        - generic: )
+        - generic: "1"
+        - generic: /
+        - generic: "4"
+        - generic: +
+        - generic: β
+        - generic: "]"
+        - generic: .
+        - generic: (20)
+      - text: ∥
+      - generic: S
+      - text: (T, 0) − R(T, 0)
+      - text: ∥
+      - text: H
+      - generic: "1"
+      - text: →
+      - text: H
+      - generic: "1"
+      - text: ≤ C
+      - text: G
+      - generic: "8"
+      - generic: "["
+      - generic: (
+      - generic: T
+      - generic: ℓ
+      - generic: )
+      - generic: 1/4
+      - text: + β
+      - generic: "]"
+      - text: .
+      - text: (
+      - generic: "20"
+      - text: )
+      - paragraph: The exponent eight is a harmless conservative envelope; tracking the displayed estimates more closely yields a smaller fixed power.
+      - paragraph:
+        - text: The argument works on the full space and permits arbitrary different frozen
+        - math:
+          - generic: ν
+          - generic: j
+          - generic: ","
+          - generic: ρ
+          - generic: j
+        - text: ν
+        - generic: j
+        - text: ","
+        - text: ρ
+        - generic: j
+        - text: in each cell. Constants need no special limiting argument.
+      - paragraph: Combining (6) and (20) proves (1).
+      - heading "7. Contraction, harmonic bias, and parameter choices" [level=3]
+      - paragraph:
+        - text: By (11) and (15),
+        - math:
+          - generic: R
+          - generic: (
+          - generic: T
+          - generic: ","
+          - generic: "0"
+          - generic: )
+        - generic: R(T, 0)
+        - text: fixes constants and contracts mean-zero fields by a gap
+      - math:
+        - generic: γ
+        - generic: ≥
+        - generic: c
+        - generic: ρ
+        - generic: "0"
+        - generic: a
+        - generic: "2"
+        - generic: T
+      - generic: γ ≥
+      - text: c
+      - text: ρ
+      - generic: "0"
+      - text: a
+      - generic: "2"
+      - text: T
+      - paragraph:
+        - text: when
+        - math:
+          - generic: T
+        - generic: T
+        - text: is chosen so this quantity is small.
+      - paragraph: Require
+      - math:
+        - generic: δ
+        - generic: ":"
+        - generic: =
+        - generic: C
+        - generic: G
+        - generic: "8"
+        - generic: "["
+        - generic: (
+        - generic: ℓ
+        - generic: /
+        - generic: T
+        - generic: )
+        - generic: "1"
+        - generic: /
+        - generic: "4"
+        - generic: +
+        - generic: β
+        - generic: "]"
+        - generic: +
+        - generic: "12"
+        - generic: G
+        - generic: "2"
+        - generic: Λ
+        - generic: ℓ
+        - generic: ≤
+        - generic: q
+        - generic: γ
+        - generic: C
+        - generic: K
+        - generic: "0"
+        - generic: ","
+        - generic: K
+        - generic: "0"
+        - generic: ≥
+        - generic: M
+        - generic: .
+        - generic: (21)
+      - generic: δ :=
+      - text: C
+      - text: G
+      - generic: "8"
+      - text: "[(ℓ/T"
+      - text: )
+      - generic: 1/4
+      - text: +
+      - generic: β] +
+      - text: "12"
+      - text: G
+      - generic: "2"
+      - text: Λℓ ≤
+      - text: C
+      - text: K
+      - generic: "0"
+      - generic: qγ
+      - text: ","
+      - text: K
+      - generic: "0"
+      - text: ≥
+      - generic: M.
+      - text: (
+      - generic: "21"
+      - text: )
+      - paragraph: It suffices to impose the rational caps
+      - math:
+        - generic: β
+        - generic: ≤
+        - generic: q
+        - generic: γ
+        - generic: C
+        - generic: G
+        - generic: "8"
+        - generic: K
+        - generic: "0"
+        - generic: ","
+      - text: β ≤
+      - text: C
+      - text: G
+      - generic: "8"
+      - text: K
+      - generic: "0"
+      - generic: qγ
+      - text: ","
+      - math:
+        - generic: ℓ
+        - generic: ≤
+        - generic: T
+        - generic: (
+        - generic: q
+        - generic: γ
+        - generic: C
+        - generic: G
+        - generic: "8"
+        - generic: K
+        - generic: "0"
+        - generic: )
+        - generic: "4"
+        - generic: ","
+        - generic: ℓ
+        - generic: ≤
+        - generic: q
+        - generic: γ
+        - generic: C
+        - generic: G
+        - generic: "2"
+        - generic: Λ
+        - generic: K
+        - generic: "0"
+        - generic: .
+        - generic: (22)
+      - text: ℓ ≤ T
+      - generic: (
+      - text: C
+      - text: G
+      - generic: "8"
+      - text: K
+      - generic: "0"
+      - generic: qγ
+      - generic: )
+      - generic: "4"
+      - text: ", ℓ ≤"
+      - text: C
+      - text: G
+      - generic: "2"
+      - text: Λ
+      - text: K
+      - generic: "0"
+      - generic: qγ
+      - text: .
+      - text: (
+      - generic: "22"
+      - text: )
+      - paragraph: These are fixed polynomial refinements of the old schedule.
+      - paragraph:
+        - text: The macro evolution operators need not be identical. Every one preserves means, has mean-zero norm at most
+        - math:
+          - generic: "1"
+          - generic: −
+          - generic: γ
+          - generic: /
+          - generic: "2"
+        - generic: 1 −
+        - generic: γ/2
+        - text: ", and sends a constant"
+        - math:
+          - generic: H
+        - generic: H
+        - text: to within
+        - math:
+          - generic: δ
+          - generic: ∣
+          - generic: H
+          - generic: ∣
+        - generic: δ∣H∣
+        - text: of
+        - math:
+          - generic: H
+        - generic: H
+        - text: . Therefore
+      - math:
+        - generic: ∥
+        - generic: b
+        - generic: "n"
+        - generic: ∥
+        - generic: H
+        - generic: "1"
+        - generic: ≤
+        - generic: (
+        - generic: "1"
+        - generic: −
+        - generic: γ
+        - generic: /
+        - generic: "2"
+        - generic: )
+        - generic: "n"
+        - generic: ∥
+        - generic: b
+        - generic: "0"
+        - generic: ∥
+        - generic: H
+        - generic: "1"
+        - generic: +
+        - generic: "2"
+        - generic: δ
+        - generic: M
+        - generic: γ
+      - text: ∥
+      - text: b
+      - generic: "n"
+      - text: ∥
+      - text: H
+      - generic: "1"
+      - text: ≤
+      - generic: (1 −
+      - text: γ/2
+      - text: )
+      - generic: "n"
+      - text: ∥
+      - text: b
+      - generic: "0"
+      - text: ∥
+      - text: H
+      - generic: "1"
+      - text: +
+      - generic: γ
+      - generic: 2δM
+      - paragraph: holds for their non-identical product as well.
+      - paragraph: A count
+      - math:
+        - generic: "n"
+        - generic: =
+        - generic: ⌈
+        - generic: C
+        - generic: K
+        - generic: "0"
+        - generic: q
+        - generic: γ
+        - generic: ⌉
+      - generic: n =
+      - generic: ⌈
+      - generic: qγ
+      - text: C
+      - text: K
+      - generic: "0"
+      - generic: ⌉
+      - paragraph: still suffices. It is polynomial.
+      - heading "8. Compatibility with the nonlinear coupled proof" [level=3]
+      - paragraph: The actual induction equation remains
+      - math:
+        - generic: c
+        - generic: t
+        - generic: =
+        - generic: A
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: c
+        - generic: −
+        - generic: C
+        - generic: v
+        - generic: ~
+        - generic: c
+        - generic: +
+        - generic: M
+        - generic: w
+        - generic: −
+        - generic: "1"
+        - generic: h
+        - generic: B
+        - generic: ","
+        - generic: c
+        - generic: =
+        - generic: M
+        - generic: w
+        - generic: −
+        - generic: "1"
+        - generic: B
+        - generic: .
+      - text: c
+      - generic: t
+      - text: =
+      - generic: A(t)c −
+      - text: C
+      - generic: v
+      - text: c +
+      - text: M
+      - generic: w
+      - generic: −1
+      - text: h
+      - generic: B
+      - text: ", c ="
+      - text: M
+      - generic: w
+      - generic: −1
+      - text: B.
+      - paragraph:
+        - text: The nonlinear source and transformed disturbance are mean-zero even when
+        - math:
+          - generic: c
+        - generic: c
+        - text: has mean
+        - math:
+          - generic: H
+        - generic: H
+        - text: .
+      - paragraph: "The global Duhamel estimate uses:"
+      - list:
+        - listitem: the uniformly contracting non-identical macro products on mean-zero fields;
+        - listitem: the same local spatial smoothing bounds;
+        - text: the full-field bilinear estimate
+        - math:
+          - generic: ∥
+          - generic: C
+          - generic: v
+          - generic: ~
+          - generic: c
+          - generic: ∥
+          - generic: H
+          - generic: −
+          - generic: "3"
+          - generic: /
+          - generic: "4"
+          - generic: ≤
+          - generic: C
+          - generic: ∥
+          - generic: v
+          - generic: ~
+          - generic: ∥
+          - generic: H
+          - generic: "1"
+          - generic: ∥
+          - generic: c
+          - generic: ∥
+          - generic: H
+          - generic: "1"
+          - generic: .
+        - text: ∥
+        - text: C
+        - generic: v
+        - text: c
+        - text: ∥
+        - text: H
+        - generic: −3/4
+        - text: ≤
+        - text: C∥
+        - generic: v
+        - text: ∥
+        - text: H
+        - generic: "1"
+        - text: ∥c
+        - text: ∥
+        - text: H
+        - generic: "1"
+        - text: .
+      - paragraph:
+        - text: The usual global kernel bound remains a fixed polynomial in
+        - math:
+          - generic: G
+        - generic: G
+        - text: and
+        - math:
+          - generic: T
+          - generic: −
+          - generic: "1"
+        - text: T
+        - generic: −1
+        - text: . The mean enters only the homogeneous harmonic-bias estimate and the full magnetic norm budget. No constant loss is multiplied after every reset.
+      - paragraph:
+        - text: The newly added mechanical source
+        - math:
+          - generic: O
+          - generic: (
+          - generic: Λ
+          - generic: a
+          - generic: )
+        - generic: O(Λa)
+        - text: is handled locally by the shorter stirring phases and subsequent velocity resets. It need not determine
+        - math:
+          - generic: η
+        - generic: η
+        - text: through an exponential factor.
+      - paragraph:
+        - strong: "Conclusion for this subtask:"
+        - text: the magnetic averaging/full-space comparison interface closes with a directly proved polynomial rate. The additional requirements are the caps (22) and the local
+        - math:
+          - generic: O
+          - generic: (
+          - generic: Λ
+          - generic: a
+          - generic: h
+          - generic: )
+        - text: O(Λa
+        - generic: h
+        - text: )
+        - text: velocity-source budget. There is no need to assume temporal maximal regularity or to sample the unknown coefficient functions.
+
+---
+
+  - complementary:
+    - heading "Subagents" [level=2]
+    - button "Enter full view":
+    - button "Close panel":
+    - tabpanel "Subagents" [active]:
+      - button "Back to subagents":
+      - generic: Time writer reset
+      - heading "Status" [level=2]
+      - generic: Done
+      - heading "Final response" [level=2]
+      - paragraph:
+        - text: The reset, lowering, writer, waiting, and all-weak parts admit a uniform polynomial extension to Lipschitz
+        - math:
+          - generic: ν
+          - generic: (
+          - generic: t
+          - generic: )
+          - generic: ","
+          - generic: ρ
+          - generic: (
+          - generic: t
+          - generic: )
+        - generic: ν(t), ρ(t)
+        - text: . The most useful implementation is to keep
+        - strong: continuous proof correctors driven by the actual coefficient functions
+        - text: ", while freezing a coefficient only to estimate a word’s endpoint. This avoids discontinuities in the references and avoids losses proportional to the number of small words."
+      - paragraph: No coefficient value is evaluated by the compiler.
+      - heading "1. Velocity-reset affine correction" [level=2]
+      - paragraph:
+        - text: Let
+        - math:
+          - generic: w
+        - generic: w
+        - text: be the nominal carrier for
+        - math:
+          - generic: "n"
+        - generic: "n"
+        - text: repetitions of the accepted translated erasing superword. Each word has shear impulses
+        - math:
+          - generic: O
+          - generic: (
+          - generic: s
+          - generic: )
+        - generic: O(s)
+        - text: ", and its homogeneous Euler endpoint is"
+        - math:
+          - generic: W
+          - generic: (
+          - generic: s
+          - generic: )
+        - generic: W(s)
+        - text: . The accepted constant-coefficient affine bias satisfies
+      - math:
+        - generic: ∥
+        - generic: b
+        - generic: (
+        - generic: s
+        - generic: )
+        - generic: ∥
+        - generic: H
+        - generic: m
+        - generic: ≤
+        - generic: C
+        - generic: m
+        - generic: s
+        - generic: "5"
+        - generic: .
+      - text: ∥b(s)
+      - text: ∥
+      - text: H
+      - generic: m
+      - text: ≤
+      - text: C
+      - generic: m
+      - text: s
+      - generic: "5"
+      - text: .
+      - paragraph: Every partial word and every forward subinterval have the accepted fixed-order bounds.
+      - paragraph:
+        - text: Use the
+        - strong: continuous
+        - text: corrector
+      - math:
+        - generic: a
+        - generic: t
+        - generic: +
+        - generic: L
+        - generic: w
+        - generic: a
+        - generic: =
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: Δ
+        - generic: w
+        - generic: ","
+        - generic: a
+        - generic: (
+        - generic: "0"
+        - generic: )
+        - generic: =
+        - generic: "0."
+        - generic: (1)
+      - text: a
+      - generic: t
+      - text: +
+      - text: L
+      - generic: w
+      - text: a =
+      - generic: ν(t)Δw, a(0) =
+      - generic: "0."
+      - text: (
+      - generic: "1"
+      - text: )
+      - paragraph:
+        - text: Consider word
+        - math:
+          - generic: j
+        - generic: j
+        - text: ", occupying"
+        - math:
+          - generic: I
+          - generic: j
+          - generic: =
+          - generic: "["
+          - generic: t
+          - generic: j
+          - generic: ","
+          - generic: t
+          - generic: j
+          - generic: +
+          - generic: "1"
+          - generic: "]"
+        - text: I
+        - generic: j
+        - text: =
+        - text: "["
+        - text: t
+        - generic: j
+        - text: ","
+        - text: t
+        - generic: j+1
+        - text: "]"
+        - text: with duration
+        - math:
+          - generic: d
+          - generic: j
+        - text: d
+        - generic: j
+        - text: ". Freeze only for analysis:"
+      - math:
+        - generic: ν
+        - generic: j
+        - generic: =
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: j
+        - generic: )
+        - generic: .
+      - text: ν
+      - generic: j
+      - text: =
+      - text: ν(
+      - text: t
+      - generic: j
+      - text: ).
+      - paragraph: Its exact affine endpoint map is
+      - math:
+        - generic: a
+        - generic: (
+        - generic: t
+        - generic: j
+        - generic: +
+        - generic: "1"
+        - generic: )
+        - generic: =
+        - generic: W
+        - generic: (
+        - generic: s
+        - generic: )
+        - generic: a
+        - generic: (
+        - generic: t
+        - generic: j
+        - generic: )
+        - generic: +
+        - generic: ν
+        - generic: j
+        - generic: b
+        - generic: (
+        - generic: s
+        - generic: )
+        - generic: +
+        - generic: r
+        - generic: j
+        - generic: ","
+      - text: a(
+      - text: t
+      - generic: j+1
+      - text: ) =
+      - text: W(s)a(
+      - text: t
+      - generic: j
+      - text: ) +
+      - text: ν
+      - generic: j
+      - text: b(s) +
+      - text: r
+      - generic: j
+      - text: ","
+      - paragraph: where
+      - math:
+        - generic: r
+        - generic: j
+        - generic: =
+        - generic: ∫
+        - generic: t
+        - generic: j
+        - generic: t
+        - generic: j
+        - generic: +
+        - generic: "1"
+        - generic: Q
+        - generic: w
+        - generic: (
+        - generic: t
+        - generic: j
+        - generic: +
+        - generic: "1"
+        - generic: ","
+        - generic: t
+        - generic: )
+        - generic: "["
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: −
+        - generic: ν
+        - generic: j
+        - generic: "]"
+        - generic: Δ
+        - generic: w
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: d
+        - generic: t
+        - generic: .
+      - text: r
+      - generic: j
+      - text: =
+      - text: ∫
+      - text: t
+      - generic: j
+      - text: t
+      - generic: j+1
+      - text: Q
+      - generic: w
+      - text: (
+      - text: t
+      - generic: j+1
+      - text: ", t) [ν(t) −"
+      - text: ν
+      - generic: j
+      - text: "]Δw(t) dt."
+      - paragraph: Because
+      - math:
+        - generic: ∣
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: −
+        - generic: ν
+        - generic: j
+        - generic: ∣
+        - generic: ≤
+        - generic: Λ
+        - generic: d
+        - generic: j
+        - generic: ","
+        - generic: ∫
+        - generic: I
+        - generic: j
+        - generic: ∥
+        - generic: Δ
+        - generic: w
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ∥
+        - generic: H
+        - generic: m
+        - generic: d
+        - generic: t
+        - generic: ≤
+        - generic: C
+        - generic: m
+        - generic: s
+        - generic: ","
+      - generic: ∣ν(t) −
+      - text: ν
+      - generic: j
+      - text: ∣ ≤
+      - text: Λ
+      - text: d
+      - generic: j
+      - text: ","
+      - text: ∫
+      - text: I
+      - generic: j
+      - text: ∥Δw(t)
+      - text: ∥
+      - text: H
+      - generic: m
+      - text: dt ≤
+      - text: C
+      - generic: m
+      - text: s,
+      - paragraph: and the partial propagators are uniformly bounded,
+      - math:
+        - generic: ∥
+        - generic: r
+        - generic: j
+        - generic: ∥
+        - generic: H
+        - generic: m
+        - generic: ≤
+        - generic: C
+        - generic: m
+        - generic: Λ
+        - generic: d
+        - generic: j
+        - generic: s
+        - generic: .
+        - generic: (2)
+      - text: ∥
+      - text: r
+      - generic: j
+      - text: ∥
+      - text: H
+      - generic: m
+      - text: ≤
+      - text: C
+      - generic: m
+      - text: Λ
+      - text: d
+      - generic: j
+      - text: s.
+      - text: (
+      - generic: "2"
+      - text: )
+      - paragraph:
+        - text: Write
+        - math:
+          - generic: δ
+          - generic: =
+          - generic: ∑
+          - generic: j
+          - generic: d
+          - generic: j
+        - generic: δ =
+        - text: ∑
+        - generic: j
+        - text: d
+        - generic: j
+        - text: . Stable repetition then gives
+      - math:
+        - generic: ∥
+        - generic: a
+        - generic: (
+        - generic: δ
+        - generic: )
+        - generic: ∥
+        - generic: H
+        - generic: m
+        - generic: ≤
+        - generic: C
+        - generic: m
+        - generic: (
+        - generic: "n"
+        - generic: s
+        - generic: "5"
+        - generic: +
+        - generic: Λ
+        - generic: s
+        - generic: δ
+        - generic: )
+        - generic: e
+        - generic: C
+        - generic: m
+        - generic: "n"
+        - generic: s
+        - generic: "5"
+        - generic: ","
+        - generic: (3)
+      - text: ∥a(δ)
+      - text: ∥
+      - text: H
+      - generic: m
+      - text: ≤
+      - text: C
+      - generic: m
+      - generic: (
+      - text: "n"
+      - text: s
+      - generic: "5"
+      - text: + Λsδ
+      - generic: )
+      - text: e
+      - text: C
+      - generic: m
+      - text: "n"
+      - text: s
+      - generic: "5"
+      - text: ","
+      - text: (
+      - generic: "3"
+      - text: )
+      - paragraph: and
+      - math:
+        - generic: sup
+        - generic: ⁡
+        - generic: "0"
+        - generic: ≤
+        - generic: t
+        - generic: ≤
+        - generic: δ
+        - generic: ∥
+        - generic: a
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ∥
+        - generic: H
+        - generic: m
+        - generic: ≤
+        - generic: C
+        - generic: m
+        - generic: (
+        - generic: s
+        - generic: +
+        - generic: "n"
+        - generic: s
+        - generic: "5"
+        - generic: +
+        - generic: Λ
+        - generic: s
+        - generic: δ
+        - generic: )
+        - generic: e
+        - generic: C
+        - generic: m
+        - generic: "n"
+        - generic: s
+        - generic: "5"
+        - generic: .
+        - generic: (4)
+      - generic: 0≤t≤δ
+      - generic: sup
+      - text: ∥a(t)
+      - text: ∥
+      - text: H
+      - generic: m
+      - text: ≤
+      - text: C
+      - generic: m
+      - generic: (
+      - text: s + n
+      - text: s
+      - generic: "5"
+      - text: + Λsδ
+      - generic: )
+      - text: e
+      - text: C
+      - generic: m
+      - text: "n"
+      - text: s
+      - generic: "5"
+      - text: .
+      - text: (
+      - generic: "4"
+      - text: )
+      - paragraph:
+        - text: The new contribution is
+        - math:
+          - generic: Λ
+          - generic: s
+          - generic: δ
+        - generic: Λsδ
+        - text: ", not"
+        - math:
+          - generic: Λ
+          - generic: "n"
+          - generic: s
+        - generic: Λns
+        - text: or a loss per repeated word.
+      - paragraph: Thus choose the old word parameters with half the required affine allowance, and add the rational cap
+      - math:
+        - generic: δ
+        - generic: ≤
+        - generic: q
+        - generic: a
+        - generic: f
+        - generic: f
+        - generic: C
+        - generic: m
+        - generic: Λ
+        - generic: s
+        - generic: .
+        - generic: (5)
+      - generic: δ ≤
+      - text: C
+      - generic: m
+      - text: Λs
+      - text: q
+      - generic: aff
+      - text: .
+      - text: (
+      - generic: "5"
+      - text: )
+      - paragraph:
+        - text: Here
+        - math:
+          - generic: q
+          - generic: a
+          - generic: f
+          - generic: f
+        - text: q
+        - generic: aff
+        - text: includes whichever velocity, coercivity, and mean-field allowances are required. Since
+        - math:
+          - generic: s
+          - generic: ≤
+          - generic: "1"
+        - generic: s ≤
+        - generic: "1"
+        - text: ","
+        - math:
+          - generic: Λ
+        - generic: Λ
+        - text: is input, and
+        - math:
+          - generic: q
+          - generic: a
+          - generic: f
+          - generic: f
+          - generic: −
+          - generic: "1"
+        - text: q
+        - generic: aff
+        - generic: −1
+        - text: is polynomial, this is a polynomial refinement.
+      - paragraph:
+        - text: "The order of choices is acyclic: select the smoothing interval and endpoint accuracy, then"
+        - math:
+          - generic: s
+          - generic: ","
+          - generic: "n"
+        - generic: s, n
+        - text: ", and finally the compressed duration"
+        - math:
+          - generic: δ
+        - generic: δ
+        - text: . Shrinking
+        - math:
+          - generic: δ
+        - generic: δ
+        - text: changes neither the word’s homogeneous endpoint nor its constant-coefficient cancellation.
+      - heading "Exact residual" [level=3]
+      - paragraph:
+        - text: For the reference
+        - math:
+          - generic: u
+          - generic: ∗
+          - generic: =
+          - generic: w
+          - generic: +
+          - generic: a
+        - text: u
+        - generic: ∗
+        - text: =
+        - generic: w +
+        - generic: a
+        - text: ", the same identity remains valid:"
+      - math:
+        - generic: f
+        - generic: −
+        - generic: "["
+        - generic: (
+        - generic: w
+        - generic: +
+        - generic: a
+        - generic: )
+        - generic: t
+        - generic: −
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: Δ
+        - generic: (
+        - generic: w
+        - generic: +
+        - generic: a
+        - generic: )
+        - generic: +
+        - generic: B
+        - generic: (
+        - generic: w
+        - generic: +
+        - generic: a
+        - generic: ","
+        - generic: w
+        - generic: +
+        - generic: a
+        - generic: )
+        - generic: "]"
+        - generic: =
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: Δ
+        - generic: a
+        - generic: −
+        - generic: B
+        - generic: (
+        - generic: a
+        - generic: ","
+        - generic: a
+        - generic: )
+        - generic: ","
+      - generic: f −
+      - generic: "["
+      - text: (w +
+      - text: a
+      - text: )
+      - generic: t
+      - text: −
+      - generic: ν(t)Δ(w +
+      - generic: a) +
+      - generic: B(w +
+      - generic: a, w +
+      - text: a)
+      - generic: "]"
+      - text: =
+      - generic: ν(t)Δa −
+      - generic: B(a, a),
+      - paragraph:
+        - text: when the emitted force is
+        - math:
+          - generic: f
+          - generic: =
+          - generic: w
+          - generic: t
+        - generic: f =
+        - text: w
+        - generic: t
+        - text: and one shear is active at a time.
+      - paragraph:
+        - text: There is no
+        - math:
+          - generic: ν
+          - generic: ′
+        - text: ν
+        - generic: ′
+        - text: term. The actual-profile correction (1) cancels the large viscosity-carrier term exactly.
+      - paragraph:
+        - text: For an unknown mean
+        - math:
+          - generic: H
+        - generic: H
+        - text: ", use"
+        - math:
+          - generic: B
+          - generic: ∗
+          - generic: =
+          - generic: M
+          - generic: w
+          - generic: H
+        - text: B
+        - generic: ∗
+        - text: =
+        - text: M
+        - generic: w
+        - text: H
+        - text: when identifying smooth reference terms. Every completed word returns
+        - math:
+          - generic: M
+          - generic: w
+        - text: M
+        - generic: w
+        - text: exactly to
+        - math:
+          - generic: I
+        - generic: I
+        - text: ", and inside a small word"
+      - math:
+        - generic: ∥
+        - generic: B
+        - generic: ∗
+        - generic: −
+        - generic: H
+        - generic: ∥
+        - generic: H
+        - generic: m
+        - generic: ≤
+        - generic: C
+        - generic: m
+        - generic: s
+        - generic: M
+        - generic: .
+      - text: ∥
+      - text: B
+      - generic: ∗
+      - text: −
+      - text: H
+      - text: ∥
+      - text: H
+      - generic: m
+      - text: ≤
+      - text: C
+      - generic: m
+      - text: sM.
+      - paragraph: The additional Lorentz and magnetic residual bounds are therefore the same as in the accepted unknown-mean extension, with (4) replacing the old affine bound.
+      - paragraph:
+        - text: The remaining nonlinear reset estimate uses the
+        - strong: total
+        - text: magnetic
+        - math:
+          - generic: H
+          - generic: "1"
+        - text: H
+        - generic: "1"
+        - text: budget. Scalar time-dependent diffusivities only multiply the conjugated diffusion operators; their common lower bounds give coercivity.
+      - heading "2. Closed target-writing leaves" [level=2]
+      - paragraph:
+        - text: Let a closed shear/inverse leaf have physical duration
+        - math:
+          - generic: h
+        - generic: h
+        - text: ", intended velocity increment"
+        - math:
+          - generic: S
+          - generic: g
+        - generic: Sg
+        - text: ", and nominal carrier"
+        - math:
+          - generic: w
+        - generic: w
+        - text: . Use
+      - math:
+        - generic: (
+        - generic: v
+        - generic: ν
+        - generic: )
+        - generic: t
+        - generic: +
+        - generic: L
+        - generic: w
+        - generic: v
+        - generic: ν
+        - generic: =
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: Δ
+        - generic: w
+        - generic: +
+        - generic: f
+        - generic: s
+        - generic: e
+        - generic: e
+        - generic: d
+        - generic: ","
+        - generic: v
+        - generic: ν
+        - generic: (
+        - generic: "0"
+        - generic: )
+        - generic: =
+        - generic: v
+        - generic: p
+        - generic: r
+        - generic: e
+        - generic: f
+        - generic: .
+        - generic: (6)
+      - text: (
+      - text: v
+      - generic: ν
+      - text: )
+      - generic: t
+      - text: +
+      - text: L
+      - generic: w
+      - text: v
+      - generic: ν
+      - text: =
+      - generic: ν(t)Δw +
+      - text: f
+      - generic: seed
+      - text: ","
+      - text: v
+      - generic: ν
+      - text: (0) =
+      - text: v
+      - generic: pref
+      - text: .
+      - text: (
+      - generic: "6"
+      - text: )
+      - paragraph:
+        - text: Its partial Sobolev bounds remain polynomial and independent of
+        - math:
+          - generic: h
+        - generic: h
+        - text: ", since"
+      - math:
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ≤
+        - generic: "1"
+        - generic: ","
+        - generic: ∫
+        - generic: "0"
+        - generic: h
+        - generic: ∥
+        - generic: Δ
+        - generic: w
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ∥
+        - generic: H
+        - generic: m
+        - generic: d
+        - generic: t
+        - generic: ≤
+        - generic: P
+        - generic: ","
+      - generic: ν(t) ≤
+      - text: 1,
+      - text: ∫
+      - generic: "0"
+      - generic: h
+      - text: ∥Δw(t)
+      - text: ∥
+      - text: H
+      - generic: m
+      - text: dt ≤
+      - generic: P,
+      - paragraph: and the seed’s time integral is fixed.
+      - paragraph:
+        - text: Let
+        - math:
+          - generic: v
+          - generic: ~
+        - generic: v
+        - text: solve (6) with the frozen coefficient
+        - math:
+          - generic: ν
+          - generic: (
+          - generic: "0"
+          - generic: )
+        - generic: ν(0)
+        - text: . The accepted affine-palindrome identity gives
+      - math:
+        - generic: v
+        - generic: ~
+        - generic: (
+        - generic: h
+        - generic: )
+        - generic: =
+        - generic: v
+        - generic: p
+        - generic: r
+        - generic: e
+        - generic: f
+        - generic: +
+        - generic: S
+        - generic: g
+        - generic: .
+      - generic: v
+      - text: (h) =
+      - text: v
+      - generic: pref
+      - text: +
+      - generic: Sg.
+      - paragraph: The difference obeys
+      - math:
+        - generic: (
+        - generic: v
+        - generic: ν
+        - generic: −
+        - generic: v
+        - generic: ~
+        - generic: )
+        - generic: t
+        - generic: +
+        - generic: L
+        - generic: w
+        - generic: (
+        - generic: v
+        - generic: ν
+        - generic: −
+        - generic: v
+        - generic: ~
+        - generic: )
+        - generic: =
+        - generic: "["
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: −
+        - generic: ν
+        - generic: (
+        - generic: "0"
+        - generic: )
+        - generic: "]"
+        - generic: Δ
+        - generic: w
+        - generic: .
+      - text: (
+      - text: v
+      - generic: ν
+      - text: −
+      - generic: v
+      - text: )
+      - generic: t
+      - text: +
+      - text: L
+      - generic: w
+      - text: (
+      - text: v
+      - generic: ν
+      - text: −
+      - generic: v
+      - text: ) =
+      - generic: "[ν(t) −"
+      - generic: ν(0)]Δw.
+      - paragraph: Hence
+      - math:
+        - generic: ∥
+        - generic: v
+        - generic: ν
+        - generic: (
+        - generic: h
+        - generic: )
+        - generic: −
+        - generic: (
+        - generic: v
+        - generic: p
+        - generic: r
+        - generic: e
+        - generic: f
+        - generic: +
+        - generic: S
+        - generic: g
+        - generic: )
+        - generic: ∥
+        - generic: H
+        - generic: m
+        - generic: ≤
+        - generic: Λ
+        - generic: h
+        - generic: P
+        - generic: .
+        - generic: (7)
+      - text: ∥
+      - text: v
+      - generic: ν
+      - text: (h) − (
+      - text: v
+      - generic: pref
+      - text: + Sg)
+      - text: ∥
+      - text: H
+      - generic: m
+      - text: ≤ Λh P.
+      - text: (
+      - generic: "7"
+      - text: )
+      - paragraph: This is precisely the endpoint residue caused by the failure of a literal affine inverse for different leg viscosities. Lipschitz regularity makes it short-time small.
+      - paragraph: Take
+      - math:
+        - generic: u
+        - generic: ∗
+        - generic: =
+        - generic: w
+        - generic: +
+        - generic: v
+        - generic: ν
+        - generic: ","
+        - generic: B
+        - generic: ∗
+        - generic: =
+        - generic: M
+        - generic: w
+        - generic: H
+        - generic: .
+      - text: u
+      - generic: ∗
+      - text: =
+      - generic: w +
+      - text: v
+      - generic: ν
+      - text: ","
+      - text: B
+      - generic: ∗
+      - text: =
+      - text: M
+      - generic: w
+      - text: H.
+      - paragraph:
+        - text: The magnetic reference returns exactly to
+        - math:
+          - generic: H
+        - generic: H
+        - text: on a closed leaf. The sources in the actual-minus-reference equations are
+      - math:
+        - generic: R
+        - generic: u
+        - generic: =
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: Δ
+        - generic: v
+        - generic: ν
+        - generic: −
+        - generic: B
+        - generic: (
+        - generic: v
+        - generic: ν
+        - generic: ","
+        - generic: v
+        - generic: ν
+        - generic: )
+        - generic: +
+        - generic: B
+        - generic: (
+        - generic: B
+        - generic: ∗
+        - generic: ","
+        - generic: B
+        - generic: ∗
+        - generic: )
+        - generic: ","
+      - text: R
+      - generic: u
+      - text: =
+      - text: ν(t)Δ
+      - text: v
+      - generic: ν
+      - text: −
+      - text: B(
+      - text: v
+      - generic: ν
+      - text: ","
+      - text: v
+      - generic: ν
+      - text: ) +
+      - text: B(
+      - text: B
+      - generic: ∗
+      - text: ","
+      - text: B
+      - generic: ∗
+      - text: ),
+      - math:
+        - generic: R
+        - generic: B
+        - generic: =
+        - generic: ρ
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: Δ
+        - generic: B
+        - generic: ∗
+        - generic: −
+        - generic: C
+        - generic: v
+        - generic: ν
+        - generic: B
+        - generic: ∗
+        - generic: .
+      - text: R
+      - generic: B
+      - text: =
+      - text: ρ(t)Δ
+      - text: B
+      - generic: ∗
+      - text: −
+      - text: C
+      - text: v
+      - generic: ν
+      - text: B
+      - generic: ∗
+      - text: .
+      - paragraph:
+        - text: They have fixed-order polynomial bounds independent of
+        - math:
+          - generic: h
+        - generic: h
+        - text: .
+      - paragraph: The same fixed-coordinate energy estimate gives
+      - math:
+        - generic: E
+        - generic: ′
+        - generic: +
+        - generic: P
+        - generic: −
+        - generic: "1"
+        - generic: D
+        - generic: "2"
+        - generic: ≤
+        - generic: P
+        - generic: (
+        - generic: E
+        - generic: +
+        - generic: E
+        - generic: "3"
+        - generic: +
+        - generic: "1"
+        - generic: +
+        - generic: η
+        - generic: "2"
+        - generic: )
+        - generic: .
+      - text: E
+      - generic: ′
+      - text: +
+      - text: P
+      - generic: −1
+      - text: D
+      - generic: "2"
+      - text: ≤
+      - generic: P(E +
+      - text: E
+      - generic: "3"
+      - text: +
+      - generic: 1 +
+      - text: η
+      - generic: "2"
+      - text: ).
+      - paragraph: "At the endpoint, include (7):"
+      - math:
+        - generic: e
+        - generic: o
+        - generic: u
+        - generic: t
+        - generic: ≤
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: P
+        - generic: h
+        - generic: )
+        - generic: e
+        - generic: i
+        - generic: "n"
+        - generic: +
+        - generic: P
+        - generic: h
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: η
+        - generic: )
+        - generic: +
+        - generic: P
+        - generic: Λ
+        - generic: h
+        - generic: .
+        - generic: (8)
+      - text: e
+      - generic: out
+      - text: ≤ (1 + Ph)
+      - text: e
+      - generic: in
+      - text: + P
+      - generic: h
+      - text: (1 + η) + PΛh.
+      - text: (
+      - generic: "8"
+      - text: )
+      - paragraph:
+        - text: For
+        - math:
+          - generic: "N"
+          - generic: o
+          - generic: p
+        - text: "N"
+        - generic: op
+        - text: leaves, it is enough to require, for each allocated leaf,
+      - math:
+        - generic: h
+        - generic: ≤
+        - generic: min
+        - generic: ⁡
+        - generic: "{"
+        - generic: "1"
+        - generic: P
+        - generic: ","
+        - generic: e
+        - generic: b
+        - generic: u
+        - generic: d
+        - generic: "2"
+        - generic: C
+        - generic: "N"
+        - generic: o
+        - generic: p
+        - generic: "2"
+        - generic: P
+        - generic: "2"
+        - generic: ","
+        - generic: e
+        - generic: b
+        - generic: u
+        - generic: d
+        - generic: C
+        - generic: "N"
+        - generic: o
+        - generic: p
+        - generic: Λ
+        - generic: P
+        - generic: "}"
+        - generic: .
+        - generic: (9)
+      - generic: h ≤
+      - text: min
+      - generic: "{"
+      - generic: P
+      - generic: "1"
+      - text: ","
+      - text: C
+      - text: "N"
+      - generic: op
+      - generic: "2"
+      - text: P
+      - generic: "2"
+      - text: e
+      - generic: bud
+      - generic: "2"
+      - text: ","
+      - text: C
+      - text: "N"
+      - generic: op
+      - text: ΛP
+      - text: e
+      - generic: bud
+      - generic: "}"
+      - text: .
+      - text: (
+      - generic: "9"
+      - text: )
+      - paragraph: All quantities in the right-hand side are selected before that leaf’s duration.
+      - paragraph:
+        - text: At the next leaf, initialize its proof reference at the
+        - strong: known intended prefix
+        - text: ", counting (7) as part of the incoming"
+        - math:
+          - generic: H
+          - generic: "1"
+        - text: H
+        - generic: "1"
+        - text: error. This avoids tracking unknown smooth endpoint prefixes or accumulating their higher norms.
+      - heading "3. Quadratic holds need no frozen viscosity" [level=2]
+      - paragraph:
+        - text: Fix the smooth direction
+        - math:
+          - generic: ξ
+        - generic: ξ
+        - text: ", intended quadratic increment"
+        - math:
+          - generic: λ
+        - generic: λ
+        - text: ", and smooth prefix before choosing the hold time. Put"
+      - math:
+        - generic: w
+        - generic: =
+        - generic: α
+        - generic: ξ
+        - generic: ","
+        - generic: α
+        - generic: "2"
+        - generic: h
+        - generic: =
+        - generic: λ
+        - generic: ","
+        - generic: a
+        - generic: h
+        - generic: o
+        - generic: l
+        - generic: d
+        - generic: =
+        - generic: α
+        - generic: h
+        - generic: =
+        - generic: λ
+        - generic: h
+        - generic: .
+      - generic: w =
+      - text: αξ,
+      - text: α
+      - generic: "2"
+      - text: h =
+      - text: λ,
+      - text: a
+      - generic: hold
+      - text: =
+      - generic: αh =
+      - generic: λh
+      - text: .
+      - paragraph: During the hold use
+      - math:
+        - generic: (
+        - generic: v
+        - generic: ν
+        - generic: )
+        - generic: t
+        - generic: +
+        - generic: α
+        - generic: L
+        - generic: ξ
+        - generic: v
+        - generic: ν
+        - generic: =
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: α
+        - generic: Δ
+        - generic: ξ
+        - generic: −
+        - generic: α
+        - generic: "2"
+        - generic: B
+        - generic: (
+        - generic: ξ
+        - generic: ","
+        - generic: ξ
+        - generic: )
+        - generic: ","
+      - text: (
+      - text: v
+      - generic: ν
+      - text: )
+      - generic: t
+      - text: +
+      - text: α
+      - text: L
+      - generic: ξ
+      - text: v
+      - generic: ν
+      - text: =
+      - generic: ν(t)αΔξ −
+      - text: α
+      - generic: "2"
+      - text: B(ξ, ξ),
+      - paragraph: and
+      - math:
+        - generic: B
+        - generic: ∗
+        - generic: =
+        - generic: M
+        - generic: α
+        - generic: t
+        - generic: H
+        - generic: .
+      - text: B
+      - generic: ∗
+      - text: =
+      - text: M
+      - generic: αt
+      - text: H.
+      - paragraph: Only the integrated quantities
+      - math:
+        - generic: α
+        - generic: h
+        - generic: =
+        - generic: a
+        - generic: h
+        - generic: o
+        - generic: l
+        - generic: d
+        - generic: ","
+        - generic: α
+        - generic: "2"
+        - generic: h
+        - generic: =
+        - generic: λ
+      - generic: αh =
+      - text: a
+      - generic: hold
+      - text: ","
+      - text: α
+      - generic: "2"
+      - text: h =
+      - generic: λ
+      - paragraph:
+        - text: enter the reference bounds. If
+        - math:
+          - generic: a
+          - generic: h
+          - generic: o
+          - generic: l
+          - generic: d
+          - generic: P
+          - generic: ξ
+          - generic: ≤
+          - generic: c
+        - text: a
+        - generic: hold
+        - text: P
+        - generic: ξ
+        - text: ≤
+        - generic: c
+        - text: ","
+      - math:
+        - generic: sup
+        - generic: ⁡
+        - generic: t
+        - generic: ≤
+        - generic: h
+        - generic: ∥
+        - generic: v
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ∥
+        - generic: H
+        - generic: m
+        - generic: ≤
+        - generic: C
+        - generic: m
+        - generic: "["
+        - generic: ∥
+        - generic: v
+        - generic: p
+        - generic: r
+        - generic: e
+        - generic: f
+        - generic: ∥
+        - generic: H
+        - generic: m
+        - generic: +
+        - generic: a
+        - generic: h
+        - generic: o
+        - generic: l
+        - generic: d
+        - generic: ∥
+        - generic: Δ
+        - generic: ξ
+        - generic: ∥
+        - generic: H
+        - generic: m
+        - generic: +
+        - generic: λ
+        - generic: ∥
+        - generic: B
+        - generic: (
+        - generic: ξ
+        - generic: ","
+        - generic: ξ
+        - generic: )
+        - generic: ∥
+        - generic: H
+        - generic: m
+        - generic: "]"
+        - generic: ","
+      - generic: t≤h
+      - generic: sup
+      - text: ∥
+      - text: v
+      - generic: ν
+      - text: (t)
+      - text: ∥
+      - text: H
+      - generic: m
+      - text: ≤
+      - text: C
+      - generic: m
+      - text: "[∥"
+      - text: v
+      - generic: pref
+      - text: ∥
+      - text: H
+      - generic: m
+      - text: +
+      - text: a
+      - generic: hold
+      - text: ∥Δξ
+      - text: ∥
+      - text: H
+      - generic: m
+      - text: + λ∥B(ξ, ξ)
+      - text: ∥
+      - text: H
+      - generic: m
+      - text: "]"
+      - text: ","
+      - paragraph:
+        - text: uniformly over all
+        - math:
+          - generic: ν
+          - generic: (
+          - generic: t
+          - generic: )
+          - generic: ≤
+          - generic: "1"
+        - generic: ν(t) ≤
+        - generic: "1"
+        - text: . Also,
+      - math:
+        - generic: sup
+        - generic: ⁡
+        - generic: t
+        - generic: ≤
+        - generic: h
+        - generic: ∥
+        - generic: B
+        - generic: ∗
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ∥
+        - generic: H
+        - generic: m
+        - generic: ≤
+        - generic: C
+        - generic: m
+        - generic: M
+        - generic: ","
+        - generic: ∥
+        - generic: B
+        - generic: ∗
+        - generic: (
+        - generic: h
+        - generic: )
+        - generic: −
+        - generic: H
+        - generic: ∥
+        - generic: H
+        - generic: "1"
+        - generic: ≤
+        - generic: P
+        - generic: M
+        - generic: h
+        - generic: .
+      - generic: t≤h
+      - generic: sup
+      - text: ∥
+      - text: B
+      - generic: ∗
+      - text: (t)
+      - text: ∥
+      - text: H
+      - generic: m
+      - text: ≤
+      - text: C
+      - generic: m
+      - text: M, ∥
+      - text: B
+      - generic: ∗
+      - text: (h) −
+      - text: H
+      - text: ∥
+      - text: H
+      - generic: "1"
+      - text: ≤
+      - text: PM
+      - generic: h
+      - text: .
+      - paragraph: "Consequently, the old hold estimate survives:"
+      - math:
+        - generic: e
+        - generic: o
+        - generic: u
+        - generic: t
+        - generic: ≤
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: P
+        - generic: h
+        - generic: )
+        - generic: e
+        - generic: i
+        - generic: "n"
+        - generic: +
+        - generic: P
+        - generic: h
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: η
+        - generic: )
+        - generic: ","
+      - text: e
+      - generic: out
+      - text: ≤
+      - generic: (1 +
+      - text: P
+      - generic: h
+      - text: )
+      - text: e
+      - generic: in
+      - text: +
+      - text: P
+      - generic: h
+      - text: (1 +
+      - generic: η),
+      - paragraph:
+        - text: with
+        - math:
+          - generic: P
+        - generic: P
+        - text: independent of that hold’s own
+        - math:
+          - generic: h
+        - generic: h
+        - text: and
+        - math:
+          - generic: α
+        - generic: α
+        - text: .
+      - paragraph: In particular, there is no circular choice of the form
+      - math:
+        - generic: h
+        - generic: ≤
+        - generic: "1"
+        - generic: /
+        - generic: P
+        - generic: (
+        - generic: α
+        - generic: (
+        - generic: h
+        - generic: )
+        - generic: )
+        - generic: .
+      - generic: h ≤
+      - generic: 1/P(α(h)).
+      - paragraph: The large amplitude is formed after choosing the outer hold, and its inner synthesis receives smaller durations afterward. The accepted two-stage ordering is retained.
+      - heading "4. Fixed-depth lowering" [level=2]
+      - paragraph: Keep the continuous corrector
+      - math:
+        - generic: (
+        - generic: θ
+        - generic: ν
+        - generic: )
+        - generic: t
+        - generic: =
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: Δ
+        - generic: ζ
+        - generic: −
+        - generic: B
+        - generic: (
+        - generic: ζ
+        - generic: ","
+        - generic: ζ
+        - generic: )
+        - generic: −
+        - generic: g
+        - generic: "1"
+        - generic: ","
+        - generic: ζ
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: =
+        - generic: b
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ξ
+        - generic: .
+      - text: (
+      - text: θ
+      - generic: ν
+      - text: )
+      - generic: t
+      - text: =
+      - generic: ν(t)Δζ −
+      - generic: B(ζ, ζ) −
+      - text: g
+      - generic: "1"
+      - text: ", ζ(t) ="
+      - generic: b(t)ξ.
+      - paragraph:
+        - text: Suppose a cell has duration
+        - math:
+          - generic: ℓ
+        - generic: ℓ
+        - text: ","
+        - math:
+          - generic: ∣
+          - generic: b
+          - generic: ∣
+          - generic: ≤
+          - generic: A
+        - generic: ∣b∣ ≤
+        - generic: A
+        - text: ", and"
+        - math:
+          - generic: ∫
+          - generic: I
+          - generic: b
+          - generic: =
+          - generic: "0"
+        - text: ∫
+        - generic: I
+        - text: b =
+        - generic: "0"
+        - text: . The formerly zero viscous endpoint primitive now satisfies
+      - math:
+        - generic: ∥
+        - generic: ∫
+        - generic: I
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: Δ
+        - generic: ζ
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: d
+        - generic: t
+        - generic: ∥
+        - generic: H
+        - generic: m
+        - generic: =
+        - generic: ∥
+        - generic: ∫
+        - generic: I
+        - generic: "["
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: −
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: I
+        - generic: )
+        - generic: "]"
+        - generic: b
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: Δ
+        - generic: ξ
+        - generic: d
+        - generic: t
+        - generic: ∥
+        - generic: H
+        - generic: m
+        - generic: ≤
+        - generic: C
+        - generic: Λ
+        - generic: A
+        - generic: ℓ
+        - generic: "2"
+        - generic: ∥
+        - generic: Δ
+        - generic: ξ
+        - generic: ∥
+        - generic: H
+        - generic: m
+        - generic: .
+        - generic: (10)
+      - text: ∫
+      - generic: I
+      - text: ν(t)Δζ(t) dt
+      - text: H
+      - generic: m
+      - text: =
+      - text: ∫
+      - generic: I
+      - text: "[ν(t) − ν("
+      - text: t
+      - generic: I
+      - text: )]b(t)Δξ dt
+      - text: H
+      - generic: m
+      - text: ≤ CΛA
+      - text: ℓ
+      - generic: "2"
+      - text: ∥Δξ
+      - text: ∥
+      - text: H
+      - generic: m
+      - text: .
+      - text: (
+      - generic: "10"
+      - text: )
+      - paragraph:
+        - text: Over total duration
+        - math:
+          - generic: T
+        - generic: T
+        - text: ", with maximum cell length"
+        - math:
+          - generic: ℓ
+          - generic: max
+          - generic: ⁡
+        - text: ℓ
+        - generic: max
+        - text: ", the accumulated endpoint contribution is bounded by"
+      - math:
+        - generic: C
+        - generic: Λ
+        - generic: A
+        - generic: T
+        - generic: ℓ
+        - generic: max
+        - generic: ⁡
+        - generic: ","
+      - text: CΛAT
+      - text: ℓ
+      - generic: max
+      - text: ","
+      - paragraph:
+        - text: with the spatial envelope included. A partial cell adds
+        - math:
+          - generic: C
+          - generic: A
+          - generic: ℓ
+          - generic: max
+          - generic: ⁡
+        - text: CA
+        - text: ℓ
+        - generic: max
+        - text: .
+      - paragraph: Thus the old corrector estimate becomes
+      - math:
+        - generic: sup
+        - generic: ⁡
+        - generic: ∥
+        - generic: θ
+        - generic: ν
+        - generic: ∥
+        - generic: H
+        - generic: m
+        - generic: ≤
+        - generic: C
+        - generic: "["
+        - generic: δ
+        - generic: "0"
+        - generic: +
+        - generic: ℓ
+        - generic: max
+        - generic: ⁡
+        - generic: (
+        - generic: A
+        - generic: "2"
+        - generic: +
+        - generic: A
+        - generic: +
+        - generic: Λ
+        - generic: A
+        - generic: T
+        - generic: )
+        - generic: "]"
+        - generic: .
+        - generic: (11)
+      - text: sup ∥
+      - text: θ
+      - generic: ν
+      - text: ∥
+      - text: H
+      - generic: m
+      - text: ≤ C
+      - generic: "["
+      - text: δ
+      - generic: "0"
+      - text: +
+      - text: ℓ
+      - generic: max
+      - generic: (
+      - text: A
+      - generic: "2"
+      - text: + A + ΛAT
+      - generic: )
+      - generic: "]"
+      - text: .
+      - text: (
+      - generic: "11"
+      - text: )
+      - paragraph:
+        - text: The interaction
+        - math:
+          - generic: L
+          - generic: ζ
+          - generic: θ
+          - generic: ν
+        - text: L
+        - generic: ζ
+        - text: θ
+        - generic: ν
+        - text: adds at most an additional factor polynomial in
+        - math:
+          - generic: A
+        - generic: A
+        - text: and the fixed spatial bounds.
+      - paragraph:
+        - text: Choose
+        - math:
+          - generic: δ
+          - generic: "0"
+        - text: δ
+        - generic: "0"
+        - text: and
+        - math:
+          - generic: ℓ
+          - generic: max
+          - generic: ⁡
+        - text: ℓ
+        - generic: max
+        - text: after the nominal amplitude and desired error. For example,
+      - math:
+        - generic: ℓ
+        - generic: max
+        - generic: ⁡
+        - generic: ≤
+        - generic: σ
+        - generic: l
+        - generic: o
+        - generic: w
+        - generic: P
+        - generic: (
+        - generic: A
+        - generic: ","
+        - generic: K
+        - generic: ","
+        - generic: M
+        - generic: ","
+        - generic: μ
+        - generic: "0"
+        - generic: −
+        - generic: "1"
+        - generic: )
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: Λ
+        - generic: )
+      - text: ℓ
+      - generic: max
+      - text: ≤
+      - text: P(A, K, M,
+      - text: μ
+      - generic: "0"
+      - generic: −1
+      - text: )(1 + Λ)
+      - text: σ
+      - generic: low
+      - paragraph: is sufficient after increasing the fixed polynomial.
+      - paragraph: The induction loop still returns exactly on the full magnetic space because its scalar primitive vanishes. The additional unknown-mean sources and diffusion defects are unchanged except for the enlarged corrector bound.
+      - paragraph: No new lowering stage is needed. The depth of the fixed eraser catalogue remains fixed, and the target writer keeps two quadratic stages.
+      - 'heading "5. Frozen stirring references: pay a local -time source" [level=2]':
+        - text: "5. Frozen stirring references: pay a local"
+        - math:
+          - generic: L
+          - generic: "2"
+        - text: L
+        - generic: "2"
+        - text: "-time source"
+      - paragraph: If the magnetic averaging proof freezes viscosity once per complete stirring cell, use the old corrected profile with that frozen value for all orientations in the cell.
+      - paragraph:
+        - text: For a phase of duration
+        - math:
+          - generic: h
+        - generic: h
+        - text: ", the cell duration is"
+        - math:
+          - generic: O
+          - generic: (
+          - generic: h
+          - generic: )
+        - generic: O(h)
+        - text: ", while the reference velocity has height"
+        - math:
+          - generic: O
+          - generic: (
+          - generic: a
+          - generic: /
+          - generic: h
+          - generic: )
+        - generic: O(a/h)
+        - text: . Therefore
+      - math:
+        - generic: ∥
+        - generic: "["
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: −
+        - generic: ν
+        - generic: c
+        - generic: e
+        - generic: l
+        - generic: l
+        - generic: "]"
+        - generic: Δ
+        - generic: w
+        - generic: c
+        - generic: e
+        - generic: l
+        - generic: l
+        - generic: ∥
+        - generic: L
+        - generic: t
+        - generic: ∞
+        - generic: H
+        - generic: m
+        - generic: ≤
+        - generic: C
+        - generic: m
+        - generic: Λ
+        - generic: a
+        - generic: .
+      - generic: ∥[ν(t) −
+      - text: ν
+      - generic: cell
+      - text: "]Δ"
+      - text: w
+      - generic: cell
+      - text: ∥
+      - text: L
+      - generic: t
+      - generic: ∞
+      - text: H
+      - generic: m
+      - text: ≤
+      - text: C
+      - generic: m
+      - text: Λa.
+      - paragraph:
+        - text: Its
+        - math:
+          - generic: L
+          - generic: "2"
+        - text: L
+        - generic: "2"
+        - text: "-time budget on the phase is"
+      - math:
+        - generic: C
+        - generic: m
+        - generic: Λ
+        - generic: a
+        - generic: h
+        - generic: .
+        - generic: (12)
+      - text: C
+      - generic: m
+      - text: Λa
+      - generic: h
+      - text: .
+      - text: (
+      - generic: "12"
+      - text: )
+      - paragraph:
+        - text: This source need not be smaller than the physical disturbance tolerance, or even pointwise smaller than one. It belongs in the
+        - strong: local mechanical energy budget
+        - text: . Shortening
+        - math:
+          - generic: h
+        - generic: h
+        - text: makes its contribution to
+        - math:
+          - generic: u
+          - generic: −
+          - generic: w
+        - generic: u −
+        - generic: w
+        - text: small, and the velocity reset after each phase restores the small incoming velocity.
+      - paragraph:
+        - text: For instance, if the existing coordinate constants are covered by
+        - math:
+          - generic: Γ
+        - generic: Γ
+        - text: ", add a cap of the form"
+      - math:
+        - generic: h
+        - generic: ≤
+        - generic: c
+        - generic: ν
+        - generic: "0"
+        - generic: r
+        - generic: "2"
+        - generic: Γ
+        - generic: "2"
+        - generic: Λ
+        - generic: "2"
+        - generic: a
+        - generic: "2"
+        - generic: .
+      - generic: h ≤
+      - text: Γ
+      - generic: "2"
+      - text: Λ
+      - generic: "2"
+      - text: a
+      - generic: "2"
+      - text: c
+      - text: ν
+      - generic: "0"
+      - text: r
+      - generic: "2"
+      - text: .
+      - paragraph:
+        - text: The precise fixed power of
+        - math:
+          - generic: Γ
+        - generic: Γ
+        - text: can be enlarged to match the existing energy estimate. This is a polynomial refinement.
+      - paragraph: This is separate from the whole-macro rough magnetic form comparison handled by the averaging argument.
+      - heading "6. Waiting interval" [level=2]
+      - paragraph:
+        - text: Write
+        - math:
+          - generic: B
+          - generic: =
+          - generic: H
+          - generic: +
+          - generic: b
+        - generic: B =
+        - generic: H +
+        - generic: b
+        - text: ". The constant-field couplings still cancel:"
+      - math:
+        - generic: ⟨
+        - generic: D
+        - generic: α
+        - generic: u
+        - generic: ","
+        - generic: (
+        - generic: H
+        - generic: ⋅
+        - generic: ∇
+        - generic: )
+        - generic: D
+        - generic: α
+        - generic: b
+        - generic: ⟩
+        - generic: +
+        - generic: ⟨
+        - generic: D
+        - generic: α
+        - generic: b
+        - generic: ","
+        - generic: (
+        - generic: H
+        - generic: ⋅
+        - generic: ∇
+        - generic: )
+        - generic: D
+        - generic: α
+        - generic: u
+        - generic: ⟩
+        - generic: =
+        - generic: "0."
+      - text: ⟨
+      - text: D
+      - generic: α
+      - text: u, (H ⋅
+      - text: ∇)
+      - text: D
+      - generic: α
+      - text: b⟩ +
+      - text: ⟨
+      - text: D
+      - generic: α
+      - text: b, (H ⋅
+      - text: ∇)
+      - text: D
+      - generic: α
+      - text: u⟩ =
+      - generic: "0."
+      - paragraph: The dissipation is now
+      - math:
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ∥
+        - generic: ∇
+        - generic: u
+        - generic: ∥
+        - generic: H
+        - generic: "1"
+        - generic: "2"
+        - generic: +
+        - generic: ρ
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ∥
+        - generic: ∇
+        - generic: b
+        - generic: ∥
+        - generic: H
+        - generic: "1"
+        - generic: "2"
+        - generic: ","
+      - text: ν(t)∥∇u
+      - text: ∥
+      - text: H
+      - generic: "1"
+      - generic: "2"
+      - text: +
+      - text: ρ(t)∥∇b
+      - text: ∥
+      - text: H
+      - generic: "1"
+      - generic: "2"
+      - text: ","
+      - paragraph:
+        - text: bounded below by the same
+        - math:
+          - generic: μ
+          - generic: "0"
+        - text: μ
+        - generic: "0"
+        - text: "-weighted norm."
+      - paragraph:
+        - text: No derivative of
+        - math:
+          - generic: ν
+        - generic: ν
+        - text: or
+        - math:
+          - generic: ρ
+        - generic: ρ
+        - text: appears in this fixed Sobolev energy. Hence the old small-fluctuation waiting bound holds with the same condition
+      - math:
+        - generic: q
+        - generic: ≪
+        - generic: μ
+        - generic: "0"
+        - generic: ","
+        - generic: η
+        - generic: ≤
+        - generic: c
+        - generic: μ
+        - generic: "0"
+        - generic: q
+        - generic: .
+      - generic: q ≪
+      - text: μ
+      - generic: "0"
+      - text: ", η ≤"
+      - text: c
+      - text: μ
+      - generic: "0"
+      - text: q.
+      - heading "7. Nonautonomous strong continuation and all-weak transfer" [level=2]
+      - paragraph:
+        - text: The local strong construction can be obtained by the same Galerkin energy argument. Spatially constant bounded positive
+        - math:
+          - generic: ν
+          - generic: (
+          - generic: t
+          - generic: )
+          - generic: ","
+          - generic: ρ
+          - generic: (
+          - generic: t
+          - generic: )
+        - generic: ν(t), ρ(t)
+        - text: only enter the dissipative terms. Fixed
+        - math:
+          - generic: H
+          - generic: "1"
+        - text: H
+        - generic: "1"
+        - text: energies do not differentiate those coefficients.
+      - paragraph:
+        - text: The uniform controlled estimates continue the strong solution through the finite schedule. This does not require an abstract
+        - math:
+          - generic: H
+        - generic: H
+        - text: "-maximal-regularity assertion for arbitrary forms."
+      - paragraph: For weak–strong uniqueness, compare solutions with the same actual functions, data, and disturbance. The difference energy contains
+      - math:
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ∥
+        - generic: ∇
+        - generic: e
+        - generic: u
+        - generic: ∥
+        - generic: "2"
+        - generic: "2"
+        - generic: +
+        - generic: ρ
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ∥
+        - generic: ∇
+        - generic: e
+        - generic: B
+        - generic: ∥
+        - generic: "2"
+        - generic: "2"
+        - generic: ","
+      - text: ν(t)∥∇
+      - text: e
+      - generic: u
+      - text: ∥
+      - generic: "2"
+      - generic: "2"
+      - text: +
+      - text: ρ(t)∥∇
+      - text: e
+      - generic: B
+      - text: ∥
+      - generic: "2"
+      - generic: "2"
+      - text: ","
+      - paragraph:
+        - text: and the usual nonlinear terms involving the strong solution. The diffusivities are bounded below by
+        - math:
+          - generic: μ
+          - generic: "0"
+        - text: μ
+        - generic: "0"
+        - text: ", and the magnetic means agree. Any finite uniqueness exponential multiplies zero initial discrepancy; it does not determine the robustness tolerance."
+      - paragraph: The strong endpoint trace consequently supplies the prescribed one-sided energy trace for every admitted Leray–Hopf realization.
+      - heading "Consequence for resources" [level=2]
+      - paragraph: "The new requirements are:"
+      - list:
+        - text: a reset cap involving
+        - math:
+          - generic: Λ
+          - generic: s
+          - generic: δ
+        - generic: Λsδ
+        - text: ;
+        - text: leaf endpoint errors
+        - math:
+          - generic: P
+          - generic: Λ
+          - generic: h
+        - generic: PΛh
+        - text: ;
+        - text: lowering primitive errors
+        - math:
+          - generic: P
+          - generic: Λ
+          - generic: A
+          - generic: T
+          - generic: ℓ
+          - generic: max
+          - generic: ⁡
+        - text: PΛAT
+        - text: ℓ
+        - generic: max
+        - text: ;
+        - text: local stirring source budgets
+        - math:
+          - generic: P
+          - generic: Λ
+          - generic: a
+          - generic: h
+        - text: PΛa
+        - generic: h
+        - text: .
+      - paragraph: Each is controlled by adding a fixed rational polynomial cap after the relevant amplitudes and error allocations are known. There is no profile sampling, inverse interval-width dependence, target-dependent depth, or new physical actuator.
+      - paragraph: The remaining global issue is the magnetic macro comparison for time-varying profiles. Once that supplies a polynomial full-space error and gap, the reset/lowering/writer mechanisms above compose with it with polynomial costs.
+
+---
+
+  - complementary:
+    - heading "Subagents" [level=2]
+    - button "Enter full view":
+    - button "Close panel":
+    - tabpanel "Subagents" [active]:
+      - button "Back to subagents":
+      - generic: Time audit
+      - heading "Status" [level=2]
+      - generic: Done
+      - heading "Final response" [level=2]
+      - heading "Audit result" [level=2]
+      - paragraph: "I found no obstruction to the non-autonomous extension under the supplied Lipschitz contract. The affirmative route has enough structure to close, but it must make three changes explicitly:"
+      - list:
+        - listitem: use actual time-dependent viscosity correctors, or freeze viscosity only inside complete cancellation units;
+        - text: prove magnetic averaging for a sequence of nonidentical cells on the full
+        - math:
+          - generic: H
+          - generic: "1"
+        - text: H
+        - generic: "1"
+        - text: space;
+        - listitem: pay the new smooth reference residuals locally, rather than treating them as part of the small physical disturbance tolerance.
+      - paragraph:
+        - text: The new estimates below have polynomial dependence on
+        - math:
+          - generic: Λ
+        - generic: Λ
+        - text: ", without a cell-count factor."
+      - heading "1. Common-domain magnetic forms are available" [level=2]
+      - paragraph:
+        - text: For a nominal induction coordinate
+        - math:
+          - generic: M
+          - generic: (
+          - generic: t
+          - generic: )
+        - generic: M(t)
+        - text: ", define"
+      - math:
+        - generic: A
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: =
+        - generic: ρ
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: M
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: −
+        - generic: "1"
+        - generic: Δ
+        - generic: M
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: .
+      - generic: A(t) =
+      - text: ρ(t)M(t
+      - text: )
+      - generic: −1
+      - text: ΔM(t).
+      - paragraph: Take
+      - math:
+        - generic: H
+        - generic: =
+        - generic: H
+        - generic: σ
+        - generic: "1"
+        - generic: (
+        - generic: T
+        - generic: "3"
+        - generic: )
+        - generic: ","
+        - generic: V
+        - generic: =
+        - generic: H
+        - generic: σ
+        - generic: "2"
+        - generic: (
+        - generic: T
+        - generic: "3"
+        - generic: )
+        - generic: ","
+      - generic: H =
+      - text: H
+      - generic: σ
+      - generic: "1"
+      - text: (
+      - text: T
+      - generic: "3"
+      - text: ), V =
+      - text: H
+      - generic: σ
+      - generic: "2"
+      - text: (
+      - text: T
+      - generic: "3"
+      - text: ),
+      - paragraph: including constants in both spaces. The associated form is
+      - math:
+        - generic: a
+        - generic: t
+        - generic: (
+        - generic: u
+        - generic: ","
+        - generic: v
+        - generic: )
+        - generic: =
+        - generic: −
+        - generic: ⟨
+        - generic: A
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: u
+        - generic: ","
+        - generic: (
+        - generic: I
+        - generic: −
+        - generic: Δ
+        - generic: )
+        - generic: v
+        - generic: ⟩
+        - generic: L
+        - generic: "2"
+        - generic: .
+      - text: a
+      - generic: t
+      - text: (u, v) =
+      - generic: −⟨A(t)u, (I −
+      - text: Δ)v
+      - text: ⟩
+      - text: L
+      - generic: "2"
+      - text: .
+      - paragraph: The principal second-order part of the conjugated magnetic diffusion is scalar elliptic. Stretching contributes first- and zero-order matrix terms. Consequently, finitely many spatial coefficient bounds give
+      - math:
+        - generic: ∣
+        - generic: a
+        - generic: t
+        - generic: (
+        - generic: u
+        - generic: ","
+        - generic: v
+        - generic: )
+        - generic: ∣
+        - generic: ≤
+        - generic: G
+        - generic: ∥
+        - generic: u
+        - generic: ∥
+        - generic: H
+        - generic: "2"
+        - generic: ∥
+        - generic: v
+        - generic: ∥
+        - generic: H
+        - generic: "2"
+        - generic: ","
+      - text: ∣
+      - text: a
+      - generic: t
+      - text: (u, v)∣ ≤
+      - text: G∥u
+      - text: ∥
+      - text: H
+      - generic: "2"
+      - text: ∥v
+      - text: ∥
+      - text: H
+      - generic: "2"
+      - text: ","
+      - math:
+        - generic: Re
+        - generic: ⁡
+        - generic: a
+        - generic: t
+        - generic: (
+        - generic: u
+        - generic: ","
+        - generic: u
+        - generic: )
+        - generic: ≥
+        - generic: G
+        - generic: −
+        - generic: "1"
+        - generic: ∥
+        - generic: u
+        - generic: ∥
+        - generic: H
+        - generic: "2"
+        - generic: "2"
+        - generic: −
+        - generic: G
+        - generic: ∥
+        - generic: u
+        - generic: ∥
+        - generic: H
+        - generic: "1"
+        - generic: "2"
+        - generic: ","
+      - generic: Re
+      - text: a
+      - generic: t
+      - text: (u, u) ≥
+      - text: G
+      - generic: −1
+      - text: ∥u
+      - text: ∥
+      - text: H
+      - generic: "2"
+      - generic: "2"
+      - text: −
+      - text: G∥u
+      - text: ∥
+      - text: H
+      - generic: "1"
+      - generic: "2"
+      - text: ","
+      - paragraph:
+        - text: after enlarging a fixed polynomial envelope
+        - math:
+          - generic: G
+        - generic: G
+        - text: . The envelope includes inverse ellipticity, not just raw coefficient norms.
+      - paragraph:
+        - text: All the forms have the same domain
+        - math:
+          - generic: H
+          - generic: σ
+          - generic: "2"
+        - text: H
+        - generic: σ
+        - generic: "2"
+        - text: . These estimates do not differentiate their time-dependent coefficients. In particular, full
+        - math:
+          - generic: H
+          - generic: "1"
+        - text: H
+        - generic: "1"
+        - text: propagator stability on a macrointerval
+        - math:
+          - generic: T
+          - generic: ≤
+          - generic: c
+          - generic: /
+          - generic: G
+        - generic: T ≤
+        - generic: c/G
+        - text: is uniformly bounded.
+      - paragraph:
+        - text: If
+        - math:
+          - generic: ρ
+          - generic: j
+          - generic: =
+          - generic: ρ
+          - generic: (
+          - generic: t
+          - generic: j
+          - generic: )
+        - text: ρ
+        - generic: j
+        - text: =
+        - text: ρ(
+        - text: t
+        - generic: j
+        - text: )
+        - text: on a cell of length at most
+        - math:
+          - generic: ℓ
+        - generic: ℓ
+        - text: ", and the same"
+        - math:
+          - generic: M
+          - generic: (
+          - generic: t
+          - generic: )
+        - generic: M(t)
+        - text: is retained, then
+      - math:
+        - generic: ∣
+        - generic: a
+        - generic: t
+        - generic: (
+        - generic: u
+        - generic: ","
+        - generic: v
+        - generic: )
+        - generic: −
+        - generic: a
+        - generic: ~
+        - generic: t
+        - generic: (
+        - generic: u
+        - generic: ","
+        - generic: v
+        - generic: )
+        - generic: ∣
+        - generic: ≤
+        - generic: G
+        - generic: Λ
+        - generic: ℓ
+        - generic: ∥
+        - generic: u
+        - generic: ∥
+        - generic: H
+        - generic: "2"
+        - generic: ∥
+        - generic: v
+        - generic: ∥
+        - generic: H
+        - generic: "2"
+        - generic: .
+      - text: ∣
+      - text: a
+      - generic: t
+      - text: (u, v) −
+      - generic: a
+      - generic: t
+      - text: (u, v)∣ ≤
+      - text: GΛℓ ∥u
+      - text: ∥
+      - text: H
+      - generic: "2"
+      - text: ∥v
+      - text: ∥
+      - text: H
+      - generic: "2"
+      - text: .
+      - paragraph: The supplied variational comparison therefore yields a whole-macro estimate
+      - math:
+        - generic: ∥
+        - generic: S
+        - generic: (
+        - generic: T
+        - generic: )
+        - generic: −
+        - generic: S
+        - generic: ~
+        - generic: (
+        - generic: T
+        - generic: )
+        - generic: ∥
+        - generic: H
+        - generic: "1"
+        - generic: →
+        - generic: H
+        - generic: "1"
+        - generic: ≤
+        - generic: "12"
+        - generic: G
+        - generic: "2"
+        - generic: Λ
+        - generic: ℓ
+        - generic: .
+      - generic: ∥S(T) −
+      - generic: S
+      - text: (T)
+      - text: ∥
+      - text: H
+      - generic: "1"
+      - text: →
+      - text: H
+      - generic: "1"
+      - text: ≤
+      - text: "12"
+      - text: G
+      - generic: "2"
+      - text: Λℓ.
+      - paragraph: There is no factor equal to the number of cells.
+      - paragraph:
+        - text: The high-frequency evolution here needs only the variational
+        - math:
+          - generic: V
+          - generic: ′
+        - text: V
+        - generic: ′
+        - text: framework and the specific spatial energy estimates. It does not need a blanket assertion of abstract
+        - math:
+          - generic: H
+        - generic: H
+        - text: "-maximal regularity."
+      - heading "2. The new full-space averaging proof is valid" [level=2]
+      - paragraph: I audited the primitive argument developed by time_averaging.
+      - paragraph:
+        - text: Freeze the proof-reference viscosity once per complete signed stirring cell. This keeps all twelve orientation profiles within that cell identical. Freeze
+        - math:
+          - generic: ρ
+        - generic: ρ
+        - text: on the same cell for the comparison evolution.
+      - paragraph: Write its cell average as
+      - math:
+        - generic: "1"
+        - generic: ℓ
+        - generic: j
+        - generic: ∫
+        - generic: I
+        - generic: j
+        - generic: A
+        - generic: ~
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: d
+        - generic: t
+        - generic: =
+        - generic: D
+        - generic: j
+        - generic: +
+        - generic: E
+        - generic: j
+        - generic: ","
+      - text: ℓ
+      - generic: j
+      - generic: "1"
+      - text: ∫
+      - text: I
+      - generic: j
+      - generic: A
+      - text: (t) dt =
+      - text: D
+      - generic: j
+      - text: +
+      - text: E
+      - generic: j
+      - text: ","
+      - paragraph: where
+      - math:
+        - generic: D
+        - generic: j
+        - generic: =
+        - generic: d
+        - generic: j
+        - generic: Δ
+        - generic: ","
+        - generic: d
+        - generic: j
+        - generic: ≥
+        - generic: c
+        - generic: ρ
+        - generic: "0"
+        - generic: a
+        - generic: "2"
+        - generic: ","
+      - text: D
+      - generic: j
+      - text: =
+      - text: d
+      - generic: j
+      - text: Δ,
+      - text: d
+      - generic: j
+      - text: ≥
+      - text: c
+      - text: ρ
+      - generic: "0"
+      - text: a
+      - generic: "2"
+      - text: ","
+      - paragraph:
+        - text: after including the active-time fraction, and
+        - math:
+          - generic: E
+          - generic: j
+        - text: E
+        - generic: j
+        - text: is the reset contribution. Its form norm is at most
+        - math:
+          - generic: G
+          - generic: β
+        - generic: Gβ
+        - text: .
+      - paragraph: The coefficients of
+      - math:
+        - generic: K
+        - generic: j
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: =
+        - generic: ∫
+        - generic: t
+        - generic: j
+        - generic: t
+        - generic: (
+        - generic: A
+        - generic: ~
+        - generic: (
+        - generic: s
+        - generic: )
+        - generic: −
+        - generic: D
+        - generic: j
+        - generic: −
+        - generic: E
+        - generic: j
+        - generic: )
+        - generic: d
+        - generic: s
+      - text: K
+      - generic: j
+      - text: (t) =
+      - text: ∫
+      - text: t
+      - generic: j
+      - generic: t
+      - generic: (
+      - generic: A
+      - text: (s) −
+      - text: D
+      - generic: j
+      - text: −
+      - text: E
+      - generic: j
+      - generic: )
+      - text: ds
+      - paragraph:
+        - text: are
+        - math:
+          - generic: O
+          - generic: (
+          - generic: G
+          - generic: ℓ
+          - generic: )
+        - generic: O(Gℓ)
+        - text: ", and"
+        - math:
+          - generic: K
+          - generic: j
+        - text: K
+        - generic: j
+        - text: vanishes at both endpoints of each cell.
+      - paragraph:
+        - text: For normalized
+        - math:
+          - generic: H
+          - generic: "1"
+        - text: H
+        - generic: "1"
+        - text: data, pair the forward evolution
+      - math:
+        - generic: u
+        - generic: t
+        - generic: =
+        - generic: A
+        - generic: ~
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: u
+      - text: u
+      - generic: t
+      - text: =
+      - generic: A
+      - text: (t)u
+      - paragraph:
+        - text: with the backward evolution generated by the commuting heat factors
+        - math:
+          - generic: D
+          - generic: j
+        - text: D
+        - generic: j
+        - text: . On endpoint layers of length
+        - math:
+          - generic: d
+        - generic: d
+        - text: ", the form pairing is bounded using"
+      - math:
+        - generic: ∥
+        - generic: u
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ∥
+        - generic: H
+        - generic: "2"
+        - generic: ≤
+        - generic: P
+        - generic: (
+        - generic: G
+        - generic: )
+        - generic: t
+        - generic: −
+        - generic: "1"
+        - generic: /
+        - generic: "2"
+        - generic: ","
+        - generic: ∥
+        - generic: v
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ∥
+        - generic: H
+        - generic: "2"
+        - generic: ≤
+        - generic: P
+        - generic: (
+        - generic: G
+        - generic: )
+        - generic: (
+        - generic: T
+        - generic: −
+        - generic: t
+        - generic: )
+        - generic: −
+        - generic: "1"
+        - generic: /
+        - generic: "2"
+        - generic: .
+      - text: ∥u(t)
+      - text: ∥
+      - text: H
+      - generic: "2"
+      - text: ≤
+      - text: P(G)
+      - text: t
+      - generic: −1/2
+      - text: ", ∥v(t)"
+      - text: ∥
+      - text: H
+      - generic: "2"
+      - text: ≤
+      - generic: P(G)(T −
+      - text: t
+      - text: )
+      - generic: −1/2
+      - text: .
+      - paragraph: Their contribution is at most
+      - math:
+        - generic: P
+        - generic: (
+        - generic: G
+        - generic: )
+        - generic: d
+        - generic: /
+        - generic: T
+        - generic: .
+      - text: P(G)
+      - generic: d/T
+      - text: .
+      - paragraph:
+        - text: In the interior, integrate
+        - math:
+          - generic: K
+          - generic: t
+        - text: K
+        - generic: t
+        - text: by parts. This requires only
+        - math:
+          - generic: H
+          - generic: "3"
+        - text: H
+        - generic: "3"
+        - text: "smoothing:"
+      - math:
+        - generic: ∥
+        - generic: u
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ∥
+        - generic: H
+        - generic: "3"
+        - generic: ≤
+        - generic: P
+        - generic: (
+        - generic: G
+        - generic: )
+        - generic: t
+        - generic: −
+        - generic: "1"
+        - generic: ","
+        - generic: ∥
+        - generic: v
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ∥
+        - generic: H
+        - generic: "3"
+        - generic: ≤
+        - generic: P
+        - generic: (
+        - generic: G
+        - generic: )
+        - generic: (
+        - generic: T
+        - generic: −
+        - generic: t
+        - generic: )
+        - generic: −
+        - generic: "1"
+        - generic: .
+      - text: ∥u(t)
+      - text: ∥
+      - text: H
+      - generic: "3"
+      - text: ≤
+      - text: P(G)
+      - text: t
+      - generic: −1
+      - text: ", ∥v(t)"
+      - text: ∥
+      - text: H
+      - generic: "3"
+      - text: ≤
+      - generic: P(G)(T −
+      - text: t
+      - text: )
+      - generic: −1
+      - text: .
+      - paragraph:
+        - text: The
+        - math:
+          - generic: H
+          - generic: "1"
+        - text: H
+        - generic: "1"
+        - text: "-adjoint of"
+        - math:
+          - generic: K
+        - generic: K
+        - text: obeys
+      - math:
+        - generic: ∥
+        - generic: K
+        - generic: †
+        - generic: ∥
+        - generic: H
+        - generic: "3"
+        - generic: →
+        - generic: H
+        - generic: "1"
+        - generic: ≤
+        - generic: P
+        - generic: (
+        - generic: G
+        - generic: )
+        - generic: ℓ
+        - generic: .
+      - text: ∥
+      - text: K
+      - generic: †
+      - text: ∥
+      - text: H
+      - generic: "3"
+      - text: →
+      - text: H
+      - generic: "1"
+      - text: ≤
+      - generic: P(G)ℓ.
+      - paragraph:
+        - text: Indeed, with
+        - math:
+          - generic: J
+          - generic: =
+          - generic: (
+          - generic: I
+          - generic: −
+          - generic: Δ
+          - generic: )
+          - generic: "1"
+          - generic: /
+          - generic: "2"
+        - generic: J =
+        - generic: (I −
+        - text: Δ
+        - text: )
+        - generic: 1/2
+        - text: ","
+      - math:
+        - generic: K
+        - generic: †
+        - generic: =
+        - generic: J
+        - generic: −
+        - generic: "2"
+        - generic: P
+        - generic: K
+        - generic: ∗
+        - generic: J
+        - generic: "2"
+        - generic: ","
+      - text: K
+      - generic: †
+      - text: =
+      - text: J
+      - generic: −2
+      - text: P
+      - text: K
+      - generic: ∗
+      - text: J
+      - generic: "2"
+      - text: ","
+      - paragraph:
+        - text: and the formal
+        - math:
+          - generic: L
+          - generic: "2"
+        - text: L
+        - generic: "2"
+        - text: "-adjoint"
+        - math:
+          - generic: K
+          - generic: ∗
+        - text: K
+        - generic: ∗
+        - text: maps
+        - math:
+          - generic: H
+          - generic: "1"
+        - text: H
+        - generic: "1"
+        - text: to
+        - math:
+          - generic: H
+          - generic: −
+          - generic: "1"
+        - text: H
+        - generic: −1
+        - text: with norm
+        - math:
+          - generic: O
+          - generic: (
+          - generic: G
+          - generic: ℓ
+          - generic: )
+        - generic: O(Gℓ)
+        - text: . The Leray projector is harmless.
+      - paragraph: Thus the interior and cut-endpoint terms are bounded by
+      - math:
+        - generic: P
+        - generic: (
+        - generic: G
+        - generic: )
+        - generic: ℓ
+        - generic: /
+        - generic: d
+        - generic: .
+      - generic: P(G)ℓ/d.
+      - paragraph:
+        - text: The reset-average term contributes
+        - math:
+          - generic: P
+          - generic: (
+          - generic: G
+          - generic: )
+          - generic: β
+        - generic: P(G)β
+        - text: . Taking
+      - math:
+        - generic: d
+        - generic: =
+        - generic: ℓ
+        - generic: T
+      - generic: d =
+      - generic: ℓT
+      - paragraph: gives the full-space estimate
+      - math:
+        - generic: ∥
+        - generic: S
+        - generic: ~
+        - generic: (
+        - generic: T
+        - generic: )
+        - generic: −
+        - generic: R
+        - generic: T
+        - generic: ∥
+        - generic: H
+        - generic: "1"
+        - generic: →
+        - generic: H
+        - generic: "1"
+        - generic: ≤
+        - generic: P
+        - generic: (
+        - generic: G
+        - generic: )
+        - generic: "["
+        - generic: (
+        - generic: ℓ
+        - generic: /
+        - generic: T
+        - generic: )
+        - generic: "1"
+        - generic: /
+        - generic: "4"
+        - generic: +
+        - generic: β
+        - generic: "]"
+        - generic: .
+      - text: ∥
+      - generic: S
+      - text: (T) −
+      - text: R
+      - generic: T
+      - text: ∥
+      - text: H
+      - generic: "1"
+      - text: →
+      - text: H
+      - generic: "1"
+      - text: ≤ P(G)
+      - generic: "["
+      - text: (ℓ/T
+      - text: )
+      - generic: 1/4
+      - text: + β
+      - generic: "]"
+      - text: .
+      - paragraph: Combining with the coefficient-freezing comparison gives
+      - math:
+        - generic: ∥
+        - generic: S
+        - generic: (
+        - generic: T
+        - generic: )
+        - generic: −
+        - generic: R
+        - generic: T
+        - generic: ∥
+        - generic: H
+        - generic: "1"
+        - generic: →
+        - generic: H
+        - generic: "1"
+        - generic: ≤
+        - generic: P
+        - generic: (
+        - generic: G
+        - generic: )
+        - generic: "["
+        - generic: (
+        - generic: ℓ
+        - generic: /
+        - generic: T
+        - generic: )
+        - generic: "1"
+        - generic: /
+        - generic: "4"
+        - generic: +
+        - generic: β
+        - generic: +
+        - generic: Λ
+        - generic: ℓ
+        - generic: "]"
+        - generic: .
+      - text: ∥S(T) −
+      - text: R
+      - generic: T
+      - text: ∥
+      - text: H
+      - generic: "1"
+      - text: →
+      - text: H
+      - generic: "1"
+      - text: ≤ P(G)
+      - generic: "["
+      - text: (ℓ/T
+      - text: )
+      - generic: 1/4
+      - text: + β + Λℓ
+      - generic: "]"
+      - text: .
+      - paragraph:
+        - text: This proof works for arbitrary changing frozen values
+        - math:
+          - generic: ν
+          - generic: j
+          - generic: ","
+          - generic: ρ
+          - generic: j
+        - text: ν
+        - generic: j
+        - text: ","
+        - text: ρ
+        - generic: j
+        - text: . It includes constants, rather than inferring their behavior from a mean-zero estimate.
+      - heading "Why the smoothing estimates are legitimate" [level=3]
+      - paragraph: At finitely many integer spatial orders, the smooth-space parabolic operators satisfy
+      - math:
+        - generic: d
+        - generic: d
+        - generic: t
+        - generic: ∥
+        - generic: u
+        - generic: ∥
+        - generic: H
+        - generic: m
+        - generic: "2"
+        - generic: +
+        - generic: α
+        - generic: ∥
+        - generic: u
+        - generic: ∥
+        - generic: H
+        - generic: m
+        - generic: +
+        - generic: "1"
+        - generic: "2"
+        - generic: ≤
+        - generic: C
+        - generic: m
+        - generic: ∥
+        - generic: u
+        - generic: ∥
+        - generic: H
+        - generic: m
+        - generic: "2"
+        - generic: .
+      - generic: dt
+      - generic: d
+      - text: ∥u
+      - text: ∥
+      - text: H
+      - generic: m
+      - generic: "2"
+      - text: +
+      - text: α∥u
+      - text: ∥
+      - text: H
+      - generic: m+1
+      - generic: "2"
+      - text: ≤
+      - text: C
+      - generic: m
+      - text: ∥u
+      - text: ∥
+      - text: H
+      - generic: m
+      - generic: "2"
+      - text: .
+      - paragraph:
+        - text: Time-weighted combinations of the estimates at orders
+        - math:
+          - generic: "1"
+          - generic: ","
+          - generic: "2"
+          - generic: ","
+          - generic: "3"
+        - generic: 1, 2, 3
+        - text: give the displayed
+        - math:
+          - generic: H
+          - generic: "2"
+        - text: H
+        - generic: "2"
+        - text: and
+        - math:
+          - generic: H
+          - generic: "3"
+        - text: H
+        - generic: "3"
+        - text: smoothing. No time derivative of the coefficients is taken. One can first work with Galerkin approximations and pass to the limit.
+      - paragraph: For the global nonlinear Duhamel estimate, negative-order smoothing follows from the same spatial energy estimates, duality, and interpolation. The mean-zero contraction of every full macrointerval controls products of different macro propagators.
+      - heading "3. The harmonic recurrence does not require identical macros" [level=2]
+      - paragraph:
+        - text: Let
+        - math:
+          - generic: S
+          - generic: j
+        - text: S
+        - generic: j
+        - text: denote the exact linear evolution over macrointerval
+        - math:
+          - generic: j
+        - generic: j
+        - text: ", with a comparison heat factor"
+        - math:
+          - generic: R
+          - generic: j
+        - text: R
+        - generic: j
+        - text: . Suppose uniformly
+      - math:
+        - generic: ∥
+        - generic: S
+        - generic: j
+        - generic: −
+        - generic: R
+        - generic: j
+        - generic: ∥
+        - generic: H
+        - generic: "1"
+        - generic: →
+        - generic: H
+        - generic: "1"
+        - generic: ≤
+        - generic: δ
+        - generic: ","
+        - generic: ∥
+        - generic: R
+        - generic: j
+        - generic: ∣
+        - generic: H
+        - generic: "0"
+        - generic: "1"
+        - generic: ∥
+        - generic: ≤
+        - generic: "1"
+        - generic: −
+        - generic: γ
+        - generic: ","
+        - generic: δ
+        - generic: ≤
+        - generic: γ
+        - generic: /
+        - generic: "2."
+      - text: ∥
+      - text: S
+      - generic: j
+      - text: −
+      - text: R
+      - generic: j
+      - text: ∥
+      - text: H
+      - generic: "1"
+      - text: →
+      - text: H
+      - generic: "1"
+      - text: ≤
+      - text: δ, ∥
+      - text: R
+      - generic: j
+      - text: ∣
+      - text: H
+      - generic: "0"
+      - generic: "1"
+      - text: ∥ ≤
+      - generic: 1 −
+      - generic: γ, δ ≤
+      - generic: γ/2.
+      - paragraph: Then
+      - math:
+        - generic: ∥
+        - generic: b
+        - generic: j
+        - generic: +
+        - generic: "1"
+        - generic: ∥
+        - generic: H
+        - generic: "1"
+        - generic: ≤
+        - generic: (
+        - generic: "1"
+        - generic: −
+        - generic: γ
+        - generic: /
+        - generic: "2"
+        - generic: )
+        - generic: ∥
+        - generic: b
+        - generic: j
+        - generic: ∥
+        - generic: H
+        - generic: "1"
+        - generic: +
+        - generic: δ
+        - generic: M
+        - generic: .
+      - text: ∥
+      - text: b
+      - generic: j+1
+      - text: ∥
+      - text: H
+      - generic: "1"
+      - text: ≤
+      - generic: (1 −
+      - text: γ/2)∥
+      - text: b
+      - generic: j
+      - text: ∥
+      - text: H
+      - generic: "1"
+      - text: +
+      - generic: δM.
+      - paragraph: "The same bound as before follows:"
+      - math:
+        - generic: ∥
+        - generic: b
+        - generic: "n"
+        - generic: ∥
+        - generic: H
+        - generic: "1"
+        - generic: ≤
+        - generic: (
+        - generic: "1"
+        - generic: −
+        - generic: γ
+        - generic: /
+        - generic: "2"
+        - generic: )
+        - generic: "n"
+        - generic: ∥
+        - generic: b
+        - generic: "0"
+        - generic: ∥
+        - generic: H
+        - generic: "1"
+        - generic: +
+        - generic: "2"
+        - generic: δ
+        - generic: M
+        - generic: γ
+        - generic: .
+      - text: ∥
+      - text: b
+      - generic: "n"
+      - text: ∥
+      - text: H
+      - generic: "1"
+      - text: ≤
+      - generic: (1 −
+      - text: γ/2
+      - text: )
+      - generic: "n"
+      - text: ∥
+      - text: b
+      - generic: "0"
+      - text: ∥
+      - text: H
+      - generic: "1"
+      - text: +
+      - generic: γ
+      - generic: 2δM
+      - text: .
+      - paragraph: Hence the targets
+      - math:
+        - generic: δ
+        - generic: ≤
+        - generic: q
+        - generic: γ
+        - generic: C
+        - generic: K
+        - generic: "0"
+        - generic: ","
+        - generic: "n"
+        - generic: =
+        - generic: ⌈
+        - generic: C
+        - generic: K
+        - generic: "0"
+        - generic: q
+        - generic: γ
+        - generic: ⌉
+      - generic: δ ≤
+      - text: C
+      - text: K
+      - generic: "0"
+      - generic: qγ
+      - text: ", n ="
+      - generic: ⌈
+      - generic: qγ
+      - text: C
+      - text: K
+      - generic: "0"
+      - generic: ⌉
+      - paragraph: remain valid.
+      - paragraph: The new averaging rate only adds fixed polynomial powers. For example, it suffices to choose
+      - math:
+        - generic: ℓ
+        - generic: ≤
+        - generic: T
+        - generic: (
+        - generic: δ
+        - generic: C
+        - generic: P
+        - generic: (
+        - generic: G
+        - generic: )
+        - generic: )
+        - generic: "4"
+        - generic: ","
+        - generic: β
+        - generic: ≤
+        - generic: δ
+        - generic: C
+        - generic: P
+        - generic: (
+        - generic: G
+        - generic: )
+        - generic: ","
+        - generic: ℓ
+        - generic: ≤
+        - generic: δ
+        - generic: C
+        - generic: P
+        - generic: (
+        - generic: G
+        - generic: )
+        - generic: Λ
+        - generic: .
+      - generic: ℓ ≤
+      - text: T
+      - generic: (
+      - generic: CP(G)
+      - generic: δ
+      - generic: )
+      - generic: "4"
+      - text: ", β ≤"
+      - generic: CP(G)
+      - generic: δ
+      - text: ", ℓ ≤"
+      - generic: CP(G)Λ
+      - generic: δ
+      - text: .
+      - heading "4. Important stirring-residual budget" [level=2]
+      - paragraph: If a viscosity-only Stokes reference is frozen at the beginning of a complete stirring cell, then
+      - math:
+        - generic: ∣
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: −
+        - generic: ν
+        - generic: j
+        - generic: ∣
+        - generic: ≤
+        - generic: Λ
+        - generic: ℓ
+        - generic: ","
+        - generic: ∥
+        - generic: Δ
+        - generic: w
+        - generic: ∥
+        - generic: ≲
+        - generic: a
+        - generic: /
+        - generic: h
+        - generic: .
+      - generic: ∣ν(t) −
+      - text: ν
+      - generic: j
+      - text: ∣ ≤
+      - generic: Λℓ, ∥Δw∥ ≲
+      - generic: a/h.
+      - paragraph:
+        - text: Since
+        - math:
+          - generic: ℓ
+          - generic: ≍
+          - generic: h
+        - generic: ℓ ≍
+        - generic: h
+        - text: ", the extra mechanical source is of size"
+      - math:
+        - generic: O
+        - generic: (
+        - generic: Λ
+        - generic: a
+        - generic: )
+        - generic: .
+      - generic: O(Λa).
+      - paragraph:
+        - text: It does
+        - strong: not
+        - text: become small pointwise as
+        - math:
+          - generic: h
+          - generic: →
+          - generic: "0"
+        - generic: h →
+        - generic: "0"
+        - text: .
+      - paragraph:
+        - text: Its local
+        - math:
+          - generic: L
+          - generic: "2"
+        - text: L
+        - generic: "2"
+        - text: "-time norm is"
+      - math:
+        - generic: O
+        - generic: (
+        - generic: Λ
+        - generic: a
+        - generic: h
+        - generic: )
+        - generic: ","
+      - text: O(Λa
+      - generic: h
+      - text: ),
+      - paragraph:
+        - text: which does become small and is sufficient for the local velocity energy estimate. Add the corresponding polynomial cap on
+        - math:
+          - generic: h
+        - generic: h
+        - text: to keep
+        - math:
+          - generic: u
+          - generic: −
+          - generic: w
+        - generic: u −
+        - generic: w
+        - text: below the prescribed
+        - math:
+          - generic: r
+        - generic: r
+        - text: .
+      - paragraph:
+        - text: This source is a known proof-reference discrepancy. It should not be forced below the small physical disturbance tolerance
+        - math:
+          - generic: η
+        - generic: η
+        - text: . The global magnetic Duhamel argument sees the resulting small velocity perturbation, not a sum of the raw reference discrepancies.
+      - heading "5. Actual viscosity correctors avoid reset losses" [level=2]
+      - paragraph: For the erasing words, use the actual continuous proof corrector
+      - math:
+        - generic: a
+        - generic: t
+        - generic: +
+        - generic: L
+        - generic: w
+        - generic: a
+        - generic: =
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: Δ
+        - generic: w
+        - generic: ","
+        - generic: a
+        - generic: (
+        - generic: "0"
+        - generic: )
+        - generic: =
+        - generic: "0."
+      - text: a
+      - generic: t
+      - text: +
+      - text: L
+      - generic: w
+      - text: a =
+      - generic: ν(t)Δw, a(0) =
+      - generic: "0."
+      - paragraph:
+        - text: The emitted force remains
+        - math:
+          - generic: f
+          - generic: =
+          - generic: w
+          - generic: t
+        - generic: f =
+        - text: w
+        - generic: t
+        - text: ", and the exact smooth residual remains"
+      - math:
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: Δ
+        - generic: a
+        - generic: −
+        - generic: B
+        - generic: (
+        - generic: a
+        - generic: ","
+        - generic: a
+        - generic: )
+        - generic: .
+      - generic: ν(t)Δa −
+      - generic: B(a, a).
+      - paragraph:
+        - text: For one complete translated superword of duration
+        - math:
+          - generic: d
+          - generic: j
+        - text: d
+        - generic: j
+        - text: ", freeze only to estimate its endpoint:"
+      - math:
+        - generic: a
+        - generic: j
+        - generic: +
+        - generic: "1"
+        - generic: =
+        - generic: W
+        - generic: (
+        - generic: s
+        - generic: )
+        - generic: a
+        - generic: j
+        - generic: +
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: j
+        - generic: )
+        - generic: b
+        - generic: (
+        - generic: s
+        - generic: )
+        - generic: +
+        - generic: r
+        - generic: j
+        - generic: .
+      - text: a
+      - generic: j+1
+      - text: =
+      - text: W(s)
+      - text: a
+      - generic: j
+      - text: +
+      - text: ν(
+      - text: t
+      - generic: j
+      - text: )b(s) +
+      - text: r
+      - generic: j
+      - text: .
+      - paragraph:
+        - text: The old affine bias satisfies
+        - math:
+          - generic: b
+          - generic: (
+          - generic: s
+          - generic: )
+          - generic: =
+          - generic: O
+          - generic: (
+          - generic: s
+          - generic: "5"
+          - generic: )
+        - generic: b(s) =
+        - text: O(
+        - text: s
+        - generic: "5"
+        - text: )
+        - text: ", and"
+      - math:
+        - generic: ∥
+        - generic: r
+        - generic: j
+        - generic: ∥
+        - generic: H
+        - generic: m
+        - generic: ≤
+        - generic: C
+        - generic: Λ
+        - generic: s
+        - generic: d
+        - generic: j
+        - generic: .
+      - text: ∥
+      - text: r
+      - generic: j
+      - text: ∥
+      - text: H
+      - generic: m
+      - text: ≤
+      - text: CΛs
+      - text: d
+      - generic: j
+      - text: .
+      - paragraph:
+        - text: Indeed, the viscosity variation is at most
+        - math:
+          - generic: Λ
+          - generic: d
+          - generic: j
+        - text: Λ
+        - text: d
+        - generic: j
+        - text: ", while the integrated smooth carrier norm is"
+        - math:
+          - generic: O
+          - generic: (
+          - generic: s
+          - generic: )
+        - generic: O(s)
+        - text: .
+      - paragraph: Stable forward repetition gives
+      - math:
+        - generic: sup
+        - generic: ⁡
+        - generic: t
+        - generic: ∥
+        - generic: a
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ∥
+        - generic: H
+        - generic: m
+        - generic: ≤
+        - generic: C
+        - generic: (
+        - generic: s
+        - generic: +
+        - generic: "n"
+        - generic: s
+        - generic: "5"
+        - generic: +
+        - generic: Λ
+        - generic: s
+        - generic: δ
+        - generic: )
+        - generic: ","
+      - generic: t
+      - generic: sup
+      - text: ∥a(t)
+      - text: ∥
+      - text: H
+      - generic: m
+      - text: ≤
+      - text: C
+      - generic: (
+      - text: s +
+      - text: "n"
+      - text: s
+      - generic: "5"
+      - text: +
+      - text: Λsδ
+      - generic: )
+      - text: ","
+      - math:
+        - generic: ∥
+        - generic: a
+        - generic: (
+        - generic: δ
+        - generic: )
+        - generic: ∥
+        - generic: H
+        - generic: m
+        - generic: ≤
+        - generic: C
+        - generic: (
+        - generic: "n"
+        - generic: s
+        - generic: "5"
+        - generic: +
+        - generic: Λ
+        - generic: s
+        - generic: δ
+        - generic: )
+        - generic: ","
+        - generic: δ
+        - generic: =
+        - generic: ∑
+        - generic: j
+        - generic: d
+        - generic: j
+        - generic: .
+      - text: ∥a(δ)
+      - text: ∥
+      - text: H
+      - generic: m
+      - text: ≤
+      - text: C
+      - generic: (
+      - text: "n"
+      - text: s
+      - generic: "5"
+      - text: +
+      - text: Λsδ
+      - generic: )
+      - text: ", δ ="
+      - generic: j
+      - generic: ∑
+      - text: d
+      - generic: j
+      - text: .
+      - paragraph:
+        - text: The additional error has no factor
+        - math:
+          - generic: "n"
+        - generic: "n"
+        - text: . An extra cap such as
+      - math:
+        - generic: s
+        - generic: ≤
+        - generic: q
+        - generic: a
+        - generic: C
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: Λ
+        - generic: )
+      - generic: s ≤
+      - generic: C(1 + Λ)
+      - text: q
+      - generic: a
+      - paragraph:
+        - text: is sufficient when
+        - math:
+          - generic: δ
+          - generic: ≤
+          - generic: "1"
+        - generic: δ ≤
+        - generic: "1"
+        - text: .
+      - paragraph: Freezing the whole reset instead would produce a potentially troublesome factor proportional to the full word count. The per-superword estimate or actual continuous corrector avoids it.
+      - heading "6. The writer has only a small affine endpoint error" [level=2]
+      - paragraph: For a complete shear palindrome, take
+      - math:
+        - generic: (
+        - generic: v
+        - generic: ν
+        - generic: )
+        - generic: t
+        - generic: +
+        - generic: L
+        - generic: w
+        - generic: v
+        - generic: ν
+        - generic: =
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: Δ
+        - generic: w
+        - generic: +
+        - generic: f
+        - generic: s
+        - generic: e
+        - generic: e
+        - generic: d
+        - generic: ","
+        - generic: B
+        - generic: ∗
+        - generic: =
+        - generic: M
+        - generic: w
+        - generic: H
+        - generic: .
+      - text: (
+      - text: v
+      - generic: ν
+      - text: )
+      - generic: t
+      - text: +
+      - text: L
+      - generic: w
+      - text: v
+      - generic: ν
+      - text: =
+      - generic: ν(t)Δw +
+      - text: f
+      - generic: seed
+      - text: ","
+      - text: B
+      - generic: ∗
+      - text: =
+      - text: M
+      - generic: w
+      - text: H.
+      - paragraph: Its smooth reference norms are polynomial because they depend on
+      - math:
+        - generic: ∫
+        - generic: ∥
+        - generic: Δ
+        - generic: w
+        - generic: ∥
+        - generic: d
+        - generic: t
+        - generic: ","
+      - generic: ∫ ∥Δw∥ dt,
+      - paragraph: not on the inverse physical duration.
+      - paragraph:
+        - text: Freeze
+        - math:
+          - generic: ν
+        - generic: ν
+        - text: only in the endpoint calculation. The constant-viscosity affine palindrome cancels exactly. The non-autonomous difference is bounded by
+      - math:
+        - generic: ∥
+        - generic: v
+        - generic: ν
+        - generic: (
+        - generic: h
+        - generic: )
+        - generic: −
+        - generic: v
+        - generic: f
+        - generic: r
+        - generic: o
+        - generic: z
+        - generic: e
+        - generic: "n"
+        - generic: (
+        - generic: h
+        - generic: )
+        - generic: ∥
+        - generic: H
+        - generic: m
+        - generic: ≤
+        - generic: Λ
+        - generic: h
+        - generic: P
+        - generic: (
+        - generic: impulses
+        - generic: )
+        - generic: .
+      - text: ∥
+      - text: v
+      - generic: ν
+      - text: (h) −
+      - text: v
+      - generic: frozen
+      - text: (h)
+      - text: ∥
+      - text: H
+      - generic: m
+      - text: ≤ Λh P(
+      - generic: impulses
+      - text: ).
+      - paragraph: It is simply the Duhamel integral of
+      - math:
+        - generic: (
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: −
+        - generic: ν
+        - generic: (
+        - generic: "0"
+        - generic: )
+        - generic: )
+        - generic: Δ
+        - generic: w
+      - generic: (ν(t) −
+      - generic: ν(0))Δw
+      - paragraph: through a fixed number of polynomially bounded partial propagators.
+      - paragraph: The exact smooth residuals retain the form
+      - math:
+        - generic: R
+        - generic: u
+        - generic: =
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: Δ
+        - generic: v
+        - generic: ν
+        - generic: −
+        - generic: B
+        - generic: (
+        - generic: v
+        - generic: ν
+        - generic: ","
+        - generic: v
+        - generic: ν
+        - generic: )
+        - generic: +
+        - generic: B
+        - generic: (
+        - generic: B
+        - generic: ∗
+        - generic: ","
+        - generic: B
+        - generic: ∗
+        - generic: )
+        - generic: ","
+      - text: R
+      - generic: u
+      - text: =
+      - text: ν(t)Δ
+      - text: v
+      - generic: ν
+      - text: −
+      - text: B(
+      - text: v
+      - generic: ν
+      - text: ","
+      - text: v
+      - generic: ν
+      - text: ) +
+      - text: B(
+      - text: B
+      - generic: ∗
+      - text: ","
+      - text: B
+      - generic: ∗
+      - text: ),
+      - math:
+        - generic: R
+        - generic: B
+        - generic: =
+        - generic: ρ
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: Δ
+        - generic: B
+        - generic: ∗
+        - generic: −
+        - generic: C
+        - generic: v
+        - generic: ν
+        - generic: B
+        - generic: ∗
+        - generic: .
+      - text: R
+      - generic: B
+      - text: =
+      - text: ρ(t)Δ
+      - text: B
+      - generic: ∗
+      - text: −
+      - text: C
+      - text: v
+      - generic: ν
+      - text: B
+      - generic: ∗
+      - text: .
+      - paragraph:
+        - text: Thus the old
+        - math:
+          - generic: P
+          - generic: h
+        - text: P
+        - generic: h
+        - text: error estimate holds after enlarging
+        - math:
+          - generic: P
+        - generic: P
+        - text: polynomially in
+        - math:
+          - generic: Λ
+        - generic: Λ
+        - text: ", with the additional"
+        - math:
+          - generic: P
+          - generic: Λ
+          - generic: h
+        - generic: PΛh
+        - text: endpoint term absorbed into its allocated budget.
+      - paragraph: "Quadratic holds remain noncircular: use the integrated quantities"
+      - math:
+        - generic: h
+        - generic: α
+        - generic: =
+        - generic: λ
+        - generic: h
+        - generic: ","
+        - generic: h
+        - generic: α
+        - generic: "2"
+        - generic: =
+        - generic: λ
+        - generic: .
+      - generic: hα =
+      - generic: λh
+      - text: ", h"
+      - text: α
+      - generic: "2"
+      - text: =
+      - generic: λ.
+      - paragraph: The reference and new mean-related bounds are fixed before selecting the hold time. Inner synthesis is scheduled only after the outer amplitude is known.
+      - heading "7. Lowering with an actual variable-viscosity primitive" [level=2]
+      - paragraph: Keep
+      - math:
+        - generic: θ
+        - generic: t
+        - generic: =
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: Δ
+        - generic: ζ
+        - generic: −
+        - generic: B
+        - generic: (
+        - generic: ζ
+        - generic: ","
+        - generic: ζ
+        - generic: )
+        - generic: −
+        - generic: g
+        - generic: "1"
+      - text: θ
+      - generic: t
+      - text: =
+      - generic: ν(t)Δζ −
+      - generic: B(ζ, ζ) −
+      - text: g
+      - generic: "1"
+      - paragraph:
+        - text: as the proof corrector. For
+        - math:
+          - generic: ζ
+          - generic: =
+          - generic: b
+          - generic: (
+          - generic: t
+          - generic: )
+          - generic: ξ
+        - generic: ζ =
+        - generic: b(t)ξ
+        - text: ", let"
+      - math:
+        - generic: α
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: =
+        - generic: ∫
+        - generic: t
+        - generic: c
+        - generic: e
+        - generic: l
+        - generic: l
+        - generic: t
+        - generic: b
+        - generic: (
+        - generic: s
+        - generic: )
+        - generic: d
+        - generic: s
+        - generic: ","
+        - generic: α
+        - generic: =
+        - generic: "0"
+        - generic: at cell endpoints
+        - generic: ","
+        - generic: ∣
+        - generic: α
+        - generic: ∣
+        - generic: ≤
+        - generic: A
+        - generic: ℓ
+        - generic: l
+        - generic: o
+        - generic: w
+        - generic: .
+      - generic: α(t) =
+      - text: ∫
+      - text: t
+      - generic: cell
+      - generic: t
+      - text: b(s) ds, α =
+      - text: "0"
+      - generic: at cell endpoints
+      - text: ", ∣α∣ ≤"
+      - text: A
+      - text: ℓ
+      - generic: low
+      - text: .
+      - paragraph:
+        - text: Since Lipschitz
+        - math:
+          - generic: ν
+        - generic: ν
+        - text: is absolutely continuous,
+      - math:
+        - generic: ∫
+        - generic: ν
+        - generic: b
+        - generic: =
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: α
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: −
+        - generic: ∫
+        - generic: ν
+        - generic: ′
+        - generic: (
+        - generic: s
+        - generic: )
+        - generic: α
+        - generic: (
+        - generic: s
+        - generic: )
+        - generic: d
+        - generic: s
+        - generic: .
+      - generic: ∫ νb =
+      - generic: ν(t)α(t) −
+      - text: ∫
+      - text: ν
+      - generic: ′
+      - text: (s)α(s) ds.
+      - paragraph:
+        - text: Over total duration
+        - math:
+          - generic: T
+          - generic: ≤
+          - generic: "1"
+        - generic: T ≤
+        - generic: "1"
+        - text: ", the weighted viscosity primitive is bounded by"
+      - math:
+        - generic: A
+        - generic: ℓ
+        - generic: l
+        - generic: o
+        - generic: w
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: Λ
+        - generic: T
+        - generic: )
+        - generic: ","
+      - text: A
+      - text: ℓ
+      - generic: low
+      - text: (1 +
+      - generic: ΛT),
+      - paragraph: and its endpoint contribution by
+      - math:
+        - generic: Λ
+        - generic: A
+        - generic: ℓ
+        - generic: l
+        - generic: o
+        - generic: w
+        - generic: T
+        - generic: .
+      - text: ΛA
+      - text: ℓ
+      - generic: low
+      - text: T.
+      - paragraph: Accordingly, the old corrector bound becomes
+      - math:
+        - generic: C
+        - generic: "["
+        - generic: δ
+        - generic: "0"
+        - generic: +
+        - generic: ℓ
+        - generic: l
+        - generic: o
+        - generic: w
+        - generic: (
+        - generic: A
+        - generic: "2"
+        - generic: +
+        - generic: A
+        - generic: (
+        - generic: "1"
+        - generic: +
+        - generic: Λ
+        - generic: T
+        - generic: )
+        - generic: )
+        - generic: "]"
+        - generic: .
+      - text: C
+      - generic: "["
+      - text: δ
+      - generic: "0"
+      - text: +
+      - text: ℓ
+      - generic: low
+      - generic: (
+      - text: A
+      - generic: "2"
+      - text: + A(1 + ΛT)
+      - generic: )
+      - generic: "]"
+      - text: .
+      - paragraph:
+        - text: The remaining
+        - math:
+          - generic: L
+          - generic: ζ
+          - generic: θ
+        - text: L
+        - generic: ζ
+        - text: θ
+        - text: term has the old extra factor
+        - math:
+          - generic: A
+        - generic: A
+        - text: . The cell length is chosen after
+        - math:
+          - generic: A
+        - generic: A
+        - text: ", so this is a polynomial refinement with the same fixed lowering depth."
+      - paragraph: No derivative of the unknown coefficient is evaluated by the compiler; the identity is used only to prove a bound.
+      - heading "8. Waiting, strong existence, and all-weak transfer" [level=2]
+      - paragraph:
+        - text: On the unforced waiting interval, the linear
+        - math:
+          - generic: H
+        - generic: H
+        - text: "-terms still cancel in joint Sobolev energy. Positive time-dependent diffusivities contribute"
+      - math:
+        - generic: −
+        - generic: ν
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ∥
+        - generic: ∇
+        - generic: u
+        - generic: ∥
+        - generic: "2"
+        - generic: −
+        - generic: ρ
+        - generic: (
+        - generic: t
+        - generic: )
+        - generic: ∥
+        - generic: ∇
+        - generic: b
+        - generic: ∥
+        - generic: "2"
+        - generic: .
+      - text: −ν(t)∥∇u
+      - text: ∥
+      - generic: "2"
+      - text: −
+      - text: ρ(t)∥∇b
+      - text: ∥
+      - generic: "2"
+      - text: .
+      - paragraph:
+        - text: The same small-data persistence bound holds with
+        - math:
+          - generic: μ
+          - generic: "0"
+        - text: μ
+        - generic: "0"
+        - text: .
+      - paragraph:
+        - text: The required controlled strong solutions can be obtained by Galerkin construction and the direct
+        - math:
+          - generic: H
+          - generic: "1"
+        - text: H
+        - generic: "1"
+        - text: /
+        - math:
+          - generic: H
+          - generic: "2"
+        - text: H
+        - generic: "2"
+        - text: energy bounds. Scalar coefficients multiply the spatial diffusion; no differentiation of
+        - math:
+          - generic: ν
+          - generic: ","
+          - generic: ρ
+        - generic: ν, ρ
+        - text: is needed. The nonlinear terms and finite prescribed forces then give the needed time regularity.
+      - paragraph:
+        - text: Weak–strong uniqueness compares solutions with the same actual coefficient functions and disturbance. The variable diffusion terms remain dissipative in the difference equation, and the constant magnetic terms cancel. Any uniqueness exponential multiplies zero initial discrepancy and does not determine
+        - math:
+          - generic: η
+        - generic: η
+        - text: .
+      - heading "Sources checked" [level=2]
+      - paragraph: "I opened both supplied primary PDFs:"
+      - list:
+        - text: "ADLO: turn63view0. Theorem 1.1 gives the measurable bounded quasi-coercive evolution in"
+        - math:
+          - generic: L
+          - generic: "2"
+          - generic: (
+          - generic: V
+          - generic: )
+          - generic: ∩
+          - generic: H
+          - generic: "1"
+          - generic: (
+          - generic: V
+          - generic: ′
+          - generic: )
+        - text: L
+        - generic: "2"
+        - text: (V) ∩
+        - text: H
+        - generic: "1"
+        - text: (
+        - text: V
+        - generic: ′
+        - text: )
+        - text: ", with continuity in"
+        - math:
+          - generic: H
+        - generic: H
+        - text: .
+        - text: "Fackler: turn63view1. The paper explicitly distinguishes this variational result from"
+        - math:
+          - generic: H
+        - generic: H
+        - text: "-maximal regularity and gives counterexamples to general claims of the latter."
+      - paragraph: Root must open the sources itself before citing my refs.
+      - heading "Final assessment" [level=2]
+      - paragraph:
+        - text: The new work is a full-space averaging estimate for nonidentical cells, together with polynomial bounds for time-dependent affine and lowering primitives. Once these are inserted, the prior coupling argument still controls total
+        - math:
+          - generic: B
+        - generic: B
+        - text: ", the harmonic-bias recurrence retains the unknown mean, and the writer’s magnetic reference returns to it."
+      - paragraph:
+        - text: The principal presentation risk is to call the
+        - math:
+          - generic: O
+          - generic: (
+          - generic: Λ
+          - generic: a
+          - generic: )
+        - generic: O(Λa)
+        - text: stirring reference source “small” pointwise, or to freeze viscosity across an entire many-word reset. Both errors are avoided by the estimates above.
