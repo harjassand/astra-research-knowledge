@@ -1,6 +1,6 @@
 # Completed research: proofs and results
 
-These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **58 result families and 1310 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
+These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **59 result families and 1337 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
 
 The proofs, canonical cards and reusable result units are merged on `main`, together with their generated Capital packets and search indexes. Each result keeps its exact assumptions and unresolved obligations. The portable reader can retrieve this batch; the separate native model query remains blocked by the existing 2 GiB memory limit.
 
@@ -63,7 +63,8 @@ The proofs, canonical cards and reusable result units are merged on `main`, toge
 | [N1802](published-20261109/N1802.md) | Regenerative air-carbon capture: humidity recovery, amine process and full-cycle limits | 33 |
 | [N1803](published-20261109/N1803.md) | Ammonia synthesis: complete terminal charge, energy and mediator-cycle contracts | 38 |
 | [N1804](published-20261109/N1804.md) | Long-duration storage: iron-chlorine candidate, terminal return and complete cost limits | 27 |
-| [N1805](published-20261109/N1805.md) | Water-to-hydrogen: mediator heat, delivered gas and service-cost contracts | 5 |
+| [N1805](published-20261109/N1805.md) | Water-to-hydrogen: mediator heat, delivered gas and service-cost contracts | 10 |
+| [N1806](published-20261109/N1806.md) | Electric ore-to-iron: depletion cassettes, caustic return and collection limits | 22 |
 | [N1648 addendum](published-20261108/N1648-addendum.md) | Recurrent comparator; naive last-mark gluing fails | 1 |
 
 [Earlier proof/source catalogue](https://github.com/harjassand/astra-research-knowledge/blob/278f1ee7adb41652fc86922c7218dd2a6d220674/research/returns/README.md) · [Autonomous-correction dossier](../2026-11-05-continuous-time-autonomous-quantum-correction/README.md)
