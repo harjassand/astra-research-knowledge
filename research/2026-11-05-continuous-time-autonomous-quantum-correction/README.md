@@ -14,4 +14,6 @@ The north star was not achieved. The strongest opening is continuous-time autono
 
 The global autonomous threshold, noisy-write-to-passive-retention bridge and physical memory advantage remain open. The fully secular bound is not a fixed-microscopic-coupling impossibility theorem. Earlier Gibbs constructions are unchanged. The dossier includes incumbent comparisons, rejected constructions and source-reported checks; no scientific code was rerun for this upload.
 
-These are source files. Generated Capital packets and search have not yet been rebuilt for this dossier. The supplied ZIP is preserved byte-for-byte and was not unpacked during intake.
+Canonical integration is complete in [N1755: autonomous correction and secular-bath limits](../returns/published-20261108/N1755.md), with four immutable result units and links to the full proofs. The later [N1769 quantum-memory components](../returns/published-20261109/N1769.md) contain nine further scoped units. Both cards keep the full autonomous-memory threshold open.
+
+The `scope` prose in [SOURCE_INDEX.json](SOURCE_INDEX.json) records the original source-only intake, rather than current publication status. The dossier and ZIP remain unchanged; the archive was preserved byte-for-byte without extracting or executing its contents.
