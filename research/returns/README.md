@@ -1,6 +1,6 @@
 # Completed research: proofs and results
 
-These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **54 result families and 1190 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
+These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **56 result families and 1208 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
 
 The proofs, canonical cards and reusable result units are merged on `main`, together with their generated Capital packets and search indexes. Each result keeps its exact assumptions and unresolved obligations. The portable reader can retrieve this batch; the separate native model query remains blocked by the existing 2 GiB memory limit.
 
@@ -58,8 +58,10 @@ The proofs, canonical cards and reusable result units are merged on `main`, toge
 | [N1797](published-20261109/N1797.md) | Local Fisher-metric product-minimum rigidity and the nonlinear lifting limit | 22 |
 | [N1798](published-20261109/N1798.md) | Dots4D memory candidate: exact padded-generator contract and source limits | 0 |
 | [N1799](published-20261109/N1799.md) | Actual mechanical neighbor transfer, finite-step damage and resource tails | 190 |
-| [N1800](published-20261109/N1800.md) | Parallel optical interconnect candidate: common relief, reported models and complete cost limits | 10 |
-| [N1801](published-20261109/N1801.md) | TPV optical/electrical repair candidate: complete heat balance, missed targets and cost limits | 11 |
+| [N1800](published-20261109/N1800.md) | Parallel optical interconnect candidate: common relief, reported models and complete cost limits | 11 |
+| [N1801](published-20261109/N1801.md) | TPV optical/electrical repair candidate: complete heat balance, missed targets and cost limits | 13 |
+| [N1802](published-20261109/N1802.md) | Regenerative air-carbon capture: humidity recovery, amine process and full-cycle limits | 13 |
+| [N1803](published-20261109/N1803.md) | Ammonia synthesis: complete terminal charge, energy and mediator-cycle contracts | 2 |
 | [N1648 addendum](published-20261108/N1648-addendum.md) | Recurrent comparator; naive last-mark gluing fails | 1 |
 
 [Earlier proof/source catalogue](https://github.com/harjassand/astra-research-knowledge/blob/278f1ee7adb41652fc86922c7218dd2a6d220674/research/returns/README.md) · [Autonomous-correction dossier](../2026-11-05-continuous-time-autonomous-quantum-correction/README.md)
