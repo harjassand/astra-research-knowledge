@@ -1,6 +1,6 @@
 # Completed research: proofs and results
 
-These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **63 result families and 1566 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
+These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **64 result families and 1608 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
 
 The proofs, canonical cards and reusable result units are merged on `main`, together with their generated Capital packets and search indexes. Each result keeps its exact assumptions and unresolved obligations. The portable reader can retrieve this batch; the separate native model query remains blocked by the existing 2 GiB memory limit.
 
@@ -63,12 +63,13 @@ The proofs, canonical cards and reusable result units are merged on `main`, toge
 | [N1802](published-20261109/N1802.md) | Regenerative air-carbon capture: humidity recovery, amine process and full-cycle limits | 33 |
 | [N1803](published-20261109/N1803.md) | Ammonia synthesis: complete terminal charge, energy and mediator-cycle contracts | 38 |
 | [N1804](published-20261109/N1804.md) | Long-duration storage: iron-chlorine candidate, terminal return and complete cost limits | 27 |
-| [N1805](published-20261109/N1805.md) | Water-to-hydrogen: low-current stacks, circulating chemistry and complete service limits | 45 |
+| [N1805](published-20261109/N1805.md) | Water-to-hydrogen: low-current stacks, circulating chemistry and complete service limits | 49 |
 | [N1806](published-20261109/N1806.md) | Ore-to-iron: depletion cassettes, renewable product mesh and reagent-return limits | 76 |
 | [N1807](published-20261109/N1807.md) | Pressure-gas storage and ambient steam: finite machinery, inventories and service limits | 81 |
 | [N1808](published-20261109/N1808.md) | Concrete recovery: contact release, origin-resolved paste and accepted aggregate grades | 35 |
-| [N1809](published-20261109/N1809.md) | Durable cooling entropy, contact and work-return contracts | 15 |
+| [N1809](published-20261109/N1809.md) | Chilled water periodic component cycle, manufacture and service limits | 37 |
 | [N1810](published-20261109/N1810.md) | Mineral slurry liquid extraction, dry powder and recovered-water contracts | 9 |
+| [N1811](published-20261109/N1811.md) | Air-water peroxide stoichiometry, purity and coupled transport contracts | 16 |
 | [N1648 addendum](published-20261108/N1648-addendum.md) | Recurrent comparator; naive last-mark gluing fails | 1 |
 
 [Earlier proof/source catalogue](https://github.com/harjassand/astra-research-knowledge/blob/278f1ee7adb41652fc86922c7218dd2a6d220674/research/returns/README.md) · [Autonomous-correction dossier](../2026-11-05-continuous-time-autonomous-quantum-correction/README.md)
