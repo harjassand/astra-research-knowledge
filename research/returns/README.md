@@ -1,6 +1,6 @@
 # Completed research: proofs and results
 
-These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **65 result families and 1646 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
+These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **67 result families and 1701 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
 
 The proofs, canonical cards and reusable result units are merged on `main`, together with their generated Capital packets and search indexes. Each result keeps its exact assumptions and unresolved obligations. The portable reader can retrieve this batch; the separate native model query remains blocked by the existing 2 GiB memory limit.
 
@@ -68,9 +68,11 @@ The proofs, canonical cards and reusable result units are merged on `main`, toge
 | [N1807](published-20261109/N1807.md) | Pressure-gas storage and ambient steam: finite machinery, inventories and service limits | 81 |
 | [N1808](published-20261109/N1808.md) | Concrete recovery: contact release, origin-resolved paste and accepted aggregate grades | 35 |
 | [N1809](published-20261109/N1809.md) | Chilled water periodic component cycle, manufacture and service limits | 41 |
-| [N1810](published-20261109/N1810.md) | Mineral slurry DME extraction, powder release and competent MVR comparison | 33 |
-| [N1811](published-20261109/N1811.md) | Air-water peroxide stoichiometry, purity and coupled transport contracts | 16 |
+| [N1810](published-20261109/N1810.md) | Mineral slurry DME extraction, powder release and competent MVR comparison | 36 |
+| [N1811](published-20261109/N1811.md) | Peroxide locally balanced through-flow, clean product and full service | 46 |
 | [N1812](published-20261109/N1812.md) | Concentrated brine ice separation, purity and finite heat-network contracts | 10 |
+| [N1813](published-20261109/N1813.md) | Intact magnet interface release, support, function and complete recovery cost | 9 |
+| [N1814](published-20261109/N1814.md) | Centrate ammonia recovery, acid/base restoration and concentrated product | 13 |
 | [N1648 addendum](published-20261108/N1648-addendum.md) | Recurrent comparator; naive last-mark gluing fails | 1 |
 
 [Earlier proof/source catalogue](https://github.com/harjassand/astra-research-knowledge/blob/278f1ee7adb41652fc86922c7218dd2a6d220674/research/returns/README.md) · [Autonomous-correction dossier](../2026-11-05-continuous-time-autonomous-quantum-correction/README.md)
