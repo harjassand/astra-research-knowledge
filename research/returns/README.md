@@ -1,6 +1,6 @@
 # Completed research: proofs and results
 
-These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **70 result families and 1770 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
+These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **70 result families and 1801 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
 
 The proofs, canonical cards and reusable result units are merged on `main`, together with their generated Capital packets and search indexes. Each result keeps its exact assumptions and unresolved obligations. The portable reader can retrieve this batch; the separate native model query remains blocked by the existing 2 GiB memory limit.
 
@@ -72,8 +72,8 @@ The proofs, canonical cards and reusable result units are merged on `main`, toge
 | [N1811](published-20261109/N1811.md) | Peroxide locally balanced through-flow, clean product and full service | 46 |
 | [N1812](published-20261109/N1812.md) | Brine water finite heat network, membrane support and complete costs | 37 |
 | [N1813](published-20261109/N1813.md) | Intact magnet support relay, hot destination tests and complete recovery costs | 36 |
-| [N1814](published-20261109/N1814.md) | Centrate ammonia recovery, acid/base restoration and concentrated product | 13 |
-| [N1815](published-20261109/N1815.md) | Load-safe recovery: finite bypass states, physical support and path observability | 9 |
+| [N1814](published-20261109/N1814.md) | Centrate nitrogen: four-stream metathesis, finite inventories and complete service costs | 39 |
+| [N1815](published-20261109/N1815.md) | Load-safe recovery: hidden preload, full wrench and guarded reaction witnesses | 14 |
 | [N1816](published-20261109/N1816.md) | Functional molecular renewal: synthesis, damaged-stock clearance and vector closure | 4 |
 | [N1817](published-20261109/N1817.md) | Chemical selection: actual compartment interfaces and positive-mixture limits | 2 |
 | [N1648 addendum](published-20261108/N1648-addendum.md) | Recurrent comparator; naive last-mark gluing fails | 1 |
