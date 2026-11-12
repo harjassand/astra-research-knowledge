@@ -1,0 +1,57 @@
+# N1809 — Chilled water: periodic elastocaloric regeneration, drive peaks and complete-service limits
+
+The completed available P2 return supplies a periodically closed CONDITIONAL opposed-cartridge elastocaloric component cycle, finite thermal-front regeneration and a proposed draining manifold. Colder primary stream COP4.120, higher-component-COP4.213, perfect shaft-conversion4.503/4.606 are below5 before outer installation. Gentler stroke reduces modeled shaft peaks to -23.58/+19.34kW at COP4.102/55.89kg per10kW COMPONENT heat. Favorable gentler installed47066USD/211USD-MWh already grants accepted capacity and component-COP-as-grid. Complete1kW100h<=20kWh campaign and economical matched invention NOT_ACHIEVED; not an all-caloric-design obstruction.
+
+All constitutive, transfer, support, manifold, cost and life values are joint introduced engineering hypotheses unless explicitly identified source evidence. Source-reported numerical convergence and internal review concern implementation at those assumptions, not qualification of material/hardware. Broad crossing/axial-path and paired-gradient cycles credited US10823465B2/US12085315B2; draining-manifold patent novelty unestablished. TiNiCuCo material evidence does not combine with binaryNiTi fabrication/fatigue or Yan bending as one available component. Tables/math are rendered with possible omissions/duplicates. No physical experiment, complete rated machine, procurement or general obstruction. All earlier known/unknown source/access/transfer holds remain; source-author citation is not new Capital governing-source exposure.
+
+Construct a substantially better joint material, finite heat-transfer, draining manifold, mechanical/electrical return and manufacturing/service operation or different architecture. Proposed priced fixtures can measure useful lift and actual work return, not establish multi-million-cycle life or10kW commercial advantage. No physical execution/acquisition or missing-source recovery authorized.
+
+Read the [complete family packet](../../../knowledge/current/packets/N1809.json), or request an individual unit below with `python3 knowledge/retrieve.py packet <unit-ID>`. For a family CLI request, set `--max-bytes` to at least the packet file size plus 4096 wrapper bytes; corrections are never truncated.
+
+## Reusable operations
+
+- [Do not turn a thermal step response into a useful cycle rate](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-apparent-capacity-slab-finite-contact-surrogate/v0001.json)
+- [Credit competent existing alternatives at their real boundaries](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-chilled-water-actual-equipment-and-stronger-comparator-scope/v0001.json)
+- [Use the same finite geometry for thermal and hydraulic paths](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-chilled-water-actual-geometry-and-paid-thermal-stocks/v0001.json)
+- [Close the entire installation and finite stores](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-chilled-water-air-electrical-idle-and-restoration-boundaries/v0001.json)
+- [Do not turn component envelopes into seasonal efficiency](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-chilled-water-ambient-preload-and-actual-map-load-boundaries/v0001.json)
+- [Include actual pressure and coolant in the useful heat boundary](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-chilled-water-customer-enthalpy-head-and-scale-specific-pump/v0001.json)
+- [Measure useful lift and actual recovery on a shared full boundary](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-chilled-water-decisive-controls-stocks-and-life-limits/v0001.json)
+- [Price an attainable measurement fixture without promising capacity](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-chilled-water-decisive-fixture-capital-and-execution/v0001.json)
+- [Require the matched cost advantage in addition to absolute targets](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-chilled-water-matched-advantage-versus-separate-headline-targets/v0001.json)
+- [Separate source specimen results from an assumed component law](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-chilled-water-material-evidence-and-joint-constitutive-hypotheses/v0001.json)
+- [Do not transfer a component map into a successful cold campaign](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-chilled-water-one-kw-cold-campaign-favorable-failure/v0001.json)
+- [Keep periodic component closure below the complete chiller target](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-chilled-water-periodic-component-versus-full-invention/v0001.json)
+- [Keep treated primary and customer circuits physically qualified](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-chilled-water-quality-isolation-condensation-and-service/v0001.json)
+- [Keep component-port output separate from accepted customer output](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-chilled-water-reference-primary-stream-points/v0001.json)
+- [Retain numerical checks at the model assumptions](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-chilled-water-source-reported-convergence-and-internal-check-scope/v0001.json)
+- [Keep service intervals conditional and fouling geometric](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-chilled-water-tariff-use-and-component-renewal/v0001.json)
+- [Preserve the complete available record and uncollected artifacts](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-chilled-water-whole-source-and-open-endpoint/v0001.json)
+- [Keep force and service exposure at the selected duty](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-cooling-force-frequency-inventory-and-cycle-life-accounting/v0001.json)
+- [Preserve the refinement without retracting accepted material evidence](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-cooling-original-analytics-and-unconstructed-whole-operation/v0001.json)
+- [Define useful cooling and the whole-stream reversible bound](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-cooling-useful-stream-entropy-and-finite-air-sink/v0001.json)
+- [Do not make prepared material or short cycles free](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-cycle-limited-material-renewal-and-full-service-budget/v0001.json)
+- [Reject useful credit outside the water-temperature tolerance](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-direct-customer-water-operation-with-no-accepted-intervals/v0001.json)
+- [Do not manufacture a zero terminal approach](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-finite-hot-coil-pinch-area-and-air-pressure-trade/v0001.json)
+- [Retain the accepted-output and grid-efficiency gifts in cost figures](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-gentler-chiller-repeat-manufacture-and-optimistic-ownership/v0001.json)
+- [Reduce peak power with a paid slower operation](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-gentler-phase-drive-protocol-and-force-inventory-trade/v0001.json)
+- [Separate modest optical energy from factory occupation](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-laser-surface-preparation-rate-and-occupation-cost-screen/v0001.json)
+- [Keep real incumbent boundaries and all access holds](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-matched-chiller-comparison-and-held-source-boundaries/v0001.json)
+- [Prevent inconsistent composition of introduced work and heat ports](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-material-loop-compatible-internal-work-and-unloading-ceilings/v0001.json)
+- [Pay actual coupled strain and negative-work recovery](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-opposed-cartridge-strain-compatible-shaft-and-electric-return/v0001.json)
+- [Preserve a concrete optional mechanism and representation freedom](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-opposed-regenerative-active-bed-and-work-path-hypothesis/v0001.json)
+- [Couple power accounting only to a compatible material cycle](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-physical-force-return-and-self-heating-fan-water-power/v0001.json)
+- [Remove the unsupported short-path combination](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-regenerator-hydraulic-versus-thermal-front-length-correction/v0001.json)
+- [Construct switching without residual-plenum thermal short circuits](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-switchable-crossflow-serial-regeneration-and-draining-face/v0001.json)
+- [Do not assume thin stock carries the compressive force unbraced](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-thin-compressed-stock-buckling-and-paid-support/v0001.json)
+- [Keep heat transfer and pumping on the same geometry](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-thin-contact-channel-pressure-and-hydraulic-cost-trade/v0001.json)
+- [Pay the chosen fluid history once](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-thin-stock-fluid-inventory-and-net-heat-no-double-debit/v0001.json)
+- [Retain actual material evidence without a chiller map](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1809-yan-bending-stock-preparation-and-limited-primary-exposure/v0001.json)
+
+## Whole governing sources
+
+- [ROOT_STEAM_SERVICE_AND_DURABLE_COOLING_CONTRACTS_20261112_PUBLIC_PATHS.md](https://github.com/harjassand/astra-research-knowledge/blob/main/research/returns/2026-11-12-root-durable-cooling-entropy-contact-contracts/ROOT_STEAM_SERVICE_AND_DURABLE_COOLING_CONTRACTS_20261112_PUBLIC_PATHS.md)
+- [ROOT_COOLING_ENTROPY_CONTACT_AND_WORK_CONTRACTS_20261112.txt](https://github.com/harjassand/astra-research-knowledge/blob/main/research/returns/2026-11-12-root-durable-cooling-entropy-contact-contracts/ROOT_COOLING_ENTROPY_CONTACT_AND_WORK_CONTRACTS_20261112.txt)
+- [P2_CHILLED_WATER_AVAILABLE_RETURN_20261112_PUBLIC_PATHS.md](https://github.com/harjassand/astra-research-knowledge/blob/main/research/returns/2026-11-12-p2-completed-chilled-water-continuation/P2_CHILLED_WATER_AVAILABLE_RETURN_20261112_PUBLIC_PATHS.md)
+
+[Prior summary](../2026-11-12-p2-completed-chilled-water-continuation/N1809_PRIOR_CARD.txt) and [prior navigation](../2026-11-12-p2-completed-chilled-water-continuation/N1809_PRIOR_GUIDE.md) are historical; current contracts appear above.
