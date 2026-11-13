@@ -1,6 +1,6 @@
 # Completed research: proofs and results
 
-These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **80 result families and 2177 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
+These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **81 result families and 2209 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
 
 The proofs, canonical cards and reusable result units are merged on `main`, together with their generated Capital packets and search indexes. Each result keeps its exact assumptions and unresolved obligations. The portable reader can retrieve this batch; the separate native model query remains blocked by the existing 2 GiB memory limit.
 
@@ -80,12 +80,13 @@ The proofs, canonical cards and reusable result units are merged on `main`, toge
 | [N1819](published-20261109/N1819.md) | Reusable attachment: exact rigid clearance, issued energy boundary and finite cost budgets | 52 |
 | [N1820](published-20261109/N1820.md) | Passive magnetic attachment: contact stability, captured rest state and release | 8 |
 | [N1821](published-20261109/N1821.md) | Receiver-free support: compliant spine clamp, guided feet and finite service limits | 32 |
-| [N1822](published-20261109/N1822.md) | Product-owned molecular continuation, covalent reset and chemical authentication | 54 |
+| [N1822](published-20261109/N1822.md) | Covalent peptoid handover: intended bonds, false progression and spent-carrier destruction | 65 |
 | [N1823](published-20261109/N1823.md) | Actuator repair: expose the working wall and renew the backing | 26 |
 | [N1722](published-20261109/N1722.md) | Finite thermal-core capacity and weighted sparse-current certificate | 28 |
-| [N1824](published-20261109/N1824.md) | Microdevice renewal: retained electrical isolation and interior service access | 16 |
+| [N1824](published-20261109/N1824.md) | Shared-service microdevices: passive contacts and conditional installed tests | 31 |
 | [N1825](published-20261109/N1825.md) | Finite exact-integer grid sampler and contextual coherence removal | 8 |
 | [N1826](published-20261109/N1826.md) | Full-output trajectory TV accounting and resource-abort certificates | 5 |
+| [N1827](published-20261109/N1827.md) | Generic material feed, observed registry and structural interfaces | 6 |
 | [N1648 addendum](published-20261108/N1648-addendum.md) | Recurrent comparator; naive last-mark gluing fails | 1 |
 
 [Earlier proof/source catalogue](https://github.com/harjassand/astra-research-knowledge/blob/278f1ee7adb41652fc86922c7218dd2a6d220674/research/returns/README.md) · [Autonomous-correction dossier](../2026-11-05-continuous-time-autonomous-quantum-correction/README.md)
