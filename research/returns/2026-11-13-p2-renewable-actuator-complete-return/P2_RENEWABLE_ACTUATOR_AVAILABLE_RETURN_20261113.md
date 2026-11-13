@@ -1,0 +1,1150 @@
+# P2 renewable functional actuator repair: available return
+
+Source: existing Pro chat https://chatgpt.com/c/6af520d7-3fcc-83ec-8bf0-80e8531141ea. Issued question: work/astra-renewed-pro-programmes-20261103/P2_FULL_RENEWABLE_FUNCTIONAL_ACTUATOR_BODY_REPAIR_INVENTION_PRO_20261113.txt; 12551 ASCII bytes; SHA256 6fde61aaa041c682e984f2e9801690fbaefeb85d0316222ef5ed1a092801024b.
+
+Capture scope: user-visible expanded 103m 4s top-level activity and final response as rendered DOM snapshot, including visible tables and source links. Rendering can duplicate or omit mathematics and tables. Nested tool activity and the linked report and ZIP were not collected; original identity and transfer eligibility remain unverified. Native final identity, exact text and prefix are unknown. This is not a native-byte transcript, producer-code execution, or artifact recovery.
+
+## Visible activity and final response
+
+    - button "Worked for 103m 4s" [expanded] [active]:
+      - generic: Worked for 103m 4s
+    - paragraph: I’ll investigate a repair cycle that restores the loaded actuator and leaves its delivery path and sensors ready for the next fault. I’ll compare reactive repair and thermoplastic rebuilding against tough bodies and automatic spare exchange, then model the strongest candidate with finite material, energy and service stocks.
+    - button "Soft materials, Soft mechanics, and Soft comparison finished"
+    - generic: Soft materials, Soft mechanics, and Soft comparison finished
+    - generic: Ran command
+    - paragraph: Investigated low-melting healable polymers and estimated PCL membrane loads
+    - paragraph: Selected TPU diaphragm
+    - paragraph: Evaluated bellows mold setup and formed flat actuator pouch
+    - paragraph: Planned release-film insertion and measured cavity volume
+    - paragraph: Qualified the reuse model
+    - paragraph: Assessed flat-jaw patch setup
+    - generic: Searched 27 websites
+    - paragraph: Built conditional weld model and refined repair support geometry
+    - paragraph: Sized rolling diaphragm actuator and estimated puncture leak rate
+    - paragraph: Evaluated movable heat tip
+    - paragraph: Refined repair-window geometry and balanced damage conditions
+    - paragraph: Prepared a heat-patch model
+    - paragraph: Prepared rolling-diffusion repair setup and softened blank boundaries
+    - paragraph: Evaluated backer venting and ultrasound fill verification
+    - paragraph: Modeled qualification uncertainty
+    - paragraph: Priced repair options
+    - paragraph: "The literature exposes two important distinctions. One pneumatic actuator study automated 63 damage-and-heal cycles, but each repair used 25 minutes of heating and 35 minutes of rest; it does not meet the ten-minute target. Separately, published TPU fabrication shows why reheating needs a real internal separator: otherwise a punctured chamber can weld shut. I’m focusing on direct material placement against a retrievable backing surface, while giving automatic replacement the benefit of inexpensive generic diaphragm stock."
+    - paragraph: Checked service-overtravel geometry and pressure-boundary mechanics
+    - generic: Searched 18 websites
+    - paragraph: Compared repair costs
+    - paragraph: Assessed patch novelty
+    - button "Read files, ran a command, searched the web"
+    - generic: Read files, ran a command, searched the web
+    - paragraph: Built the candidate model
+    - button "Ran a command, searched the web"
+    - generic: Ran a command, searched the web
+    - paragraph: Evaluated repair plug
+    - paragraph: Sized local repair patches and checked rotary-union layout
+    - paragraph: Estimated repair costs
+    - paragraph: "The strongest route I’ve found uses the actuator’s rolling motion to expose the damaged wall for repair against a real backing surface. Generic film supplies missing material, and removable release film keeps the repair tooling accessible for the next event. Two questions now control the result: whether the repaired wall can return to loaded service within ten minutes, and whether that machinery can beat automatic exchange of a very cheap diaphragm."
+    - button "Read files, searched the web"
+    - generic: Read files, searched the web
+    - paragraph: Modeled thermoviscous friction for the 6W station
+    - paragraph: Set up cycle-map solver and monitored load-cell calibration
+    - paragraph: Estimated repair heating requirements
+    - generic: Ran command
+    - paragraph: Prepared parameter gates and checked multilayer patch bending
+    - paragraph: Checked patch-cycle limits
+    - paragraph: Set up models.py and refined return-pressure modeling
+    - paragraph: Sized the repair heat path
+    - paragraph: Checked patch layout fit
+    - paragraph: Updated seam layer code
+    - button "Edited a file"
+    - generic: Edited a file
+    - paragraph: "I found a concrete limit in the repair process: a short heat-weld recipe does not establish that excess patch material can flow out and restore the original wall thickness. I’m therefore modeling the added thickness explicitly, including repeated patches at one site. The model also charges cooling, proof cycles, tool cleaning and restoration; it will not count a leak-tight patch as proof of restored strength."
+    - button "Read files, searched the web"
+    - generic: Read files, searched the web
+    - paragraph: Checked valve flow mapping
+    - button "Edited a file, searched the web"
+    - generic: Edited a file, searched the web
+    - paragraph: Prepared geometry comparison table
+    - paragraph: Computed humidity ledger
+    - button "Ran a command, searched the web"
+    - generic: Ran a command, searched the web
+    - paragraph: Tuned leak-detection thresholds
+    - text: Edited
+    - link "01a1d42e-7297-728e-baec-a3250d162410:exec-abd9cc5c-4c85-4756-a0c7-f581fec4a8dc:exec-abd9cc5c-4c85-4756-a0c7-f581fec4a8dc"
+    - paragraph: Sized the piston body extension
+    - paragraph: Calculated chamber volume
+    - paragraph: Checked fold-gap exposure
+    - paragraph: Refined piston heating estimates
+    - paragraph: Refined piston backer heating
+    - paragraph: Resimulated backer preheating
+    - paragraph: Sized a piston repair heater
+    - paragraph: Designed an inner heated shoe
+    - button "Edited a file, searched the web"
+    - generic: Edited a file, searched the web
+    - paragraph: Sized and checked a candidate valve rating
+    - paragraph: Sized desiccant cartridge
+    - paragraph: Prepared dry-air purge
+    - paragraph: "The modeled air supply can support the loaded stroke without drawing down a hidden pressure stock: the current finite-valve calculation gives about 21 N through 22 mm at 0.5 Hz. That result still depends on introduced friction and flow curves. I’ve also identified a plausible physical route for the backing tool through the hollow piston’s open, unpressurized interior; the access and nonbonding surface now need to be checked together."
+    - generic: Searched for Ran soft actuator service model and summarized thermal sensitivity results
+    - paragraph: Modeled piston geometry
+    - button "Ran a command"
+    - generic: Ran a command
+    - paragraph: Chose the 2D model grid
+    - paragraph: Modified the anvil-sheet thermal model
+    - button "Edited a file"
+    - generic: Edited a file
+    - paragraph: Refined controller power budget
+    - paragraph: Reconciled repair-energy counts
+    - paragraph: Recomputed the finite-end thermal model
+    - paragraph: Refined the annular airflow model
+    - paragraph: Implemented reusable cycle calculator
+    - paragraph: Sized damage-head access
+    - paragraph: Designed curved punch fixture and built hybrid state model
+    - button "Read files, searched the web"
+    - generic: Read files, searched the web
+    - paragraph: Checked piston stability calculations
+    - paragraph: Checked minimum clearance
+    - paragraph: Checked heated tool geometry
+    - paragraph: Assessed coating damage
+    - paragraph: Chose a 4 mm gap
+    - paragraph: Checked crown-edge clearance
+    - paragraph: Calculated elliptical patch
+    - paragraph: Calculated film strain
+    - paragraph: Updated model assumptions
+    - button "Edited a file"
+    - generic: Edited a file
+    - paragraph: Refined relaxed-tube geometry
+    - paragraph: Assessed stock function
+    - paragraph: Evaluated piston removal and assessed release-sheet design
+    - paragraph: Prepared six-repair experiment and calibrated comparative gauge
+    - paragraph: Validated piston geometry
+    - paragraph: Planned repair tooling
+    - paragraph: Checked cap hinge clearance and lateral shift
+    - paragraph: Prepared a two-hinge cap
+    - button "Ran a command"
+    - generic: Ran a command
+    - paragraph: Verified crown clearance and output-rod access
+    - paragraph: Prepared camera scan
+    - paragraph: Refined the suction head and sealed the LED feedthrough
+    - paragraph: Prepared film-lift inspection and annular suction shoe
+    - paragraph: Checked release-web access and set belt feed limit
+    - paragraph: Checked follower-ring clearance
+    - paragraph: Designed the fold follower
+    - paragraph: Awaited raw camera images and wrote readiness gate
+    - button "Edited a file"
+    - generic: Edited a file
+    - paragraph: Rendered pressure cross-section and service piston
+    - paragraph: Reduced follower ring radius
+    - paragraph: Checked 100-event stock capacity
+    - paragraph: Built report HTML tables
+    - button "Ran a command"
+    - generic: Ran a command
+    - paragraph: Added placement-friction patch
+    - paragraph: Preconditioned film stock
+    - paragraph: Refined feed-width model
+    - paragraph: Calculated release-film mass
+    - paragraph: Refined campaign cost matching
+    - paragraph: Compared device cost models and assessed price uncertainty
+    - paragraph: Modeled piston coating costs
+    - button "Edited a file"
+    - generic: Edited a file
+    - paragraph: Refined die thermal sizing and checked backer stress limits
+    - paragraph: Compared repair mass options
+    - paragraph: Reviewed archived diagnostics
+    - paragraph: Updated numeric thresholds and defined measurement gates
+    - paragraph: Selected inspection gate setup and checked weighted load
+    - paragraph: Modeled restart conditioning
+    - paragraph: Prepared metrology scan
+    - paragraph: "The pressure-boundary check changed the design: the pressure cap must open and move aside to expose the repair region. I’m charging that mechanism and a fold guide, rather than assuming the diaphragm follows its nominal shape while unpressurized. The thermal calculation still leaves room within the repair-time and energy targets, but the cost comparison is not yet strong: inexpensive automatic liner exchange remains competitive, and repeated repaired-wall fatigue is unqualified."
+    - generic: Ran command
+    - paragraph: Checked metric readiness
+    - paragraph: Prepared two-coupon steel test
+    - paragraph: Refined first-build budget
+    - paragraph: Prepared first-campaign costs
+    - paragraph: Calculated campaign costs
+    - paragraph: Prepared report bundle and archived project notes
+    - button "Edited a file"
+    - generic: Edited a file
+    - paragraph: Implemented readiness schema and awaited material table
+    - paragraph: Ran pressure model and defined strength retention
+    - paragraph: Checked wiper clearance
+    - paragraph: Parked task holder before wiping
+    - paragraph: Raised piston to x40
+    - paragraph: Exposed piston for inspection
+    - paragraph: Refined positive cleanup timing
+    - paragraph: Added patch loss parameter
+    - paragraph: Added patch-position sweeps
+    - button "Edited a file"
+    - generic: Edited a file
+    - paragraph: Checked thermal-lag inputs and calculated price threshold
+    - button "Edited a file"
+    - generic: Edited a file
+    - paragraph: Refined removal scaling and sized the patch window
+    - paragraph: Refined defect-size limits
+    - paragraph: Defined removal-zone limits
+    - paragraph: Computed work uncertainty
+    - button "Edited a file, ran a command, searched the web"
+    - generic: Edited a file, ran a command, searched the web
+    - paragraph: Refined the actuator design
+    - paragraph: "The revised model gives a full repair-and-readiness cycle of about 7.4 minutes and 1.85 kJ. Its coldest tested case is only 31 J below the 2 kJ limit, so that is a fragile budget, not a demonstrated margin. The economic result is clearer: with inexpensive prepared liners, automatic exchange is about 16% cheaper per unit of useful work. I’m checking the remaining physical assumptions and packaging the model so those conclusions are inspectable."
+    - paragraph: Checked patch coverage geometry
+    - paragraph: Verified model energy assumptions and wrote stage energy budget
+    - paragraph: Checked blower pressure data
+    - button "Read files, searched the web"
+    - generic: Read files, searched the web
+    - paragraph: Selected conservative cut geometry
+    - paragraph: "The final access check found an interference that the local sketch missed: the fold guide occupied most of the space needed to clean the backing. Moving the cleaning position another 4 mm restores a modeled 2.2 mm clearance. I also tightened the material-removal specification to a measured window that fits the repair patch despite wall thinning. These changes improve the proposed sequence; they still need a physical motion and fatigue test."
+    - button "Ran a command, searched the web"
+    - generic: Ran a command, searched the web
+    - paragraph: Prepared report tables and coupled the gas-temperature model
+    - paragraph: Assessed thermal closure and verified force-sensor acceptance
+    - paragraph: Prepared matched controls and planned six-event test
+    - generic: Ran command
+    - paragraph: "The calculations are complete. The candidate preserves about 99% of the original wall mass, but that does not establish retained function: repaired-edge fatigue, release-coating life and detection of weak buried bonds remain unqualified. The report separates those gaps from the calculated force, timing, energy and cost results, and includes a small experiment aimed specifically at disproving the repair-and-renewal sequence before committing to the full station."
+    - generic: Ran command
+    - paragraph: Checked generated HTML and report sensor details
+    - generic: Searched 5 websites
+    - paragraph: Checked pressure-sensor accuracy and thermal sensor latency
+    - generic: Ran command
+    - paragraph: Tested the rolling pressure wall
+    - paragraph: Updated facility cost inputs and model
+    - generic: Read files
+    - paragraph: Updated cost-model assumptions and refreshed financial outputs
+    - button "Ran a command"
+    - generic: Ran a command
+    - paragraph: Checked actuator pressure calculations and whole-system efficiency
+    - paragraph: Checked itemized cost totals
+    - paragraph: Tested pressure-face glass
+    - heading "ChatGPT said:" [level=4]
+    - 'heading "Result: a concrete way to renew repair access, but the complete capability is not yet established" [level=2]'
+    - paragraph:
+      - text: I developed and executed a candidate built around
+      - strong: a rolling pneumatic wall that moves into two service configurations
+      - text: ":"
+    - list:
+      - listitem: One exposes the damaged working material against a reusable backing for repair with generic film.
+      - listitem: The other moves that material away again, exposing the backing so the repair interface itself can be inspected and cleaned.
+    - paragraph: That second operation matters. A repair system can retain almost all its material while progressively losing access, release behavior or sensing. This design makes those functions explicit physical operations.
+    - paragraph:
+      - strong: I cannot substantiate the complete invention you requested.
+      - text: "The calculations support a conditional force, travel, time and energy budget, but they do not establish repeated repaired-wall fatigue, coating life, autonomous visual localization or 19 successful recoveries. The economic comparison also misses your target: a competent automatic thin-liner exchanger remains cheaper in the strongest low-cost case."
+    - paragraph: "The complete construction, calculations, source notes, costs and executable models are in:"
+    - list:
+      - button "Download Soft_actuator_models_and_evidence.zip":
+        - text: Soft_actuator_models_and_evidence.zip
+    - heading "What the current study actually supplies" [level=3]
+    - table:
+      - rowgroup:
+        - row "Requirement Current result Status":
+          - columnheader "Requirement"
+          - columnheader "Current result"
+          - columnheader "Status"
+      - rowgroup:
+        - row "Useful loaded stroke 21 N through 22 mm; 0.462 J Executed pneumatic scenario":
+          - cell "Useful loaded stroke"
+          - cell "21 N through 22 mm; 0.462 J"
+          - cell "Executed pneumatic scenario"
+        - row "Cycle rate 0.5 Hz Executed with introduced component maps":
+          - cell "Cycle rate"
+          - cell "0.5 Hz"
+          - cell "Executed with introduced component maps"
+        - row "Active body mass About 196 g estimated; 225 g detail budget Not weighed":
+          - cell "Active body mass"
+          - cell "About 196 g estimated; 225 g detail budget"
+          - cell "Not weighed"
+        - row "Working pressure At most 14 kPa gauge Selected design":
+          - cell "Working pressure"
+          - cell "At most 14 kPa gauge"
+          - cell "Selected design"
+        - row "Complete repair readiness 7.40 minutes at 25°C Thermal model plus introduced operation timings":
+          - cell "Complete repair readiness"
+          - cell "7.40 minutes at 25°C"
+          - cell "Thermal model plus introduced operation timings"
+        - row "Direct repair energy 1.851 kJ at 25°C; 1.969 kJ in the worst sampled cold case Conditional; narrow margin":
+          - cell "Direct repair energy"
+          - cell "1.851 kJ at 25°C; 1.969 kJ in the worst sampled cold case"
+          - cell "Conditional; narrow margin"
+        - row "Potential useful production in 100 hours 15,930 cycles; 7.360 kJ Only if the physical repairs qualify":
+          - cell "Potential useful production in 100 hours"
+          - cell "15,930 cycles; 7.360 kJ"
+          - cell "Only if the physical repairs qualify":
+            - strong: Only if the physical repairs qualify
+        - row "Physically demonstrated repairs None No experimental success claimed":
+          - cell "Physically demonstrated repairs"
+          - cell "None"
+          - cell "No experimental success claimed"
+        - row "Whole cost per potential work, against the strong exchanger About 15.7% higher Introduced complete economic case":
+          - cell "Whole cost per potential work, against the strong exchanger"
+          - cell "About 15.7% higher":
+            - text: About
+            - strong: 15.7% higher
+          - cell "Introduced complete economic case"
+        - row "Threefold work from equal complete mass and energy Not supported Spare films are too light for that argument":
+          - cell "Threefold work from equal complete mass and energy"
+          - cell "Not supported"
+          - cell "Spare films are too light for that argument"
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph: The useful finding is therefore a specific repair-access organization and its limiting transitions—not an established self-maintaining actuator or an all-design obstruction.
+    - separator
+    - heading "1. Existing constructions already solve important parts" [level=2]
+    - paragraph: The prior art deserves substantial credit.
+    - paragraph:
+      - strong: Hamilton–Sottos–White
+      - text: demonstrated pumped delivery into rigid epoxy cracks, with nearly full fracture-toughness recovery in the best 15-cycle case. Their process also explicitly preserved access by maintaining flow through the channels during curing. External support, excess material, 48-hour curing at 30°C and control of accumulated healed material were part of the operation. This is directly relevant to the access-renewal problem, although it does not supply a soft-actuator repair cycle.
+      - 'link "pmc.ncbi.nlm.nih.gov: Pressurized vascular systems for self-healing materials, https://pmc.ncbi.nlm.nih.gov/articles/PMC3306641/?utm_source=chatgpt.com"':
+        - /url: https://pmc.ncbi.nlm.nih.gov/articles/PMC3306641/?utm_source=chatgpt.com
+        - generic: pmc.ncbi.nlm.nih.gov
+    - paragraph:
+      - strong: Krings and colleagues
+      - text: demonstrated puncture-triggered conductive paths, local Joule heating and electrical reset. Their illustrated actuator repair heated above 210°C for approximately two minutes before resetting the conductive network. That is genuine autonomous sensing/heating prior art; it does not establish the present missing-material, repeated useful-stroke service.
+      - 'link "smr.unl.edu: Intelligent Self-Healing Artificial Muscle: Mechanisms for Damage Detection and Autonomous Repair of Puncture Damage in Soft Robotics, https://smr.unl.edu/papers/Krings_et_al-2025-ICRA.pdf?utm_source=chatgpt.com"':
+        - /url: https://smr.unl.edu/papers/Krings_et_al-2025-ICRA.pdf?utm_source=chatgpt.com
+        - generic: smr.unl.edu
+    - paragraph:
+      - strong: Legrand and colleagues
+      - text: already automated repeated damage/healing assessment. Their reported sequence covered 63 damage cycles, with proper healing ceasing after cycle 53. Repetition and automated testing are therefore established operations, not new claims here.
+      - 'link "Dr David Hardman: Autonomous Testing of the Repeatable Healability of Pneumatic Self-Healing Soft Actuators, https://www.dshardman.co.uk/publication/julie/?utm_source=chatgpt.com"':
+        - /url: https://www.dshardman.co.uk/publication/julie/?utm_source=chatgpt.com
+        - generic: Dr David Hardman
+    - paragraph:
+      - text: For an obtainable working material,
+      - strong: Decker and colleagues
+      - text: fabricated small rolling diaphragms from Stretchlon 200 using a 145°C, 60 psi, 30-second heat-press operation and a separator removed manually afterward. That provides a manufacturing precedent, but it does not qualify a local repair on an aged, curved, repeatedly flexed wall.
+      - 'link "gmwgroup.harvard.edu: https://www.gmwgroup.harvard.edu/sites/g/files/omnuum10006/files/gmwgroup/files/1347_01.pdf, https://www.gmwgroup.harvard.edu/sites/g/files/omnuum10006/files/gmwgroup/files/1347_01.pdf?utm_source=chatgpt.com"':
+        - /url: https://www.gmwgroup.harvard.edu/sites/g/files/omnuum10006/files/gmwgroup/files/1347_01.pdf?utm_source=chatgpt.com
+        - generic: gmwgroup.harvard.edu
+    - paragraph:
+      - text: The candidate’s proposed contribution is the
+      - strong: physical movement between working, repair and backing-renewal configurations
+      - text: ", together with the necessary load isolation and acceptance sequence. I have not established that this organization is patentably novel."
+    - separator
+    - heading "2. The selected useful actuator" [level=2]
+    - heading "Task and service conditions" [level=3]
+    - paragraph:
+      - text: The ordinary task is an indoor weighted inspection gate. The actuator raises a
+      - strong: 21 N load through 22 mm
+      - text: ", holds it briefly, then lowers it through controlled exhaust."
+    - paragraph: "The two-second cycle is:"
+    - table:
+      - rowgroup:
+        - row "Phase Duration Operation":
+          - columnheader "Phase"
+          - columnheader "Duration"
+          - columnheader "Operation"
+      - rowgroup:
+        - row "Rise 0.8 s Deliver positive work against the 21 N load":
+          - cell "Rise"
+          - cell "0.8 s"
+          - cell "Deliver positive work against the 21 N load"
+        - row "Upper hold 0.2 s Maintain position":
+          - cell "Upper hold"
+          - cell "0.2 s"
+          - cell "Maintain position"
+        - row "Return 0.8 s Controlled gravity-driven descent":
+          - cell "Return"
+          - cell "0.8 s"
+          - cell "Controlled gravity-driven descent"
+        - row "Lower rest 0.2 s Return to the initial mechanical state":
+          - cell "Lower rest"
+          - cell "0.2 s"
+          - cell "Return to the initial mechanical state"
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph: "The commanded rise follows a smooth quintic trajectory:"
+    - math:
+      - generic: x
+      - generic: (
+      - generic: t
+      - generic: )
+      - generic: =
+      - generic: "0.022"
+      - generic: (
+      - generic: "10"
+      - generic: u
+      - generic: "3"
+      - generic: −
+      - generic: "15"
+      - generic: u
+      - generic: "4"
+      - generic: +
+      - generic: "6"
+      - generic: u
+      - generic: "5"
+      - generic: )
+      - generic: ","
+      - generic: u
+      - generic: =
+      - generic: t
+      - generic: /
+      - generic: 0.8.
+    - generic: x(t) =
+    - text: "0.022"
+    - generic: (
+    - text: "10"
+    - text: u
+    - generic: "3"
+    - text: − 15
+    - text: u
+    - generic: "4"
+    - text: + 6
+    - text: u
+    - generic: "5"
+    - generic: )
+    - text: ", u ="
+    - generic: t/0.8.
+    - paragraph:
+      - text: Accepted work is the measured positive integral
+      - math:
+        - generic: ∫
+        - generic: F
+        - generic: d
+        - generic: x
+      - generic: ∫ F dx
+      - text: . Gravity-return energy is dissipated; it receives no recovery credit.
+    - paragraph:
+      - text: The reference schedule is
+      - strong: six minutes of cycling each hour for 100 hours
+      - text: ", giving 18,000 scheduled strokes. The remaining time exposes the body to idle aging at"
+      - strong: 20–35°C and 20–80% relative humidity, noncondensing
+      - text: . Controls, drying, restart checks and standby electricity remain paid.
+    - heading "Mechanical construction" [level=3]
+    - paragraph: This is a rigidly guided actuator with a soft working pressure boundary.
+    - table:
+      - rowgroup:
+        - row "Component Selected construction":
+          - columnheader "Component"
+          - columnheader "Selected construction"
+      - rowgroup:
+        - row "Working wall Nominal 38 µm Stretchlon 200 film, longitudinal heat seam, mechanically clamped cuffs":
+          - cell "Working wall"
+          - cell "Nominal 38 µm Stretchlon 200 film, longitudinal heat seam, mechanically clamped cuffs"
+        - row "Piston 52 mm outside diameter, 85 mm hollow skirt, 0.5 mm 304 stainless wall and closed end":
+          - cell "Piston"
+          - cell "52 mm outside diameter, 85 mm hollow skirt, 0.5 mm 304 stainless wall and closed end"
+        - row "Guide 60 mm bore, approximately 95 mm long, transparent polycarbonate":
+          - cell "Guide"
+          - cell "60 mm bore, approximately 95 mm long, transparent polycarbonate"
+        - row "Output rod 6 mm diameter, exiting through the open atmospheric piston bore":
+          - cell "Output rod"
+          - cell "6 mm diameter, exiting through the open atmospheric piston bore"
+        - row "Film developed length 70 mm":
+          - cell "Film developed length"
+          - cell "70 mm"
+        - row "Radial rolling gap 4 mm":
+          - cell "Radial rolling gap"
+          - cell "4 mm"
+        - row "Working stroke 22 mm":
+          - cell "Working stroke"
+          - cell "22 mm"
+        - row "Pressure cap Captive bowl below the closed piston end, automatically opened for service":
+          - cell "Pressure cap"
+          - cell "Captive bowl below the closed piston end, automatically opened for service"
+        - row "Pressure envelope Body ≤14 kPa gauge; proof 21 kPa; receiver 24–30 kPa; mechanical relief 35 kPa":
+          - cell "Pressure envelope"
+          - cell "Body ≤14 kPa gauge; proof 21 kPa; receiver 24–30 kPa; mechanical relief 35 kPa"
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph:
+      - text: Airtech supplies the film as a heat-seamable thermoplastic elastomer. Its datasheet gives nominal thickness and typical tensile properties, including approximately 55 MPa tensile strength and 500% elongation. Those values are
+      - strong: not repaired-film allowables
+      - text: .
+      - 'link "kompositthuset.no: https://www.kompositthuset.no/wp-content/uploads/2024/01/Stretchlon_200_-EN-2.pdf, https://www.kompositthuset.no/wp-content/uploads/2024/01/Stretchlon_200_-EN-2.pdf?utm_source=chatgpt.com, 1 additional source"':
+        - /url: https://www.kompositthuset.no/wp-content/uploads/2024/01/Stretchlon_200_-EN-2.pdf?utm_source=chatgpt.com
+        - generic: kompositthuset.no
+        - generic: "+1"
+    - paragraph: The pressure acts beneath the piston’s closed end and inside the rolling annulus. This orientation presses both straight film legs against their backing surfaces. The opposite pressure arrangement was rejected during the mechanical review.
+    - paragraph: For this geometry,
+    - math:
+      - generic: A
+      - generic: e
+      - generic: f
+      - generic: f
+      - generic: e
+      - generic: c
+      - generic: t
+      - generic: i
+      - generic: v
+      - generic: e
+      - generic: =
+      - generic: A
+      - generic: p
+      - generic: i
+      - generic: s
+      - generic: t
+      - generic: o
+      - generic: "n"
+      - generic: +
+      - generic: A
+      - generic: b
+      - generic: o
+      - generic: r
+      - generic: e
+      - generic: "2"
+      - generic: =
+      - generic: 2,475.575
+      - generic: m
+      - generic: m
+      - generic: "2"
+      - generic: .
+    - text: A
+    - generic: effective
+    - text: =
+    - generic: "2"
+    - text: A
+    - generic: piston
+    - text: +
+    - text: A
+    - generic: bore
+    - text: =
+    - text: "2"
+    - generic: ","
+    - text: "475.575"
+    - text: m
+    - text: m
+    - generic: "2"
+    - text: .
+    - paragraph:
+      - text: At 14 kPa gauge, gross pressure force is
+      - strong: 34.658 N
+      - text: . Working volume changes from
+      - strong: 49.144 to 103.607 mL
+      - text: .
+    - paragraph:
+      - text: The finite pneumatic calculation delivers the selected
+      - strong: 21 N × 22 mm = 0.462 J
+      - text: stroke. It uses a real KNF NMP830 pump family as the hardware anchor, but its pressure-flow interpolation is introduced; the catalogue’s free-flow and electrical limits do not supply the complete installed map.
+      - 'link "knf.com: https://knf.com/fileadmin/Global_files/Downloads/Product_OEM_Process/Datasheets/DB_NMP830_EN_05062025.pdf, https://knf.com/fileadmin/Global_files/Downloads/Product_OEM_Process/Datasheets/DB_NMP830_EN_05062025.pdf?utm_source=chatgpt.com"':
+        - /url: https://knf.com/fileadmin/Global_files/Downloads/Product_OEM_Process/Datasheets/DB_NMP830_EN_05062025.pdf?utm_source=chatgpt.com
+        - generic: knf.com
+    - heading "Important mechanical qualifications" [level=3]
+    - paragraph: "The film is not an unstretched cylindrical pressure vessel:"
+    - list:
+      - text: "Its relaxed tube diameter is 52 mm, while the outer leg reaches 60 mm:"
+      - strong: 15.38% circumferential extension
+      - text: .
+      - listitem: Simple incompressibility would reduce 38 µm thickness to about 32.93 µm.
+      - text: Using an admitted measured minimum of 30 µm, the local
+      - math:
+        - generic: p
+        - generic: R
+        - generic: /
+        - generic: t
+      - generic: pR/t
+      - text: screen at 21 kPa and a 2 mm fold radius is
+      - strong: 1.4 MPa
+      - text: .
+      - listitem: Hoop hysteresis, seam cycling, wrinkles and repaired-edge fatigue remain unmeasured.
+    - paragraph:
+      - text: The active-body estimate is approximately
+      - strong: 196 g
+      - text: ", including piston, guide, cap, rod, film, cuffs and allowances. I reserve"
+      - strong: 225 g
+      - text: for detailing and retain a hard
+      - strong: 250 g weighed acceptance gate
+      - text: ". The compressor, support brake, repair machinery, metrology and material stocks are additional: the complete introduced mass budget is"
+      - strong: 5.4 kg
+      - text: .
+    - separator
+    - heading "3. The physical repair cycle" [level=2]
+    - heading "A. Capture the customer load and open access" [level=3]
+    - paragraph: A separately powered, normally retained brake captures the gate. Force and displacement measurements confirm load transfer before the output coupling disengages.
+    - paragraph:
+      - text: The inlet closes, the body vents, and pressure must fall below approximately
+      - strong: 0.2–0.3 kPa gauge
+      - text: . A finite
+      - strong: 0.7 J mechanical catch
+      - text: bounds an interrupted stroke; loss of pressure does not leave the gate dependent on successful software detection.
+    - paragraph: "The pressure cap then:"
+    - list:
+      - listitem: Retracts at least 15 mm axially.
+      - listitem: Moves 100 mm laterally.
+      - listitem: Remains captive.
+    - paragraph: Its parked nearest edge is at radius 70 mm, while the repair tool envelope lies within radius 50 mm. That gives a nominal 20 mm margin before fittings and cables. A complete three-dimensional route remains a qualification requirement.
+    - heading "B. Expose the same working wall" [level=3]
+    - paragraph:
+      - text: The unloaded piston moves to
+      - strong:
+        - math:
+          - generic: x
+          - generic: =
+          - generic: −
+          - generic: "55"
+        - generic: x =
+        - generic: −55
+        - text: mm
+      - text: .
+    - paragraph: For the chosen rolling geometry,
+    - math:
+      - generic: z
+      - generic: f
+      - generic: =
+      - generic: "70"
+      - generic: +
+      - generic: x
+      - generic: −
+      - generic: "2"
+      - generic: π
+      - generic: "2"
+      - generic: m
+      - generic: m
+      - generic: .
+    - text: z
+    - generic: f
+    - text: =
+    - generic: "2"
+    - generic: 70 + x − 2π
+    - generic: mm
+    - text: .
+    - paragraph:
+      - text: The material that passes through the fold during useful operation becomes exposed below the fixed rim, between approximately
+      - strong:
+        - math:
+          - generic: z
+          - generic: =
+          - generic: −
+          - generic: "34.14"
+        - generic: z =
+        - generic: −34.14
+        - text: and
+        - math:
+          - generic: −
+          - generic: "16.86"
+        - generic: −16.86
+        - text: mm
+      - text: .
+    - paragraph:
+      - text: A crucial correction is that an unpressurized membrane does not necessarily follow this equation. The design therefore includes a
+      - strong: service-only fold follower
+      - text: ":"
+    - list:
+      - listitem: "Toroidal centerline radius: 28 mm."
+      - listitem: "Circular section radius: 1.4 mm."
+      - listitem: Three slender supports entering the atmospheric annulus.
+      - listitem: Observed contact force of 0.2–1 N, mechanically limited to 1 N.
+      - listitem: A self-locking stage following half the piston displacement.
+    - paragraph: It retracts completely before useful operation. Its ability to prevent wrong folds, sticking and creasing is an unqualified physical claim, not a supplied kinematic constraint.
+    - heading "C. Place generic replacement material" [level=3]
+    - paragraph: A camera scans the exposed wall; a fresh dry wiper removes admitted loose contamination into a finite take-up.
+    - paragraph:
+      - text: The machine cuts a
+      - strong: 10 × 8 mm lap patch from a 12 mm-wide generic film strip
+      - text: . The body and repair feed use the same characterized material lot.
+    - paragraph: "The patch is pressed between:"
+    - list:
+      - listitem: A curved external heated die.
+      - listitem: An internal heated shoe entering through the open piston bore.
+      - listitem: The existing thin steel piston wall as backing.
+    - paragraph: The die must conform to the piston. A flat tool would deviate from the curved surface by hundreds of micrometres, far exceeding film thickness.
+    - paragraph:
+      - text: At the selected 0.414 MPa contact-pressure target, an 80 mm² patch face requires approximately
+      - strong: 33 N
+      - text: clamp force.
+    - paragraph:
+      - text: A paid release coating on the piston and a fresh outer release web separate the hot film from the tooling. Commercial PTFE release coatings provide an obtainable material class; they do not establish this particular hot-film compatibility, adhesion or repeated release life.
+      - 'link "teflon.com: Teflon™ PTFE Coating Systems, https://www.teflon.com/en/products/coatings/ptfe-coatings?utm_source=chatgpt.com"':
+        - /url: https://www.teflon.com/en/products/coatings/ptfe-coatings?utm_source=chatgpt.com
+        - generic: teflon.com
+    - paragraph:
+      - text: This is a
+      - strong: load-bearing lap repair
+      - text: . It adds a new pressure wall over the missing region and transfers its load through the surrounding bond. It does not claim to restore the original thickness or molecular structure.
+    - heading "D. Expose and renew the backing" [level=3]
+    - paragraph: After cooling, the outer release web is peeled and the patch is inspected and gauged.
+    - paragraph:
+      - text: "The piston then moves to a second service position:"
+      - strong:
+        - math:
+          - generic: x
+          - generic: =
+          - generic: +
+          - generic: "44"
+        - generic: x =
+        - generic: "+44"
+        - text: mm
+      - text: .
+    - paragraph: This moves the repaired wall away from the backing that was heated during repair. A thin wiper can now clean that previously hidden surface through the open annulus.
+    - paragraph:
+      - text: This step required a substantive geometric correction. At
+      - math:
+        - generic: x
+        - generic: =
+        - generic: +
+        - generic: "40"
+      - generic: x =
+      - generic: "+40"
+      - text: mm, the fold follower left only
+      - strong: 0.20 mm
+      - text: of clearance. At
+      - math:
+        - generic: x
+        - generic: =
+        - generic: +
+        - generic: "44"
+      - generic: x =
+      - generic: "+44"
+      - text: mm, the nominal clearance becomes
+      - strong: 2.20 mm
+      - text: ", allowing a proposed 0.5 mm wiper and web. A 120 mm stage accommodates the complete 99 mm service span and end margins."
+    - paragraph: The cleaning operation is therefore not “wipe the outside of the patch and assume the backing stayed clean.” It physically exposes the worked backing before returning to service.
+    - heading "E. Restore and prove useful operation" [level=3]
+    - paragraph: The machine returns to its working configuration, closes and tests the cap, reconnects the gate, transfers load off the brake and withdraws every tool.
+    - paragraph: "Acceptance requires:"
+    - list:
+      - listitem: Five complete loaded cycles.
+      - listitem: A temperature-corrected, fixed-volume leak test.
+      - listitem: Patch thickness and sound-overlap measurements.
+      - listitem: Observed backing cleanliness and release behavior.
+      - listitem: Fresh feed, release-web and camera-window advancement.
+      - listitem: Restored or explicitly debited thermal and pressure stocks.
+    - paragraph: A leak-tight patch alone does not qualify.
+    - separator
+    - heading "4. Damage, added material and accumulated thickness" [level=2]
+    - paragraph: The admitted campaign includes punctures, slits, missing-material events and reopenings, but its geometry is explicitly finite.
+    - heading "Missing material is genuinely removed" [level=3]
+    - paragraph:
+      - text: A 1 mm hole through 38 µm film removes only about
+      - strong: 0.030 mm³
+      - text: . It cannot stand in for a 0.5–1 mm³ loss.
+    - paragraph:
+      - text: The five missing-material events therefore remove a
+      - strong: 7.0 × 3.5 mm developed window
+      - text: from previously unpatched working material measured at 30–38 µm thickness. Each removes
+      - strong: 0.735–0.931 mm³
+      - text: .
+    - paragraph: "With a 10 × 8 mm patch and a total 0.25 mm localization/placement allowance, the declared window leaves:"
+    - math:
+      - generic: circumferential sound lap
+      - generic: ≥
+      - generic: "1.25"
+      - generic: m
+      - generic: m
+      - generic: ","
+    - generic: circumferential sound lap
+    - text: ≥
+    - text: "1.25"
+    - generic: mm
+    - text: ","
+    - math:
+      - generic: meridional sound lap
+      - generic: ≥
+      - generic: "2.00"
+      - generic: m
+      - generic: m
+      - generic: .
+    - generic: meridional sound lap
+    - text: ≥
+    - text: "2.00"
+    - generic: mm
+    - text: .
+    - paragraph: This does not qualify an arbitrary 1 mm³ cavity of any shape.
+    - paragraph:
+      - text: Other events include
+      - strong: 0.3–1 mm punctures, 1–3 mm slits and at least five reopenings
+      - text: . Reopenings use punctures or slits; applying the same removal window through accumulated layers would remove a different volume.
+    - paragraph: Damage reaches the free crown through the atmospheric annulus. A depth-limited tool must remain clear of the piston and coating. There is no indispensable braid or embedded wire assumed to survive a cut through it.
+    - paragraph:
+      - text: The contamination envelope permits up to
+      - strong: 2 mg of loose dry cellulose/polymer dust per event
+      - text: . Oils, solvents, embedded grit, cuff severance and damage to the protected rigid machinery are outside this proposed capability.
+    - heading "Added gauge is a real limit" [level=3]
+    - paragraph:
+      - text: Twenty patches supply
+      - strong: 60.8 mm³
+      - text: of gross new film. Five reopenings at one location can produce seven layers, or
+      - strong: eight layers at the original seam
+      - text: .
+    - paragraph:
+      - text: Eight nominal layers are
+      - strong: 304 µm
+      - text: thick. The proposed acceptance limit is 320 µm. A simple bending screen gives about
+      - strong: 8.2% outer-fibre strain
+      - text: around the nominal fold, versus roughly 0.96% for the parent film.
+    - paragraph: "That does not prove failure, but it identifies the important unknowns: edge peeling, trapped interlayer gas, local hysteresis, contact friction and fatigue."
+    - paragraph: Cutting away an old patch could reduce layering, but it expands the damaged footprint and requires another cutting, capture and joining operation. I have not supplied that as a free reset.
+    - separator
+    - heading "5. Observations, control and what remains indistinguishable" [level=2]
+    - paragraph: "An obtainable sensor organization is:"
+    - list:
+      - listitem: ABP2-family pressure channels.
+      - listitem: A 5 kg bridge load cell with an ADS1220 converter.
+      - listitem: An AS5048A encoder on a low-tension position belt.
+      - listitem: A macro camera with controlled lighting.
+      - listitem: Temperature and die-force sensing on the repair tools.
+    - paragraph:
+      - text: These component classes are real. Honeywell describes approximately 200 Hz pressure updates; TI provides conversion rates above the proposed controller rate; the bridge and encoder are separately available.
+      - strong: Their availability does not establish the installed error bounds.
+      - 'link "Honeywell: Basic ABP2 Series Pressure Sensors, https://automation.honeywell.com/au/en/products/sensing-solutions/sensors/pressure-sensors/board-mount-pressure-amplified/basic-abp2-series-board-mount-pressure-sensor?utm_source=chatgpt.com, 3 additional sources"':
+        - /url: https://automation.honeywell.com/au/en/products/sensing-solutions/sensors/pressure-sensors/board-mount-pressure-amplified/basic-abp2-series-board-mount-pressure-sensor?utm_source=chatgpt.com
+        - generic: Honeywell
+        - generic: "+3"
+    - paragraph: "The introduced installed contracts are:"
+    - list:
+      - listitem: "Pressure error: ±125 Pa."
+      - listitem: "Force error: ±0.1 N."
+      - listitem: "Position error: ±0.05 mm."
+      - listitem: "Pressure/force/position loop: 200 Hz."
+      - listitem: "Combined defect localization and patch placement: ≤0.25 mm."
+    - paragraph: Pressure-channel temperature error, belt slip, tool compliance and camera calibration must be measured. Encoder resolution alone does not supply position accuracy.
+    - paragraph:
+      - text: The executed leak observer sees pressure readings and history, not a fault label. Particular fixed-volume simulations detected the introduced leaks in 2–142 ms. That is
+      - strong: not a worst-case installed detection guarantee
+      - text: during arbitrary motion.
+    - paragraph: "More fundamentally:"
+    - blockquote:
+      - paragraph: Present pressure retention and restored force do not identify buried weld toughness or certify future crack growth.
+    - paragraph: A closed slit, opaque contamination or weak internal bond may be indistinguishable from a satisfactory repair using the available short proof. The acceptance specification therefore requires a physically qualified material/history envelope as well as current measurements.
+    - paragraph: The supplied code deliberately rejects an empty evidence record. It does not assign a random “repair succeeded” flag.
+    - paragraph: The proposed implementation uses a local controller, finite image buffers and retained logs, with no cloud dependency. Power interruption closes the inlet, removes heater power and retains the customer load. Recovering a stuck tool or wrong fold remains part of the physical qualification, not something the software state machine has already solved.
+    - separator
+    - heading "6. Executed timing, energy and campaign results" [level=2]
+    - paragraph: "The full repair sequence includes access, cooling, proof and renewal:"
+    - table:
+      - rowgroup:
+        - row "Stage Introduced time":
+          - columnheader "Stage"
+          - columnheader "Introduced time"
+      - rowgroup:
+        - row "Detection and brake 1 s":
+          - cell "Detection and brake"
+          - cell "1 s"
+        - row "Vent and verify 3 s":
+          - cell "Vent and verify"
+          - cell "3 s"
+        - row "Load parking and service movement 15 s":
+          - cell "Load parking and service movement"
+          - cell "15 s"
+        - row "Cap parking and fold follower 20 s":
+          - cell "Cap parking and fold follower"
+          - cell "20 s"
+        - row "Scan and localize 30 s":
+          - cell "Scan and localize"
+          - cell "30 s"
+        - row "Wipe and inspect 15 s":
+          - cell "Wipe and inspect"
+          - cell "15 s"
+        - row "Meter patch and close dies 12 s":
+          - cell "Meter patch and close dies"
+          - cell "12 s"
+        - row "Heat, cool and restore thermal stocks 244.7 s":
+          - cell "Heat, cool and restore thermal stocks"
+          - cell "244.7 s"
+        - row "Peel, inspect and gauge 18 s":
+          - cell "Peel, inspect and gauge"
+          - cell "18 s"
+        - row "Second overtravel and backing renewal 30 s":
+          - cell "Second overtravel and backing renewal"
+          - cell "30 s"
+        - row "Return, cap closure and loaded proof 35 s":
+          - cell "Return, cap closure and loaded proof"
+          - cell "35 s"
+        - row "Web advancement, waste collection and rezero 20 s":
+          - cell "Web advancement, waste collection and rezero"
+          - cell "20 s"
+        - row "Total 443.7 s":
+          - cell "Total":
+            - strong: Total
+          - cell "443.7 s":
+            - strong: 443.7 s
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph: The thermal model includes a finite steel backing, finite end stocks, two finite hot shoes, the multilayer film, release coating and paid forced cooling. It does not use an initially hot tool or an infinite cold anvil.
+    - paragraph: Its contact conductance and air-side coefficient remain introduced requirements. The modeled 142°C interface dwell is also an introduced transport criterion; it is not a demonstrated equivalent of the published forming process.
+    - paragraph: "The direct repair energy is approximately:"
+    - table:
+      - rowgroup:
+        - row "Contribution Energy":
+          - columnheader "Contribution"
+          - columnheader "Energy"
+      - rowgroup:
+        - row "Heating and forced cooling 971 J":
+          - cell "Heating and forced cooling"
+          - cell "971 J"
+        - row "Controls 360 J":
+          - cell "Controls"
+          - cell "360 J"
+        - row "Mechanical movements 230 J":
+          - cell "Mechanical movements"
+          - cell "230 J"
+        - row "Proof supply, valve and brake 260 J":
+          - cell "Proof supply, valve and brake"
+          - cell "260 J"
+        - row "Further metrology/conditioning 30 J":
+          - cell "Further metrology/conditioning"
+          - cell "30 J"
+        - row "Total 1,851 J":
+          - cell "Total":
+            - strong: Total
+          - cell "1,851 J":
+            - strong: 1,851 J
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph:
+      - text: At the coldest sampled condition and a less favorable repair position, the result rises to
+      - strong: 1,969 J and 7.63 minutes
+      - text: . Only about
+      - strong: 31 J
+      - text: remains below the energy target. Extra cleaning, slower inspection or a different fusion window could erase it.
+    - heading "Whole 100-hour ledger" [level=3]
+    - paragraph: The executed schedule includes a three-minute cold start, 99 paid restart checks and lost cycles during the 20 repair intervals.
+    - table:
+      - rowgroup:
+        - row "Quantity Conditional result":
+          - columnheader "Quantity"
+          - columnheader "Conditional result"
+      - rowgroup:
+        - row "Scheduled loaded cycles 18,000":
+          - cell "Scheduled loaded cycles"
+          - cell "18,000"
+        - row "Missed or interrupted cycles 2,070":
+          - cell "Missed or interrupted cycles"
+          - cell "2,070"
+        - row "Potential useful cycles 15,930":
+          - cell "Potential useful cycles"
+          - cell "15,930"
+        - row "Potential positive mechanical work 7.360 kJ":
+          - cell "Potential positive mechanical work"
+          - cell "7.360 kJ"
+        - row "Process electricity, including drying regeneration 0.351 kWh":
+          - cell "Process electricity, including drying regeneration"
+          - cell "0.351 kWh"
+        - row "Separately metered facility/test electricity 8 kWh":
+          - cell "Separately metered facility/test electricity"
+          - cell "8 kWh"
+        - row "Experimentally accepted repairs/cycles 0 / 0":
+          - cell "Experimentally accepted repairs/cycles"
+          - cell "0 / 0":
+            - strong: 0 / 0
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph: The process ledger includes compression, valves, brake, controls, repair, standby and restoration. Approximately 1.1–1.2 m³ of working air requires a finite dryer. A proposed 200 g desiccant charge and its regeneration are paid; its humidity uptake and pressure drop still need qualification.
+    - paragraph: The pneumatic dynamics use finite valves and receiver inventory but an isothermal gas approximation. A measured gas-temperature and installed component map is still needed before treating the calculated stroke as hardware performance.
+    - separator
+    - heading "7. Finite material stocks and functional retention" [level=2]
+    - paragraph: "For the nominal upper-removal case:"
+    - table:
+      - rowgroup:
+        - row "Stock Account":
+          - columnheader "Stock"
+          - columnheader "Account"
+      - rowgroup:
+        - row "Initial active film, excluding cuffs/seam 0.4810 g":
+          - cell "Initial active film, excluding cuffs/seam"
+          - cell "0.4810 g"
+        - row "Five removal windows 4.655 mm³ upper debit; actual coupons must be measured":
+          - cell "Five removal windows"
+          - cell "4.655 mm³ upper debit; actual coupons must be measured"
+        - row "Generic repair strip 12 mm × 1 m × 38 µm; 0.5047 g initially":
+          - cell "Generic repair strip"
+          - cell "12 mm × 1 m × 38 µm; 0.5047 g initially"
+        - row "Remaining generic strip 0.4038 g":
+          - cell "Remaining generic strip"
+          - cell "0.4038 g"
+        - row "Gross patch material 60.8 mm³":
+          - cell "Gross patch material"
+          - cell "60.8 mm³"
+        - row "Placed patch material 59.584 mm³ under an introduced 2% transfer-loss allowance":
+          - cell "Placed patch material"
+          - cell "59.584 mm³ under an introduced 2% transfer-loss allowance"
+        - row "Cutting scrap 30.4 mm³, collected":
+          - cell "Cutting scrap"
+          - cell "30.4 mm³, collected"
+        - row "Final active wall Approximately 0.5418 g":
+          - cell "Final active wall"
+          - cell "Approximately 0.5418 g"
+        - row "Original wall mass retained 98.93%":
+          - cell "Original wall mass retained"
+          - cell "98.93%":
+            - strong: 98.93%
+        - row "Outer release web 1 m initial; 0.4 m consumed":
+          - cell "Outer release web"
+          - cell "1 m initial; 0.4 m consumed"
+        - row "Camera protection web 1 m initial; 0.4 m consumed":
+          - cell "Camera protection web"
+          - cell "1 m initial; 0.4 m consumed"
+        - row "Wiper web 1 m initial; 0.8 m consumed":
+          - cell "Wiper web"
+          - cell "1 m initial; 0.8 m consumed"
+        - row "Mixed reactive fluid/catalyst stock None":
+          - cell "Mixed reactive fluid/catalyst stock"
+          - cell "None"
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph: The same working wall remains installed. A finished spare actuator is not supplied as repair material.
+    - paragraph:
+      - text: However,
+      - strong: 98.93% original mass retention does not establish 95% functional retention
+      - text: . The release coating, seams, cuffs, follower and sensors may remain present while losing useful behavior.
+    - paragraph: Their renewal is therefore explicitly costed, but their autonomous life is unqualified. In particular, the machine cannot satisfy the campaign merely by detecting that its coating now needs a human to restore it.
+    - paragraph: "At 100 events, the present stocks and history fail to transfer automatically:"
+    - list:
+      - listitem: Wiper stock runs out after 25 events.
+      - listitem: Release and camera webs run out after 50.
+      - listitem: The generic strip has no reserve at 100.
+      - listitem: Repeated local patches eventually approach the guide gap.
+      - listitem: Coating wear, thermal history and sensor calibration need a much longer qualification.
+    - paragraph: Other piston geometries could share generic feedstock and controls, but need new curved tools, fold handling and load maps. A bending pouch does not inherit this service access.
+    - separator
+    - heading "8. The strongest ordinary replacement defeats the current economic claim" [level=2]
+    - heading "A competent automatic exchanger" [level=3]
+    - paragraph: The strong comparator retains the pressure supply, guide, load carriage, sensors and brake. It exchanges only the damaged thin liner.
+    - paragraph:
+      - text: Each liner is prepared and qualified before the interval on two reusable rigid carriers. A finite magazine holds
+      - strong: 22 sets
+      - text: ": initial body, twenty replacements and one failed-spare reserve."
+    - paragraph: During exchange, the machine supports the customer load, vents, captures both carriers, opens a split guide, quarantines the used liner, inserts a keyed spare and performs the same loaded acceptance.
+    - paragraph: This pays for handling a real prepared part rather than granting an ideal robot the ability to manipulate loose film.
+    - paragraph:
+      - text: "Cheap film is supported by an actual listing: one yard of 60-inch-wide Stretchlon 200 is listed at"
+      - strong: $8.44
+      - text: ", or"
+      - strong: $5.25/yard
+      - text: at a ten-yard minimum, before shipping and tax. An illustrative nesting gives about ten cents of raw film per liner. Forming, mounting, rejects and inspection are extra, but inexpensive prepared liners are a serious challenge.
+      - 'link "Fibre Glast: Strechlon 200 Vacuum Bagging Film, https://www.fibreglast.com/products/stretchlon-200-bagging-film-1678?utm_source=chatgpt.com"':
+        - /url: https://www.fibreglast.com/products/stretchlon-200-bagging-film-1678?utm_source=chatgpt.com
+        - generic: Fibre Glast
+    - heading "Whole cost comparison" [level=3]
+    - paragraph:
+      - text: The repeat-manufacturing case assumes
+      - strong: 1,000 stations
+      - text: ", with engineering estimates rather than quotations:"
+    - list:
+      - text: "Common hardware:"
+      - strong: $1,420
+      - text: .
+      - text: "Repair increment:"
+      - strong: $2,720
+      - text: .
+      - text: "Total repair station:"
+      - strong: $4,140
+      - text: .
+      - text: "Strong exchange challenge:"
+      - strong: $1,500 incremental fixture
+      - text: .
+      - text: "Separately itemized exchange case:"
+      - strong: $3,000 incremental fixture
+      - text: .
+    - paragraph: The cost model includes named heater, cutter, coating, seal, follower, contact-plate and drive renewals, preparation, calibration, waste, retirement, facility access and all process/facility electricity. Hardware allocation over 50 campaigns is an introduced life sensitivity.
+    - table:
+      - rowgroup:
+        - row "Matched 100-hour case Repair Strong automatic exchange":
+          - columnheader "Matched 100-hour case"
+          - columnheader "Repair"
+          - columnheader "Strong automatic exchange"
+      - rowgroup:
+        - row "Prepared liner price $1 initial body $1 per prepared liner":
+          - cell "Prepared liner price"
+          - cell "$1 initial body"
+          - cell "$1 per prepared liner"
+        - row "Potential useful work 7.360 kJ 7.869 kJ":
+          - cell "Potential useful work"
+          - cell "7.360 kJ"
+          - cell "7.869 kJ"
+        - row "Whole campaign cost $136.28 $125.94":
+          - cell "Whole campaign cost"
+          - cell "$136.28":
+            - strong: $136.28
+          - cell "$125.94":
+            - strong: $125.94
+        - row "Cost per potential work $18.52/kJ $16.00/kJ":
+          - cell "Cost per potential work"
+          - cell "$18.52/kJ":
+            - strong: $18.52/kJ
+          - cell "$16.00/kJ":
+            - strong: $16.00/kJ
+        - row "Paid operational human work 0.85 h 0.95 h":
+          - cell "Paid operational human work"
+          - cell "0.85 h"
+          - cell "0.95 h"
+        - row "In-window intervention, conditional on successful hardware Zero Zero":
+          - cell "In-window intervention, conditional on successful hardware"
+          - cell "Zero"
+          - cell "Zero"
+        - row "Complete mass allowance 5.400 kg 5.153 kg":
+          - cell "Complete mass allowance"
+          - cell "5.400 kg"
+          - cell "5.153 kg"
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph:
+      - text: Repair is
+      - strong: 15.7% more expensive per potential useful work
+      - text: in that challenge. Against the $3,000 exchanger, it becomes about
+      - strong: 6.6% cheaper
+      - text: ", still short of 30%."
+    - paragraph: "With the other assumptions fixed, a 30% advantage requires a fully prepared replacement-liner price above approximately:"
+    - list:
+      - strong: $5.22
+      - text: with the $1,500 exchanger.
+      - strong: $3.68
+      - text: with the $3,000 exchanger.
+    - paragraph: Those are economic thresholds, not evidence that qualified liners cost that much.
+    - paragraph: There is also no threefold inventory advantage. Twenty spare films weigh only about 10–12 g. Even their reusable carriers do not make the exchanger heavier than the current repair station, and exchange avoids repair heating.
+    - heading "Other alternatives remain serious" [level=3]
+    - paragraph: A tougher wall or guard must receive the same external hazard, rather than being forced to have the same damage frequency. Redundant isolated chambers deserve competent pressure control and fault isolation. Conventional hot-patch machinery deserves the same accessible geometry and sensing.
+    - paragraph: If an ordinary patch station performs this exact repair-and-renewal sequence at equal cost, that is a direct comparator. Calling the station “self-healing” does not create an advantage.
+    - paragraph:
+      - text: "Electricity-price sensitivity is minor here: all modeled process and facility electricity costs approximately"
+      - strong: $0.33, $0.67 or $1.34 per campaign
+      - text: at $40, $80 or $160/MWh. Labor, hardware, downtime and qualified liner price dominate.
+    - separator
+    - heading "9. A decisive smaller experiment and its paid scope" [level=2]
+    - paragraph:
+      - text: The smallest useful experiment should retain the
+      - strong: actual 21 N, 22 mm rolling geometry, cap and both service overtravels
+      - text: . A flat coupon would omit the central return-to-load and next-access operations.
+    - paragraph: "Use three matched bodies:"
+    - list:
+      - listitem: The same-body autonomous repair specimen.
+      - listitem: A conventional hot-patch control.
+      - listitem: A prepared-liner control.
+    - paragraph: "The repair specimen undergoes six independently scheduled events: puncture, seam-adjacent slit, measured missing-material window, reopenings, and an event combined with admitted dust and an interrupted feeder or heater stroke."
+    - paragraph: After every accepted repair, withdraw all tools and execute the loaded cycle. After the final repair, run at least 1,000 further loaded cycles.
+    - paragraph: "The essential measurements are:"
+    - list:
+      - listitem: Common-meter electricity for supply, heaters, cooling, controls and motion.
+      - listitem: Independent force–displacement work.
+      - listitem: Pressure, airflow and leakage.
+      - listitem: Interface temperatures and clamp force.
+      - listitem: Actual removed and added material.
+      - listitem: Patch gauge and sound overlap.
+      - listitem: Backing release force and cleanliness.
+      - listitem: Fresh feed/web advancement and next-repair access.
+    - paragraph:
+      - text: Include an intentionally incomplete bond in the matched control. If it is pressure-tight and passes the short proof but later fails, record that as a
+      - strong: false acceptance
+      - text: . Do not reinterpret it as success because the first pressure trace looked satisfactory.
+    - heading "Budgets" [level=3]
+    - table:
+      - rowgroup:
+        - row "Deliverable Introduced complete budget":
+          - columnheader "Deliverable"
+          - columnheader "Introduced complete budget"
+      - rowgroup:
+        - row "Small six-event experiment, including fabrication, control, metrology, assays, access and execution $10,720":
+          - cell "Small six-event experiment, including fabrication, control, metrology, assays, access and execution"
+          - cell "$10,720":
+            - strong: $10,720
+        - row "First full reference repair cell $25,100":
+          - cell "First full reference repair cell"
+          - cell "$25,100":
+            - strong: $25,100
+        - row "First 100-hour execution, separate from cell construction $1,591":
+          - cell "First 100-hour execution, separate from cell construction"
+          - cell "$1,591":
+            - strong: $1,591
+        - row "First competent automatic-exchange control cell, additional estimate $6,500":
+          - cell "First competent automatic-exchange control cell, additional estimate"
+          - cell "$6,500":
+            - strong: $6,500
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph:
+      - text: "The small experiment can falsify the central sequence:"
+      - strong: place replacement matter, restore useful load, release the tools, renew access, and repair the same region again
+      - text: .
+    - paragraph: It cannot establish the full 20-event campaign, every stock’s functional retention, production economics or 100-event life.
+    - paragraph: The present design should advance only if that experiment demonstrates the full repeated sequence and a matched prepared-liner comparison clears the economic threshold. At this stage, the renewable-access mechanism is a useful research construction; the requested sustained self-maintenance and consequential whole-system advantage remain unproven.
+    - button "Open preview of Soft_actuator_engineering_report.html"
+    - generic "Soft_actuator_engineering_report.html"
+    - generic: HTML
+    - button "Download file":
+

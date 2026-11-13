@@ -1,0 +1,1731 @@
+# P3 local completion: available return
+
+Source: existing Pro chat https://chatgpt.com/c/6af4eb36-d13c-83ec-811c-00db062459b3. Issued question: work/astra-renewed-pro-programmes-20261103/P3_FULL_LOCAL_COMPLETION_COUPLED_RENEWABLE_MOLECULAR_MANUFACTURING_INVENTION_PRO_20261113.txt; 15955 ASCII bytes; SHA256 c770be4fc79160785ef049f9b2912459a54877bcff80d0aa1d5682619ab8a407. The current response follows the single authorized continuation after interruption.
+
+Capture scope: user-visible pre-interruption activity and expanded top-level post-continuation activity plus the final answer as displayed in the DOM snapshot, including visible tables and source links. Rendering can duplicate or omit mathematics and table content. Nested tool activity, linked report and archive were not collected; original identity and transfer eligibility remain unverified. Native final identity, exact text and prefix are unknown. This is not a native-byte transcript, a producer-code execution, or an artifact recovery.
+
+## Preserved pre-interruption visible activity
+
+P3 local completion molecular manufacturing: visible unfinished activity, 13 November 2026. Exact issued question: P3_FULL_LOCAL_COMPLETION_COUPLED_RENEWABLE_MOLECULAR_MANUFACTURING_INVENTION_PRO_20261113.txt (15955 bytes, SHA256 c770be4fc79160785ef049f9b2912459a54877bcff80d0aa1d5682619ab8a407). Captured from the current same Pro chat before interruption recovery; nested tool content and final answer unavailable.
+
+I’ll focus this revision on the unresolved handover: whether the first continuation event can consume the key, preserve a usable chain end, and prevent both repeat signalling and a wrong first hit. I’ll also revisit the expensive positional program, rather than assume that adding a cleavage step makes the earlier architecture practical.
+
+Single use key, Architecture rethink, and Chemistry and cost finished
+Read files, searched the web
+
+Designed a chemical gate and thiol capture mechanism
+
+Selected chain–monomer coupling and evaluated Staudinger ligation
+
+Designed dual-anchor handover and permanent reader tether
+
+Estimated DNA program costs and verified 400-nt template
+
+Compared packet costs and assessed ribosome coupling
+
+Evaluated modified-base XNA design
+
+Checked E/Z tolerance and evaluated dual-release chemistry
+
+Searched 17 websites
+
+Modeled bond-forming transfer and prepared selector scaffold
+
+Searched the web
+
+Investigated simplified candidate and assessed three alternatives
+
+Designed a preassembled dual-crosslink duplex release proof
+
+Refined packet selector design and checked anchoring
+
+Refined packet-state transitions and tested transfer-gated sidecars
+
+Evaluated local template DNA and protected ylide activation
+
+Evaluated NCA chain extension and selected next monomer
+
+Evaluated NCA hydrolysis
+
+Two stronger alternatives have emerged. Wittig chain-transfer chemistry can make the product bond and move the chain to its next carrier in the same reaction, eliminating a separate signalling key. Polymerases also have published examples using all four nucleotides with different added chemical groups. I’m testing whether either can preserve positional order and produce a useful material, while keeping the existing work’s limits and costs explicit.
+
+Searched 4 websites
+
+Prepared modified-DNA synthesis design and selected stable monomer chemistries
+
+Compared Cu2+ binding motifs and thiol arrangements
+
+Designed reusable capsules
+
+Selected hyperDNA platform
+
+Chose DNA hairpin materials while excluding receptor binding
+
+Evaluated polymerase-compatible monomers
+
+Quenched thiols and assessed duplex formation
+
+Recalculated custom dNTP costs
+
+Assessed immobilized-polymerase savings
+
+Designed hairpin sequence and assessed rU-release chemistry
+
+Checked T4 PNK reset and RNA primer extension
+
+Evaluated primer-end repair
+
+Evaluated nicking-amplification design
+
+Planned hairpin template libraries
+
+Inspected files and reviewed enzyme evidence
+
+I found a stronger existing construction that changes the comparison: polymerase extension, product release and template regeneration have already been combined in one enzyme cascade. I’m now designing around that real chemistry and checking whether the proposed library can add useful chemical diversity, reliable reuse and an economic advantage. The separate continuation-key design still has unresolved first-hit and wrong-product errors, even if the key is consumed.
+
+Searched the web
+
+Refined pyrene function choice
+
+Ran command
+
+Checked primary PDFs and estimated array spacing
+
+Assessed membrane feasibility and verified cellulose tubing rating
+
+Evaluated tethered-template containment and specified packed CPG cassettes
+
+Estimated template supply and product requirements
+
+Checked enzyme capacity and adapted T1 hairpin
+
+Set model requirements and implemented Python balance model
+
+Calibrated instrument cost assumptions
+
+The key distinction is now clearer: a polymerase puts the next reactive hydroxyl on the newly extended chain, so continuation does not need a signal that can escape and activate a neighbour. But it can still accept the wrong chemical monomer, slip on a repeated sequence or leave a stalled chain. I’m keeping those errors in the model and comparing the shared-bath design with sixteen automated wells using the same reagent cocktail—an inexpensive, serious competitor.
+
+Refined the prep model
+
+Compared source reaction capacity and volume designs
+
+Prepared CTMC model code and defined mismatch-state ODE
+
+Checked 1U enzyme definition and treated TCEP as consumable
+
+Assessed stock purity limits
+
+Formalized and updated sample release-yield accounting
+
+Planned cartridge-bank validation and redesigned primer-template architecture
+
+Refined natural leader design with a common spacer
+
+Searched the web
+
+Set assay parameters and planned Pwo clearance
+
+Selected guanidine denaturation
+
+Planned nicking setup
+
+Searched for Read authentication results and listed molecular revision files
+
+Estimated FRET geometry
+
+Estimated near/far ratio and tallied functional counts
+
+Checked hairpin primer candidates and GAGTC motif occurrences
+
+Read files
+
+Two practical costs have become decisive. The published four-monomer experiment uses very little DNA relative to enzyme, so scaling its recipe directly would be expensive; a concentrated process needs its own validation. Also, the proofreading polymerase can damage the reusable primer when nucleotides run out, and ordinary heat inactivation will not remove it. I’m including a separate quench, protein-clearance and residual-activity check in the reset cycle.
+
+Searched for Read chemistry budget, wrote audit notes, and ran optical model
+
+Checked cost advantage and defined the missing operation
+
+Read files, ran a command, searched the web
+
+Prepared the cost model
+
+Compared reagent packs
+
+Prepared the experiment budget
+
+Checked 1,000-sample throughput
+
+Scoped assay validation and developed a co-located preservation readout
+
+Evaluated terminal readout
+
+Prepared the model archive and trimmed source notes
+
+## Post-continuation visible activity and final response
+
+    - button "Worked for 60m 4s" [expanded]:
+      - generic: Worked for 60m 4s
+    - paragraph: Evaluated reactor nitrogen purge
+    - paragraph:
+      - text: I’m continuing with the complete construction and model package. Charging the additional reset passes and readiness assays brings the planning cost to about
+      - strong: $12,733 per attempted library
+      - text: ", versus"
+      - strong: $12,608
+      - text: for the matched parallel process. The output targets remain conditional on unmeasured chemistry and assay performance; I have not established the requested economic advantage.
+    - button "Architecture rethink finished"
+    - generic: Architecture rethink finished
+    - paragraph: Added product-inhibition term
+    - paragraph: Prepared report builder
+    - paragraph: Product inhibition is now explicit in the model. Under introduced binding constants, accumulated completed chains and pyrophosphate reduce the worst-code fidelity to 74.5% in one combined case, even though more than 1 nmol of correct product remains. Thus sufficient quantity alone would not pass. The design’s acceptable operating region needs measured kinetics on the actual support.
+    - paragraph: Retried sanitized source and wrote compact HTML builder
+    - paragraph: The reset model now distinguishes the actual ten-run schedule from a ten-use lifetime claim. Four program banks receive 3, 3, 2 and 2 uses. In a separate modeled ten-use stress case, 97.7% of starting machinery remains functional if stalled chains can be cleared, but only 94.8% if those stalls damage their sites. The latter misses the 95% retention requirement. I’m incorporating that distinction into the report.
+    - generic: Ran command
+    - paragraph: Normalized report spacing and checked BeautifulSoup import
+    - button "Ran a command"
+    - generic: Ran a command
+    - paragraph: Prepared document text normalization and added product-bound states
+    - button "Ran a command"
+    - generic: Ran a command
+    - paragraph: Assembled and verified project archive integrity
+    - button "Ran a command"
+    - generic: Ran a command
+    - paragraph: The report and executable package are complete. The numerical audit passes for conservation and accounting; that does not validate the chemistry. The report identifies the remaining failures in chemical discrimination, authentication, lifetime and comparative cost.
+    - paragraph: Saving files to Library.
+    - generic: Ran command
+    - paragraph: Checked mechanism evidence
+    - paragraph: Verified final sources
+    - paragraph: Checked model assumptions and assay costs
+    - paragraph: Updated cost sensitivity and checked 10-run total
+    - heading "ChatGPT said:" [level=4]
+    - heading "Result" [level=2]
+    - paragraph:
+      - strong: I found a physically grounded way to eliminate the reusable, transferable continuation key. I have not established the complete new manufacturing operation or the requested economic advantage.
+    - paragraph:
+      - text: The strongest construction uses
+      - strong: the reactive end of the growing product itself
+      - text: as the continuation mechanism. A polymerase incorporates a chemically modified nucleotide; that incorporated unit supplies the next reactive hydroxyl on the same covalent chain. There is no surviving key that can repeatedly activate neighbouring instructions.
+    - paragraph:
+      - text: "That operation is established chemistry. Its limitation matters:"
+      - strong: it checks base pairing and backbone-forming geometry, but does not authenticate every chemical substituent on the incoming monomer.
+      - text: A correctly paired monomer with a damaged side group can continue. Repeat slippage, template switching and terminal overextension remain possible.
+    - paragraph:
+      - text: "I developed a specific shared-bath cartridge process around this mechanism, including its preparation, product release, clearance, finite reset, analytical acceptance and costs. I executed the coupled models and corrected an important renewal error:"
+      - strong: uncleaved product cannot be removed by washing; restoring the primer requires another covalent cleavage operation.
+    - paragraph: "The resulting status is:"
+    - table:
+      - rowgroup:
+        - row "Requirement Result of this work":
+          - columnheader "Requirement"
+          - columnheader "Result of this work"
+      - rowgroup:
+        - row "Actual local connection between bond formation and further chain growth Established primitive; limited chemical specificity":
+          - cell "Actual local connection between bond formation and further chain growth"
+          - cell "Established primitive; limited chemical specificity"
+        - row "Four non-natural building blocks in a common chemical window Supported by published small-scale incorporation experiments":
+          - cell "Four non-natural building blocks in a common chemical window"
+          - cell "Supported by published small-scale incorporation experiments"
+        - row "Exact 16-product, 20-extension library Specified":
+          - cell "Exact 16-product, 20-extension library"
+          - cell "Specified"
+        - row "≥1 nmol correct product/code, ≥90% fidelity, ≥50% yield Conditional model passes; no authenticated physical library":
+          - cell "≥1 nmol correct product/code, ≥90% fidelity, ≥50% yield"
+          - cell "Conditional model passes; no authenticated physical library"
+        - row "Complete production and authentication within 24 hours Conditional 22.5-hour schedule; analytical method remains unqualified":
+          - cell "Complete production and authentication within 24 hours"
+          - cell "Conditional 22.5-hour schedule; analytical method remains unqualified":
+            - text: Conditional
+            - strong: 22.5-hour
+            - text: schedule; analytical method remains unqualified
+        - row "Ten cycles with restored machinery Finite reset constructed on paper; lifetime remains unmeasured":
+          - cell "Ten cycles with restored machinery"
+          - cell "Finite reset constructed on paper; lifetime remains unmeasured"
+        - row "Same-composition pair with ≥2× physical response Conditional optical prediction; not established experimentally":
+          - cell "Same-composition pair with ≥2× physical response"
+          - cell "Conditional optical prediction; not established experimentally"
+        - row "≥30% cost or ≥3× turnaround advantage Not achieved in the matched comparison":
+          - cell "≥30% cost or ≥3× turnaround advantage"
+          - cell "Not achieved in the matched comparison":
+            - strong: Not achieved
+            - text: in the matched comparison
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph: "The complete deliverables are:"
+    - list:
+      - link "Complete design report":
+        - /url: https://chatgpt.com/library?file_id=libfile_1db027117110819180e446a461a9064f&account_id=personal
+      - link "Executable models, exact programs, resource ledgers and audit results":
+        - /url: https://chatgpt.com/library?file_id=libfile_8e8c1f3e726c8191aa0ed91e345ad539&account_id=personal
+    - paragraph: No physical synthesis or durability experiment was performed.
+    - separator
+    - 'heading "1. The physical mechanism: the product carries its own next reactive end" [level=2]'
+    - paragraph: For the chosen chemistry, the schematic growth reaction is
+    - math:
+      - generic: P
+      - generic: j
+      - generic: −
+      - generic: "3"
+      - generic: ′
+      - generic: O
+      - generic: H
+      - generic: +
+      - generic: d
+      - generic: X
+      - generic: T
+      - generic: P
+      - generic: ⟶
+      - generic: P
+      - generic: j
+      - generic: +
+      - generic: "1"
+      - generic: −
+      - generic: "3"
+      - generic: ′
+      - generic: O
+      - generic: H
+      - generic: +
+      - generic: P
+      - generic: P
+      - generic: i
+      - generic: .
+    - text: P
+    - generic: j
+    - generic: −
+    - text: "3"
+    - generic: ′
+    - generic: OH
+    - text: +
+    - generic: dXTP ⟶
+    - text: P
+    - generic: j+1
+    - generic: −
+    - text: "3"
+    - generic: ′
+    - generic: OH
+    - text: +
+    - text: P
+    - text: P
+    - generic: i
+    - text: .
+    - paragraph:
+      - text: Here
+      - math:
+        - generic: d
+        - generic: X
+        - generic: T
+        - generic: P
+      - generic: dXTP
+      - text: is a non-natural, functionalized nucleotide triphosphate. The old chain-end hydroxyl forms the new phosphodiester bond. The newly incorporated residue carries the next hydroxyl.
+    - paragraph: "This gives a direct physical distinction between several events:"
+    - list:
+      - strong: "An unsuccessful encounter:"
+      - text: no extension; the original terminus remains available.
+      - strong: "Free-reagent hydrolysis:"
+      - text: consumes reagent but does not move the chain end.
+      - strong: "Correct incorporation:"
+      - text: creates the next covalently attached reactive end.
+      - strong: "A terminal mismatch:"
+      - text: may be excised by proofreading, restoring the preceding end for retry.
+      - strong: "A base-matched chemical defect:"
+      - text: may pass through the enzyme and remain hidden.
+    - paragraph: The last category prevents me from calling this a complete intended-product detector. The enzyme need not distinguish a desired thiol from its oxidized or otherwise altered counterpart.
+    - heading "Why I moved away from the transferable-key design" [level=3]
+    - paragraph:
+      - text: I reproduced the supplied key/quench diagnostic. Without quenching, the introduced model gives approximately
+      - strong: 0.99752 intended progression and 0.70465 bad-site progression
+      - text: . Strong, perfectly selective quenching reduces bad progression to approximately
+      - strong: "0.000434"
+      - text: ", but introducing the stated small premature trap access lowers intended progression to"
+      - strong: "0.90785"
+      - text: .
+    - paragraph: "A key consumed on its first transition solves repeated activation, but still has a wrong-first-hit problem. In the introduced tether calculation:"
+    - math:
+      - generic: p
+      - generic: i
+      - generic: "n"
+      - generic: t
+      - generic: e
+      - generic: "n"
+      - generic: d
+      - generic: e
+      - generic: d
+      - generic: =
+      - generic: "0.9950"
+      - generic: ⇒
+      - generic: p
+      - generic: i
+      - generic: "n"
+      - generic: t
+      - generic: e
+      - generic: "n"
+      - generic: d
+      - generic: e
+      - generic: d
+      - generic: "20"
+      - generic: =
+      - generic: "0.9055"
+    - text: p
+    - generic: intended
+    - text: =
+    - generic: 0.9950 ⇒
+    - text: p
+    - generic: intended
+    - generic: "20"
+    - text: =
+    - generic: "0.9055"
+    - paragraph:
+      - text: for the favourable 10 nm case. The 30 nm case gives approximately
+      - math:
+        - generic: "0.9347"
+        - generic: "20"
+        - generic: =
+        - generic: "0.259"
+      - text: "0.934"
+      - text: "7"
+      - generic: "20"
+      - text: =
+      - generic: "0.259"
+      - text: .
+    - paragraph: "These are hypothetical rate and geometry screens, not universal limits. They show why cutting a key twice is insufficient by itself: the first interaction must still be local, chemically justified and sufficiently reliable."
+    - paragraph: The product-end mechanism removes that mobile-signal failure path. It leaves the enzyme’s actual chemical specificity and register fidelity as explicit requirements.
+    - heading "Prior work already supplies much of this organization" [level=3]
+    - paragraph:
+      - text: Kaiser and collaborators demonstrated simultaneous incorporation of four nucleotides carrying hydroxyl, imidazole, carboxylate and thiol functionality. This is a real common-chemistry starting point. It does not establish the present supported, concentrated, reusable library process.
+      - 'link "Wiley Online Library: Polymerase Synthesis of Hypermodified DNA Displaying a Combination of Thiol, Hydroxyl, Carboxylate, and Imidazole Functional Groups in the Major Groove - Kaiser - 2025 - Chemistry – A European Journal, https://chemistry-europe.onlinelibrary.wiley.com/doi/10.1002/chem.202501034?utm_source=chatgpt.com"':
+        - /url: https://chemistry-europe.onlinelibrary.wiley.com/doi/10.1002/chem.202501034?utm_source=chatgpt.com
+        - generic: Wiley Online Library
+    - paragraph: Renewable template operation is also established prior art. Moody and collaborators coupled self-priming templates, polymerase extension and Endonuclease V release to regenerate templates and produce substantial quantities of oligonucleotides. Their work includes a modified 21-mer isolated at 108 nmol and 87% purity—a useful result, but a different product and specification.
+    - paragraph:
+      - text: Supported templates, nickases and sequential variants also appear in the technical descriptions of WO2023041931A1. Therefore
+      - strong: a hairpin on a support with nickase release is not my claimed invention
+      - text: .
+      - 'link "Google Patents: WO2023041931A1 - Synthesis of oligonucleotides, https://patents.google.com/patent/WO2023041931A1/en?utm_source=chatgpt.com"':
+        - /url: https://patents.google.com/patent/WO2023041931A1/en?utm_source=chatgpt.com
+        - generic: Google Patents
+    - separator
+    - heading "2. An actual non-natural product family" [level=2]
+    - paragraph:
+      - text: I chose
+      - strong: fully base-functionalized deoxyoligomers used as abiotic optical-material precursors
+      - text: . Their function is physical fluorescence organization, rather than protein production or storage of a digital message.
+    - paragraph: "The four building blocks are:"
+    - table:
+      - rowgroup:
+        - row "Program symbol Actual non-natural residue Added functionality":
+          - columnheader "Program symbol"
+          - columnheader "Actual non-natural residue"
+          - columnheader "Added functionality"
+      - rowgroup:
+        - row "H 7-deazaG–C≡C–(CH₂)₃–OH Hydroxyl":
+          - cell "H":
+            - strong: H
+          - cell "7-deazaG–C≡C–(CH₂)₃–OH"
+          - cell "Hydroxyl"
+        - row "I C–C≡C–(CH₂)₄–C(O)NH–CH₂CH₂–imidazolyl Imidazole and amide":
+          - cell "I":
+            - strong: I
+          - cell "C–C≡C–(CH₂)₄–C(O)NH–CH₂CH₂–imidazolyl"
+          - cell "Imidazole and amide"
+        - row "C U–C≡C–(CH₂)₄–COOH Carboxylate":
+          - cell "C":
+            - strong: C
+          - cell "U–C≡C–(CH₂)₄–COOH"
+          - cell "Carboxylate"
+        - row "S 7-deazaA–para-phenyl–(CH₂)₃–SH Thiol":
+          - cell "S":
+            - strong: S
+          - cell "7-deazaA–para-phenyl–(CH₂)₃–SH"
+          - cell "Thiol"
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph:
+      - text: Here
+      - strong: C means carboxylate
+      - text: ", not cytosine. The base equivalents used to construct templates are H→G, I→C, C→T and S→A."
+    - paragraph:
+      - text: Every product below contains
+      - strong: six H, six I, six C and two S residues
+      - text: ", so all sixteen have the same composition."
+    - heading "The first exact library" [level=3]
+    - table:
+      - rowgroup:
+        - row "Code Twenty ordered additions, 5′→3′":
+          - columnheader "Code"
+          - columnheader "Twenty ordered additions, 5′→3′"
+      - rowgroup:
+        - row "01 HHHHHHIIISSIIICCCCCC":
+          - cell "01"
+          - cell "HHHHHHIIISSIIICCCCCC"
+        - row "02 HHSHHHHIIIIIICCCCSCC":
+          - cell "02"
+          - cell "HHSHHHHIIIIIICCCCSCC"
+        - row "03 SSHHHHHHIIIIIICCCCCC":
+          - cell "03"
+          - cell "SSHHHHHHIIIIIICCCCCC"
+        - row "04 HHHHHHIIIIIICCCCCCSS":
+          - cell "04"
+          - cell "HHHHHHIIIIIICCCCCCSS"
+        - row "05 HICHICHICHICHICHICSS":
+          - cell "05"
+          - cell "HICHICHICHICHICHICSS"
+        - row "06 SHICHICHICHICHICHICS":
+          - cell "06"
+          - cell "SHICHICHICHICHICHICS"
+        - row "07 HCIHCIHCISSHCIHCIHCI":
+          - cell "07"
+          - cell "HCIHCIHCISSHCIHCIHCI"
+        - row "08 IHCIHCIHCSSIHCIHCIHC":
+          - cell "08"
+          - cell "IHCIHCIHCSSIHCIHCIHC"
+        - row "09 HHHIIICCCSSHHHIIICCC":
+          - cell "09"
+          - cell "HHHIIICCCSSHHHIIICCC"
+        - row "10 HHHCCCIIISSHHHCCCIII":
+          - cell "10"
+          - cell "HHHCCCIIISSHHHCCCIII"
+        - row "11 HHIICCHHIICCHHIICCSS":
+          - cell "11"
+          - cell "HHIICCHHIICCHHIICCSS"
+        - row "12 HHCCIIHHCCIIHHCCIISS":
+          - cell "12"
+          - cell "HHCCIIHHCCIIHHCCIISS"
+        - row "13 HIHIHISSCICICIHCHCHC":
+          - cell "13"
+          - cell "HIHIHISSCICICIHCHCHC"
+        - row "14 HIHIHICICICISSHCHCHC":
+          - cell "14"
+          - cell "HIHIHICICICISSHCHCHC"
+        - row "15 SIIIIIISHHHHHHCCCCCC":
+          - cell "15"
+          - cell "SIIIIIISHHHHHHCCCCCC"
+        - row "16 CCCCCCSIIIIIISHHHHHH":
+          - cell "16"
+          - cell "CCCCCCSIIIIIISHHHHHH"
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph: The files specify three further 16-product libraries using reversals, exchanges of H/I placement and rotations. They retain runs, repeats and alternating regions.
+    - paragraph:
+      - text: Correct release produces a
+      - strong: 20-mer with 5′ phosphate and 3′OH
+      - text: ", calculated neutral monoisotopic mass"
+      - strong: 8,924.33495 Da
+      - text: . Consequently, even perfect parent-mass measurement cannot distinguish these sixteen sequences.
+    - separator
+    - heading "3. A specified covalent scaffold and release junction" [level=2]
+    - paragraph: "The natural primer arm is the following 27-mer:"
+    - generic: Plain text
+    - button "Enable word wrap":
+    - button "Copy code":
+    - code: GCGCGATCGCGTACGCGCGAGTCGCGC
+    - paragraph:
+      - text: Call it
+      - math:
+        - generic: P
+      - generic: P
+      - text: . For a product’s ordinary-base equivalent
+      - math:
+        - generic: B
+      - generic: B
+      - text: ", the complete 78-nt scaffold is"
+    - generic: Plain text
+    - button "Enable word wrap":
+    - button "Copy code":
+    - code: 5′–anchor–PEG–revcomp(B)–revcomp(P)–TTTT–P–3′OH
+    - paragraph: "Its extended end has this topology:"
+    - generic: Plain text
+    - button "Enable word wrap":
+    - button "Copy code":
+    - code: …GAGTC GCGC | X1 X2 … X20–3′OH
+    - paragraph:
+      - text: Nt.BstNBI recognizes the natural GAGTC region and cuts four bases beyond it, at the indicated primer/product bond. The cleavage restores the
+      - strong: same natural primer 3′OH
+      - text: and releases the functionalized chain without retaining a natural primer segment.
+    - paragraph:
+      - text: The maker specifies this cleavage geometry, 55°C operation and 80°C/20-minute heat inactivation. These specifications do
+      - strong: not
+      - text: establish cleavage kinetics beside all four modified first residues on the proposed support.
+    - paragraph: All 64 candidate hairpins were checked for unintended copies of the intended-orientation recognition motif.
+    - paragraph:
+      - text: "There is an important limitation:"
+      - strong: the cleavage bond exists after the first addition.
+      - text: Nickase therefore cannot be present during growth. It is not a detector of twenty completed operations.
+    - paragraph: A related four-functional nicking/polymerase system already exists. Its supplementary observations include an intended 16-mer becoming a 17-mer through an additional terminal nucleotide, so exact stopping cannot be inherited from the existence of a full-length band.
+    - separator
+    - heading "4. The proposed shared-bath apparatus" [level=2]
+    - paragraph:
+      - text: The physical implementation is a rack of
+      - strong: sixteen PEEK cartridge housings
+      - text: connected to one recirculating bath.
+    - paragraph: "Each cartridge contains:"
+    - list:
+      - text: A
+      - strong: 3 mm bore × 6 mm packed bed
+      - text: ", approximately 42 μL."
+      - strong: 20 mg controlled-pore glass
+      - text: ", with introduced 50–100 μm particle size and approximately 100 nm pores."
+      - strong: 2 nmol functional hairpins
+      - text: ", attached through a non-disulfide amide/PEG/silane linkage."
+      - listitem: A frit, finite inlet/outlet volumes and an individually checked hydraulic branch.
+    - paragraph: A roughly 2 kDa PEG spacer separates the DNA from the pore wall. The proposed preparation couples a 5′ amino oligo to carboxy-PEG-functionalized glass. Loading yield, damaged oligos, purification and functional qualification are paid; they are not assumed to equal nominal coupling yield.
+    - paragraph: "The common growth operating point is:"
+    - table:
+      - rowgroup:
+        - row "Quantity Introduced design value":
+          - columnheader "Quantity"
+          - columnheader "Introduced design value"
+      - rowgroup:
+        - row "Bath volume 6.4 mL":
+          - cell "Bath volume"
+          - cell "6.4 mL"
+        - row "Total initiating sites 32 nmol":
+          - cell "Total initiating sites"
+          - cell "32 nmol"
+        - row "Total site concentration 5 μM":
+          - cell "Total site concentration"
+          - cell "5 μM"
+        - row "Each functionalized dNTP 200 μM":
+          - cell "Each functionalized dNTP"
+          - cell "200 μM"
+        - row "Pwo polymerase 168 U":
+          - cell "Pwo polymerase"
+          - cell "168 U"
+        - row "TCEP input 5.12 μmol":
+          - cell "TCEP input"
+          - cell "5.12 μmol"
+        - row "Growth temperature 60°C":
+          - cell "Growth temperature"
+          - cell "60°C"
+        - row "Growth interval 2 hours":
+          - cell "Growth interval"
+          - cell "2 hours"
+        - row "Common circulation 2 mL/min":
+          - cell "Common circulation"
+          - cell "2 mL/min"
+        - row "Nominal branch circulation 0.125 mL/min":
+          - cell "Nominal branch circulation"
+          - cell "0.125 mL/min"
+        - row "Pressure limit 50 kPa":
+          - cell "Pressure limit"
+          - cell "50 kPa"
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph: Every program sees the same monomer mixture. There are no program-specific coupling feeds.
+    - paragraph:
+      - text: The source analytical primer concentration was approximately 150 nM. Moving to 5 μM total supported initiator is therefore a
+      - strong: 33-fold intensification that remains unqualified
+      - text: . I have not treated it as an experimentally supported production point.
+    - heading "Finite transport" [level=3]
+    - paragraph:
+      - text: The clean-bed pressure calculation gives approximately
+      - strong: 281 Pa
+      - text: ", excluding frits and fouling. Bath turnover is"
+      - strong: 3.2 minutes
+      - text: . At the modeled capacity, convective monomer depletion is approximately
+      - strong: 5.6 μM
+      - text: against the 200 μM feed.
+    - paragraph: "The pore-access sensitivity is more consequential:"
+    - table:
+      - rowgroup:
+        - row "Introduced effective diffusivity Diffusion time over 25 μm Estimated local depletion":
+          - columnheader "Introduced effective diffusivity"
+          - columnheader "Diffusion time over 25 μm"
+          - columnheader "Estimated local depletion"
+      - rowgroup:
+        - row "6.25 s 2.5 μM":
+          - cell:
+            - math:
+              - generic: "10"
+              - generic: −
+              - generic: "10"
+              - generic: m
+              - generic: "2"
+              - generic: /
+              - generic: s
+            - text: "1"
+            - text: "0"
+            - generic: −10
+            - text: m
+            - generic: "2"
+            - text: /s
+          - cell "6.25 s"
+          - cell "2.5 μM"
+        - row "62.5 s 25 μM":
+          - cell:
+            - math:
+              - generic: "10"
+              - generic: −
+              - generic: "11"
+              - generic: m
+              - generic: "2"
+              - generic: /
+              - generic: s
+            - text: "1"
+            - text: "0"
+            - generic: −11
+            - text: m
+            - generic: "2"
+            - text: /s
+          - cell "62.5 s"
+          - cell "25 μM"
+        - row "625 s 251 μM":
+          - cell:
+            - math:
+              - generic: "10"
+              - generic: −
+              - generic: "12"
+              - generic: m
+              - generic: "2"
+              - generic: /
+              - generic: s
+            - text: "1"
+            - text: "0"
+            - generic: −12
+            - text: m
+            - generic: "2"
+            - text: /s
+          - cell "625 s"
+          - cell "251 μM"
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph: The last case cannot sustain the assumed rate. Enzyme partitioning, adsorption and product access need measurement on the actual loaded support.
+    - paragraph: The 5′ anchor is also a real endpoint obstacle. The polymerase approaches it during the final additions. Adding an ordinary DNA spacer would change the copied sequence, so it cannot silently solve the access problem.
+    - separator
+    - heading "5. Complete production, release and restoration" [level=2]
+    - paragraph: The proposed sequence is globally controlled, while individual covalent additions occur locally.
+    - heading "A. Grow" [level=3]
+    - paragraph: Pwo operates with all four modified dNTPs present. The declared buffer contains nominal total 2 mM MgSO₄, 10 mM Tris-HCl, 25 mM KCl and 5 mM ammonium sulfate.
+    - paragraph:
+      - text: The quoted Tris pH is at its specified reference temperature, not a claim that pH stays unchanged at 60°C. Initial nucleotide concentration is 0.8 mM, and pyrophosphate approaches 0.1 mM.
+      - strong: Free Mg cannot be inferred from the total Mg addition.
+    - paragraph: Recoverable noncoupling leaves a usable terminus. Proofreading can return a terminal mismatch to the preceding end. Chemically damaged or incorrectly registered chains can remain hidden.
+    - heading "B. Stop and remove polymerase" [level=3]
+    - paragraph:
+      - strong: EDTA is added before withdrawing nucleotide stock.
+    - paragraph:
+      - text: This ordering is necessary because Pwo’s exonuclease can degrade primer ends when nucleotides are absent. Pwo is sufficiently thermostable that the nickase’s ordinary heat-inactivation treatment cannot be assumed to remove it.
+      - 'link "sigmaaldrich.com: 11644947001a.fm, https://www.sigmaaldrich.com/deepweb/assets/sigmaaldrich/product/documents/239/457/pwopolrobul.pdf?utm_source=chatgpt.com"':
+        - /url: https://www.sigmaaldrich.com/deepweb/assets/sigmaaldrich/product/documents/239/457/pwopolrobul.pdf?utm_source=chatgpt.com
+        - generic: sigmaaldrich.com
+    - paragraph: The proposed clearance is a guanidinium/EDTA denaturing wash while the product remains covalently attached, followed by washing and refolding. Approximately 40 mL is allocated for the first clearing operation, including plumbing.
+    - paragraph: Twenty pore volumes would bound freely dissolved carryover. It would not prove removal of DNA-bound active enzyme. A functional residual-enzyme challenge is required.
+    - heading "C. Release into separately attributed collection vessels" [level=3]
+    - paragraph: The identified cartridges move from the shared bath to sixteen collection positions. That handling is included in time, hardware and labour.
+    - paragraph:
+      - text: Nt.BstNBI is then introduced in its own compatible buffer. The planning dose is
+      - strong: 2,000 U per library
+      - text: ", with"
+      - strong: 16 mL total collection solution
+      - text: ", at 55°C for one hour."
+    - paragraph: This is deliberately a substantial, paid dose; it is not a demonstrated dose requirement for the proposed junction.
+    - paragraph: After cleavage, the product duplex is dissociated and enzyme/protein removed. Recovery is modeled at 95%, but actual adsorption, membrane retention and thermal release remain unmeasured.
+    - paragraph:
+      - text: All released short and wrong chains remain in the
+      - strong: pre-salvage purity denominator
+      - text: .
+    - heading "D. Restore the covalent primer—not just the liquid composition" [level=3]
+    - paragraph: This was the most important correction during the state audit.
+    - paragraph:
+      - text: If the primary cleavage is 95% effective, roughly
+      - strong: 1.6 nmol of extended chains remains covalently attached
+      - text: . Heating or washing does not restore those primers.
+    - paragraph:
+      - text: I therefore added
+      - strong: two further cleavage/refolding/clearance passes
+      - text: ", each with another 2,000 U nickase. Their products go to waste, not accepted output."
+    - paragraph: "If every pass independently cleaves 95% of what remains, a 32 nmol extended population divides as follows:"
+    - table:
+      - rowgroup:
+        - row "Destination Chain amount":
+          - columnheader "Destination"
+          - columnheader "Chain amount"
+      - rowgroup:
+        - row "Primary release 30.400 nmol":
+          - cell "Primary release"
+          - cell "30.400 nmol"
+        - row "Additional reset waste 1.596 nmol":
+          - cell "Additional reset waste"
+          - cell "1.596 nmol"
+        - row "Still covalently retained 0.004 nmol":
+          - cell "Still covalently retained"
+          - cell "0.004 nmol"
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph: The last stock is explicitly retained. It receives no credit as newly made product in later cycles.
+    - paragraph:
+      - strong: Independence is unproved.
+      - text: A permanently inaccessible or chemically resistant junction may survive all three passes.
+    - heading "E. Observe readiness and remove the release machinery" [level=3]
+    - paragraph: Residual nickase must be inhibited or removed before the next growth interval; otherwise it can release short products prematurely.
+    - paragraph:
+      - text: The proposed readiness check destructively removes
+      - strong: 0.1% of each bead stock per cycle
+      - text: . A restriction fingerprint of the natural stem is compared against ready, extended and damaged standards. A candidate reagent is BstUI, whose actual recognition and operating conditions are available. Its assay must establish the relevant fragments and cannot assume that a single expected fragment proves complete restoration.
+    - paragraph: The sampled material is never returned. Assay validity, sampling homogeneity and subpercent quantitation remain unestablished.
+    - paragraph: The apparatus returns to 25°C. Enzymes are consumed, reducing stock is charged, and clearing solutions go to paid waste handling.
+    - separator
+    - heading "6. What the executed model actually predicts" [level=2]
+    - paragraph: "The model follows, separately for every program:"
+    - list:
+      - listitem: Correct and erroneous growing prefixes.
+      - listitem: Terminal mismatches, including the identity of the consumed nucleotide.
+      - listitem: Proofreading and its NMP waste.
+      - listitem: Permanently stalled chains.
+      - listitem: Complete and overextended chains.
+      - listitem: Eight finite modified/natural nucleotide pools.
+      - listitem: Hydrolysis, release, recovery, sampling and retained inventories.
+    - paragraph:
+      - text: These states are bookkeeping variables.
+      - strong: The controller is not allowed to observe their labels.
+    - paragraph: "All simultaneous kinetic, error and recovery parameters are introduced. Among them:"
+    - math:
+      - generic: k
+      - generic: H
+      - generic: =
+      - generic: "0.05"
+      - generic: ","
+      - generic: k
+      - generic: I
+      - generic: =
+      - generic: "0.04"
+      - generic: ","
+      - generic: k
+      - generic: C
+      - generic: =
+      - generic: "0.03"
+      - generic: ","
+      - generic: k
+      - generic: S
+      - generic: =
+      - generic: "0.01"
+      - generic: s
+      - generic: −
+      - generic: "1"
+      - generic: ","
+    - text: k
+    - generic: H
+    - text: =
+    - text: 0.05,
+    - text: k
+    - generic: I
+    - text: =
+    - text: 0.04,
+    - text: k
+    - generic: C
+    - text: =
+    - text: 0.03,
+    - text: k
+    - generic: S
+    - text: =
+    - text: "0.01"
+    - text: s
+    - generic: −1
+    - text: ","
+    - paragraph:
+      - text: with a 0.6 rate multiplier on repeats and
+      - math:
+        - generic: K
+        - generic: m
+        - generic: =
+        - generic: "10"
+        - generic: μ
+        - generic: M
+      - text: K
+      - generic: m
+      - text: =
+      - text: 10 μ
+      - generic: M
+      - text: .
+    - paragraph: The total enzyme capacity is constrained to
+    - math:
+      - generic: "168"
+      - generic: "10"
+      - generic: "n"
+      - generic: m
+      - generic: o
+      - generic: l
+      - generic: "1800"
+      - generic: s
+      - generic: ×
+      - generic: "0.2"
+      - generic: =
+      - generic: "0.1867"
+      - generic: "n"
+      - generic: m
+      - generic: o
+      - generic: l
+      - generic: a
+      - generic: d
+      - generic: d
+      - generic: i
+      - generic: t
+      - generic: i
+      - generic: o
+      - generic: "n"
+      - generic: s
+      - generic: /
+      - generic: s
+      - generic: .
+    - text: "168"
+    - text: "1800"
+    - generic: s
+    - text: "10"
+    - generic: nmol
+    - text: ×
+    - generic: 0.2 =
+    - text: "0.1867"
+    - text: nmol
+    - text: additions/s
+    - text: .
+    - paragraph: The 0.2 activity factor is an assumption for modified substrates, not a measured property.
+    - paragraph: Natural nucleotide contamination competes with an introduced twentyfold preference and is depleted explicitly. The model does not hold its fraction artificially constant while consuming it.
+    - heading "Complete-population results" [level=3]
+    - paragraph: The values below are the worst code across the specified libraries, after recovery and the 0.25 nmol/code analytical/archive/function withdrawal.
+    - table:
+      - rowgroup:
+        - row "Executed case Correct useful product/code Whole-sequence correctness Outcome":
+          - columnheader "Executed case"
+          - columnheader "Correct useful product/code"
+          - columnheader "Whole-sequence correctness"
+          - columnheader "Outcome"
+      - rowgroup:
+        - row "Reference with 0.02% exchange error/addition 1.477 nmol 95.02% Conditional pass":
+          - cell "Reference with 0.02% exchange error/addition"
+          - cell "1.477 nmol":
+            - strong: 1.477 nmol
+          - cell "95.02%":
+            - strong: 95.02%
+          - cell "Conditional pass"
+        - row "0.1% natural nucleotide contamination 1.250 nmol 80.42% Fails fidelity":
+          - cell "0.1% natural nucleotide contamination"
+          - cell "1.250 nmol"
+          - cell "80.42%"
+          - cell "Fails fidelity"
+        - row "Primary release falls to 60% 0.849 nmol 95.40% Fails output and yield":
+          - cell "Primary release falls to 60%"
+          - cell "0.849 nmol"
+          - cell "95.40%"
+          - cell "Fails output and yield"
+        - row "Repeat rate multiplier falls to 0.1 1.177 nmol 75.72% Fails fidelity":
+          - cell "Repeat rate multiplier falls to 0.1"
+          - cell "1.177 nmol"
+          - cell "75.72%"
+          - cell "Fails fidelity"
+        - row "Other chemical error rises to 1%/addition 1.225 nmol 78.82% Fails fidelity":
+          - cell "Other chemical error rises to 1%/addition"
+          - cell "1.225 nmol"
+          - cell "78.82%"
+          - cell "Fails fidelity"
+        - row "Exchange error rises to 0.3%/addition 1.397 nmol 89.84% Fails fidelity":
+          - cell "Exchange error rises to 0.3%/addition"
+          - cell "1.397 nmol"
+          - cell "89.84%"
+          - cell "Fails fidelity"
+        - row "Tenfold lower enzyme activity Negligible completed output Negligible Fails":
+          - cell "Tenfold lower enzyme activity"
+          - cell "Negligible completed output"
+          - cell "Negligible"
+          - cell "Fails"
+        - row "100 steps, ten-hour growth, fivefold feed 1.252 nmol 80.56% Fails fidelity and time":
+          - cell "100 steps, ten-hour growth, fivefold feed"
+          - cell "1.252 nmol"
+          - cell "80.56%"
+          - cell "Fails fidelity and time"
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph:
+      - text: The nonzero-exchange reference predicts a minimum
+      - strong: 73.87% initiator-to-correct-useful yield
+      - text: . That is a calculated population, not measured isolated yield.
+    - heading "Product inhibition is explicitly consequential" [level=3]
+    - paragraph: "I added an optional inhibition screen:"
+    - math:
+      - generic: ϕ
+      - generic: =
+      - generic: "1"
+      - generic: "1"
+      - generic: +
+      - generic: "["
+      - generic: D
+      - generic: "]"
+      - generic: /
+      - generic: K
+      - generic: D
+      - generic: +
+      - generic: "["
+      - generic: P
+      - generic: P
+      - generic: i
+      - generic: "]"
+      - generic: /
+      - generic: K
+      - generic: I
+      - generic: ","
+    - generic: ϕ =
+    - text: 1 + [D]/
+    - text: K
+    - generic: D
+    - text: + [P
+    - text: P
+    - generic: i
+    - text: "]/"
+    - text: K
+    - generic: I
+    - generic: "1"
+    - text: ","
+    - paragraph:
+      - text: where
+      - math:
+        - generic: D
+      - generic: D
+      - text: is completed duplex and PPi is tied to gross incorporation. This reduces the available enzyme throughput.
+    - paragraph: At the endpoint, completed duplex reaches approximately 4.4–5.0 μM and PPi approximately 98–100 μM.
+    - table:
+      - rowgroup:
+        - row "Introduced inhibition case Worst-code correctness":
+          - columnheader "Introduced inhibition case"
+          - columnheader "Worst-code correctness"
+      - rowgroup:
+        - row "88.0%":
+          - cell:
+            - math:
+              - generic: K
+              - generic: D
+              - generic: =
+              - generic: "1"
+              - generic: μ
+              - generic: M
+            - text: K
+            - generic: D
+            - text: =
+            - text: 1 μ
+            - generic: M
+          - cell "88.0%"
+        - row "80.8%":
+          - cell:
+            - math:
+              - generic: K
+              - generic: I
+              - generic: =
+              - generic: "50"
+              - generic: μ
+              - generic: M
+            - text: K
+            - generic: I
+            - text: =
+            - text: 50 μ
+            - generic: M
+          - cell "80.8%"
+        - row "74.5%":
+          - cell:
+            - math:
+              - generic: K
+              - generic: D
+              - generic: =
+              - generic: "10"
+              - generic: μ
+              - generic: M
+              - generic: ","
+              - generic: K
+              - generic: I
+              - generic: =
+              - generic: "50"
+              - generic: μ
+              - generic: M
+            - text: K
+            - generic: D
+            - text: =
+            - text: 10 μ
+            - generic: M
+            - text: ","
+            - text: K
+            - generic: I
+            - text: =
+            - text: 50 μ
+            - generic: M
+          - cell "74.5%":
+            - strong: 74.5%
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph: The combined case still produces 1.158 nmol of correct material per code. It fails because too much other material accompanies it.
+    - paragraph:
+      - text: The numerical audit checked 32 base scenario/library runs, eight exchange cases and six inhibition cases. Maximum base-model nucleotide-balance residual was approximately
+      - math:
+        - generic: "1.69"
+        - generic: ×
+        - generic: "10"
+        - generic: −
+        - generic: "11"
+      - generic: 1.69 ×
+      - text: "1"
+      - text: "0"
+      - generic: −11
+      - text: nmol. That establishes numerical conservation, not reaction performance.
+    - separator
+    - heading "7. Authentication is a separate missing operation" [level=2]
+    - paragraph: The products stay physically attributed through release. Every code receives direct chemical analysis, and a mixed QC aliquot tests overlap and cross-contamination.
+    - paragraph: "The required analytical distinctions include:"
+    - table:
+      - rowgroup:
+        - row "Error Required evidence":
+          - columnheader "Error"
+          - columnheader "Required evidence"
+      - rowgroup:
+        - row "Incomplete or extra-length chain Calibrated length/mass distribution":
+          - cell "Incomplete or extra-length chain"
+          - cell "Calibrated length/mass distribution"
+        - row "Wrong base or unmodified residue Composition-sensitive HRMS and validated fragments":
+          - cell "Wrong base or unmodified residue"
+          - cell "Composition-sensitive HRMS and validated fragments"
+        - row "Same-composition wrong order Separating chromatography or calibrated order-sensitive fragmentation":
+          - cell "Same-composition wrong order"
+          - cell "Separating chromatography or calibrated order-sensitive fragmentation"
+        - row "Wrong linkage or branching Validated linkage assay/diagnostic fragmentation":
+          - cell "Wrong linkage or branching"
+          - cell "Validated linkage assay/diagnostic fragmentation"
+        - row "Thiol oxidation, disulfides or damaged substituents Side-group-specific chemical analysis":
+          - cell "Thiol oxidation, disulfides or damaged substituents"
+          - cell "Side-group-specific chemical analysis"
+        - row "Product from another program Direct sequence evidence and carryover controls":
+          - cell "Product from another program"
+          - cell "Direct sequence evidence and carryover controls"
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph: A published low-pmol LC-MS/MS method for a natural 18-mer is useful analytical precedent. It does not automatically qualify an 8.924 kDa, four-functional oligomer or its minority sequence isomers.
+    - heading "Why a complete fragment ladder is insufficient" [level=3]
+    - paragraph:
+      - text: The executable authentication model constructs a mixture of eighteen adjacent-swap variants of an alternating target.
+      - strong: No molecule in that mixture has the correct full sequence.
+    - paragraph:
+      - text: Nevertheless, every expected prefix-composition signal can reach
+      - strong: 94.44%
+      - text: of its nominal response.
+    - paragraph: Thus neither the expected parent mass nor a strong expected ladder proves 90% correct whole molecules.
+    - paragraph: "A prospective conservative certificate could require:"
+    - math:
+      - generic: P
+      - generic: (
+      - generic: length error
+      - generic: )
+      - generic: ≤
+      - generic: "0.01"
+      - generic: ","
+      - generic: P
+      - generic: (
+      - generic: side-group error
+      - generic: )
+      - generic: ≤
+      - generic: "0.01"
+      - generic: ","
+      - generic: P
+      - generic: (
+      - generic: wrong linkage
+      - generic: )
+      - generic: ≤
+      - generic: "0.005"
+      - generic: ","
+      - generic: P
+      - generic: (
+      - generic: cross-program contamination
+      - generic: )
+      - generic: ≤
+      - generic: "0.005"
+      - generic: ","
+      - generic: P
+      - generic: (
+      - generic: error at boundary
+      - generic: j
+      - generic: )
+      - generic: ≤
+      - generic: "0.003"
+      - generic: (
+      - generic: j
+      - generic: =
+      - generic: "1"
+      - generic: ","
+      - generic: …
+      - generic: ","
+      - generic: "19"
+      - generic: )
+      - generic: .
+    - text: P(
+    - generic: length error
+    - text: )
+    - text: P(
+    - generic: side-group error
+    - text: )
+    - text: P(
+    - generic: wrong linkage
+    - text: )
+    - text: P(
+    - generic: cross-program contamination
+    - text: )
+    - text: P(
+    - generic: error at boundary
+    - text: j)
+    - generic: ≤ 0.01,
+    - generic: ≤ 0.01,
+    - generic: ≤ 0.005,
+    - generic: ≤ 0.005,
+    - generic: ≤ 0.003 (j = 1, … , 19).
+    - paragraph: A union bound then gives
+    - math:
+      - generic: P
+      - generic: (
+      - generic: correct complete molecule
+      - generic: )
+      - generic: ≥
+      - generic: "1"
+      - generic: −
+      - generic: "0.01"
+      - generic: −
+      - generic: "0.01"
+      - generic: −
+      - generic: "0.005"
+      - generic: −
+      - generic: "0.005"
+      - generic: −
+      - generic: "19"
+      - generic: (
+      - generic: "0.003"
+      - generic: )
+      - generic: =
+      - generic: 0.913.
+    - text: P(
+    - generic: correct complete molecule
+    - text: ) ≥
+    - generic: 1 −
+    - generic: 0.01 −
+    - generic: 0.01 −
+    - generic: 0.005 −
+    - generic: 0.005 −
+    - generic: 19(0.003) =
+    - generic: 0.913.
+    - paragraph:
+      - strong: That certificate is useful only after each bound is experimentally calibrated in the actual matrix.
+      - text: It cannot be inferred from fragment presence.
+    - paragraph: "The planning schedule allows:"
+    - list:
+      - listitem: 48 product injections.
+      - listitem: Eight routine matrix/QC injections after method development.
+      - listitem: Four reset-readiness injections.
+    - paragraph:
+      - text: At 15 minutes each, this is
+      - strong: 15 hours of instrument occupation
+      - text: . Including processing and interpretation gives the conditional
+      - strong: 22.5-hour
+      - text: complete schedule. Unresolved isomers, repeat injections or digestion failures can consume the remaining margin.
+    - separator
+    - heading "8. A physical materials use—and why it remains conditional" [level=2]
+    - paragraph:
+      - text: The proposed use is a
+      - strong: duplex-supported pyrene excimer reporter
+      - text: .
+    - paragraph: An aliquot of the authenticated thiol oligomer receives two pyrene-4-maleimide labels, is cleared of free dye, and is hybridized to a paid complementary strand.
+    - list:
+      - text: Product 01 has its two thiols at positions
+      - strong: 10 and 11
+      - text: .
+      - text: Product 02 has them at positions
+      - strong: 3 and 18
+      - text: .
+    - paragraph: The response is excimer emission near 490 nm relative to monomer emission, normalized to the amount of genuine doubly labelled duplex.
+    - paragraph:
+      - text: A proximity-dependent pyrene-4-maleimide response on thiol-containing oligonucleotides has experimental precedent, although its attachment geometry differs from this construction.
+      - 'link "journals.plos.org: A Pyrene Maleimide with a Flexible Linker for Sampling of Longer Inter-Thiol Distances by Excimer Formation, https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0026691&utm_source=chatgpt.com"':
+        - /url: https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0026691&utm_source=chatgpt.com
+        - generic: journals.plos.org
+    - paragraph: "I executed a geometric model with a rigid canonical duplex and finite flexible linkers. For the 2 nm flexible-contour case:"
+    - list:
+      - text: "Near-pair contact probability:"
+      - strong: "0.02030"
+      - text: .
+      - text: "Far-pair contacts:"
+      - strong: zero in 300,000 samples
+      - text: .
+      - listitem: The latter gives a sampling upper bound within that model, not a physical zero.
+    - paragraph:
+      - text: With introduced productive-orientation probability 0.1 and background 0.001, the resulting optical proxy is
+      - strong: 3.03-fold
+      - text: . Reducing orientation probability to 0.01 lowers it to approximately
+      - strong: 1.20-fold
+      - text: .
+    - paragraph:
+      - text: Therefore the required twofold response is
+      - strong: not established
+      - text: . Duplex bending, sequence-dependent quenching, aggregation and excited-state dynamics remain unresolved.
+    - paragraph: "The competitor is strong: ordinary pyrene-labelled DNA and oligodeoxyfluorosides already supply sequence-dependent optical behaviour. The latter includes substantial same-composition sequence effects with a different chemical alphabet."
+    - paragraph: The extra hydroxyl, imidazole and carboxylate groups have no demonstrated advantage for this particular reporter. Their presence is chemical diversity, not yet useful added value.
+    - separator
+    - heading "9. Renewal across ten and one hundred cycles" [level=2]
+    - paragraph: "The actual retargeting schedule is:"
+    - math:
+      - generic: L
+      - generic: "1"
+      - generic: ","
+      - generic: L
+      - generic: "2"
+      - generic: ","
+      - generic: L
+      - generic: "3"
+      - generic: ","
+      - generic: L
+      - generic: "4"
+      - generic: ","
+      - generic: L
+      - generic: "1"
+      - generic: ","
+      - generic: L
+      - generic: "2"
+      - generic: ","
+      - generic: L
+      - generic: "3"
+      - generic: ","
+      - generic: L
+      - generic: "4"
+      - generic: ","
+      - generic: L
+      - generic: "1"
+      - generic: ","
+      - generic: L
+      - generic: "2"
+      - generic: .
+    - text: L
+    - generic: "1"
+    - text: ","
+    - text: L
+    - generic: "2"
+    - text: ","
+    - text: L
+    - generic: "3"
+    - text: ","
+    - text: L
+    - generic: "4"
+    - text: ","
+    - text: L
+    - generic: "1"
+    - text: ","
+    - text: L
+    - generic: "2"
+    - text: ","
+    - text: L
+    - generic: "3"
+    - text: ","
+    - text: L
+    - generic: "4"
+    - text: ","
+    - text: L
+    - generic: "1"
+    - text: ","
+    - text: L
+    - generic: "2"
+    - text: .
+    - paragraph:
+      - text: It uses the same manifold, but program banks receive
+      - strong: 3, 3, 2 and 2 uses
+      - text: . All four banks are prepared and paid. This is not ten uses of every template.
+    - paragraph: "The corrected renewal model includes:"
+    - list:
+      - listitem: Twelve damaging exposures per full cycle.
+      - text: Introduced
+      - math:
+        - generic: "10"
+        - generic: −
+        - generic: "4"
+      - text: "1"
+      - text: "0"
+      - generic: −4
+      - text: loss per exposure.
+      - listitem: Three cleavage attempts.
+      - listitem: Explicit retained old product.
+      - listitem: 0.1% destructive bead-stock sampling per cycle.
+      - listitem: Separate cases for recoverable stalls and stalls that permanently damage machinery.
+    - table:
+      - rowgroup:
+        - row "Executed renewal screen Functional starting stock remaining":
+          - columnheader "Executed renewal screen"
+          - columnheader "Functional starting stock remaining"
+      - rowgroup:
+        - row "Actual four-bank ten-run schedule; stalls recoverable 99.30%":
+          - cell "Actual four-bank ten-run schedule; stalls recoverable"
+          - cell "99.30%"
+        - row "Actual four-bank schedule; stalls damage their sites 98.42%":
+          - cell "Actual four-bank schedule; stalls damage their sites"
+          - cell "98.42%"
+        - row "Same stock used ten times; stalls recoverable 97.70%":
+          - cell "Same stock used ten times; stalls recoverable"
+          - cell "97.70%":
+            - strong: 97.70%
+        - row "Same stock used ten times; stalls damage their sites 94.82%":
+          - cell "Same stock used ten times; stalls damage their sites"
+          - cell "94.82%":
+            - strong: 94.82%
+        - row "Same stock used 100 times; stalls recoverable 79.25%":
+          - cell "Same stock used 100 times; stalls recoverable"
+          - cell "79.25%"
+        - row "Same stock used 100 times; stalls damage their sites 58.76%":
+          - cell "Same stock used 100 times; stalls damage their sites"
+          - cell "58.76%"
+        - row "Ten uses with 0.5% persistent new blocking per run 92.92%":
+          - cell "Ten uses with 0.5% persistent new blocking per run"
+          - cell "92.92%"
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph: The irreparable-stall ten-use case misses the 95% stock requirement.
+    - paragraph: At 100 cycles, sampling alone leaves
+    - math:
+      - generic: "0.999"
+      - generic: "100"
+      - generic: =
+      - generic: "0.9048"
+    - text: "0.99"
+    - text: "9"
+    - generic: "100"
+    - text: =
+    - generic: "0.9048"
+    - paragraph: of the original stock. A successful ten-cycle result would therefore not qualify this sampling scheme for 100 cycles.
+    - paragraph: "This distinction is supported by actual repeated-use work: SPEXOS demonstrated renewal in a different chemistry, but its reported four-cycle output declined appreciably. Its loss cannot be assigned to this apparatus, and its successful reuse cannot supply this apparatus’s lifetime."
+    - separator
+    - heading "10. Preparation, service cost and the matched alternative" [level=2]
+    - heading "First-stock preparation" [level=3]
+    - paragraph:
+      - text: The introduced small-batch budget prepares
+      - strong: 15 μmol of each modified triphosphate
+      - text: .
+    - paragraph: "It charges precursor purchases, reported synthetic losses, purification, characterization, 120 hours of preparation labour, consumables and waste:"
+    - paragraph:
+      - strong: Approximately $26,708 for the four prepared stocks.
+    - paragraph:
+      - text: This is an engineering budget, not a custom-synthesis quotation. The enzyme prices are anchored to actual manufacturer listings; dose requirements for this apparatus remain introduced.
+      - 'link "sigmaaldrich.com: Pwo DNA Polymerase, Roche Sigma-Aldrich, https://www.sigmaaldrich.com/US/en/product/roche/pwopolro?utm_source=chatgpt.com"':
+        - /url: https://www.sigmaaldrich.com/US/en/product/roche/pwopolro?utm_source=chatgpt.com
+        - generic: sigmaaldrich.com
+    - heading "Resources per attempted library" [level=3]
+    - paragraph: "The process charges:"
+    - list:
+      - listitem: 1.28 μmol of each functionalized dNTP.
+      - listitem: 168 U Pwo.
+      - strong: 6,000 U nickase across collection and reset.
+      - listitem: 5.12 μmol TCEP.
+      - listitem: 48 mL total release/reset buffer.
+      - listitem: Approximately 0.12–0.30 L clearing/rinsing solutions.
+      - listitem: Approximately 0.18 L LC mobile phase.
+      - listitem: Enzyme removal, product recovery, samples, waste and cold storage.
+    - paragraph: Unused activated monomers receive no recovery credit.
+    - paragraph:
+      - text: Physical energy allowances are
+      - strong: 50 kWh first-stock preparation
+      - text: ","
+      - strong: 1.5 kWh process electricity per attempt
+      - text: ", and"
+      - strong: 22.5 kWh analytical instrument energy
+      - text: . The preparation allocation uses the declared ten-attempt stock campaign. Purchased precursor embodied energy remains unknown.
+    - paragraph: Instrument electricity is reported physically but is not billed again where already included in access fees.
+    - heading "Complete planning cost" [level=3]
+    - table:
+      - rowgroup:
+        - row "Item USD/attempted library":
+          - columnheader "Item"
+          - columnheader "USD/attempted library"
+      - rowgroup:
+        - row "Prepared modified nucleotide allocation 2,279.04":
+          - cell "Prepared modified nucleotide allocation"
+          - cell "2,279.04"
+        - row "Pwo 147.17":
+          - cell "Pwo"
+          - cell "147.17"
+        - row "Three nickase passes 910.74":
+          - cell "Three nickase passes"
+          - cell "910.74"
+        - row "Four-bank program-stock allocation 1,280.00":
+          - cell "Four-bank program-stock allocation"
+          - cell "1,280.00"
+        - row "60 analytical accesses 7,200.00":
+          - cell "60 analytical accesses"
+          - cell "7,200.00"
+        - row "Buffers, denaturant and water 90.00":
+          - cell "Buffers, denaturant and water"
+          - cell "90.00"
+        - row "Workup and containers 120.00":
+          - cell "Workup and containers"
+          - cell "120.00"
+        - row "Optical derivative and complement 45.00":
+          - cell "Optical derivative and complement"
+          - cell "45.00"
+        - row "8.5 hours operating/review labour 340.00":
+          - cell "8.5 hours operating/review labour"
+          - cell "340.00"
+        - row "Reset-assay reagents 15.00":
+          - cell "Reset-assay reagents"
+          - cell "15.00"
+        - row "Waste, cold storage and shipping 90.00":
+          - cell "Waste, cold storage and shipping"
+          - cell "90.00"
+        - row "Process electricity 0.12":
+          - cell "Process electricity"
+          - cell "0.12"
+        - row "Hardware finance and maintenance 55.64":
+          - cell "Hardware finance and maintenance"
+          - cell "55.64"
+        - row "Cartridge QA/recovery allowance 120.00":
+          - cell "Cartridge QA/recovery allowance"
+          - cell "120.00"
+        - row "Extra rack labour 40.00":
+          - cell "Extra rack labour"
+          - cell "40.00"
+        - row "Total 12,732.72":
+          - cell "Total":
+            - strong: Total
+          - cell "12,732.72":
+            - strong: 12,732.72
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph:
+      - text: The $120 analytical-access anchor is consistent with a published external-core LC-MS/MS service fee. It is
+      - strong: not
+      - text: a quotation for validating every minority chemical sequence in this library.
+      - 'link "University of Connecticut: Biopolymers | Laboratory of Mass Spectrometry and Omics Analysis, https://msomics.chemistry.uconn.edu/biopolymers/?utm_source=chatgpt.com"':
+        - /url: https://msomics.chemistry.uconn.edu/biopolymers/?utm_source=chatgpt.com
+        - generic: University of Connecticut
+    - paragraph:
+      - text: Hardware is an introduced
+      - strong: $18,520
+      - text: first build. Its service allocation uses 8% real financing over five years, 100 attempted libraries/year and a maintenance allowance. That does not grant five-year chemical life.
+    - heading "Give the comparator the same useful chemistry" [level=3]
+    - paragraph:
+      - text: The closest competent comparator is
+      - strong: one automated platform operating sixteen PEX wells
+      - text: ", with the same monomers, reusable-template options, intensity, proofreading, product quality, purification and assays."
+    - table:
+      - rowgroup:
+        - row "Complete service Proposed cartridges Matched parallel PEX":
+          - columnheader "Complete service"
+          - columnheader "Proposed cartridges"
+          - columnheader "Matched parallel PEX"
+      - rowgroup:
+        - row "Conditional turnaround 22.5 h 21.5 h":
+          - cell "Conditional turnaround"
+          - cell "22.5 h"
+          - cell "21.5 h"
+        - row "Cost per attempt $12,732.72 $12,608.07":
+          - cell "Cost per attempt"
+          - cell "$12,732.72":
+            - strong: $12,732.72
+          - cell "$12,608.07":
+            - strong: $12,608.07
+        - row "Cost required for 30% saving ≤$8,825.65 Reference":
+          - cell "Cost required for 30% saving"
+          - cell "≤$8,825.65":
+            - strong: ≤$8,825.65
+          - cell "Reference"
+        - row "Validated acceptance probability Unknown Unknown for this exact specification":
+          - cell "Validated acceptance probability"
+          - cell "Unknown"
+          - cell "Unknown for this exact specification"
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph:
+      - text: The candidate is approximately
+      - strong: 0.99% more expensive
+      - text: in this case.
+    - paragraph: Ordinary solid-phase/flow synthesis must also receive automation, capping, parallel supports and equal analytical treatment. Its exact custom-monomer cost needs a matched quote. It cannot be dismissed by comparing this process with sixteen manual chemists.
+    - paragraph: Most costs are shared. Cheaper monomers or faster authentication benefit the incumbent too, unless a new physical operation demonstrably gives the candidate an exclusive advantage.
+    - paragraph:
+      - text: If attempts were independently accepted with probability
+      - math:
+        - generic: p
+      - generic: p
+      - text: ", expected cost would be"
+      - math:
+        - generic: C
+        - generic: /
+        - generic: p
+      - generic: C/p
+      - text: . At these costs, gaining 30% solely through reliability would require
+    - math:
+      - generic: p
+      - generic: c
+      - generic: a
+      - generic: "n"
+      - generic: d
+      - generic: i
+      - generic: d
+      - generic: a
+      - generic: t
+      - generic: e
+      - generic: ≥
+      - generic: "1.443"
+      - generic: p
+      - generic: i
+      - generic: "n"
+      - generic: c
+      - generic: u
+      - generic: m
+      - generic: b
+      - generic: e
+      - generic: "n"
+      - generic: t
+      - generic: .
+    - text: p
+    - generic: candidate
+    - text: ≥
+    - text: "1.443"
+    - text: p
+    - generic: incumbent
+    - text: .
+    - paragraph: If the incumbent already accepts more than approximately 69.3% of attempts, even perfect candidate acceptance would not close the gap without reducing cost.
+    - heading "First-build and campaign cash" [level=3]
+    - paragraph: "The updated allowances are:"
+    - list:
+      - strong: "First hardware, prepared stocks, method development and first attempt:"
+      - text: approximately
+      - strong: $102,917
+      - text: .
+      - strong: "Ten attempts with all initial stock/hardware purchases, before method development:"
+      - text: approximately
+      - strong: $149,488
+      - text: .
+      - strong: "Ten attempts including method development and initial qualification:"
+      - text: approximately
+      - strong: $175,458
+      - text: .
+    - paragraph: These totals overlap and must not be added together.
+    - paragraph:
+      - text: They remain
+      - strong: costs per attempted program
+      - text: ", because no accepted physical library has been produced."
+    - separator
+    - heading "11. Expansion to 1,000 programs" [level=2]
+    - paragraph: Physical cartridge indexing avoids inventing a 1,000-member orthogonal continuation-key alphabet. It still requires 1,000 program stocks, supports, hydraulic positions and attributable collections.
+    - paragraph: "Scaling the current recipe gives:"
+    - table:
+      - rowgroup:
+        - row "Resource 1,000-program case":
+          - columnheader "Resource"
+          - columnheader "1,000-program case"
+      - rowgroup:
+        - row "Common growth bath 0.4 L":
+          - cell "Common growth bath"
+          - cell "0.4 L"
+        - row "Each modified monomer 80 μmol":
+          - cell "Each modified monomer"
+          - cell "80 μmol"
+        - row "Initiating sites 2 μmol":
+          - cell "Initiating sites"
+          - cell "2 μmol"
+        - row "Nickase including reset 375,000 U":
+          - cell "Nickase including reset"
+          - cell "375,000 U"
+        - row "Primary collection solution 1 L":
+          - cell "Primary collection solution"
+          - cell "1 L"
+        - row "Routine analytical injections 3,756":
+          - cell "Routine analytical injections"
+          - cell "3,756"
+        - row "Instrument occupation 939 hours":
+          - cell "Instrument occupation"
+          - cell "939 hours":
+            - strong: 939 hours
+        - row "Analytical access at $120/injection $450,720":
+          - cell "Analytical access at $120/injection"
+          - cell "$450,720":
+            - strong: $450,720
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph: Approximately forty instruments would be needed to fit that analytical workload into 24 hours, before allowing for sample preparation.
+    - paragraph: This is not a scalable authentication advantage. It shifts the dominant constraint from coupling to product resolution and certification.
+    - separator
+    - heading "12. The decisive experiment before building the manifold" [level=2]
+    - paragraph: The first experiment should test the actual chemical continuation and reset organization with a few supported hairpins.
+    - paragraph: "Prepare independently authenticated versions of:"
+    - list:
+      - listitem: An unextended terminus.
+      - listitem: A correct single extension.
+      - listitem: A base-mismatched extension.
+      - listitem: A correct-base extension with the wrong side group.
+      - listitem: An oxidized-thiol variant.
+    - paragraph:
+      - text: Use two short programs that stop at different positions when one common monomer is omitted. Restore that monomer
+      - strong: in the same vessel without replacing initiators
+      - text: .
+    - paragraph: Measure actual subsequent covalent products, not only fluorescence from the program. Collect every liquid fraction and quantify retained extensions and machinery damage.
+    - paragraph: Controls include no polymerase, no monomer, no nickase, natural and modified positive controls, residual-enzyme spikes, template leakage, incomplete clearance and deliberately retained product.
+    - heading "Numerical discrimination" [level=3]
+    - table:
+      - rowgroup:
+        - row "Test Proposed threshold":
+          - columnheader "Test"
+          - columnheader "Proposed threshold"
+      - rowgroup:
+        - row "Recoverably paused sites resume correctly after feed restoration ≥99%":
+          - cell "Recoverably paused sites resume correctly after feed restoration"
+          - cell "≥99%"
+        - row "Growth beyond the missing required addition ≤0.1%":
+          - cell "Growth beyond the missing required addition"
+          - cell "≤0.1%"
+        - row "Wrong-program product under declared leakage challenge ≤0.1%":
+          - cell "Wrong-program product under declared leakage challenge"
+          - cell "≤0.1%"
+        - row "Primary modified-junction cleavage ≥95%":
+          - cell "Primary modified-junction cleavage"
+          - cell "≥95%"
+        - row "Pwo-induced primer erosion after reset ≤0.05%":
+          - cell "Pwo-induced primer erosion after reset"
+          - cell "≤0.05%"
+        - row "Residual-nickase premature release during growth interval ≤0.05%":
+          - cell "Residual-nickase premature release during growth interval"
+          - cell "≤0.05%"
+        - row "Exact useful ends restored per cycle ≥99.5%, with validated uncertainty":
+          - cell "Exact useful ends restored per cycle"
+          - cell "≥99.5%, with validated uncertainty"
+        - row "Functional starting stock after ten uses ≥95%":
+          - cell "Functional starting stock after ten uses"
+          - cell "≥95%"
+        - row "Accounted chains/nucleotide inventory ≥98%":
+          - cell "Accounted chains/nucleotide inventory"
+          - cell "≥98%"
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph:
+      - text: A right-base/wrong-side-group molecule may continue.
+      - strong: That result must be reported as a specificity limitation, not interpreted as a successful gate.
+    - paragraph:
+      - text: The early-test allowance is approximately
+      - strong: $44,000
+      - text: ", charging the complete four-monomer preparation up front, plus control DNA/supports, independently prepared standards, 64 analytical accesses, enzymes, labour and simple apparatus. It uses paid instrument access rather than purchasing a mass spectrometer. Its stock costs overlap the later build budget."
+    - paragraph: Passing would establish particular continuation, retry, cleavage and clearance operations in the tested matrix. It would not establish the twenty-step library, the optical contrast, the 24-hour analytical service or the cost advantage.
+    - separator
+    - heading "What remains to be invented" [level=2]
+    - paragraph:
+      - text: The useful construction here is a
+      - strong: product-owned reactive terminus with an explicit covalent reset
+      - text: . It replaces the unconstructed signalling key with an actual chemical mechanism and exposes the consequences of its limitations.
+    - paragraph: "The requested broader capability remains open for two concrete reasons:"
+    - list:
+      - strong: Local chemical specificity is incomplete.
+      - text: Backbone formation can proceed with a wrong remote substituent, and register errors remain possible.
+      - strong: The complete service does not beat the strong incumbent.
+      - text: Ordinary parallel enzymatic synthesis receives the same primitive, while custom monomers, chemical authentication and renewal dominate the cost.
+    - paragraph: "A consequential next operation would have to change one of those facts: demonstrate local discrimination of the required chemical functionality with a finite, inexpensive reset, or demonstrate substantially cheaper authentication of the actual molecular population. Neither can be replaced by a continuation signal, a program record or a favourable model parameter."
+    - button "Copy" [active]:
+    - button "Rate response":
+    - button "Read aloud":
+    - button "Share":
+    - button "More actions":
+    - generic: ChatGPT can make mistakes. Check important info.
+    - button:
+    - heading "Latest response" [level=4]
+    - status
+    - button "Add files and more":
+    - textbox "Ask ChatGPT":
+      - paragraph: Ask ChatGPT
+    - button "Select ChatGPT model":
+      - generic: Thinking effort
+      - generic: Pro
+    - button "Dictate":
+    - button "Start Voice":
+    - status
+- status
+- status: Response complete
+- status
+- status
+- status
+- statu
