@@ -1,0 +1,1413 @@
+# P2 generic geometry-writing: available visible return
+
+Existing P2 Pro chat: https://chatgpt.com/c/6af520d7-3fcc-83ec-8bf0-80e8531141ea
+Issued question: `P2_FULL_REUSABLE_GENERIC_MATERIAL_GEOMETRY_WRITING_INVENTION_PRO_20261114.txt`, SHA-256 `9943228ad4312c9396f1913c45cd64b93d6578e1799fad796312d0ef38a19e2f`. The posted text was verified in the existing delivery receipt.
+
+Captured 13 November 2026 UTC from the user-visible expanded top-level activity and complete rendered answer as a browser accessibility/DOM transcription. This preserves the visible text and tables in the page snapshot, with formatting labels and possible duplicated or incomplete rendered equations, figures, links and tables; it is not native message byte identity. Nested tool, source and helper details were not opened. The linked HTML report was not opened. The linked ZIP was not collected: original identity and transfer eligibility are unverified. No producer code was executed and no held source or artifact was recovered. A prior Copy action returned the issued prompt, not this answer; no failed Copy or clipboard retry was made.
+
+## Available visible activity and final response
+
+```text
+Worked for 90m 32s
+    - paragraph: "I’ll investigate two routes in parallel: changing the material’s rest geometry, and mechanically writing a shape that passive locks retain. I’ll check the full curvature class, 24-hour load holding, repeated rewriting and service access together, then compare the strongest candidate with competent forming and adjustable-fixture systems."
+    - paragraph: Estimated rod-joint stiffness
+    - button "Rewrite materials, Rewrite mechanics, and Rewrite comparison finished"
+    - generic: Rewrite materials, Rewrite mechanics, and Rewrite comparison finished
+    - paragraph: Assessed shared-lock designs and checked clamp architecture
+    - paragraph: Evaluated reversible metal forming and jammed beam capacity
+    - paragraph: Checked material data and wire buckling
+    - paragraph: Estimated clamp load
+    - paragraph: Evaluated reversible wire collars
+    - button "Ran a command, searched the web"
+    - generic: Ran a command, searched the web
+    - paragraph: Proved the chord bound and checked tube clearance
+    - paragraph: Derived tip-deflection bounds and checked buckling capacity
+    - paragraph: Checked locator-hole spacing and separated three locator positions
+    - paragraph: Sized wedge selector geometry and constrained central ball rotation
+    - paragraph: Checked wedge-lock preload and implemented hinge-chain integration
+    - paragraph: Sized the external arm
+    - paragraph: "The requested shape class appears manageable geometrically: its maximum total tangent turning is below 90°, which provides a useful route to bounding self-intersection and access for every program. The harder question is retaining that shape under load after repeated releases. The first literature checks also rule out treating the cited sheet-jamming result as perfect composite locking; its measured stiffness increase is much smaller."
+    - paragraph: Evaluated bistable beam layouts
+    - paragraph: Checked clutch dimensions
+    - paragraph: Checked end-deflection margin and joint-stiffness basis
+    - paragraph: Calculated steel-body fatigue and planned bend sequence
+    - paragraph: Defined transition geometry
+    - paragraph: Simplified indexed ball-joint geometry and analyzed constraints
+    - paragraph: Sized the tripod joint and released cam preload
+    - paragraph: Calculated strut stiffness
+    - paragraph: Refined central preload release and lowered prop plate
+    - paragraph: Checked candidate timing and specified cam-track geometry
+    - paragraph: Modeled six-DOF compliance and selected sensors
+    - paragraph: Built a force-controlled rig and checked cross-pin engagement
+    - paragraph: Prepared fault schedules and shim-cap replacement
+    - paragraph: Modeled joint contact wear and implemented sensor-view separation
+    - paragraph: Derived all-class error bounds and defined the joint datum spine
+    - paragraph: Rechecked bearing stiffness
+    - paragraph: Evaluated conformal cup contact
+    - paragraph: Checked cam-stack layout and refined cam-track radii
+    - paragraph: Checked three-strut torque balance and preloaded opposed cam followers
+    - paragraph: Refined cam groove geometry and external cam drive
+    - paragraph: Assessed cam geometry and refined writer mass estimate
+    - paragraph: "A useful alternative is emerging: a local mechanical selector could convert a large, easy-to-index rotation into one of the nine small two-axis bends. That avoids closely spaced locking holes and could give the common writer one control input per zone. I’m checking the captured contact paths and stiffness now. Ordinary passive joints and same-stock metal bending remain serious competitors; automatic 3D shaping itself is already established."
+    - paragraph: Chose a grid path
+    - paragraph: Checked rotor flat lands
+    - paragraph: Evaluated worst-case error bounds
+    - paragraph: Sized the cantilever lip
+    - paragraph: Checked stock bearing ratings
+    - paragraph: Checked lubrication data
+    - paragraph: Authored the rod-state model
+    - button "Ran commands, searched the web"
+    - generic: Ran commands, searched the web
+    - paragraph: Calculated beam deflection
+    - paragraph: Evaluated curved beam compliance
+    - paragraph: Validated energy stability bounds and checked preload margins
+    - button "Ran a command"
+    - generic: Ran a command
+    - paragraph: Refined wear modeling and reused bulk cam rails
+    - paragraph: Designed pad service access
+    - paragraph: Refined flange-port access
+    - paragraph: Estimated contact wear
+    - paragraph: Prepared steel base anchoring
+    - generic: Read files
+    - paragraph: Refined cam-profile access and checked cam-envelope geometry
+    - paragraph: "The captured-cam design has a promising structural window: the current model stays below 8.4 mm load-induced deflection even at 95% of initial stiffness. Two physical details now control whether that result is credible: the sliding contacts must traverse the cam ramps without binding, and the complete joint must fit the 1 kg budget. I’m resolving those details and comparing retargeting against competent passive clamps and repeated metal forming."
+    - button "Read files"
+    - generic: Read files
+    - paragraph: Refined the lumped-mass model
+    - generic: Searching 2 websites
+    - paragraph: Refined cam indexing and release
+    - paragraph: Assessed cap opening gap and 32mm face retraction
+    - paragraph: Checked 3D and annular writer-head clearances
+    - paragraph: Checked external writer reach
+    - paragraph: Refined cam-contact geometry and derived closed-groove cam design
+    - paragraph: Evaluated cam roller contact
+    - paragraph: Modeled access envelope
+    - paragraph: Compared cam mechanisms
+    - paragraph: Bounded wear uncertainty
+    - paragraph: Estimated thermal twist and compared anchor materials
+    - paragraph: Prepared stiffness thresholds and specified finite qualification tests
+    - paragraph: Implemented wear model and defined fault envelope
+    - paragraph: Assessed foot-access geometry
+    - paragraph: Prepared wear-test programs
+    - paragraph: Defined service-head geometry
+    - paragraph: Sized the split coupler and checked joint-case locks
+    - paragraph: Compared candidate hardware
+    - paragraph: The comparison has become more demanding. Prior work already uses an external robot to reposition and relock passive structures, and a 9 mm steel bar passes a conservative static screen for this entire curvature class. Repeated forming would still need fatigue and shape-control qualification, but it is a credible same-stock alternative. The cam design therefore needs an advantage from its actual writing and service operation; “a common writer with passive locks” is not enough.
+    - generic: Searching 4 websites
+    - paragraph: Implemented cam access geometry and defined envelope bounds
+    - paragraph: Checked joint clearance
+    - paragraph: Checked shaft clearance
+    - paragraph: Designed the base gimbal
+    - paragraph: Checked body and column clearance
+    - paragraph: Checked base clearance
+    - paragraph: Checked gimbal access geometry
+    - paragraph: Evaluated T-slot ring connections
+    - paragraph: Rechecked roller-pin stress
+    - paragraph: Designed an access model
+    - paragraph: Updated base compliance model
+    - paragraph: Sized rectangular shaft
+    - paragraph: Checked tool clearance
+    - generic: Ran command
+    - paragraph: Analyzed self-reacting clamp including neck loads
+    - paragraph: Prepared kinematics figures and integrated three height sensors
+    - paragraph: Planned six-axis probe layout
+    - paragraph: Checked local proof limits and UPS power reserve
+    - paragraph: Prepared rotor-pin witness
+    - button "Ran a command"
+    - generic: Ran a command
+    - paragraph: Derived tighter centerline bounds and assessed continuous flexure
+    - paragraph: Derived gravity error bound
+    - paragraph: Derived the error bound and assessed error-vector alignment
+    - paragraph: Tested sequence error bounds and checked local error direction
+    - paragraph: Computed the zone grid and refined the norm bound
+    - button "Ran a command"
+    - generic: Ran a command
+    - paragraph: Evaluated base-angle compensation and clarified root-frame constraints
+    - paragraph: Built executable feasibility and observer models
+    - paragraph: Swept retention-loss parameter
+    - paragraph: Prepared campaign.py with NumPy integration
+    - paragraph: Checked acceptance bounds
+    - button "Ran a command, searched the web"
+    - generic: Ran a command, searched the web
+    - paragraph: Verified self-clearance margins and created embedded SVG model
+    - paragraph: Prepared observer consistency test and modeled cam-state interpolation
+    - paragraph: Tested stiffness retention
+    - paragraph: "I found a tighter accuracy constraint: self-weight already bends the body when its “unloaded” shape is measured. Including that effect, the earlier 3 µm cam-height assumption gives a conservative 3.63 mm shape-error bound, above the 3 mm limit. A roughly 1 µm total height-error budget is only marginal before thermal and measurement allowances. The load-capacity screen is promising, but the full accuracy-and-wear requirement remains unresolved."
+    - generic: Ran command
+    - paragraph: Fixed orientation transforms and checked retention margin
+    - generic: Read files
+    - paragraph: Assessed the candidate design and estimated prototype costs
+    - paragraph: Checked reusable-body costs
+    - button "Ran commands, searched the web"
+    - generic: Ran commands, searched the web
+    - paragraph: Awaited updated cost data
+    - paragraph: Compared prepared-part caching and cache reset costs
+    - button "Ran a command"
+    - generic: Ran a command
+    - paragraph: Revised roller preload
+    - button "Ran a command"
+    - generic: Ran a command
+    - paragraph: Checked asymmetric and writer-head clearance
+    - paragraph: Checked headspace clearance
+    - paragraph: Updated load-checked envelope
+    - paragraph: Checked roller-pin fit
+    - paragraph: Estimated cam-carrier mass
+    - paragraph: Prepared the 40mm variant C
+    - paragraph: Checked central-ball socket strength
+    - paragraph: Calculated total per-cell mass
+    - paragraph: Refined cell wall geometry
+    - paragraph: Checked preload tolerance
+    - paragraph: Calculated final sensitivity and allocated 941 g mass
+    - paragraph: "The follower now has a real exit path through the cam housing, which expands the joint from about 30 mm to 40 mm. I’m recalculating the access, mass and compliance with that larger envelope. The cost result is already unfavorable: under the current engineering estimates, ordinary clamps retarget almost as quickly, and a qualified same-stock steel-forming route would cost much less. Neither advantage target is supported so far."
+    - generic: Ran command
+    - paragraph: Updated preload calculations and checked axle stresses
+    - button "Ran a command"
+    - generic: Ran a command
+    - paragraph: Updated profile interpolation
+    - paragraph: Formatted radial schematic
+    - button "Ran a command"
+    - generic: Ran a command
+    - paragraph: Assembled archive contents and ran contact scripts
+    - button "Ran a command"
+    - generic: Ran a command
+    - paragraph: Checked mass constraints
+    - paragraph: Defined a prototype test
+    - button "Ran a command"
+    - generic: Ran a command
+    - paragraph: The final model gives a possible structural window, but it does not establish the requested invention. With the larger joint and introduced contact stiffness, the load screen is about 7.0 mm and 1.15°. The conditional 100-attempt rehearsal also completes its bounded fault recoveries. The unresolved requirements are manufactured accuracy after wear and temperature changes, contact life, and complete writer qualification. The matched cost model misses the advantage target even before paying for tighter manufacturing tolerances.
+    - paragraph: Read report sources and checked cam drive limits
+    - paragraph: Refined torque margins
+    - generic: Ran command
+    - paragraph: Reworked shared-writer assumptions
+    - paragraph: Revised dedicated-writer comparison
+    - button "Ran a command"
+    - generic: Ran a command
+    - paragraph: Evaluated retained-stock rewriting
+    - paragraph: Persisted model files
+    - generic: Read files
+    - paragraph: Packaged standalone report ZIP with README and runner
+    - button "Ran a command"
+    - generic: Ran a command
+    - paragraph: Checked FISSO source and developed a planarity proof
+    - paragraph: Calculated thermal error
+    - paragraph: Calculated body-mass cases
+    - paragraph: Estimated runtime and storage
+    - button "Ran a command"
+    - generic: Ran a command
+    - paragraph: Measured composite lock source
+    - paragraph: Checked Q345Q bar qualification
+    - paragraph: Defined datum line and qualified accepted program
+    - heading "ChatGPT said:" [level=4]
+    - heading "Result" [level=2]
+    - paragraph:
+      - strong: I found a plausible mechanical route to writing persistent load-bearing geometry into the same stock, but I did not establish the complete invention you requested.
+      - text: The developed mechanism has a conditional structural operating window. Its manufactured accuracy, contact life and complete writer operation remain unqualified, and its matched time-and-cost comparison does
+      - strong: not
+      - text: achieve either required advantage.
+    - paragraph: "The useful result is more specific than “use programmable joints.” It is:"
+    - blockquote:
+      - paragraph:
+        - strong: A generic joint with three captured cam tracks converts one externally written selector position into an exact two-component bending state. A common orienting base presents each joint to the same writer while the structure remains mechanically connected.
+    - paragraph:
+      - text: I developed the contact geometry, corrected an initially impossible follower outlet, recalculated the larger physical envelope, executed structural and observation-based campaign models, and priced the service against competent alternatives. I also found that
+      - strong: same-stock metal forming is substantially stronger competition than a fresh replacement part for every geometry
+      - text: .
+    - paragraph: "The complete deliverables are:"
+    - list:
+      - button "Open preview of same_stock_rewriting_report.html":
+        - text: same_stock_rewriting_report.html
+      - text: — illustrated assessment, construction details, calculations, limitations and comparison.
+      - button "Download same_stock_rewriting_model.zip":
+        - text: same_stock_rewriting_model.zip
+      - text: — executable Python models, persistent campaign history, cost ledgers, figures and reproduction instructions.
+    - paragraph:
+      - strong: No physical apparatus was operated.
+      - text: The campaign results below are explicitly conditional simulations, not 100 demonstrated services.
+    - separator
+    - heading "1. What would be new—and what already exists" [level=2]
+    - paragraph:
+      - text: An external machine changing the configuration of passive structural elements is already an established idea. US9808933B2 discloses an externally engaged configuration tool that unclamps, positions and reclamps tooling branches. Bem and colleagues physically demonstrated robot-assisted reconfiguration of passive hexapod fixtures and measured their locked performance. Their experiments also exposed displacement during tool withdrawal, a useful reminder that reaching a pose while connected to a robot is not the same as retaining it afterward.
+      - 'link "Google Patents: US9808933B2 - Robotic system with reconfigurable end-effector assembly, https://patents.google.com/patent/US9808933B2/en?utm_source=chatgpt.com, 1 additional source"':
+        - /url: https://patents.google.com/patent/US9808933B2/en?utm_source=chatgpt.com
+        - generic: Google Patents
+        - generic: "+1"
+    - paragraph:
+      - text: Therefore, I do
+      - strong: not
+      - text: "claim novelty for:"
+    - list:
+      - listitem: A common external writer.
+      - listitem: Passive mechanical shape retention.
+      - listitem: Automatic clamping.
+      - listitem: Reversible forming.
+      - listitem: A finite alphabet of joint settings.
+    - paragraph:
+      - text: "The proposed contribution is narrower:"
+      - strong: encode the nine local bending states in one continuously retained, mechanically accessible selector, with exact orientation kinematics and an explicit load path through the moving and locked states.
+      - text: That organization could reduce the number of adjustments and eliminate a separate thermal or chemical relocking process.
+    - paragraph: Whether it is sufficiently different from existing mechanisms—and whether it improves a complete useful operation—remains unestablished. The comparison developed here is unfavorable.
+    - separator
+    - 'heading "2. The candidate: ten joints with captured cam tracks" [level=2]'
+    - heading "The commanded geometry remains your full class" [level=3]
+    - paragraph:
+      - text: Let the material coordinate be
+      - math:
+        - generic: s
+        - generic: ∈
+        - generic: "["
+        - generic: "0"
+        - generic: ","
+        - generic: "0.5"
+        - generic: "]"
+      - generic: s ∈
+      - generic: "[0, 0.5]"
+      - text: m. Define the target by
+    - math:
+      - generic: r
+      - generic: ′
+      - generic: (
+      - generic: s
+      - generic: )
+      - generic: =
+      - generic: R
+      - generic: (
+      - generic: s
+      - generic: )
+      - generic: e
+      - generic: "3"
+      - generic: ","
+      - generic: R
+      - generic: ′
+      - generic: (
+      - generic: s
+      - generic: )
+      - generic: =
+      - generic: R
+      - generic: (
+      - generic: s
+      - generic: )
+      - generic: "["
+      - generic: κ
+      - generic: (
+      - generic: s
+      - generic: )
+      - generic: "]"
+      - generic: ×
+      - generic: ","
+    - text: r
+    - generic: ′
+    - text: (s) =
+    - text: R(s)
+    - text: e
+    - generic: "3"
+    - text: ","
+    - text: R
+    - generic: ′
+    - text: (s) =
+    - text: R(s)[
+    - generic: κ
+    - text: (s)
+    - text: "]"
+    - generic: ×
+    - text: ","
+    - paragraph: with
+    - math:
+      - generic: κ
+      - generic: =
+      - generic: (
+      - generic: κ
+      - generic: "1"
+      - generic: ","
+      - generic: κ
+      - generic: "2"
+      - generic: ","
+      - generic: "0"
+      - generic: )
+      - generic: ","
+      - generic: κ
+      - generic: "1"
+      - generic: ","
+      - generic: κ
+      - generic: "2"
+      - generic: ∈
+      - generic: "{"
+      - generic: −
+      - generic: "2"
+      - generic: ","
+      - generic: "0"
+      - generic: ","
+      - generic: "2"
+      - generic: "}"
+      - generic: m
+      - generic: −
+      - generic: "1"
+    - generic: κ
+    - text: =
+    - text: (
+    - text: κ
+    - generic: "1"
+    - text: ","
+    - text: κ
+    - generic: "2"
+    - text: ", 0),"
+    - text: κ
+    - generic: "1"
+    - text: ","
+    - text: κ
+    - generic: "2"
+    - text: ∈
+    - text: "{−2, 0, 2}"
+    - text: m
+    - generic: −1
+    - paragraph: on each 50 mm zone.
+    - paragraph:
+      - text: The last component is the
+      - strong: local material twist rate
+      - text: . A nonplanar sequence can produce a global end-frame rotation without having a commanded local twist; the model preserves that distinction.
+    - paragraph: Each zone’s exact relative rotation is
+    - math:
+      - generic: Q
+      - generic: =
+      - generic: exp
+      - generic: ⁡
+      - generic: ⁣
+      - generic: (
+      - generic: "0.05"
+      - generic: "["
+      - generic: κ
+      - generic: "1"
+      - generic: ","
+      - generic: κ
+      - generic: "2"
+      - generic: ","
+      - generic: "0"
+      - generic: "]"
+      - generic: ×
+      - generic: )
+      - generic: .
+    - generic: Q =
+    - text: exp
+    - text: (0.05[
+    - text: κ
+    - generic: "1"
+    - text: ","
+    - text: κ
+    - generic: "2"
+    - text: ", 0"
+    - text: "]"
+    - generic: ×
+    - text: )
+    - text: .
+    - paragraph:
+      - text: I did not replace this with successive
+      - math:
+        - generic: x
+      - generic: x
+      - text: "- and"
+      - math:
+        - generic: "y"
+      - generic: "y"
+      - text: "-hinge rotations. Those rotations do not commute and would introduce an error, including an unwanted local twist component."
+    - paragraph:
+      - text: The physical stock is a connected sequence of rigid links and finite joints. Its datum line passes through the root, joint centers and end datum.
+      - strong: It approximates the continuous target centerline; that approximation consumes part of the 3 mm allowance.
+      - text: I am not claiming that a rigid steel link itself acquires uniform intrinsic curvature.
+    - paragraph:
+      - text: All
+      - math:
+        - generic: "9"
+        - generic: "10"
+        - generic: =
+        - generic: "3"
+        - generic: ","
+        - generic: "486"
+        - generic: ","
+        - generic: "784"
+        - generic: ","
+        - generic: "401"
+      - text: "9"
+      - generic: "10"
+      - text: =
+      - generic: 3, 486, 784, 401
+      - text: programs remain in the geometric definition.
+    - heading "One joint" [level=3]
+    - paragraph: "The final construction hypothesis uses:"
+    - table:
+      - rowgroup:
+        - row "Feature Proposed construction":
+          - columnheader "Feature"
+          - columnheader "Proposed construction"
+      - rowgroup:
+        - row "Outside diameter 48 mm":
+          - cell "Outside diameter"
+          - cell "48 mm"
+        - row "Physical axial extent Approximately 40 mm":
+          - cell "Physical axial extent"
+          - cell "Approximately 40 mm"
+        - row "Central constraint Retained spherical center fixing translation":
+          - cell "Central constraint"
+          - cell "Retained spherical center fixing translation"
+        - row "Orientation constraints Three skew steel props, carrying tension and compression":
+          - cell "Orientation constraints"
+          - cell "Three skew steel props, carrying tension and compression"
+        - row "Prop diameter 3.5 mm":
+          - cell "Prop diameter"
+          - cell "3.5 mm"
+        - row "Upper anchors Radius 14 mm, mm":
+          - cell "Upper anchors"
+          - cell "Radius 14 mm, mm":
+            - text: Radius 14 mm,
+            - math:
+              - generic: z
+              - generic: =
+              - generic: +
+              - generic: "7"
+            - generic: z =
+            - generic: "+7"
+            - text: mm
+        - row "Lower anchors Radii 9, 14 and 19 mm, nominal mm":
+          - cell "Lower anchors"
+          - cell "Radii 9, 14 and 19 mm, nominal mm":
+            - text: Radii 9, 14 and 19 mm, nominal
+            - math:
+              - generic: z
+              - generic: =
+              - generic: −
+              - generic: "7"
+            - generic: z =
+            - generic: −7
+            - text: mm
+        - row "Selector One rotor with three different annular cam tracks":
+          - cell "Selector"
+          - cell "One rotor with three different annular cam tracks"
+        - row "Local states Nine stations, 40° apart":
+          - cell "Local states"
+          - cell "Nine stations, 40° apart"
+        - row "Final retention Captured followers, flat cam lands and an independently witnessed index pin":
+          - cell "Final retention"
+          - cell "Captured followers, flat cam lands and an independently witnessed index pin"
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph:
+      - text: The upper-anchor azimuths are
+      - math:
+        - generic: "0"
+        - generic: ∘
+        - generic: ","
+        - generic: "120"
+        - generic: ∘
+        - generic: ","
+        - generic: "240"
+        - generic: ∘
+      - text: "0"
+      - generic: ∘
+      - text: ", 12"
+      - text: "0"
+      - generic: ∘
+      - text: ", 24"
+      - text: "0"
+      - generic: ∘
+      - text: . The lower anchors are offset by
+      - math:
+        - generic: "60"
+        - generic: ∘
+      - text: "6"
+      - text: "0"
+      - generic: ∘
+      - text: . That skew makes the three orientation constraints independent.
+    - paragraph:
+      - text: For upper anchor
+      - math:
+        - generic: a
+        - generic: i
+      - text: a
+      - generic: i
+      - text: ", lower horizontal anchor position"
+      - math:
+        - generic: b
+        - generic: i
+        - generic: ","
+        - generic: x
+        - generic: "y"
+      - text: b
+      - generic: i,xy
+      - text: ", and fixed prop length"
+      - math:
+        - generic: ℓ
+        - generic: i
+      - text: ℓ
+      - generic: i
+      - text: ", the required lower height is calculated from"
+    - math:
+      - generic: b
+      - generic: i
+      - generic: ","
+      - generic: z
+      - generic: =
+      - generic: (
+      - generic: Q
+      - generic: a
+      - generic: i
+      - generic: )
+      - generic: z
+      - generic: −
+      - generic: ℓ
+      - generic: i
+      - generic: "2"
+      - generic: −
+      - generic: ∥
+      - generic: (
+      - generic: Q
+      - generic: a
+      - generic: i
+      - generic: )
+      - generic: x
+      - generic: "y"
+      - generic: −
+      - generic: b
+      - generic: i
+      - generic: ","
+      - generic: x
+      - generic: "y"
+      - generic: ∥
+      - generic: "2"
+      - generic: .
+    - text: b
+    - generic: i,z
+    - text: =
+    - text: (Q
+    - text: a
+    - generic: i
+    - text: )
+    - generic: z
+    - text: −
+    - text: ℓ
+    - generic: i
+    - generic: "2"
+    - text: −
+    - text: ∥(Q
+    - text: a
+    - generic: i
+    - text: )
+    - generic: xy
+    - text: −
+    - text: b
+    - generic: i,xy
+    - text: ∥
+    - generic: "2"
+    - text: .
+    - paragraph: The height, prop length and desired rotation are therefore coupled.
+    - paragraph:
+      - strong: Three separate tracks are essential.
+      - text: One common circular profile sampled by three followers cannot independently prescribe all 27 required station heights.
+    - heading "Why the contacts must be bilateral" [level=3]
+    - paragraph: A compression-only arrangement of three skew props around a torque-free ball cannot simply be assigned a convenient preload. Its equilibrium can be inconsistent.
+    - paragraph:
+      - text: The proposed followers instead have
+      - strong: opposed, locally closed contact preloads
+      - text: . Each prop can carry either sign of axial force. The preload closes within the follower/contact assembly rather than being supplied by an unbalanced external force.
+    - paragraph: "The final load screen uses:"
+    - list:
+      - listitem: 500 N nominal preload per opposed face.
+      - listitem: 450 N minimum admitted preload.
+      - listitem: Approximately 706 N maximum vertical foot force under an arbitrary 8 N m local moment.
+    - paragraph: With idealized equal contact stiffness, the minimum remaining face load is then approximately
+    - math:
+      - generic: "450"
+      - generic: −
+      - generic: "706"
+      - generic: "2"
+      - generic: =
+      - generic: "97"
+      - generic: "N"
+      - generic: .
+    - generic: 450 −
+    - generic: "2"
+    - generic: "706"
+    - text: =
+    - text: "97"
+    - generic: "N"
+    - text: .
+    - paragraph: That is a positive-contact screen—not evidence that a manufactured preload remains within its admitted range after temperature change and wear.
+    - separator
+    - heading "3. The missing moving contact was consequential" [level=2]
+    - paragraph: An arbitrary height curve with clearance around it is not a usable cam groove.
+    - paragraph: "I generated finite-cylinder contact envelopes and checked their orientation, curvature and azimuth mapping. Short transitions were rejected:"
+    - list:
+      - listitem: 10° and 20° transitions undercut badly.
+      - listitem: A 30° transition still folded the inner contact surface.
+      - listitem: A 38° transition with 2° total dwell was feasible in the executed surface screen.
+    - paragraph: A rounded-acceleration transition improved the inner-track curvature further. It stays within the commanded curvature square throughout the motion.
+    - paragraph: Two independently rotating opposed rollers are required. A single roller constrained against both moving faces cannot roll without slip at both contacts. Finite radial-width rollers also experience differential circumferential velocity, so even the corrected design does not receive frictionless rolling.
+    - heading "A real follower outlet enlarges the joint" [level=3]
+    - paragraph: The original closed annular groove had no physical route for the follower to reach the prop above its roof. Allowing the prop to pass through that roof would have been an invalid transition.
+    - paragraph: "The final proposed arrangement uses:"
+    - list:
+      - text: A continuous
+      - strong: 1.2 mm roof slit
+      - text: .
+      - text: A
+      - strong: 0.8 × 6 mm stem
+      - text: through the slit.
+      - listitem: Split roller contact bands, each 1.4 mm wide.
+      - text: An actual summed upper contact width of
+      - strong: 2.8 mm
+      - text: .
+      - text: A roller-pair center roughly
+      - strong: 12 mm below the lower prop anchor
+      - text: .
+    - paragraph:
+      - text: This puts the housing approximately between
+      - math:
+        - generic: z
+        - generic: =
+        - generic: −
+        - generic: "29"
+      - generic: z =
+      - generic: −29
+      - text: and
+      - math:
+        - generic: +
+        - generic: "10"
+      - generic: "+10"
+      - text: mm about the spherical center. The earlier 24–30 mm envelope cannot be retained.
+    - paragraph: "The resulting coupled screens are demanding:"
+    - table:
+      - rowgroup:
+        - row "Final screen Calculated value":
+          - columnheader "Final screen"
+          - columnheader "Calculated value"
+      - rowgroup:
+        - row "Writing face load used 610 N":
+          - cell "Writing face load used"
+          - cell "610 N"
+        - row "Holding face load used 910 N":
+          - cell "Holding face load used"
+          - cell "910 N"
+        - row "Conservative writing Hertz pressure 2.80 GPa":
+          - cell "Conservative writing Hertz pressure"
+          - cell "2.80 GPa"
+        - row "Flat-land holding Hertz pressure 2.18 GPa":
+          - cell "Flat-land holding Hertz pressure"
+          - cell "2.18 GPa"
+        - row "Simple steel roof-lip bending stress 239 MPa":
+          - cell "Simple steel roof-lip bending stress"
+          - cell "239 MPa"
+        - row "Simple aluminum floor stress 187 MPa":
+          - cell "Simple aluminum floor stress"
+          - cell "187 MPa"
+        - row "Simple axle bending stress 257 MPa":
+          - cell "Simple axle bending stress"
+          - cell "257 MPa"
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph: The constituent proposal is a pocketed 7075-aluminum carrier with hardened steel contact rails, steel props, retained steel ball/socket elements, finite guides and locked eccentric preload adjustments.
+    - paragraph:
+      - text: These calculations
+      - strong: do not qualify
+      - text: thin-wheel strength, edge contact, guide distortion, lubrication, fretting or micrometre-scale wear. Bearing manufacturers likewise distinguish repeated track capacity from simply assigning a bulk material strength.
+      - 'link "thk.com: Track Load Capacity｜Selection Criteria｜Cam Follower / Roller Follower｜Product Information｜THK Official Web Site [North America], https://www.thk.com/us/en/products/other_rotary_guides/cam_follower/selection/0002/?utm_source=chatgpt.com"':
+        - /url: https://www.thk.com/us/en/products/other_rotary_guides/cam_follower/selection/0002/?utm_source=chatgpt.com
+        - generic: thk.com
+    - paragraph:
+      - text: "This is the most important remaining material/mechanical problem:"
+      - strong: the same compact assembly must provide high stiffness, continuous capture and extremely small permanent set.
+    - separator
+    - heading "4. The full class has a useful access property" [level=2]
+    - paragraph: The maximum curvature magnitude is
+    - math:
+      - generic: K
+      - generic: =
+      - generic: "8"
+      - generic: m
+      - generic: −
+      - generic: "1"
+      - generic: ","
+    - generic: K =
+    - generic: "8"
+    - text: m
+    - generic: −1
+    - text: ","
+    - paragraph: so the maximum total tangent turning is
+    - math:
+      - generic: K
+      - generic: L
+      - generic: =
+      - generic: "1.4142"
+      - generic: r
+      - generic: a
+      - generic: d
+      - generic: =
+      - generic: "81.03"
+      - generic: ∘
+      - generic: <
+      - generic: "90"
+      - generic: ∘
+      - generic: .
+    - generic: KL =
+    - text: "1.4142"
+    - generic: rad
+    - text: =
+    - text: "81.0"
+    - text: "3"
+    - generic: ∘
+    - text: <
+    - text: "9"
+    - text: "0"
+    - generic: ∘
+    - text: .
+    - paragraph: "Consequently, every target tangent retains a positive projection on the root tangent:"
+    - math:
+      - generic: t
+      - generic: (
+      - generic: s
+      - generic: )
+      - generic: ⋅
+      - generic: t
+      - generic: (
+      - generic: "0"
+      - generic: )
+      - generic: ≥
+      - generic: cos
+      - generic: ⁡
+      - generic: (
+      - generic: K
+      - generic: L
+      - generic: )
+      - generic: =
+      - generic: 0.15594.
+    - generic: t(s) ⋅
+    - generic: t(0) ≥
+    - generic: cos(KL) =
+    - generic: 0.15594.
+    - paragraph: "This gives several whole-class results:"
+    - list:
+      - listitem: The canonical centerline cannot self-intersect.
+      - text: The endpoint’s projection along the root tangent is at least
+      - strong: 349.23 mm
+      - text: .
+      - text: The root-to-tip chord is at least
+      - strong: 459.36 mm
+      - text: .
+      - listitem: The relative tangent angle between any two stations remains below 90°.
+    - paragraph: These are analytical bounds, not results from selecting favorable programs.
+    - heading "Use the common base to present the material to the writer" [level=3]
+    - paragraph: The writer consists of a paid three-axis rotary base and an XYZ machine carrying a split-ring head.
+    - paragraph: "For each joint:"
+    - list:
+      - listitem: Withdraw the head.
+      - listitem: Rotate the entire unloaded stock so the selected proximal section frame becomes the fixed service frame.
+      - listitem: Approach horizontally with the thin head.
+      - listitem: Capture, write, lock and inspect that joint.
+      - listitem: Withdraw before the next base rotation.
+    - paragraph: The bounded curvature means the remaining stock progresses through the selected service plane rather than doubling back through it. This is a useful way to simplify access without placing an actuator at every joint.
+    - paragraph: At acceptance, the common base returns to its prescribed root orientation and mechanically locks. The writer withdraws completely.
+    - paragraph: "The proposed external installation includes:"
+    - list:
+      - listitem: A 100 mm, 30 × 3 mm steel standoff belonging to the base.
+      - listitem: A rotary assembly centered 750 mm above the floor.
+      - listitem: A provisional gantry envelope around 1.8 × 1.8 × 1.5 m.
+      - listitem: Brakes, guards, head, drives, sensors and a paid floor installation.
+      - listitem: No cables attached to the programmable stock.
+    - paragraph:
+      - text: For the final asymmetric 40 mm joint, the introduced head/boom envelope gives
+      - strong: 2.41 mm corridor clearance after a 3 mm relative-drift and placement allowance
+      - text: .
+    - paragraph: That is a useful geometric result, but a tight one. The exact split-ring drive, pin-tip probe, guide clearances and cable bends still need detailed CAD and physical testing. I have not promoted a centerline-access bound into a completed writer.
+    - separator
+    - heading "5. Load capacity has a conditional window; accuracy is tighter" [level=2]
+    - heading "Structural model" [level=3]
+    - paragraph: The exposed links are 14 mm OD × 1 mm wall steel tube. With the 40 mm joint envelope, their total exposed length is 0.10 m.
+    - paragraph: "Introduced elastic properties are:"
+    - math:
+      - generic: E
+      - generic: =
+      - generic: "200"
+      - generic: G
+      - generic: P
+      - generic: a
+      - generic: ","
+      - generic: G
+      - generic: =
+      - generic: "77"
+      - generic: G
+      - generic: P
+      - generic: a
+      - generic: .
+    - generic: E =
+    - text: "200"
+    - generic: GPa
+    - text: ", G ="
+    - text: "77"
+    - generic: GPa
+    - text: .
+    - paragraph: These give link rigidities
+    - math:
+      - generic: E
+      - generic: I
+      - generic: =
+      - generic: "173.57"
+      - generic: "N"
+      - generic: m
+      - generic: "2"
+      - generic: ","
+      - generic: G
+      - generic: J
+      - generic: =
+      - generic: "133.65"
+      - generic: "N"
+      - generic: m
+      - generic: "2"
+      - generic: .
+    - generic: EI =
+    - text: "173.57"
+    - text: "N"
+    - text: m
+    - generic: "2"
+    - text: ", GJ ="
+    - text: "133.65"
+    - text: "N"
+    - text: m
+    - generic: "2"
+    - text: .
+    - paragraph:
+      - text: The body is evaluated at
+      - strong: 980 g
+      - text: ", including permanent joints, locks and end datums."
+    - paragraph: The joint calculation includes the prop Jacobian,
+    - math:
+      - generic: J
+      - generic: i
+      - generic: =
+      - generic: (
+      - generic: Q
+      - generic: a
+      - generic: i
+      - generic: )
+      - generic: ×
+      - generic: u
+      - generic: i
+      - generic: ","
+    - text: J
+    - generic: i
+    - text: =
+    - text: (Q
+    - text: a
+    - generic: i
+    - text: ) ×
+    - text: u
+    - generic: i
+    - text: ","
+    - paragraph: "and axial, contact and housing compliances in series. It uses introduced requirements of:"
+    - list:
+      - listitem: 200 MN/m for each rod-end axial stiffness.
+      - listitem: 200 MN/m for effective cam-contact stiffness.
+      - listitem: 8,000 N m/rad for housing rotational stiffness.
+    - paragraph:
+      - text: The minimum resulting joint eigenstiffness is approximately
+      - strong: 2,206 N m/rad
+      - text: .
+    - paragraph: "At 95% of the introduced initial rigidity:"
+    - table:
+      - rowgroup:
+        - row "Contribution or result Bound":
+          - columnheader "Contribution or result"
+          - columnheader "Bound"
+      - rowgroup:
+        - row "Joint contribution to tip displacement 5.386 mm":
+          - cell "Joint contribution to tip displacement"
+          - cell "5.386 mm"
+        - row "Exposed tube contribution 0.897 mm":
+          - cell "Exposed tube contribution"
+          - cell "0.897 mm"
+        - row "Base and standoff contribution 0.270 mm":
+          - cell "Base and standoff contribution"
+          - cell "0.270 mm"
+        - row "After geometric-stiffness amplification 7.015 mm":
+          - cell "After geometric-stiffness amplification"
+          - cell "7.015 mm":
+            - strong: 7.015 mm
+        - row "End rotation 1.151°":
+          - cell "End rotation"
+          - cell "1.151°":
+            - strong: 1.151°
+        - row "Base-pivot moment 9.365 N m":
+          - cell "Base-pivot moment"
+          - cell "9.365 N m"
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph: "The force direction is not selected favorably: the bound covers any tip-force direction of magnitude up to 10 N."
+    - paragraph: These results remain conditional on contacts staying bilateral and on the specified installed stiffness. They are not a nonlinear contact or 24-hour endurance certificate.
+    - heading "Mass accounting" [level=3]
+    - paragraph: "The final dimensional allocation totals approximately:"
+    - table:
+      - rowgroup:
+        - row "Stock Allocated mass":
+          - columnheader "Stock"
+          - columnheader "Allocated mass"
+      - rowgroup:
+        - row "Ten cells 864.9 g":
+          - cell "Ten cells"
+          - cell "864.9 g"
+        - row "Exposed steel tube 32.1 g":
+          - cell "Exposed steel tube"
+          - cell "32.1 g"
+        - row "Root and tip fittings 50.0 g":
+          - cell "Root and tip fittings"
+          - cell "50.0 g"
+        - row "Subtotal 947.0 g":
+          - cell "Subtotal":
+            - strong: Subtotal
+          - cell "947.0 g":
+            - strong: 947.0 g
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph: That leaves 33 g before the 980 g analysis mass and 53 g before your absolute limit.
+    - paragraph:
+      - text: The allocation includes floors, shared walls, contact rails, props, ball/socket, split wheels, axles, stems, guides, preload adjustments, journal retention, pin, guards and fasteners. It is still
+      - strong: not a finished CAD mass or a weighed body
+      - text: . Any missing retainer or strengthened wall must fit within those margins.
+    - heading "Self-weight counts in the unloaded geometry" [level=3]
+    - paragraph: This was a consequential correction.
+    - paragraph: After the writer withdraws, gravity is already acting. It cannot be deferred to the later 10 N displacement test.
+    - paragraph: "For the final geometry, the conservative unloaded-shape budget is:"
+    - table:
+      - rowgroup:
+        - row "Error contribution Bound":
+          - columnheader "Error contribution"
+          - columnheader "Bound"
+      - rowgroup:
+        - row "Linked-body approximation to the continuous target 1.435 mm":
+          - cell "Linked-body approximation to the continuous target"
+          - cell "1.435 mm"
+        - row "Self-weight deformation 1.032 mm":
+          - cell "Self-weight deformation"
+          - cell "1.032 mm"
+        - row "Subtotal before profile and environmental errors 2.468 mm":
+          - cell "Subtotal before profile and environmental errors"
+          - cell "2.468 mm":
+            - strong: 2.468 mm
+        - row "Additional contribution per 1 µm independent cam-height error 0.337 mm":
+          - cell "Additional contribution per 1 µm independent cam-height error"
+          - cell "0.337 mm":
+            - strong: 0.337 mm
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph: "Therefore:"
+    - list:
+      - text: "At 1 µm installed height error:"
+      - strong: 2.805 mm
+      - text: .
+      - text: "At 3 µm:"
+      - strong: 3.480 mm
+      - text: .
+    - paragraph:
+      - text: The total height allowance is only about
+      - strong: 1.58 µm before other uncertainties
+      - text: .
+    - paragraph:
+      - text: The introduced campaign history reaches 1.316 µm maximum height deviation. Under this bound, that leaves only about
+      - strong: 0.09 mm
+      - text: for remaining effects. The synthetic global measurement has a 60 µm error bound
+      - strong: per coordinate
+      - text: ", and thermal expansion, guide tilt and contact settlement are additional."
+    - paragraph: Thus the selected simulated programs can pass while a robust full-class accuracy guarantee remains unclosed.
+    - paragraph: A small amount of metal loss is enough to consume the functional budget. Retaining 99.9% of the mass would not establish retained geometry.
+    - separator
+    - heading "6. Writing, faults and ownership of the stock" [level=2]
+    - paragraph: The proposed useful task is holding a small inspection target or tool datum under a slowly varying force of up to 10 N. The declared initial environment is a clean indoor installation, nominally 22 ± 2°C.
+    - paragraph: "The write operation is:"
+    - list:
+      - listitem: Capture and remove the task load.
+      - listitem: Retain the body through its base and existing captured joints.
+      - listitem: Present the selected joint to the common head.
+      - listitem: Capture the case and verify pin withdrawal.
+      - listitem: Drive the continuously captured cam transition.
+      - listitem: Verify index position and the pin’s opposite-side tip.
+      - listitem: Perform local proof and disengage the drive path.
+      - listitem: Withdraw the head.
+      - listitem: Restore and lock the base.
+      - listitem: Measure the unloaded shape and perform whole-body proof before handing back the task load.
+    - paragraph: The body receives no holding power during use.
+    - heading "The admitted fault envelope" [level=3]
+    - paragraph: The controller is not given fault names or injection times.
+    - table:
+      - rowgroup:
+        - row "Disturbance Observable evidence Recovery":
+          - columnheader "Disturbance"
+          - columnheader "Observable evidence"
+          - columnheader "Recovery"
+      - rowgroup:
+        - row "Missed local drive Cam code does not follow the command Retain, re-engage coupling, resume":
+          - cell "Missed local drive"
+          - cell "Cam code does not follow the command"
+          - cell "Retain, re-engage coupling, resume"
+        - row "Partial stroke Between-station code and bounded high torque Retained reverse nudge and re-index":
+          - cell "Partial stroke"
+          - cell "Between-station code and bounded high torque"
+          - cell "Retained reverse nudge and re-index"
+        - row "Slow pin return Measured stroke and through-tip witness Wait within a bounded interval":
+          - cell "Slow pin return"
+          - cell "Measured stroke and through-tip witness"
+          - cell "Wait within a bounded interval"
+        - row "Writer power loss Mains loss; retained geometry Passive brakes hold; inspect and resume after restart":
+          - cell "Writer power loss"
+          - cell "Mains loss; retained geometry"
+          - cell "Passive brakes hold; inspect and resume after restart"
+        - row "Persistent local wear/deformation Repeated pose offset and changed proof compliance Record changed history; requalify or reject":
+          - cell "Persistent local wear/deformation"
+          - cell "Repeated pose offset and changed proof compliance"
+          - cell "Record changed history; requalify or reject"
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph: The two persistent disturbances in the rehearsal introduce a 1 µm differential foot offset and a 1% local stiffness loss.
+    - paragraph:
+      - strong: Repeating the same selector command does not repair that wear.
+      - text: It can remain only while the requested geometry and function still pass. One selector cannot independently correct three arbitrary cam-height errors. A larger persistent defect requires a separately constructed repair operation; none is claimed here.
+    - heading "What the sensors do—and do not—establish" [level=3]
+    - paragraph: "The rehearsal uses:"
+    - list:
+      - listitem: 20 Hz bounded angle and pin observations.
+      - listitem: Drive torque.
+      - listitem: Local displacement witnesses.
+      - listitem: Paired positive/negative proof measurements.
+      - listitem: Global geometric measurements after withdrawal.
+    - paragraph:
+      - text: Commercial submicrometre contact probes are real hardware, but manufacturer repeatability does not supply the complete installed uncertainty of this moving head.
+      - 'link "solartronmetrology.com: Standard Gauge Probes, https://www.solartronmetrology.com/products/pencil-probes/orbit-digital-measuring-probes?utm_source=chatgpt.com"':
+        - /url: https://www.solartronmetrology.com/products/pencil-probes/orbit-digital-measuring-probes?utm_source=chatgpt.com
+        - generic: solartronmetrology.com
+    - paragraph: A motor-current trace is not treated as proof of a good lock. The intended evidence includes actual pin-tip position, relative index, and separation of the drive from the retained structure.
+    - paragraph:
+      - text: The model still does not implement a raw-image perception system or qualify a time-domain servo/brake response. It is a
+      - strong: quasistatic, event-driven control rehearsal
+      - text: with finite observation errors.
+    - separator
+    - heading "7. The continuous 100-attempt rehearsal" [level=2]
+    - paragraph: "The same simulated stock remains in service throughout. Five programs recur, including:"
+    - list:
+      - listitem: Opposite planar curvatures.
+      - listitem: Alternating curvature reversals.
+      - listitem: A nonplanar program.
+      - listitem: A strongly curved program with a final reversal.
+    - paragraph: Wear, offsets, calibration biases, energy, stock and accepted-state history are not reset between attempts.
+    - table:
+      - rowgroup:
+        - row "Rehearsal quantity Result":
+          - columnheader "Rehearsal quantity"
+          - columnheader "Result"
+      - rowgroup:
+        - row "Attempts 100":
+          - cell "Attempts"
+          - cell "100"
+        - row "Conditional ready acceptances 100":
+          - cell "Conditional ready acceptances"
+          - cell "100"
+        - row "Unannounced injected disturbances 10":
+          - cell "Unannounced injected disturbances"
+          - cell "10"
+        - row "Physical accepted services 0":
+          - cell "Physical accepted services":
+            - strong: Physical accepted services
+          - cell "0":
+            - strong: "0"
+        - row "Nominal readiness 342 s":
+          - cell "Nominal readiness"
+          - cell "342 s"
+        - row "Maximum readiness 391 s":
+          - cell "Maximum readiness"
+          - cell "391 s"
+        - row "Writer operation 9.543 h":
+          - cell "Writer operation"
+          - cell "9.543 h"
+        - row "Modeled useful dwell 2,400 h":
+          - cell "Modeled useful dwell"
+          - cell "2,400 h"
+        - row "Total elapsed time 2,409.543 h":
+          - cell "Total elapsed time"
+          - cell "2,409.543 h"
+        - row "Process electricity 9.559 kWh":
+          - cell "Process electricity"
+          - cell "9.559 kWh"
+        - row "Allocated facility electricity 60.239 kWh":
+          - cell "Allocated facility electricity"
+          - cell "60.239 kWh"
+        - row "Final minimum introduced stiffness ratio 0.970992":
+          - cell "Final minimum introduced stiffness ratio"
+          - cell "0.970992"
+        - row "Final maximum introduced height deviation 1.316 µm":
+          - cell "Final maximum introduced height deviation"
+          - cell "1.316 µm"
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph: The 2 Wh control-battery inventory is restored in the ledger. Finite lubricant consumption is recorded.
+    - paragraph: "The important limitation is the constitutive input:"
+    - list:
+      - text: Stiffness loss is introduced at
+      - math:
+        - generic: "6"
+        - generic: ×
+        - generic: "10"
+        - generic: −
+        - generic: "5"
+      - generic: 6 ×
+      - text: "1"
+      - text: "0"
+      - generic: −5
+      - text: per 40° traversal.
+      - listitem: Wear is introduced at 0.001 µm per traversal.
+      - listitem: The off-state dwell law is elastic.
+    - paragraph:
+      - text: Those are
+      - strong: not measured cam properties
+      - text: .
+    - paragraph: In the sensitivity rehearsal, higher assumed deterioration reduced acceptances to 61, 35 and 21. That demonstrates dependence on the missing contact-life contract; it is not a reliability distribution.
+    - paragraph: The model does not establish 95% retained strength, retained preload, bearing life or indefinitely renewable precision. A successful observation sequence cannot supply those material properties.
+    - separator
+    - heading "8. The strongest ordinary alternatives are competitive" [level=2]
+    - heading "Same-stock steel forming" [level=3]
+    - paragraph: "A 9 mm solid steel rod is a serious alternative:"
+    - list:
+      - listitem: Approximately 250 g before fittings.
+      - math:
+        - generic: E
+        - generic: I
+        - generic: ≈
+        - generic: "64.4"
+        - generic: "N"
+        - generic: m
+        - generic: "2"
+      - generic: EI ≈
+      - text: "64.4"
+      - text: "N"
+      - text: m
+      - generic: "2"
+      - text: .
+      - text: The executed whole-class screen, including torsion, gives approximately
+      - strong: 8.21 mm and 1.47°
+      - text: at 95% rigidity with a small end datum and a geometric-amplification screen.
+    - paragraph: A suitable common former needs approximately 30–50 N m, paid support, material-frame observation and springback correction. It must create gentle continuous curvature rather than sharp local kinks.
+    - paragraph:
+      - text: Automatic nonplanar forming is already real machinery, including the BLM constructions identified in your prompt. Robot-assisted wire bending has also been physically studied at smaller sections. Neither supplies the exact 9 mm, 100-rewrite endpoint, but neither should be dismissed as a manual or shape-specific process.
+      - 'link "BLM GROUP: PRO-RUNNER - Technical informations, https://www.blmgroup.com/en-us/tube-benders/pro-runner/technical-information?utm_source=chatgpt.com, 1 additional source"':
+        - /url: https://www.blmgroup.com/en-us/tube-benders/pro-runner/technical-information?utm_source=chatgpt.com
+        - generic: BLM GROUP
+        - generic: "+1"
+    - paragraph: The metal history matters. Forming residual stress can consume the later elastic load margin. An introduced 235 MPa elastic-perfectly-plastic case was inadequate in the reverse-yield screen; approximately 350–390 MPa cases had more margin.
+    - paragraph:
+      - text: Primary Q345q tests reported 276–326 full axial fatigue cycles at 1.5% strain amplitude. This supports investigating repeated same-stock forming. It does not qualify retained
+      - math:
+        - generic: E
+        - generic: I
+      - generic: EI
+      - text: in the present nonplanar sequence. One hundred alternating writes correspond to roughly 50 full reversal cycles before additional corrective passes.
+      - 'link "mdpi.com: Mechanical Properties of Low Carbon Alloy Steel with Consideration of Prior Fatigue and Plastic Damages, https://www.mdpi.com/2073-4352/12/7/967?utm_source=chatgpt.com"':
+        - /url: https://www.mdpi.com/2073-4352/12/7/967?utm_source=chatgpt.com
+        - generic: mdpi.com
+    - heading "Ordinary clamps and fixtures" [level=3]
+    - paragraph: A competent alternative can capture, pose and clamp one joint with a shared head. It need not adjust three axes serially.
+    - paragraph: Its actual clamp preload, mass, compliance and slip must still be qualified. But the candidate cannot claim that one external operation per zone is uniquely available to its cam selector.
+    - heading "Thermoplastic forming" [level=3]
+    - paragraph:
+      - text: Thin-wall thermoplastic stock deserves a fair test. For example, a 40/36 mm tube at an
+      - strong: introduced effective modulus of 1.5 GPa
+      - text: has approximately 64.8 N m² bending rigidity. Heating, drying, ovalization control, cooling and 24-hour creep must be included.
+    - paragraph: That is a favorable comparison challenge, not a supplied qualified material. It shows why “polymers creep” is not enough to dismiss competent reheating and forming.
+    - heading "Layer jamming and dynamic networks" [level=3]
+    - paragraph:
+      - text: The cited EPM construction measured a maximum stiffness increase of 68% in its tested metal-sheet arrangement. That is useful evidence, but not perfect composite locking or a complete two-axis shape writer.
+      - 'link "sites.bu.edu: Jamming Metal Sheets Using Electropermanent Magnets for Stiffness Modulation, https://sites.bu.edu/ranzani-lab/files/2025/06/Jamming_Metal_Sheets_Using_Electropermanent_Magnets_for_Stiffness_Modulation-1.pdf?utm_source=chatgpt.com"':
+        - /url: https://sites.bu.edu/ranzani-lab/files/2025/06/Jamming_Metal_Sheets_Using_Electropermanent_Magnets_for_Stiffness_Modulation-1.pdf?utm_source=chatgpt.com
+        - generic: sites.bu.edu
+    - paragraph:
+      - text: Reisinger and colleagues demonstrated reversible optical control of prepared dynamic networks. The reported specimen-level properties do not jointly supply this stiff, rapidly rewritten cantilever and its 24-hour service. I did not combine their optical switching with an unrelated structural modulus or renewal lifetime.
+      - 'link "Wiley Online Library: Light‐Driven, Reversible Spatiotemporal Control of Dynamic Covalent Polymers - Reisinger - 2024 - Advanced Materials, https://advanced.onlinelibrary.wiley.com/doi/10.1002/adma.202411307?utm_source=chatgpt.com, 2 additional sources"':
+        - /url: https://advanced.onlinelibrary.wiley.com/doi/10.1002/adma.202411307?utm_source=chatgpt.com
+        - generic: Wiley Online Library
+        - generic: "+2"
+    - heading "Prepared-part exchange" [level=3]
+    - paragraph: For a campaign repeating a few geometries, a finite cache of conventionally formed parts can be strong competition. Its generic-stock manufacture, storage, docking, inspection and eventual disposal must be paid. New programs still require manufacture or reforming.
+    - paragraph: It cannot be dismissed by giving the candidate reusable stock while charging the comparator a waiting person and fresh bespoke tooling.
+    - separator
+    - heading "9. The complete comparison misses the advantage target" [level=2]
+    - paragraph:
+      - text: I used a production planning quantity of
+      - strong: 100 systems
+      - text: ", with introduced—not quoted—manufacturing costs."
+    - paragraph:
+      - text: The primary comparison charges a
+      - strong: dedicated physical cell throughout the 2,400-hour dwell
+      - text: . This avoids treating an external writer as freely shareable across many stations without building and pricing that logistics operation.
+    - table:
+      - rowgroup:
+        - row "Conditional engineering case Repeat installed Nominal ready time Complete 100-attempt dedicated service Cost per accepted geometry, if 100":
+          - columnheader "Conditional engineering case"
+          - columnheader "Repeat installed"
+          - columnheader "Nominal ready time"
+          - columnheader "Complete 100-attempt dedicated service"
+          - columnheader "Cost per accepted geometry, if 100"
+      - rowgroup:
+        - row "Captured-cam stock $30,099 342 s $4,446 $44.46":
+          - cell "Captured-cam stock"
+          - cell "$30,099"
+          - cell "342 s"
+          - cell "$4,446":
+            - strong: $4,446
+          - cell "$44.46":
+            - strong: $44.46
+        - row "Gang-clamped joints $29,243 372 s $3,340 $33.40":
+          - cell "Gang-clamped joints"
+          - cell "$29,243"
+          - cell "372 s"
+          - cell "$3,340"
+          - cell "$33.40"
+        - row "Ordinary ball clamps $28,080 372 s $2,903 $29.03":
+          - cell "Ordinary ball clamps"
+          - cell "$28,080"
+          - cell "372 s"
+          - cell "$2,903"
+          - cell "$29.03"
+        - row "Same steel rod, re-formed $30,843 482 s $2,524 $25.24":
+          - cell "Same steel rod, re-formed"
+          - cell "$30,843"
+          - cell "482 s"
+          - cell "$2,524"
+          - cell "$25.24"
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph:
+      - text: These are equal-function engineering challenges,
+      - strong: not purchased products qualified to the complete endpoint
+      - text: .
+    - paragraph: "The ledger includes:"
+    - list:
+      - listitem: Initial structural stock and manufacturing rejects.
+      - listitem: Writer, base, sensors, fixtures and controls.
+      - listitem: Development/tooling allocation.
+      - listitem: Named wear components and finite replacement assumptions.
+      - listitem: Calibration and operational preparation.
+      - listitem: Occupied floor space and standby.
+      - listitem: Transport, waste and retirement.
+      - listitem: Introduced 5–10 year equipment lives and 8% financing.
+    - paragraph: Operational human work is 3.5 hours per conditional campaign, outside the autonomous interval. Neither candidate nor comparator is assigned a person standing by to correct every placement.
+    - heading "Time" [level=3]
+    - paragraph: "The candidate is only:"
+    - list:
+      - strong: 1.09× faster
+      - text: than the ordinary-clamp challenge.
+      - strong: 1.41× faster
+      - text: than the metal-forming challenge.
+    - paragraph: "Including preparation gives approximately:"
+    - list:
+      - listitem: "Cam: 1,028 seconds per accepted geometry."
+      - listitem: "Ball clamps: 770 seconds."
+      - listitem: "Same-stock steel former: 646 seconds."
+    - paragraph: The identical 24-hour dwell is excluded from those retarget ratios and charged equally in occupancy and cost.
+    - heading "Cost" [level=3]
+    - paragraph:
+      - text: The cam’s approximately
+      - strong: $2,159 body price is already optimistic and nonqualifying
+      - text: ": it prices roughly 3 µm manufacturing, while the final accuracy budget needs closer to 1 µm installed control. The narrow-slot final assembly has no procurement-backed price."
+    - paragraph: Even making the cam stock free leaves approximately
+    - math:
+      - generic: "4446"
+      - generic: −
+      - generic: "2159"
+      - generic: =
+      - generic: $
+      - generic: "2287"
+    - generic: 4446 −
+    - generic: 2159 =
+    - generic: $2287
+    - paragraph: on its unchanged dedicated-service ledger.
+    - paragraph: Thirty percent below the introduced steel case would require
+    - math:
+      - generic: "0.7"
+      - generic: (
+      - generic: "2524"
+      - generic: )
+      - generic: ≈
+      - generic: $
+      - generic: "1767."
+    - generic: 0.7(2524) ≈
+    - generic: $1767.
+    - paragraph: So cheaper stock alone does not close this comparison. The organization would also have to reduce shared preparation, qualification or equipment occupancy.
+    - paragraph: An optimistic shared-writer accounting sensitivity reduces costs, but still does not produce the required advantage. Its multi-station transfer and docking operation is not constructed, so I have not used it as the primary complete-service result.
+    - separator
+    - heading "10. The smallest decisive physical experiment" [level=2]
+    - paragraph:
+      - text: The next useful experiment is
+      - strong: two adjacent final-outlet cells
+      - text: ", not an expensive ten-zone machine immediately."
+    - paragraph: Attach a paid rigid lever so a real 10 N force generates the relevant joint moment. Use the actual split rails, guides, preload adjustment, pin and writer coupling.
+    - paragraph: "Run:"
+    - list:
+      - listitem: All nine local states.
+      - listitem: Opposite rewrites.
+      - listitem: 100 rewrite operations.
+      - listitem: Ten 24-hour holds spanning demanding states.
+      - listitem: Unannounced missed engagement, partial stroke, delayed pin return and power interruption.
+      - listitem: A calibrated persistent profile change.
+      - listitem: A conventional passive-clamp control and a same-stock forming control.
+    - paragraph: Withdraw every writer contact before accepted holding.
+    - paragraph: "Independent measurements should include:"
+    - list:
+      - listitem: Relative pose and unloaded permanent set.
+      - listitem: Positive and negative stiffness.
+      - listitem: Cam torque and work.
+      - listitem: Pin-tip and drive separation.
+      - listitem: Contact temperature.
+      - listitem: Profile wear at approximately 0.1 µm resolution.
+      - listitem: Load retention after power interruption and support withdrawal.
+    - paragraph:
+      - text: The itemized planning budget is approximately
+      - strong: $12,300
+      - text: ", including design/setup, two fabricated cells, matched controls, drive/brake hardware, load fixtures, force acquisition, metrology access, labor, 240-hour occupancy, consumables and electricity."
+    - paragraph:
+      - text: A positive result would establish a local reusable selector and its retained writing/holding transition. It would
+      - strong: not
+      - text: establish the full ten-zone mass, all-program geometry, complete writer routing, 100 full 24-hour services or the comparative advantage.
+    - paragraph:
+      - text: The first complete development/build planning case is approximately
+      - strong: $157,500 before campaign execution
+      - text: ", separately from repeat manufacture. That is an estimate of paid development, not a quotation or a claim that the apparatus already exists."
+    - heading "What this attempt establishes" [level=2]
+    - paragraph: "The analysis supplies useful physical and mathematical constructions:"
+    - list:
+      - listitem: Exact local orientation encoding through three bilateral props.
+      - listitem: A finite, nonfolding cam transition.
+      - listitem: An explicit follower exit rather than a hidden crossing through the housing.
+      - listitem: A common-base access strategy covering the bounded program class.
+      - listitem: A clear separation between unloaded shape error and later load displacement.
+      - listitem: A persistent, observation-based control rehearsal with all attempts retained.
+      - listitem: A comparison that gives ordinary same-stock forming and passive fixtures competent capabilities.
+    - paragraph:
+      - strong: It does not yet supply the complete new reusable material-to-structure operation with your required advantage.
+      - text: The contact assembly must first demonstrate its installed stiffness and micrometre-scale retention, and the service organization must become materially better than the ordinary alternatives. The present design has not done either.
+    - button "Open preview of same_stock_rewriting_report.html"
+    - generic "same_stock_rewriting_report.html"
+    - generic: HTML
+    - button "Download file":
+    - button "Copy":
+    - button "Rate response":
+    - button "Read aloud":
+    - button "Share":
+    - button "Sources":
+    - button "More actions":
+    - generic: ChatGPT can make mistakes. Check important info.
+    - button "Scroll to bottom":
+    - heading "Latest response" [level=4]
+    - status
+    - button "Add files and more":
+    - textbox "Ask ChatGPT":
+      - paragraph: Ask ChatGPT
+    - button "Select ChatGPT model":
+      - generic: Thinking effort
+      - generic: Pro
+    - button "Dictate":
+    - button "Start Voice":
+    - status
+- status
+- status
+- status
+```
