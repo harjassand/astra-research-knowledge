@@ -1,6 +1,6 @@
 # Completed research: proofs and results
 
-These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **74 result families and 1976 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
+These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **74 result families and 2016 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
 
 The proofs, canonical cards and reusable result units are merged on `main`, together with their generated Capital packets and search indexes. Each result keeps its exact assumptions and unresolved obligations. The portable reader can retrieve this batch; the separate native model query remains blocked by the existing 2 GiB memory limit.
 
@@ -73,10 +73,10 @@ The proofs, canonical cards and reusable result units are merged on `main`, toge
 | [N1812](published-20261109/N1812.md) | Brine water finite heat network, membrane support and complete costs | 37 |
 | [N1813](published-20261109/N1813.md) | Intact magnet support relay, hot destination tests and complete recovery costs | 36 |
 | [N1814](published-20261109/N1814.md) | Centrate nitrogen: accepted-output inventory and fixed-design cost waivers | 40 |
-| [N1815](published-20261109/N1815.md) | Load-safe exchange: short captured supports, removable contacts and local comparison | 83 |
+| [N1815](published-20261109/N1815.md) | Self-setting exchange: front-observed loaded stops and independent cartridge recovery | 103 |
 | [N1816](published-20261109/N1816.md) | Functional molecular renewal: synthesis, damaged-stock clearance and vector closure | 4 |
 | [N1817](published-20261109/N1817.md) | Chemical selection: actual compartment interfaces and positive-mixture limits | 2 |
-| [N1818](published-20261109/N1818.md) | Captured rollback: viscous take-up, force-limited relaxation and pre-engagement | 37 |
+| [N1818](published-20261109/N1818.md) | Reusable construction: retained pin release, captured energy and rejected whole-cell routes | 57 |
 | [N1819](published-20261109/N1819.md) | Reusable attachment: exact rigid clearance, issued energy boundary and finite cost budgets | 52 |
 | [N1820](published-20261109/N1820.md) | Passive magnetic attachment: contact stability, captured rest state and release | 8 |
 | [N1821](published-20261109/N1821.md) | Receiver-free rough contact: continuous wrench allocation and required local qualification | 8 |
