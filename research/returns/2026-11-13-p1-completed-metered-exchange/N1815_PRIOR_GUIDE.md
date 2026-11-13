@@ -1,0 +1,80 @@
+# N1815 — Load-safe recovery: retained metering, resonant release limits and own-side guides
+
+Earlier isolation, keeper, clocking and captured-energy results remain scoped. ROOT constructs an exact fixed-stiffness uniform-ramp residual-energy formula, a monotone resonant counterexample, an introduced own-side guide stiffness requirement, and fixed-ledger service replacement contracts. Resettable rolling retainers and a retained metering path are concrete organizations with actual limited prior constructions; the complete waveform-controlled six-axis release, installed guide and recovered autonomous service remain unconstructed.
+
+Uniform force ramp and retained constant stiffness are necessary to the stated energy estimate; duration or monotonicity alone is insufficient. Restricted local positivity is not full buckling/6D stability. Low trigger force is not low released energy, and slow exterior release does not remove retained internal energy. Catalogue ratings are not this assembly, waveform, life or cost. Fixed-ledger waivers are arithmetic contracts rather than constructed services.
+
+Construct a retained metering/support/reusable-release path with observed waveform and error, complete guide and local force boundaries, independent jam escape and everytemporarycontactretrieved; qualify installed dynamics/materials/outages/reset/life/fullcost with competent controls.
+
+Read the [complete family packet](../../../knowledge/current/packets/N1815.json), or request an individual unit below with `python3 knowledge/retrieve.py packet <unit-ID>`. For a family CLI request, set `--max-bytes` to at least the packet file size plus 4096 wrapper bytes; corrections are never truncated.
+
+## Reusable operations
+
+- [Keep face extraction and strut root failures explicit](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-accessible-fasteners-do-not-complete-removable-joints/v0001.json)
+- [Do not move the main drive while its selected cut is open](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-capture-before-recentering-and-reciprocal-mechanical-key/v0001.json)
+- [Remove a contained stressed unit instead of opening the loaded jam](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-captured-failed-contact-and-stored-energy/v0001.json)
+- [Retain the sharper conditional bound without claiming physical margin](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-common-wrench-energy-and-mode-separated-motion/v0001.json)
+- [Do not replace scheduled human work with a no-callout claim](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-complete-labor-cost-and-strong-automation-comparison/v0001.json)
+- [Do not erase calibration or circulating-body service](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-complete-renewal-cost-and-human-work-denominator/v0001.json)
+- [Make the entire admitted contact boundary observable](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-complete-silhouette-cut-and-known-intermediate-owner/v0001.json)
+- [Keep finite replay completion below physical service](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-conditional-500-cycle-result-and-retained-failures/v0001.json)
+- [Keep reusable-release savings linked to its added machinery and reset](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-construction-healthy-release-savings-contract/v0001.json)
+- [Transfer a topology idea without granting compatible machinery](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-cross-programme-hardware-and-primary-scope/v0001.json)
+- [Bound release excitation with the retained stiffness and waveform](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-exact-linear-force-ramp-modal-residual-energy/v0001.json)
+- [Give every portable gap reading a valid physical time interval](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-finite-age-gap-witness-and-shared-probe/v0001.json)
+- [A wider bearing land changes the observable corridor](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-finite-land-contact-optical-depth-tradeoff/v0001.json)
+- [Keep pixel data below the complete installed gap-error requirement](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-finite-pupil-optics-and-unresolved-installed-collisions/v0001.json)
+- [Close every stock before declaring the tool reusable](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-finite-spares-fluids-quarantine-and-ready-reset/v0001.json)
+- [Keep the external wrench separate from member limits](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-full-wrench-linear-plate-and-local-overload/v0001.json)
+- [Make the local witness a real isolated load path](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-guarded-flexure-and-material-strength-contract/v0001.json)
+- [Change the physical support topology before acceptance](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-independent-gap-cut-and-jammed-stage-escape/v0001.json)
+- [Use separate evidence for separate hidden load paths](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-ineffective-joint-discrimination-and-proof-reversal/v0001.json)
+- [Keep successful controller traces separate from accepted exchanges](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-isolation-conditional-campaign-inventory-and-heavy-moving-side/v0001.json)
+- [Test the actual cut boundary and final seized support removal](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-isolation-physical-discriminator-and-price-scope/v0001.json)
+- [Replace a real operation rather than delete a kit line](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-isolation-reusable-service-and-human-work-replacement-budget/v0001.json)
+- [Keep a positive scalar transfer below full access and safety closure](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-known-linear-handoff-and-bounded-old-spring-release-energy/v0001.json)
+- [Test local path cutting at its own force and sensing scope](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-load-transfer-small-matched-experiment/v0001.json)
+- [State when the internal ambiguity survives stiffness probing](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-matched-coaxial-preload-law-and-geometric-scope/v0001.json)
+- [Do not transfer a uniform-ramp bound from duration and monotonicity](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-monotone-release-waveform-can-resonantly-excite/v0001.json)
+- [Keep collision corrections and assembled stiffness obligations](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-nonintersecting-six-strut-layout-and-leg-hardware/v0001.json)
+- [Keep the positive finite controller below a supplied tool](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-observation-only-captive-counterload-feedback/v0001.json)
+- [Do not interpret measured zero as exact load removal](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-observation-terminated-unloading-and-residual-error/v0001.json)
+- [Specify the guide stiffness and its prohibited bypass paths](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-own-side-guide-removes-a-local-negative-tangent/v0001.json)
+- [A central gap observation cannot exclude edge contact](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-pad-local-gap-proof-and-parasitic-contact/v0001.json)
+- [A successful macro-release command is not independent physical retrieval](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-paired-cassette-relay-and-unconstructed-final-escape/v0001.json)
+- [Retain the captured energy and pay precision mechanically](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-passive-cartridge-energy-and-finer-clock-cost/v0001.json)
+- [Small settled exterior reaction does not qualify passive capture](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-passive-lock-equilibrium-and-hidden-internal-overload/v0001.json)
+- [Separate mechanical retention from arbitrary moving-state power loss](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-positive-lock-outages-and-supported-checkpoint-scope/v0001.json)
+- [Do not certify each support from a safe-looking total head force](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-positive-parallel-support-ambiguity-and-admissible-nullspace/v0001.json)
+- [Preserve finite diagnostics without recovering a held bulletin](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-preload-original-execution-and-material-hold/v0001.json)
+- [Do not call a nearby catch proof a recovered apparatus](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-provisional-isolation-and-final-tool-free-acceptance/v0001.json)
+- [Own the bodies and each temporary contact throughout reaction removal](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-retained-metering-before-reusable-retainer-release/v0001.json)
+- [Use actual resettable release organizations without inheriting a machine](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-rolling-retention-and-recovery-prior-at-actual-scope/v0001.json)
+- [Do not substitute a quasistatic corner for a dynamic catch bound](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-root-six-axis-static-deadband-and-hidden-path/v0001.json)
+- [Recover the temporary support as well as the replaced joint](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-seized-fastener-and-final-anchor-recovery/v0001.json)
+- [Retain each energy stock at its physical ownership boundary](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-separate-internal-captured-energy-from-outer-relaxation/v0001.json)
+- [Move a release station only with a real local corridor allowance](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-service-collar-ray-clearance-and-relative-motion/v0001.json)
+- [Keep the conservative movement total above the target](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-six-axis-catch-energy-and-unrounded-motion-budget/v0001.json)
+- [Keep physical construction credit with actual operator boundaries](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-structural-actual-robotic-build-baselines-and-held-methods/v0001.json)
+- [Test intended support transfer with hidden admissible faults](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-structural-bounded-powered-bypass-fixture-and-cost/v0001.json)
+- [Keep intermediate stiffness below a physical repair trajectory](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-structural-finite-bypass-repair-static-state-construction/v0001.json)
+- [Do not replace an actual renewal operation with a retry exponent](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-structural-iid-residual-reliability-and-permanent-fault-repair/v0001.json)
+- [Use catalog stock without a fabricated strength certificate](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-structural-obtainable-tube-and-model-geometry-boundary/v0001.json)
+- [Do not identify the load path from one force-displacement port](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-structural-one-port-stiffness-ambiguity-and-proof-load-scope/v0001.json)
+- [Pay calibration error and test the hidden internal state](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-total-strain-error-and-preload-discriminating-test/v0001.json)
+- [Include the machine in the declared load envelope](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-total-wrench-deployment-mass-and-useful-payload/v0001.json)
+- [Replace the declared wear sets rather than an arbitrary damaged joint](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-two-connection-families-and-independent-tool-access/v0001.json)
+- [Keep research targets and unavailable specifications explicit](https://github.com/harjassand/astra-research-knowledge/blob/main/knowledge/units/U1815-useful-load-transfer-interface-and-actual-incumbent-hold/v0001.json)
+
+## Whole governing sources
+
+- [ROOT_RENEWAL_CLEARANCE_AND_LOAD_SAFE_RECOVERY_CONTRACTS_20261113_PUBLIC_PATHS.md](https://github.com/harjassand/astra-research-knowledge/blob/main/research/returns/2026-11-13-root-load-safe-structural-recovery/ROOT_RENEWAL_CLEARANCE_AND_LOAD_SAFE_RECOVERY_CONTRACTS_20261113_PUBLIC_PATHS.md)
+- [ROOT_MAGNET_RELAY_AND_OBSERVABLE_LOAD_TRANSFER_CONTRACTS_20261113.txt](https://github.com/harjassand/astra-research-knowledge/blob/main/research/returns/2026-11-13-root-load-safe-structural-recovery/ROOT_MAGNET_RELAY_AND_OBSERVABLE_LOAD_TRANSFER_CONTRACTS_20261113.txt)
+- [ROOT_FULL_WRENCH_PRELOAD_AND_LOCAL_WITNESS_CONTRACTS_20261113_PUBLIC_PATHS.md](https://github.com/harjassand/astra-research-knowledge/blob/main/research/returns/2026-11-13-root-full-wrench-preload-local-witness/ROOT_FULL_WRENCH_PRELOAD_AND_LOCAL_WITNESS_CONTRACTS_20261113_PUBLIC_PATHS.md)
+- [P1_LOAD_TRANSFER_AVAILABLE_RETURN_20261113_PUBLIC_PATHS.md](https://github.com/harjassand/astra-research-knowledge/blob/main/research/returns/2026-11-13-p1-completed-load-transfer/P1_LOAD_TRANSFER_AVAILABLE_RETURN_20261113_PUBLIC_PATHS.md)
+- [ROOT_CUT_WITNESS_CAPTIVE_ROLLBACK_AND_SERVICE_PORT_CONTRACTS_20261113_PUBLIC_PATHS.md](https://github.com/harjassand/astra-research-knowledge/blob/main/research/returns/2026-11-13-root-captive-rollback-and-passive-clock/ROOT_CUT_WITNESS_CAPTIVE_ROLLBACK_AND_SERVICE_PORT_CONTRACTS_20261113_PUBLIC_PATHS.md)
+- [ROOT_PASSIVE_CAPTURE_CLOCKING_AND_ENERGY_CONTRACTS_20261113.txt](https://github.com/harjassand/astra-research-knowledge/blob/main/research/returns/2026-11-13-root-captive-rollback-and-passive-clock/ROOT_PASSIVE_CAPTURE_CLOCKING_AND_ENERGY_CONTRACTS_20261113.txt)
+- [P1_RECOVERABLE_ISOLATION_AVAILABLE_RETURN_20261113_PUBLIC_PATHS.md](https://github.com/harjassand/astra-research-knowledge/blob/main/research/returns/2026-11-13-p1-completed-recoverable-isolation/P1_RECOVERABLE_ISOLATION_AVAILABLE_RETURN_20261113_PUBLIC_PATHS.md)
+- [ROOT_CONTROLLED_RELEASE_AND_REUSABLE_ESCAPE_CONTRACTS_20261113_PUBLIC_PATHS.md](https://github.com/harjassand/astra-research-knowledge/blob/main/research/returns/2026-11-13-root-controlled-outer-release/ROOT_CONTROLLED_RELEASE_AND_REUSABLE_ESCAPE_CONTRACTS_20261113_PUBLIC_PATHS.md)
+
+[Prior summary](../2026-11-13-root-controlled-outer-release/N1815_PRIOR_CARD.txt) and [prior navigation](../2026-11-13-root-controlled-outer-release/N1815_PRIOR_GUIDE.md) are historical; current contracts appear above.
