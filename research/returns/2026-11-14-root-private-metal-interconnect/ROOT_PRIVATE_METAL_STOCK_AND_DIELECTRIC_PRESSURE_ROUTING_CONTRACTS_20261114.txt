@@ -1,0 +1,56 @@
+PRIVATE METAL STOCK, DIELECTRIC PRESSURE ROUTING AND PASSIVE ELECTRICAL TOPOLOGY
+ROOT independently derived scientific contracts; 14 November 2026 Brisbane.
+
+Scope: a design calculation for a possible reusable interconnect, not a built device, qualified material, measured life, novel relay or achieved whole-operation advantage. Every material/interface/geometry/sensor value below is INTRODUCED unless expressly attributed. No actual experiment or source/producer code was executed. Fixed ordinary graph routing is not an algorithmic invention.
+
+OWNED EXECUTABLE
+ROOT_PRIVATE_METAL_STOCK_AND_DIELECTRIC_PRESSURE_ROUTING_SCREEN_20261114.py
+15732 ASCII bytes; SHA256 845d87034f60a2c56391b35dfa24b4971eff3cd50a7f4388f94a7a75b3a5fd5a.
+Serial standard-library run completed. Output same-stem JSON:
+76632 ASCII bytes; SHA256 bc00fe3b9d6ed412024c3c5f4e548dfb104c63146bee77e3a4582b1f8fcb24d1.
+Three temporal integration refinements, exact stock accounting, finite complex network solves and an analytic matrix perturbation bound are calculations, not installed-interface verification.
+
+1. PHYSICAL ORGANISATION AND OWNERSHIP
+A private reservoir feeds each switch's short wide useful conducting bridge through a narrow SIDE neck. Narrow-neck resistance is outside the intended useful current path; the bridge still needs two actual reliable contacts. Private metal stocks do not insert a common metallic edge. A common conducting metal feed connected to eight independently requested pairs instead merges them into one net. This topological observation does not construct a cheap private-reservoir layout.
+
+A common head would couple through an insulating pressure-transfer element to move each private inventory, positively retain/control it during reversal, leave a pinned state and withdraw. The proposed head, wetting surfaces, diaphragm, two stable states, full swept geometry, release/recovery and fabrication are UNSUPPLIED. A capillary threshold is a constitutive hypothesis, not a validated digital bit. Actual film flow, oxide, pad adhesion, breakup and residues can invalidate it.
+
+2. CELL FORCE, TEMPERATURE AND COMPLETE MECHANICAL CYCLE
+Introduced metal density 6000 kg/m3, viscosity .002 Pa s, conductivity 3e6 S/m; surface tension .5 N/m and contact-angle cosine hysteresis .5. A 100 um radius, 1 mm long side neck has pressure threshold 2 gamma DeltaCos/r = 5000 Pa and Poiseuille resistance 5.09295818e10 Pa s/m3. A .12 uL stroke through diaphragm area pi*(.5 mm)^2 requires .152789 mm travel; a 5 N/m membrane is included.
+
+Gas starts at 101325 Pa, 298.15 K, 20 uL. Sealed pressure is P0 V0 (T/T0)/(V0-q) - P0. Membrane pressure is k q/A^2. Add worst orientation hydrostatic pressure 1176.798 Pa over 20 mm. At 40 C the sealed state has 6274.48 Pa disturbance at q=0 and 7889.56 Pa at q=.12 uL, above the introduced threshold. These are model-bound violations, not physical failures. A larger fixed sealed volume reduces stroke compression but NOT the q=0 absolute thermal pressure P0*(T/T0-1).
+
+An INTRODUCED perfectly temperature-compensating volume V0*T/T0 reduces the adverse corners to at most 2782.46 Pa. The extra volume between 15 and 40 C is 1.67701 uL PER cell. No bag, vent, compliant regulator or compensated interface is supplied; its actual stiffness, finite volume, contamination, leakage, layout and life must be built and paid. Gas expansion is not reset freely.
+
+For a .25 s quintic forward leg and .25 s return leg, pressure-driven head work integrates capillary hysteresis and viscous loss plus changing gas/membrane energy. Forward work .69917535 uJ; return .50920621 uJ; full cycle 1.208381554 uJ equals the full modeled dissipation. Maximum head force is .00517147 N. Refining 1000/2000/4000 intervals changes full-cycle work by 1.20e-18 J. This does not supply positive pulling attachment, actual pressure tracking, total machine energy, or heating/inspection/handling power.
+
+3. USEFUL ELECTRICAL PATH AND ISOLATION
+The bridge radius .25 mm and length .5 mm give .848826 milliohm bulk resistance. Two introduced .020 ohm contacts make .040848826 ohm per switched edge. Two edges total .081697653 ohm before unmodeled rails/joins. Putting the narrow neck IN the current path adds .01061033 ohm per cell; separating current transport from narrow retention is the specific geometric opening, not an all-liquid-metal result. Actual contact wetting, current crowding, heat rejection and installed resistance remain open.
+
+For an introduced uniform wall film, G = sigma*perimeter*thickness/gap. At sigma=5 S/m, 1 um thickness, 1.57 mm perimeter, .5 mm gap, one gap is 63661.98 ohm. Two groups of eight ideal connected terminals have 64 parallel off edges and only 994.718 ohm isolation. Even 10 nm of that uniform film yields only 99471.84 ohm between those groups. The model's film thickness for 100 megohm network isolation would be 9.95e-12 m; this is a continuum-model diagnostic, not an asserted realizable film or molecular law. An electrolyte-motion benefit does not supply independent electrical nets.
+
+Replacing the film by introduced sigma=1e-12 S/m leaves its single-gap resistance 3.1831e17 ohm. A separately INTRODUCED 10 gigohm package isolation dominates each off-edge conductance at 1.000000031e-10 S. With at most 64 edges in a separating cut, effective resistance between distinct nets is at least 156249995 ohm in this passive finite graph. This uses the maximum principle/current-through-cut bound and all private-stock/no-extra-conducting-path assumptions, not a measured dielectric. External fixtures and diagnostic grounds can add paths.
+
+A parallel-plate estimate gives intrinsic off-gap capacitance 8.69258 fF; adding INTRODUCED 10 fF per-cell stray gives 18.69258 fF. The full network's cut capacitance can reach 1.19633 pF. Fixed rails, terminals, reservoirs, shielding, tooling and environment are not included in the per-cell number; no installed parasitic claim follows.
+
+4. FULL-CLASS LINEAR CIRCUIT BOUND, SEPARATE FROM FINITE CASES
+For ANY partition of 16 terminals, a complete graph with one star per requested net needs 16-(number of nets) <=15 closed edges and connected-pair graph distance <=2. There are 120 possible cells. The result is known routing, not a new program compiler.
+
+For the introduced on resistance, off G/C and equal 10 kohm terminal loads, excite one terminal through 1 kohm. Let A0 be the real conducting-star plus terminal-load/source matrix and Delta the complex off-edge Laplacian. A0 is an M-matrix; A0^-1 is nonnegative and its infinity norm is <=10000 ohm because every terminal has its stated load. ||Delta||infinity <=2*(16-1)*|G+j omega C|. At 100 kHz, eta=||A0^-1 Delta|| bound .003523596<1; Neumann inversion gives perturbation <=eta/(1-eta) times the base infinity voltage.
+
+For the one-unit source, total base current is <=1/1000 A. A two-edge star path has voltage spread <=2 Ron/1000; global KCL places the ideal zero-wire voltage inside that interval. The ideal transfer is at least 10000/(10000+16*1000)=.3846154. Relative base spread <=.000212414. Consequently all requested transfers have magnitude at least .99625078 of ideal (-.0326265 dB), and all unrequested transfers have magnitude <=.0035368065 of ideal (-49.0278 dB), throughout <=100 kHz in THIS model. This is not physical certification of Ron, G, C or package geometry. Superposition applies only in the actual linear small-signal domain; source aggregation and nonlinear contact behavior need their own use contract.
+
+Separate finite tests used 51 programs and three frequencies (153 cases), source terminal 0. Worst sampled intended ratio .99999299, unwanted .001174513. These samples neither establish the full class nor qualify a device; the analytic bound has an explicit different evidentiary role.
+
+5. SAME INVENTORY HISTORY AND LIMITS
+100 retargetings cycle the finite program list without replenishing stocks. 120 private .5 uL stocks total 60 uL metal/.36 g; initial private gas totals 2.4 mL. There are 1574 state changes, 789 forward and 785 return; one cell changes at most 34 times. Final displaced metal .48 uL plus 59.52 uL reservoirs equals initial stock. State-resolved integrated cell work .000951376 J includes nonzero final stored energy; the lower bound from minimum phase work is .000801491 J. It is not 100 physical successes, a reliability estimate, 1000 operations per cell, total process power, or a lifetime/renewal model. No metal/dielectric loss, residue or worn contact restoration is supplied.
+
+6. ACTUAL PRIMARY CONSTRUCTION SCOPES
+US7151331B2, https://patents.google.com/patent/US7151331B2/en : actual description lines137-291 read after a brief initial opening. It discloses gas/dielectric-pressure transfer to liquid-metal switching, isolated contact regions, finite compressed-gas resetting forces, stroke/volume and arc/contamination/aging considerations. Existing disclosure, not validation of this array, a life/cost point or novelty judgment. An apparent pressure/surface-tension unit issue was NOT imported; the cell laws above are independently introduced. No PDF, drawings or cited originals followed.
+
+Omron G6K maker sheet https://components.omron.com/system/files/2025-12/datasheet_pdf/K106-E1.pdf : actual initial main through lines602 read, including latching-family table and measurement footnotes. It supplies a small 5.2x6.5x10 mm, .7 g DPDT family with single-winding latching, 10 ms minimum set/reset pulse, initial 100 milliohm maximum contact resistance measured at 10 mA/1 V, and initial 1000 megohm insulation measured at 500 V. Rated-load electrical life and mechanical life have stated conditions. These are maker component scopes; no matched 16-terminal network, installed high-frequency curve, purchase quote or qualified 24h/endurance point was obtained. Figures were not visually read; no catalogue/component/price/contact followed.
+
+Khan--Eaker--Bowden--Dickey2014 DOI10.1073/pnas.1412227111, exact initial PNAS PDF main0-159 read at wired droplet/oxide-dependent interfacial activity scope, then first governing followup Timeout: SAME identity HELD, later main/Methods unread. Maddegalla2026 DOI10.1109/JMEMS.2026.3693133 exact initial author PDF0-189 read at oxide/adhesion, rough-glass thin-NaOH-film and explicitly actuation-only scope, then first governing followup403: SAME identity HELD, later rates/results unread. These do not supply the introduced interface point. All newly failed identities and prior holds are maintained outside scientist bodies; no alternate/version/provider recovery.
+
+7. UNRESOLVED PHYSICAL OPERATIONS
+Constructible independent private stocks; two stable conducting/disconnected geometries; selective ownership and return; usable contact surfaces after repeated writing; actual insulation in the motion-promoting medium; thermal/pressure compensation; full routing parasitics; meaningful diagnosis and persistent-fault restoration; manufacturing yield and full-cycle ordinary-comparator cost remain UNSUPPLIED. Compact latching relays already retain state without coil power, and a pressure-written liquid-metal relay is already disclosed. No novel device, useful platform, qualified hardware or whole advantage is established by this calculation.
