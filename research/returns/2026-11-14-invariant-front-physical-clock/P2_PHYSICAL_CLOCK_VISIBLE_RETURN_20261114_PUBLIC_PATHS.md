@@ -1,0 +1,1407 @@
+# P2 physical-clock predictive coarse-graining — visible return
+
+Captured 14 November 2026 in the existing Pro chat https://chatgpt.com/c/6af520d7-3fcc-83ec-8bf0-80e8531141ea. Exact issued question: research/returns/2026-11-14-invariant-front-physical-clock/P2_FULL_PREDICTIVE_COARSE_GRAINING_OF_RARE_PHYSICAL_DYNAMICS_FOUNDATIONAL_DISCOVERY_PRO_20261114.txt Visible DOM accessibility transcript of the complete final and expanded top-level activity, not native/server bytes; rendered mathematics may be duplicated or lose formatting. Nested analysis, reports, ZIP, source links and producer files not opened. No code executed or claims independently verified.
+
+    - button "Worked for 17m 6s" [expanded] [active]:
+      - generic: Worked for 17m 6s
+    - paragraph: Developed a local research strategy with stronger error controls
+    - paragraph: Constructed and validated an exact certifiable clock model scope
+    - generic: Searched the web
+    - paragraph: Computed exact front dynamics, passage times, probabilities, and scaling
+    - paragraph: Constructed front dynamics
+    - generic: Searched the web
+    - paragraph: Built and validated the front-clock Ising model with corrected rates
+    - paragraph: Built exact front dynamics
+    - paragraph: Computed rigorous interval bounds for Markov chain absorption and nucleation times
+    - paragraph: Used container tool
+    - paragraph: Constructed exact reductions
+    - paragraph: Estimated rare-event waiting times and checked rate calculations
+    - paragraph: Constructed an exact reduction
+    - paragraph: Compared 2D metastability extensions and packaged a verified HTML report
+    - paragraph: Computed probability interval and Poisson Chernoff bound at t=85.486 seconds
+    - paragraph: Updated rare-probability intervals and checked final output brackets
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analysis errored"
+    - generic: Analysis errored
+    - button "Analysis errored"
+    - generic: Analysis errored
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analysis errored"
+    - generic: Analysis errored
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analysis errored"
+    - generic: Analysis errored
+    - button "Analysis errored"
+    - generic: Analysis errored
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analysis errored"
+    - generic: Analysis errored
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - heading "ChatGPT said:" [level=4]
+    - heading "A predictive physics of slow change from fast local dynamics" [level=1]:
+      - strong: A predictive physics of slow change from fast local dynamics
+    - paragraph:
+      - strong: I found a constructive reduction that preserves the physical clock exactly for a growing class of cooperative interacting systems.
+      - text: It avoids both microscopic configuration enumeration and simulation of the rare waiting time.
+    - paragraph: "The central result is a reduction based on an invariant physical structure: a bounded number of moving interfaces. The reduced coordinates are derived from the local transition rules and initial preparation, rather than supplied as presumed slow variables."
+    - paragraph:
+      - text: "However, there is an important qualification:"
+      - strong: I have not solved the unrestricted two-dimensional Ising metastability problem.
+      - text: The strongest result applies to boundary-nucleated, single-front systems and their bounded-interface generalizations.
+    - paragraph: This is a substantive partial scientific result, not a claim of universal compression.
+    - 'heading "1. The central discovery: an invariant-interface representation" [level=2]':
+      - strong: "1. The central discovery: an invariant-interface representation"
+    - paragraph: "Consider a one-dimensional interacting spin system:"
+    - math:
+      - generic: E
+      - generic: (
+      - generic: σ
+      - generic: )
+      - generic: =
+      - generic: −
+      - generic: J
+      - generic: ∑
+      - generic: i
+      - generic: =
+      - generic: "1"
+      - generic: "N"
+      - generic: −
+      - generic: "1"
+      - generic: σ
+      - generic: i
+      - generic: σ
+      - generic: i
+      - generic: +
+      - generic: "1"
+      - generic: −
+      - generic: h
+      - generic: ∑
+      - generic: i
+      - generic: =
+      - generic: "1"
+      - generic: "N"
+      - generic: σ
+      - generic: i
+      - generic: .
+    - generic: E(σ) =
+    - text: −J
+    - generic: i=1
+    - generic: ∑
+    - generic: N−1
+    - text: σ
+    - generic: i
+    - text: σ
+    - generic: i+1
+    - text: −
+    - text: h
+    - generic: i=1
+    - generic: ∑
+    - generic: "N"
+    - text: σ
+    - generic: i
+    - text: .
+    - paragraph:
+      - text: Each spin takes values
+      - math:
+        - generic: −
+        - generic: "1"
+        - generic: ","
+        - generic: +
+        - generic: "1"
+      - generic: −1, +1
+      - text: .
+    - paragraph: "Use continuous-time heat-bath dynamics:"
+    - math:
+      - generic: r
+      - generic: i
+      - generic: (
+      - generic: σ
+      - generic: )
+      - generic: =
+      - generic: ν
+      - generic: "1"
+      - generic: +
+      - generic: exp
+      - generic: ⁡
+      - generic: (
+      - generic: β
+      - generic: Δ
+      - generic: i
+      - generic: E
+      - generic: )
+      - generic: .
+    - text: r
+    - generic: i
+    - text: (σ) =
+    - text: 1 + exp(β
+    - text: Δ
+    - generic: i
+    - text: E)
+    - generic: ν
+    - text: .
+    - paragraph: "I introduce one additional physical feature: a boundary-catalysed kinetic constraint."
+    - list:
+      - paragraph: Initially, all spins are negative.
+      - paragraph: The left boundary can nucleate the first positive spin.
+      - paragraph: Thereafter, only spins adjacent to the unique domain wall can change.
+      - paragraph: All other sites are inactive until the interface reaches them.
+    - paragraph: This is a local rule, not a global instruction to move a predetermined front.
+    - paragraph: The reachable configurations have the form
+    - math:
+      - generic: σ
+      - generic: (
+      - generic: "n"
+      - generic: )
+      - generic: =
+      - generic: (
+      - generic: +
+      - generic: ","
+      - generic: …
+      - generic: ","
+      - generic: +
+      - generic: ⏟
+      - generic: "n"
+      - generic: ","
+      - generic: −
+      - generic: ","
+      - generic: …
+      - generic: ","
+      - generic: −
+      - generic: ⏟
+      - generic: "N"
+      - generic: −
+      - generic: "n"
+      - generic: )
+      - generic: .
+    - text: σ
+    - generic: (n)
+    - text: =
+    - text: (
+    - generic: "n"
+    - generic: +, … , +
+    - text: ","
+    - generic: N−n
+    - generic: −, … , −
+    - text: ).
+    - paragraph:
+      - text: There are only
+      - math:
+        - generic: "N"
+        - generic: +
+        - generic: "1"
+      - generic: N +
+      - generic: "1"
+      - text: such states.
+    - paragraph:
+      - strong: The microscopic-to-interface reduction
+    - paragraph: MICROSCOPIC REPRESENTATION
+    - paragraph:
+      - math:
+        - generic: "2"
+        - generic: "N"
+      - text: "2"
+      - generic: "N"
+      - text: possible configurations
+    - paragraph: Local spins, interactions and transition rules
+    - paragraph: Prove closure under the local transition rule
+    - paragraph: EXACT REACHABLE REPRESENTATION
+    - paragraph:
+      - math:
+        - generic: "N"
+        - generic: +
+        - generic: "1"
+      - generic: N +
+      - generic: "1"
+      - text: interface positions
+    - paragraph: All failed advances, retreats and physical waiting times retained
+    - paragraph: This is not ordinary approximate projection. Within the declared model, the mapping from reachable microscopic states to interface positions is one-to-one.
+    - paragraph: "The reduction can be established by induction:"
+    - list:
+      - paragraph: The initial configuration has no positive spins.
+      - paragraph: Only the boundary seed can initiate a positive domain.
+      - paragraph: Once a positive domain exists, only its two interface-adjacent spins can flip.
+      - paragraph: Either flip moves the same interface one position.
+      - paragraph: No transition creates a second interface.
+    - paragraph: The exponential microscopic state space is therefore never explored.
+    - heading "2. The reduced generator is constructed from the physical rates" [level=2]:
+      - strong: 2. The reduced generator is constructed from the physical rates
+    - paragraph:
+      - text: For the interface at position
+      - math:
+        - generic: "n"
+      - generic: "n"
+      - text: ", the reduced process has two possible transitions:"
+    - math:
+      - generic: "n"
+      - generic: →
+      - generic: "n"
+      - generic: +
+      - generic: "1"
+      - generic: ","
+      - generic: "n"
+      - generic: →
+      - generic: "n"
+      - generic: −
+      - generic: "1."
+    - generic: n →
+    - generic: n +
+    - generic: 1, n →
+    - generic: n −
+    - generic: "1."
+    - paragraph:
+      - text: Write their rates as
+      - math:
+        - generic: λ
+        - generic: "n"
+        - generic: ","
+        - generic: μ
+        - generic: "n"
+      - text: λ
+      - generic: "n"
+      - text: ","
+      - text: μ
+      - generic: "n"
+      - text: .
+    - paragraph:
+      - text: For the specified Hamiltonian, with
+      - math:
+        - generic: h
+        - generic: <
+        - generic: "0"
+      - generic: h <
+      - generic: "0"
+      - text: ":"
+    - math:
+      - generic: λ
+      - generic: "0"
+      - generic: =
+      - generic: ν
+      - generic: "1"
+      - generic: +
+      - generic: exp
+      - generic: ⁡
+      - generic: "["
+      - generic: β
+      - generic: (
+      - generic: "2"
+      - generic: J
+      - generic: −
+      - generic: "2"
+      - generic: h
+      - generic: )
+      - generic: "]"
+      - generic: ","
+    - text: λ
+    - generic: "0"
+    - text: =
+    - generic: 1 + exp[β(2J − 2h)]
+    - generic: ν
+    - text: ","
+    - math:
+      - generic: λ
+      - generic: "n"
+      - generic: =
+      - generic: ν
+      - generic: "1"
+      - generic: +
+      - generic: exp
+      - generic: ⁡
+      - generic: (
+      - generic: −
+      - generic: "2"
+      - generic: β
+      - generic: h
+      - generic: )
+      - generic: ","
+      - generic: "n"
+      - generic: ≥
+      - generic: "1"
+      - generic: ","
+    - text: λ
+    - generic: "n"
+    - text: =
+    - generic: 1 + exp(−2βh)
+    - generic: ν
+    - text: ", n ≥"
+    - generic: 1,
+    - math:
+      - generic: μ
+      - generic: "1"
+      - generic: =
+      - generic: ν
+      - generic: "1"
+      - generic: +
+      - generic: exp
+      - generic: ⁡
+      - generic: "["
+      - generic: β
+      - generic: (
+      - generic: −
+      - generic: "2"
+      - generic: J
+      - generic: +
+      - generic: "2"
+      - generic: h
+      - generic: )
+      - generic: "]"
+      - generic: ","
+    - text: μ
+    - generic: "1"
+    - text: =
+    - generic: 1 + exp[β(−2J + 2h)]
+    - generic: ν
+    - text: ","
+    - math:
+      - generic: μ
+      - generic: "n"
+      - generic: =
+      - generic: ν
+      - generic: "1"
+      - generic: +
+      - generic: exp
+      - generic: ⁡
+      - generic: (
+      - generic: "2"
+      - generic: β
+      - generic: h
+      - generic: )
+      - generic: ","
+      - generic: "n"
+      - generic: ≥
+      - generic: "2."
+    - text: μ
+    - generic: "n"
+    - text: =
+    - generic: 1 + exp(2βh)
+    - generic: ν
+    - text: ", n ≥"
+    - generic: "2."
+    - paragraph: "The special boundary retreat rate matters: removing a one-spin boundary nucleus eliminates the domain wall, whereas retreating an established front merely moves it."
+    - paragraph: This construction retains the microscopic finite-temperature heat-bath rates. It does not substitute deterministic front growth.
+    - heading "The physical clock" [level=3]:
+      - strong: The physical clock
+    - paragraph:
+      - text: Define
+      - math:
+        - generic: d
+        - generic: "n"
+      - text: d
+      - generic: "n"
+      - text: as the expected time to reach
+      - math:
+        - generic: "n"
+        - generic: +
+        - generic: "1"
+      - generic: n +
+      - generic: "1"
+      - text: ", starting at"
+      - math:
+        - generic: "n"
+      - generic: "n"
+      - text: .
+    - paragraph: "First-step analysis gives:"
+    - math:
+      - generic: d
+      - generic: "0"
+      - generic: =
+      - generic: "1"
+      - generic: λ
+      - generic: "0"
+      - generic: ","
+    - text: d
+    - generic: "0"
+    - text: =
+    - text: λ
+    - generic: "0"
+    - generic: "1"
+    - text: ","
+    - math:
+      - generic: d
+      - generic: "n"
+      - generic: =
+      - generic: "1"
+      - generic: +
+      - generic: μ
+      - generic: "n"
+      - generic: d
+      - generic: "n"
+      - generic: −
+      - generic: "1"
+      - generic: λ
+      - generic: "n"
+    - text: d
+    - generic: "n"
+    - text: =
+    - text: λ
+    - generic: "n"
+    - text: 1 +
+    - text: μ
+    - generic: "n"
+    - text: d
+    - generic: n−1
+    - paragraph: and therefore
+    - math:
+      - generic: E
+      - generic: "0"
+      - generic: "["
+      - generic: τ
+      - generic: m
+      - generic: "]"
+      - generic: =
+      - generic: ∑
+      - generic: "n"
+      - generic: =
+      - generic: "0"
+      - generic: m
+      - generic: −
+      - generic: "1"
+      - generic: d
+      - generic: "n"
+      - generic: .
+    - text: E
+    - generic: "0"
+    - text: "["
+    - text: τ
+    - generic: m
+    - text: "] ="
+    - generic: n=0
+    - generic: ∑
+    - generic: m−1
+    - text: d
+    - generic: "n"
+    - text: .
+    - paragraph:
+      - text: This is an
+      - math:
+        - generic: O
+        - generic: (
+        - generic: m
+        - generic: )
+      - generic: O(m)
+      - text: calculation.
+    - paragraph:
+      - text: Importantly, the term
+      - math:
+        - generic: μ
+        - generic: "n"
+        - generic: d
+        - generic: "n"
+        - generic: −
+        - generic: "1"
+      - text: μ
+      - generic: "n"
+      - text: d
+      - generic: n−1
+      - text: accounts for unsuccessful retreats and the time required to return to the previous interface position.
+    - paragraph: The physical clock is not reset when a failed attempt occurs.
+    - heading "3. The complete timing distribution" [level=2]:
+      - strong: 3. The complete timing distribution
+    - paragraph: The mean is not enough. I constructed the first-passage Laplace transform.
+    - paragraph: Let
+    - math:
+      - generic: g
+      - generic: "n"
+      - generic: (
+      - generic: s
+      - generic: )
+      - generic: =
+      - generic: E
+      - generic: "n"
+      - generic: "["
+      - generic: e
+      - generic: −
+      - generic: s
+      - generic: τ
+      - generic: "n"
+      - generic: +
+      - generic: "1"
+      - generic: "]"
+      - generic: .
+    - text: g
+    - generic: "n"
+    - text: (s) =
+    - text: E
+    - generic: "n"
+    - text: "["
+    - text: e
+    - text: −s
+    - text: τ
+    - generic: n+1
+    - text: "]."
+    - paragraph: Conditioning on the first transition gives
+    - math:
+      - generic: g
+      - generic: "0"
+      - generic: (
+      - generic: s
+      - generic: )
+      - generic: =
+      - generic: λ
+      - generic: "0"
+      - generic: s
+      - generic: +
+      - generic: λ
+      - generic: "0"
+      - generic: ","
+    - text: g
+    - generic: "0"
+    - text: (s) =
+    - text: s +
+    - text: λ
+    - generic: "0"
+    - text: λ
+    - generic: "0"
+    - text: ","
+    - paragraph: and
+    - math:
+      - generic: g
+      - generic: "n"
+      - generic: (
+      - generic: s
+      - generic: )
+      - generic: =
+      - generic: λ
+      - generic: "n"
+      - generic: s
+      - generic: +
+      - generic: λ
+      - generic: "n"
+      - generic: +
+      - generic: μ
+      - generic: "n"
+      - generic: −
+      - generic: μ
+      - generic: "n"
+      - generic: g
+      - generic: "n"
+      - generic: −
+      - generic: "1"
+      - generic: (
+      - generic: s
+      - generic: )
+      - generic: .
+    - text: g
+    - generic: "n"
+    - text: (s) =
+    - text: s +
+    - text: λ
+    - generic: "n"
+    - text: +
+    - text: μ
+    - generic: "n"
+    - text: −
+    - text: μ
+    - generic: "n"
+    - text: g
+    - generic: n−1
+    - text: (s)
+    - text: λ
+    - generic: "n"
+    - text: .
+    - paragraph: By the strong Markov property, the complete first-passage transform is
+    - math:
+      - generic: F
+      - generic: "0"
+      - generic: (
+      - generic: s
+      - generic: )
+      - generic: =
+      - generic: ∏
+      - generic: "n"
+      - generic: =
+      - generic: "0"
+      - generic: m
+      - generic: −
+      - generic: "1"
+      - generic: g
+      - generic: "n"
+      - generic: (
+      - generic: s
+      - generic: )
+      - generic: .
+    - text: F
+    - generic: "0"
+    - text: (s) =
+    - generic: n=0
+    - generic: ∏
+    - generic: m−1
+    - text: g
+    - generic: "n"
+    - text: (s).
+    - paragraph: This is an exact continued-fraction construction for the selected model.
+    - paragraph: It retains all intermediate residence times, including those in repeatedly revisited states.
+    - paragraph: "For the timing CDF, the reduced generator is a finite phase-type generator. The probability is obtained from its matrix exponential:"
+    - math:
+      - generic: P
+      - generic: (
+      - generic: τ
+      - generic: m
+      - generic: ≤
+      - generic: t
+      - generic: )
+      - generic: =
+      - generic: "1"
+      - generic: −
+      - generic: e
+      - generic: "0"
+      - generic: ⊤
+      - generic: e
+      - generic: Q
+      - generic: m
+      - generic: t
+      - generic: "1."
+    - text: P(
+    - text: τ
+    - generic: m
+    - text: ≤
+    - generic: t) =
+    - generic: 1 −
+    - text: e
+    - generic: "0"
+    - generic: ⊤
+    - text: e
+    - text: Q
+    - generic: m
+    - text: t
+    - text: "1."
+    - paragraph: I also implemented positive uniformization, so small probabilities can be calculated without subtracting two nearly equal survival probabilities.
+    - heading "4. Executed numerical results" [level=2]:
+      - strong: 4. Executed numerical results
+    - generic: Numerical invariant verified
+    - paragraph: The first microscopic verification used an eight-site chain.
+    - table:
+      - rowgroup:
+        - row "Test Result":
+          - columnheader "Test":
+            - paragraph: Test
+          - columnheader "Result":
+            - paragraph: Result
+        - row "Full microscopic configurations 256":
+          - cell "Full microscopic configurations":
+            - paragraph: Full microscopic configurations
+          - cell "256":
+            - paragraph: "256"
+        - row "Reachable configurations 9":
+          - cell "Reachable configurations":
+            - paragraph: Reachable configurations
+          - cell "9":
+            - paragraph: "9"
+        - row "Predicted interface states 9":
+          - cell "Predicted interface states":
+            - paragraph: Predicted interface states
+          - cell "9":
+            - paragraph: "9"
+        - row "Exact prefix invariant Passed":
+          - cell "Exact prefix invariant":
+            - paragraph: Exact prefix invariant
+          - cell "Passed":
+            - paragraph: Passed
+        - row "Maximum microscopic/reduced rate discrepancy":
+          - cell "Maximum microscopic/reduced rate discrepancy":
+            - paragraph: Maximum microscopic/reduced rate discrepancy
+          - cell:
+            - paragraph:
+              - math:
+                - generic: "3.33"
+                - generic: ×
+                - generic: "10"
+                - generic: −
+                - generic: "16"
+              - generic: 3.33 ×
+              - text: "1"
+              - text: "0"
+              - generic: −16
+    - paragraph: "The reference timing calculation used:"
+    - math:
+      - generic: β
+      - generic: =
+      - generic: "2"
+      - generic: ","
+      - generic: J
+      - generic: =
+      - generic: "1"
+      - generic: ","
+      - generic: h
+      - generic: =
+      - generic: −
+      - generic: "0.1"
+      - generic: ","
+      - generic: ν
+      - generic: =
+      - generic: "1"
+      - generic: s
+      - generic: −
+      - generic: "1"
+      - generic: ","
+    - generic: β =
+    - generic: 2, J =
+    - generic: 1, h =
+    - generic: −0.1, ν =
+    - text: "1"
+    - text: s
+    - generic: −1
+    - text: ","
+    - paragraph:
+      - text: with an open chain, all-minus initial condition and target
+      - math:
+        - generic: m
+        - generic: =
+        - generic: "20"
+      - generic: m =
+      - generic: "20"
+      - text: .
+    - paragraph: MEAN FIRST-PASSAGE TIME
+    - heading "854,861.68 s" [level=1]:
+      - strong: 854,861.68 s
+    - paragraph: Approximately 9.89 days
+    - paragraph:
+      - strong: Computation
+    - list:
+      - paragraph:
+        - text: "Direct recurrence:"
+        - math:
+          - generic: "854861.682562842"
+        - generic: "854861.682562842"
+        - text: s
+      - paragraph:
+        - text: "Stable log-domain recurrence:"
+        - math:
+          - generic: "854861.682562843"
+        - generic: "854861.682562843"
+        - text: s
+      - paragraph:
+        - text: "Difference: approximately"
+        - math:
+          - generic: "1.3"
+          - generic: ×
+          - generic: "10"
+          - generic: −
+          - generic: "9"
+        - generic: 1.3 ×
+        - text: "1"
+        - text: "0"
+        - generic: −9
+        - text: s
+    - paragraph: The log-domain calculation is important because the mean becomes astronomically large as the target grows.
+    - heading "Why a single exponential is insufficient" [level=3]:
+      - strong: Why a single exponential is insufficient
+    - paragraph: At the same reference parameters, I compared the complete timing distribution against an exponential fitted to the exact mean.
+    - table:
+      - rowgroup:
+        - row "Time / mean Actual first-passage probability Mean-matched exponential":
+          - columnheader "Time / mean":
+            - paragraph: Time / mean
+          - columnheader "Actual first-passage probability":
+            - paragraph: Actual first-passage probability
+          - columnheader "Mean-matched exponential":
+            - paragraph: Mean-matched exponential
+        - row "0.001 0.000913934 0.000999500":
+          - cell "0.001":
+            - paragraph: "0.001"
+          - cell "0.000913934":
+            - paragraph: "0.000913934"
+          - cell "0.000999500":
+            - paragraph: "0.000999500"
+        - row "0.01 0.00986613 0.00995017":
+          - cell "0.01":
+            - paragraph: "0.01"
+          - cell "0.00986613":
+            - paragraph: "0.00986613"
+          - cell "0.00995017":
+            - paragraph: "0.00995017"
+        - row "0.1 0.0950928 0.0951626":
+          - cell "0.1":
+            - paragraph: "0.1"
+          - cell "0.0950928":
+            - paragraph: "0.0950928"
+          - cell "0.0951626":
+            - paragraph: "0.0951626"
+        - row "0.5 0.393443 0.393469":
+          - cell "0.5":
+            - paragraph: "0.5"
+          - cell "0.393443":
+            - paragraph: "0.393443"
+          - cell "0.393469":
+            - paragraph: "0.393469"
+        - row "1 0.632120559 0.632120559":
+          - cell "1":
+            - paragraph: "1"
+          - cell "0.632120559":
+            - paragraph: "0.632120559"
+          - cell "0.632120559":
+            - paragraph: "0.632120559"
+        - row "2 0.864676 0.864665":
+          - cell "2":
+            - paragraph: "2"
+          - cell "0.864676":
+            - paragraph: "0.864676"
+          - cell "0.864665":
+            - paragraph: "0.864665"
+    - paragraph:
+      - text: At 0.001 times the mean, the exponential approximation overestimates the actual probability by approximately
+      - strong: 9.36%
+      - text: .
+    - paragraph: The difference becomes small near the mean, but that does not justify using an exponential distribution for every queried horizon.
+    - heading "5. Two-sided error control for a small probability" [level=2]:
+      - strong: 5. Two-sided error control for a small probability
+    - paragraph: I also executed an interval-arithmetic uniformization calculation.
+    - paragraph: For a query at
+    - math:
+      - generic: t
+      - generic: =
+      - generic: "85.4861682562842"
+      - generic: s
+      - generic: e
+      - generic: c
+      - generic: o
+      - generic: "n"
+      - generic: d
+      - generic: s
+      - generic: ","
+    - generic: t =
+    - text: "85.4861682562842"
+    - generic: seconds
+    - text: ","
+    - paragraph: the probability is approximately
+    - math:
+      - generic: P
+      - generic: (
+      - generic: τ
+      - generic: "20"
+      - generic: ≤
+      - generic: t
+      - generic: )
+      - generic: =
+      - generic: "2.49887901"
+      - generic: ×
+      - generic: "10"
+      - generic: −
+      - generic: "5"
+      - generic: .
+    - text: P(
+    - text: τ
+    - generic: "20"
+    - text: ≤
+    - generic: t) =
+    - generic: 2.49887901 ×
+    - text: "1"
+    - text: "0"
+    - generic: −5
+    - text: .
+    - paragraph: "The calculation uses:"
+    - list:
+      - paragraph:
+        - text: Uniformization rate
+        - math:
+          - generic: Λ
+          - generic: =
+          - generic: "1.4"
+          - generic: s
+          - generic: −
+          - generic: "1"
+        - generic: Λ =
+        - text: "1.4"
+        - text: s
+        - generic: −1
+        - text: .
+      - paragraph: 300 retained Poisson terms.
+      - paragraph: 50-digit interval arithmetic.
+      - paragraph: Nonnegative transition probabilities.
+      - paragraph: A Chernoff upper bound on the omitted Poisson tail.
+    - paragraph:
+      - strong: Calculated probability enclosure
+    - paragraph: Lower bound
+    - paragraph:
+      - code: "0.00002498879009982924047517987386041217974342450622856156223"
+    - paragraph: Upper bound before the omitted-tail allowance
+    - paragraph:
+      - code: "0.00002498879009982924047517987386041217974342450622864072233"
+    - paragraph:
+      - strong: Omitted Poisson-tail upper bound
+    - generic: 1.6 × 10⁻⁴²
+    - paragraph:
+      - strong: Relative bracket width
+      - strong: Below 6.5 × 10⁻³⁸
+    - paragraph:
+      - text: This is a substantially stronger result than merely obtaining an absolute error smaller than
+      - math:
+        - generic: "10"
+        - generic: −
+        - generic: "5"
+      - text: "1"
+      - text: "0"
+      - generic: −5
+      - text: . The positive-series construction resolves the small event probability directly.
+    - paragraph: The tail bound is conservative; a production implementation should also outward-round its evaluation and propagate input-rate uncertainty.
+    - heading "6. The reduction survives growing system size" [level=2]:
+      - strong: 6. The reduction survives growing system size
+    - paragraph: The more consequential result is the scaling of the mean.
+    - paragraph: "For the same negative-field parameters:"
+    - table:
+      - rowgroup:
+        - row "Target interface position , seconds":
+          - columnheader "Target interface position":
+            - paragraph: Target interface position
+          - columnheader ", seconds":
+            - paragraph:
+              - math:
+                - generic: log
+                - generic: ⁡
+                - generic: "10"
+                - generic: E
+                - generic: "["
+                - generic: τ
+                - generic: "]"
+              - generic: log
+              - generic: "10"
+              - text: E[τ]
+              - text: ", seconds"
+        - row "20 5.932":
+          - cell "20":
+            - paragraph: "20"
+          - cell "5.932":
+            - paragraph: "5.932"
+        - row "50 11.144":
+          - cell "50":
+            - paragraph: "50"
+          - cell "11.144":
+            - paragraph: "11.144"
+        - row "100 19.830":
+          - cell "100":
+            - paragraph: "100"
+          - cell "19.830":
+            - paragraph: "19.830"
+        - row "200 37.201":
+          - cell "200":
+            - paragraph: "200"
+          - cell "37.201":
+            - paragraph: "37.201"
+        - row "500 89.317":
+          - cell "500":
+            - paragraph: "500"
+          - cell "89.317":
+            - paragraph: "89.317"
+        - row "1,000 176.176":
+          - cell "1,000":
+            - paragraph: 1,000
+          - cell "176.176":
+            - paragraph: "176.176"
+        - row "5,000 871.047":
+          - cell "5,000":
+            - paragraph: 5,000
+          - cell "871.047":
+            - paragraph: "871.047"
+    - paragraph:
+      - text: At a target position of 5,000, the mean is on the order of
+      - math:
+        - generic: "10"
+        - generic: "871"
+      - text: "1"
+      - text: "0"
+      - generic: "871"
+      - text: seconds.
+    - paragraph: Direct trajectory simulation is not a meaningful way to estimate that waiting time.
+    - paragraph: The log-domain recurrence still needs only 5,000 iterations.
+    - paragraph:
+      - text: "This is the central computational gain:"
+      - strong: the work grows with the number of interface positions, not the physical waiting time
+      - text: .
+    - heading "Controllable local interactions" [level=3]:
+      - strong: Controllable local interactions
+    - paragraph: The same recurrence can be differentiated.
+    - paragraph:
+      - text: For a parameter
+      - math:
+        - generic: θ
+      - generic: θ
+      - text: ","
+    - math:
+      - generic: d
+      - generic: "n"
+      - generic: ′
+      - generic: =
+      - generic: μ
+      - generic: "n"
+      - generic: ′
+      - generic: d
+      - generic: "n"
+      - generic: −
+      - generic: "1"
+      - generic: +
+      - generic: μ
+      - generic: "n"
+      - generic: d
+      - generic: "n"
+      - generic: −
+      - generic: "1"
+      - generic: ′
+      - generic: λ
+      - generic: "n"
+      - generic: −
+      - generic: d
+      - generic: "n"
+      - generic: λ
+      - generic: "n"
+      - generic: ′
+      - generic: λ
+      - generic: "n"
+      - generic: .
+    - text: d
+    - generic: "n"
+    - generic: ′
+    - text: =
+    - text: λ
+    - generic: "n"
+    - text: μ
+    - generic: "n"
+    - generic: ′
+    - text: d
+    - generic: n−1
+    - text: +
+    - text: μ
+    - generic: "n"
+    - text: d
+    - generic: n−1
+    - generic: ′
+    - text: −
+    - text: d
+    - generic: "n"
+    - text: λ
+    - generic: "n"
+    - text: λ
+    - generic: "n"
+    - generic: ′
+    - text: .
+    - paragraph: This gives sensitivities without retraining a reduced model.
+    - paragraph:
+      - text: For
+      - math:
+        - generic: h
+        - generic: =
+        - generic: −
+        - generic: "0.1"
+      - generic: h =
+      - generic: −0.1
+      - text: ", finite-difference checks produced:"
+    - table:
+      - rowgroup:
+        - row "Target":
+          - columnheader "Target":
+            - paragraph: Target
+          - columnheader:
+            - paragraph:
+              - math:
+                - generic: d
+                - generic: log
+                - generic: ⁡
+                - generic: E
+                - generic: "["
+                - generic: τ
+                - generic: "]"
+                - generic: /
+                - generic: d
+                - generic: h
+              - text: d
+              - generic: log
+              - text: E[τ]/dh
+        - row "20 −69.87":
+          - cell "20":
+            - paragraph: "20"
+          - cell "−69.87":
+            - paragraph: −69.87
+        - row "50 −189.83":
+          - cell "50":
+            - paragraph: "50"
+          - cell "−189.83":
+            - paragraph: −189.83
+        - row "100 −389.83":
+          - cell "100":
+            - paragraph: "100"
+          - cell "−389.83":
+            - paragraph: −389.83
+    - paragraph: The response to the local field grows with the size of the cooperative target.
+    - paragraph:
+      - text: The same front representation also handles positive field, where the boundary nucleus is rare but subsequent front growth is favorable. For
+      - math:
+        - generic: h
+        - generic: =
+        - generic: +
+        - generic: "0.1"
+      - generic: h =
+      - generic: "+0.1"
+      - text: ", the calculated means at targets 20, 50 and 100 are approximately 309, 461 and 714 seconds."
+    - paragraph: This is a useful distinction between boundary-nucleated metastable escape and an adverse collective threshold crossing.
+    - heading "7. The general constructive principle" [level=2]:
+      - strong: 7. The general constructive principle
+    - paragraph: The result suggests a broader class than the particular Ising chain.
+    - paragraph:
+      - text: Consider local continuous-time Markov systems whose transition rules preserve configurations with at most
+      - math:
+        - generic: K
+      - generic: K
+      - text: interfaces, each having a finite number of internal local states.
+    - paragraph: "If:"
+    - list:
+      - paragraph: The initial law is supported on this invariant configuration family.
+      - paragraph: Local transitions cannot create additional interfaces beyond the declared bound.
+      - paragraph: Interface motion and local state changes are computable from finite-range interactions.
+      - paragraph: The target sets can be identified from the interface representation.
+    - paragraph: then the microscopic system can be represented by interface positions and their internal states.
+    - paragraph:
+      - text: For fixed
+      - math:
+        - generic: K
+      - generic: K
+      - text: ", a typical state-count bound is"
+    - math:
+      - generic: S
+      - generic: "N"
+      - generic: =
+      - generic: O
+      - generic: (
+      - generic: "N"
+      - generic: "2"
+      - generic: K
+      - generic: q
+      - generic: O
+      - generic: (
+      - generic: K
+      - generic: )
+      - generic: )
+      - generic: ","
+    - text: S
+    - generic: "N"
+    - text: =
+    - text: O(
+    - text: "N"
+    - generic: 2K
+    - text: q
+    - generic: O(K)
+    - text: ),
+    - paragraph:
+      - text: where
+      - math:
+        - generic: q
+      - generic: q
+      - text: is the finite local-state alphabet.
+    - paragraph:
+      - text: For one front, the representation is simply
+      - math:
+        - generic: "N"
+        - generic: +
+        - generic: "1"
+      - generic: N +
+      - generic: "1"
+      - text: .
+    - table:
+      - rowgroup:
+        - row "Operation Complexity":
+          - columnheader "Operation":
+            - paragraph: Operation
+          - columnheader "Complexity":
+            - paragraph: Complexity
+        - row "Verify one-front closure Local transition inspection and induction":
+          - cell "Verify one-front closure":
+            - paragraph: Verify one-front closure
+          - cell "Local transition inspection and induction":
+            - paragraph: Local transition inspection and induction
+        - row "Construct reduced rates":
+          - cell "Construct reduced rates":
+            - paragraph: Construct reduced rates
+          - cell:
+            - paragraph:
+              - math:
+                - generic: O
+                - generic: (
+                - generic: "N"
+                - generic: )
+              - generic: O(N)
+        - row "Compute mean FPT":
+          - cell "Compute mean FPT":
+            - paragraph: Compute mean FPT
+          - cell:
+            - paragraph:
+              - math:
+                - generic: O
+                - generic: (
+                - generic: "N"
+                - generic: )
+              - generic: O(N)
+        - row "Compute parameter sensitivities per parameter":
+          - cell "Compute parameter sensitivities":
+            - paragraph: Compute parameter sensitivities
+          - cell "per parameter":
+            - paragraph:
+              - math:
+                - generic: O
+                - generic: (
+                - generic: "N"
+                - generic: )
+              - generic: O(N)
+              - text: per parameter
+        - row "Dense interval timing solve":
+          - cell "Dense interval timing solve":
+            - paragraph: Dense interval timing solve
+          - cell:
+            - paragraph:
+              - math:
+                - generic: O
+                - generic: (
+                - generic: "N"
+                - generic: "3"
+                - generic: log
+                - generic: ⁡
+                - generic: (
+                - generic: Λ
+                - generic: t
+                - generic: )
+                - generic: )
+              - text: O(
+              - text: "N"
+              - generic: "3"
+              - generic: log
+              - text: (Λt))
+        - row "Store the reduced model":
+          - cell "Store the reduced model":
+            - paragraph: Store the reduced model
+          - cell:
+            - paragraph:
+              - math:
+                - generic: O
+                - generic: (
+                - generic: "N"
+                - generic: )
+              - generic: O(N)
+    - paragraph:
+      - text: For longer horizons, positive-semigroup binary powering can replace a uniformization sum proportional to
+      - math:
+        - generic: Λ
+        - generic: t
+      - generic: Λt
+      - text: . That is a further numerical implementation of the exact reduced generator, not a new physical assumption.
+    - paragraph: The method is exact because the interface description is an invariant representation of the reachable microscopic states.
+    - paragraph: It does not assume that locality alone creates a small state space.
+    - heading "8. Why this does not solve two-dimensional Ising nucleation" [level=2]:
+      - strong: 8. Why this does not solve two-dimensional Ising nucleation
+    - paragraph: This distinction is essential.
+    - paragraph: "The supplied two-dimensional Ising problem permits:"
+    - list:
+      - paragraph: Nucleation throughout the lattice.
+      - paragraph: Multiple simultaneous droplets.
+      - paragraph: Different droplet shapes.
+      - paragraph: Failed subcritical droplets.
+      - paragraph: Shape-dependent interface motion.
+      - paragraph: Interactions between growing droplets.
+    - paragraph: There is no single-interface invariant.
+    - paragraph:
+      - text: Cirillo and Lebowitz demonstrated that free boundaries change the critical droplet and can favor corner nucleation. Their results include low-temperature asymptotics and fixed-parameter Monte Carlo, but do not provide the full finite-temperature timing law for arbitrary growing square lattices.
+      - button "cmsr.rutgers.edu":
+        - generic: cmsr.rutgers.edu
+    - paragraph:
+      - text: The 2025 review by Jacquier discusses the critical configurations, energy barriers and potential-theoretic methods used in more general Ising metastability. In particular, obtaining the prefactor through capacity calculations can require substantial knowledge of the critical configurations.
+      - button "Springer Nature Link":
+        - generic: Springer Nature Link
+    - paragraph: A plausible next extension would be to construct a finite-temperature nucleation kernel by enumerating all local configurations within a patch large enough to contain the critical droplet, then coupling that kernel to a growing-front model.
+    - paragraph: But the patch state count grows exponentially with its area, and multiple-nucleus interactions require a separate error bound. I have not constructed those bounds.
+    - paragraph: The original unconstrained two-dimensional Ising challenge therefore remains open.
+    - heading "9. Comparison with existing rare-event methods" [level=2]:
+      - strong: 9. Comparison with existing rare-event methods
+    - paragraph:
+      - text: The relevant contemporary comparator is Strahan and Gingrich's 2026 work. It combines importance sampling, Markov state models and iterative reweighting to estimate rare-event sensitivities.
+      - button "arxiv.org +1":
+        - generic: arxiv.org
+        - generic: "+1"
+    - paragraph: Their approach is broader than this construction. It can be applied where no exact interface invariant exists, but requires fragment data, model construction and reweighting validation.
+    - paragraph: "The present result has a narrower advantage:"
+    - list:
+      - paragraph: No conditional sampler.
+      - paragraph: No supplied committor.
+      - paragraph: No rare-event training trajectories.
+      - paragraph: No fitted transition matrix.
+      - paragraph: No lag-time approximation.
+      - paragraph: No lost residence time.
+      - paragraph: No exponential waiting-time simulation.
+    - paragraph: It does not replace trajectory splitting, weighted ensembles or potential theory for unconstrained spatial systems.
+    - heading "10. Deliverables and scientific status" [level=2]:
+      - strong: 10. Deliverables and scientific status
+    - paragraph:
+      - strong: Executable research package
+    - paragraph:
+      - link "Open Download the complete model, results and reproduction instructions":
+        - text: Download the complete model, results and reproduction
+        - text: instructions
+    - paragraph:
+      - strong: Full engineering and mathematical report
+    - paragraph:
+      - link "Open Open the research report":
+        - text: Open the research
+        - text: report
+    - paragraph: "The package includes:"
+    - list:
+      - paragraph: Full microscopic reachability verification.
+      - paragraph: Reduced-generator construction.
+      - paragraph: Stable mean first-passage recurrence.
+      - paragraph: Laplace-transform calculation.
+      - paragraph: High-precision timing-law calculations.
+      - paragraph: Interval-uniformization calculation.
+      - paragraph: Interaction sensitivity.
+      - paragraph: Growing-system scaling.
+      - paragraph: Reproduction instructions and explicit limitations.
+    - heading "Final assessment" [level=3]:
+      - strong: Final assessment
+    - paragraph:
+      - text: I would retain the
+      - strong: bounded-interface invariant reduction
+      - text: as the strongest result from this investigation.
+    - paragraph: "It provides a concrete answer to an important part of your question: when local cooperative dynamics preserve a compact physical interface, the full physical clock can be computed without enumerating microscopic configurations or waiting for the rare transition."
+    - paragraph: But I would not claim that this solves general predictive physics of slow change.
+    - paragraph: The unresolved scientific challenge is to discover an equally constructive representation for systems in which critical droplets, competing nucleation events and changing interfaces emerge dynamically rather than being constrained to a fixed number of fronts.
+    - paragraph:
+      - strong: "That is the next genuine frontier: earning a compact representation of the collective transition mechanism from local microscopic physics, while retaining its complete stochastic clock."
