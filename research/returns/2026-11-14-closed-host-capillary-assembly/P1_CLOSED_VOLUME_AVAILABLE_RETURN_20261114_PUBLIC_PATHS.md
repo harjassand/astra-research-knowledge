@@ -1,0 +1,1250 @@
+# P1 closed-volume fabrication — available visible return
+
+Observed 14 November 2026 in same Pro chat https://chatgpt.com/c/6af51fe2-b75c-83ec-917e-28235e2143c3 after the once-only continuation. Original exact question: research/returns/2026-11-14-closed-host-capillary-assembly/P1_FULL_CLOSED_VOLUME_FUNCTIONAL_FABRICATION_AND_RENEWAL_INVENTION_PRO_20261114.txt The earlier unfinished visible activity is preserved in P1_CLOSED_VOLUME_PRE_RECOVERY_VISIBLE_20261114.txt. Below: expanded top-level activity and rendered final as visible DOM accessibility transcript, not native/server text. Equations and tables may be fragmented or duplicated; some source URLs may be missing. No nested private reasoning, linked files, source recovery, or producer code execution. Claims have not been independently verified.
+
+    - button "Worked for 9m 30s" [expanded] [active]:
+      - generic: Worked for 9m 30s
+    - paragraph: Designed internal channels and refined tubing layouts
+    - generic: Searched the web
+    - paragraph: Checked pressure sizing and developed serviceable assemblies
+    - paragraph: Calculated tubing flow ratios and pressure drops
+    - paragraph: Resolved splitter fabrication, sizing, and testable specifications
+    - generic: Searched the web
+    - paragraph: Designed a reconfigurable microfluidic host
+    - paragraph: Designed and refined microfluidic assembly layouts and operating specifications
+    - paragraph: Refined the apparatus through microfluidic routing and assembly assessment
+    - generic: Searched the web
+    - paragraph: Developed and designed microfluidic routing
+    - paragraph: Computed capillary network design and qualification plan
+    - button "Analysis paused"
+    - generic: Analysis paused
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analysis errored"
+    - generic: Analysis errored
+    - button "Analyzed"
+    - generic: Analyzed
+    - heading "ChatGPT said:" [level=4]
+    - 'heading "A different manufacturing architecture: programmable capillary assembly" [level=1]':
+      - strong: "A different manufacturing architecture: programmable capillary assembly"
+    - paragraph: The strongest constructive direction I have identified is to stop trying to manufacture channels directly inside the opaque housing.
+    - paragraph:
+      - text: Instead, use
+      - strong: standard, continuous microcapillary stock, a common three-dimensional routing tool, reusable mechanical anchor rails and removable microfluidic junctions
+      - text: .
+    - paragraph: "The machine would manufacture the fluid paths inside the already-closed host by threading, routing, retaining and connecting actual tubing. The resulting structure would be passive: no acoustic field, electrical field, external restriction or powered shape-holding mechanism is needed during use."
+    - paragraph: This changes the manufacturing problem from remote material conversion to controlled assembly of real fluid conduits.
+    - paragraph: "It is not a claim that capillary routing itself is new. The proposed contribution is the integrated operation: constructing different internal topologies through restricted ports, mechanically retaining three-dimensional paths, inspecting them, removing them, and reusing the same host and equipment."
+    - heading "1. Selected host and common stock" [level=2]:
+      - strong: 1. Selected host and common stock
+    - img "Stainless steel vacuum chambers - Neyco"
+    - button "Open Stainless steel vacuum chambers - Neyco"
+    - paragraph:
+      - strong: Opaque host
+    - paragraph: 316L stainless-steel cylindrical housing, 36 mm outside diameter, 33 mm internal diameter, approximately 30 mm overall length, with 1.5 mm nominal wall thickness.
+    - img "細径FEPチューブ 1/32(0.79mm)× 1/16(1.59mm) BLS181504 (5m巻) | コクゴeネット"
+    - button "Open 細径FEPチューブ 1/32(0.79mm)× 1/16(1.59mm) BLS181504 (5m巻) | コクゴeネット"
+    - paragraph:
+      - strong: Fluid conduits
+    - paragraph:
+      - text: FEP capillary, 0.8 mm outside diameter and 0.50 mm internal diameter. This is an obtainable commercial tubing size. Published supplier data give working-pressure ratings far above the proposed 60 kPa proof requirement, subject to the actual installed bends and terminations.
+      - button "MICROSOLV +2":
+        - generic: MICROSOLV
+        - generic: "+2"
+    - img "Microfluidic Y Connector PEEK - Darwin Microfluidics"
+    - button "Open Microfluidic Y Connector PEEK - Darwin Microfluidics"
+    - paragraph:
+      - strong: Common junction
+    - paragraph: One reusable micro-machined PEEK Y-node, with a proposed maximum body diameter of 1.7 mm and minimum internal passage of 0.4 mm. This is a custom component, not an existing connector being passed off as a ready-made part.
+    - img "White Micro Acetal Tubing Clamp for Tubing up to 0.160\" OD | U.S. Plastic Corp."
+    - button "Open White Micro Acetal Tubing Clamp for Tubing up to 0.160\" OD | U.S. Plastic Corp."
+    - paragraph:
+      - strong: Universal anchors
+    - paragraph: Four generic internal rails with repeated attachment positions, plus reusable PEEK snap clips and height spacers. They support different routes without providing any finished target channels.
+    - paragraph: "The housing has:"
+    - table:
+      - rowgroup:
+        - row "Port Construction Function":
+          - columnheader "Port":
+            - paragraph: Port
+          - columnheader "Construction":
+            - paragraph: Construction
+          - columnheader "Function":
+            - paragraph: Function
+        - row "Fluid 1 1.0 mm clear bore Fluid input/output":
+          - cell "Fluid 1":
+            - paragraph: Fluid 1
+          - cell "1.0 mm clear bore":
+            - paragraph: 1.0 mm clear bore
+          - cell "Fluid input/output":
+            - paragraph: Fluid input/output
+        - row "Fluid 2 1.0 mm clear bore Fluid input/output":
+          - cell "Fluid 2":
+            - paragraph: Fluid 2
+          - cell "1.0 mm clear bore":
+            - paragraph: 1.0 mm clear bore
+          - cell "Fluid input/output":
+            - paragraph: Fluid input/output
+        - row "Fluid 3 1.0 mm clear bore Fluid input/output":
+          - cell "Fluid 3":
+            - paragraph: Fluid 3
+          - cell "1.0 mm clear bore":
+            - paragraph: 1.0 mm clear bore
+          - cell "Fluid input/output":
+            - paragraph: Fluid input/output
+        - row "Fluid 4 1.0 mm clear bore Fluid input/output":
+          - cell "Fluid 4":
+            - paragraph: Fluid 4
+          - cell "1.0 mm clear bore":
+            - paragraph: 1.0 mm clear bore
+          - cell "Fluid input/output":
+            - paragraph: Fluid input/output
+        - row "Service 1 1.8 mm clear bore Microgripper and routing tool":
+          - cell "Service 1":
+            - paragraph: Service 1
+          - cell "1.8 mm clear bore":
+            - paragraph: 1.8 mm clear bore
+          - cell "Microgripper and routing tool":
+            - paragraph: Microgripper and routing tool
+        - row "Service 2 1.8 mm clear bore Inspection borescope":
+          - cell "Service 2":
+            - paragraph: Service 2
+          - cell "1.8 mm clear bore":
+            - paragraph: 1.8 mm clear bore
+          - cell "Inspection borescope":
+            - paragraph: Inspection borescope
+    - paragraph: All ports have independent external seals. The two service ports receive reusable pressure-rated glands and are plugged when the manufacturing tools withdraw.
+    - paragraph: The host is fabricated empty, cleaned, closed and pressure-tested before entering the manufacturing cell. It is never opened during the candidate manufacturing or renewal process.
+    - paragraph: The generic anchor rails are installed as part of host preparation. They provide a common mechanical attachment surface, not geometry-specific support.
+    - heading "2. Three internal fluidic layouts" [level=2]:
+      - strong: 2. Three internal fluidic layouts
+    - paragraph:
+      - text: The reference tubing is FEP, 0.8 mm OD and 0.50 mm ID. A supplier lists this size as obtainable, with a room-temperature pressure rating of approximately 35 bar in one published specification. The proposed operating pressure is much lower, but bends, cuts and installed terminations require separate qualification.
+      - button "MICROSOLV +1":
+        - generic: MICROSOLV
+        - generic: "+1"
+    - paragraph: The three layouts use the same host, tubing, clips, junction and machine.
+    - img "Chip Bifurcating Channels - PDMS (pack of 3) - Darwin Microfluidics"
+    - button "Open Chip Bifurcating Channels - PDMS (pack of 3) - Darwin Microfluidics"
+    - paragraph:
+      - strong: Layout A — 1:1 splitter
+    - paragraph: A common Y junction, a 40 mm inlet trunk and two equal 80 mm outlet branches. The two branches have matched hydraulic resistance.
+    - generic: Calculated pressure pass
+    - img "Computational fluid dynamics simulation of two-phase flow patterns in a serpentine microfluidic device | Scientific Reports"
+    - button "Open Computational fluid dynamics simulation of two-phase flow patterns in a serpentine microfluidic device | Scientific Reports"
+    - paragraph:
+      - strong: Layout B — 1:4 splitter
+    - paragraph: The same Y junction, but the outlet paths have 160 mm and 40 mm centreline lengths. The longer path receives one fifth of the total flow.
+    - generic: Calculated pressure pass
+    - img "Checking your browser - reCAPTCHA"
+    - button "Open Checking your browser - reCAPTCHA"
+    - paragraph:
+      - strong: Layout C — isolated crossover
+    - paragraph: Two separate 60 mm capillary passages. They cross in the horizontal projection but occupy different heights, with an 8 mm centreline separation at the crossing.
+    - generic: Calculated pressure pass
+    - paragraph: These are genuinely different internal structures. In particular, Layout C contains a supported three-dimensional span, not two channels drawn on the same surface.
+    - heading "Hydraulic calculation" [level=3]:
+      - strong: Hydraulic calculation
+    - paragraph: "For fully developed laminar flow through a circular passage:"
+    - math:
+      - generic: Δ
+      - generic: P
+      - generic: =
+      - generic: "128"
+      - generic: μ
+      - generic: L
+      - generic: Q
+      - generic: π
+      - generic: d
+      - generic: "4"
+      - generic: .
+    - generic: ΔP =
+    - text: π
+    - text: d
+    - generic: "4"
+    - generic: 128μLQ
+    - text: .
+    - paragraph: "The model uses:"
+    - list:
+      - paragraph:
+        - text: "Water viscosity:"
+        - math:
+          - generic: "1.0"
+          - generic: m
+          - generic: P
+          - generic: a
+          - generic: s
+        - text: "1.0"
+        - generic: mPa s
+        - text: at 25°C.
+      - paragraph: "Tube ID: 0.50 mm."
+      - paragraph: Smooth-bore tubing.
+      - paragraph: Matched outlet pressures.
+      - paragraph: No assumed benefit from an external flow restriction.
+    - paragraph: "The calculated results are:"
+    - table:
+      - rowgroup:
+        - row "Layout Total flow Inlet-to-outlet pressure drop, excluding local losses":
+          - columnheader "Layout":
+            - paragraph: Layout
+          - columnheader "Total flow":
+            - paragraph: Total flow
+          - columnheader "Inlet-to-outlet pressure drop, excluding local losses":
+            - paragraph: Inlet-to-outlet pressure drop, excluding local losses
+        - row "A, 1:1 5 ml/min 4.35 kPa":
+          - cell "A, 1:1":
+            - paragraph: A, 1:1
+          - cell "5 ml/min":
+            - paragraph: 5 ml/min
+          - cell "4.35 kPa":
+            - paragraph: 4.35 kPa
+        - row "A, 1:1 10 ml/min 8.69 kPa":
+          - cell "A, 1:1":
+            - paragraph: A, 1:1
+          - cell "10 ml/min":
+            - paragraph: 10 ml/min
+          - cell "8.69 kPa":
+            - paragraph: 8.69 kPa
+        - row "A, 1:1 15 ml/min 13.04 kPa":
+          - cell "A, 1:1":
+            - paragraph: A, 1:1
+          - cell "15 ml/min":
+            - paragraph: 15 ml/min
+          - cell "13.04 kPa":
+            - paragraph: 13.04 kPa
+        - row "B, 1:4 5 ml/min 3.91 kPa":
+          - cell "B, 1:4":
+            - paragraph: B, 1:4
+          - cell "5 ml/min":
+            - paragraph: 5 ml/min
+          - cell "3.91 kPa":
+            - paragraph: 3.91 kPa
+        - row "B, 1:4 10 ml/min 7.82 kPa":
+          - cell "B, 1:4":
+            - paragraph: B, 1:4
+          - cell "10 ml/min":
+            - paragraph: 10 ml/min
+          - cell "7.82 kPa":
+            - paragraph: 7.82 kPa
+        - row "B, 1:4 15 ml/min 11.73 kPa":
+          - cell "B, 1:4":
+            - paragraph: B, 1:4
+          - cell "15 ml/min":
+            - paragraph: 15 ml/min
+          - cell "11.73 kPa":
+            - paragraph: 11.73 kPa
+        - row "C, each passage 5 ml/min 3.26 kPa":
+          - cell "C, each passage":
+            - paragraph: C, each passage
+          - cell "5 ml/min":
+            - paragraph: 5 ml/min
+          - cell "3.26 kPa":
+            - paragraph: 3.26 kPa
+    - paragraph: "For Layout B at 10 ml/min:"
+    - math:
+      - generic: Q
+      - generic: l
+      - generic: o
+      - generic: w
+      - generic: =
+      - generic: "2"
+      - generic: ","
+      - generic: Q
+      - generic: h
+      - generic: i
+      - generic: g
+      - generic: h
+      - generic: =
+      - generic: "8"
+      - generic: m
+      - generic: l
+      - generic: /
+      - generic: m
+      - generic: i
+      - generic: "n"
+      - generic: .
+    - text: Q
+    - generic: low
+    - text: =
+    - text: 2,
+    - text: Q
+    - generic: high
+    - text: =
+    - text: "8"
+    - generic: ml/min
+    - text: .
+    - paragraph: "The branch resistance ratio is:"
+    - math:
+      - generic: R
+      - generic: l
+      - generic: o
+      - generic: w
+      - generic: R
+      - generic: h
+      - generic: i
+      - generic: g
+      - generic: h
+      - generic: =
+      - generic: "160"
+      - generic: "40"
+      - generic: =
+      - generic: "4."
+    - text: R
+    - generic: high
+    - text: R
+    - generic: low
+    - text: =
+    - generic: "40"
+    - generic: "160"
+    - text: =
+    - generic: "4."
+    - paragraph: The 1:4 result therefore comes from the physical length difference, not an external valve.
+    - paragraph: The maximum Reynolds number is approximately 510, so the straight-bore calculation remains in the laminar regime.
+    - paragraph:
+      - strong: "Important qualification:"
+      - text: the table excludes the Y junction, bends, clips and port transitions. I reserve 3 kPa for those combined losses. The resulting conservative screening values are approximately 16.04 kPa for Layout A and 14.73 kPa for Layout B at 15 ml/min. Both remain below 20 kPa, but the 1:1 design has relatively little margin.
+    - paragraph:
+      - text: "There is another important manufacturing issue: commercial FEP tubing has finite ID tolerance. Since resistance varies with"
+      - math:
+        - generic: d
+        - generic: −
+        - generic: "4"
+      - text: d
+      - generic: −4
+      - text: ", a 5% ID error can create approximately 20% resistance error."
+    - paragraph: The machine must therefore measure each tube's hydraulic conductance before routing. It calculates the required cut length from the measured resistance per unit length, then verifies the completed splitter at 5, 10 and 15 ml/min. An incorrect ratio is corrected by replacing or trimming the physical branch, not by adjusting a hidden external valve.
+    - paragraph:
+      - text: The commercial PEEK Y connectors available from IDEX-compatible suppliers demonstrate that useful microfluidic junctions with 0.5 mm through-holes and high pressure ratings are commercially established. Their 1/4-28 connection bodies are too large for the proposed 1.8 mm service port, however. The 1.7 mm micro-Y node in this design must be separately manufactured and pressure-qualified.
+      - button "Darwin Microfluidics +1":
+        - generic: Darwin Microfluidics
+        - generic: "+1"
+    - heading "3. The common manufacturing machine" [level=2]:
+      - strong: 3. The common manufacturing machine
+    - paragraph: The machine is a dual-lane capillary-routing cell. Both lanes use identical tools, software, tubing, clips and measurement equipment.
+    - img "Micro Assembly Station | nanosystec GmbH | Dec 2023 | Photonics Spectra"
+    - button "Open Micro Assembly Station | nanosystec GmbH | Dec 2023 | Photonics Spectra"
+    - button "Add to Favorites":
+    - link "photonics.com":
+      - /url: https://www.photonics.com/Products/Micro-Assembly-Station/pr69260?utm_source=chatgpt.com
+      - generic: photonics.com
+    - heading "Physical equipment" [level=3]:
+      - strong: Physical equipment
+    - table:
+      - rowgroup:
+        - row "Subsystem Proposed construction":
+          - columnheader "Subsystem":
+            - paragraph: Subsystem
+          - columnheader "Proposed construction":
+            - paragraph: Proposed construction
+        - row "Host positioning Two independent five-axis gimbal nests":
+          - cell "Host positioning":
+            - paragraph: Host positioning
+          - cell "Two independent five-axis gimbal nests":
+            - paragraph: Two independent five-axis gimbal nests
+        - row "Routing tool 1.4 mm OD, tendon-actuated microgripper":
+          - cell "Routing tool":
+            - paragraph: Routing tool
+          - cell "1.4 mm OD, tendon-actuated microgripper":
+            - paragraph: 1.4 mm OD, tendon-actuated microgripper
+        - row "Inspection 0.98 mm diameter, 400 × 400 pixel industrial borescope":
+          - cell "Inspection":
+            - paragraph: Inspection
+          - cell "0.98 mm diameter, 400 × 400 pixel industrial borescope":
+            - paragraph: 0.98 mm diameter, 400 × 400 pixel industrial borescope
+        - row "Tube preparation Servo feed, optical length measurement and precision cutter":
+          - cell "Tube preparation":
+            - paragraph: Tube preparation
+          - cell "Servo feed, optical length measurement and precision cutter":
+            - paragraph: Servo feed, optical length measurement and precision cutter
+        - row "Clip insertion Microgripper with interchangeable clip and retrieval tips":
+          - cell "Clip insertion":
+            - paragraph: Clip insertion
+          - cell "Microgripper with interchangeable clip and retrieval tips":
+            - paragraph: Microgripper with interchangeable clip and retrieval tips
+        - row "Junction insertion Captive micro-Y handling tool":
+          - cell "Junction insertion":
+            - paragraph: Junction insertion
+          - cell "Captive micro-Y handling tool":
+            - paragraph: Captive micro-Y handling tool
+        - row "Fluid termination External miniature compression glands":
+          - cell "Fluid termination":
+            - paragraph: Fluid termination
+          - cell "External miniature compression glands":
+            - paragraph: External miniature compression glands
+        - row "Pressure testing Four-position hydraulic qualification rack":
+          - cell "Pressure testing":
+            - paragraph: Pressure testing
+          - cell "Four-position hydraulic qualification rack":
+            - paragraph: Four-position hydraulic qualification rack
+        - row "Flow measurement Calibrated inlet/outlet flowmeters and differential pressure sensors":
+          - cell "Flow measurement":
+            - paragraph: Flow measurement
+          - cell "Calibrated inlet/outlet flowmeters and differential pressure sensors":
+            - paragraph: Calibrated inlet/outlet flowmeters and differential pressure sensors
+        - row "Cleaning Filtered DI water, 0.2 µm filtration and nitrogen drying":
+          - cell "Cleaning":
+            - paragraph: Cleaning
+          - cell "Filtered DI water, 0.2 µm filtration and nitrogen drying":
+            - paragraph: Filtered DI water, 0.2 µm filtration and nitrogen drying
+        - row "Control Motion controller, camera registration, force monitoring and hydraulic model":
+          - cell "Control":
+            - paragraph: Control
+          - cell "Motion controller, camera registration, force monitoring and hydraulic model":
+            - paragraph: Motion controller, camera registration, force monitoring and hydraulic model
+    - paragraph:
+      - text: A particularly useful obtainable inspection component is the SPI HNL-0.98CAM120. Its published specification includes a 0.98 mm probe, 400 × 400 pixels, 120° field of view and 3–30 mm depth of field. It is not a calibrated three-dimensional measurement instrument, so the host is rotated on its external gimbal to obtain different views.
+      - button "spieng.com +1":
+        - generic: spieng.com
+        - generic: "+1"
+    - paragraph: The host is opaque. The machine observes through the actual service port; it does not assume that an external camera can see through stainless steel.
+    - heading "How the tubing is positioned" [level=3]:
+      - strong: How the tubing is positioned
+    - paragraph: The microgripper holds the tube near its end. The external servo feed supplies the required length while the internal tool directs the tip.
+    - paragraph: "The sequence is:"
+    - list:
+      - paragraph: Pass the tube through a fluid port or service port.
+      - paragraph: Capture its end with the internal gripper.
+      - paragraph: Route it around the universal anchor rails.
+      - paragraph: Place universal retaining clips at measured positions.
+      - paragraph: Establish the required height using standard spacer clips.
+      - paragraph: Connect the tube to the common junction, if required.
+      - paragraph: Terminate both ends at the fluid ports.
+      - paragraph: Inspect the complete route and test the hydraulic resistance.
+    - paragraph: The clips are not adhesives. Their retaining feet engage the common rail slots.
+    - paragraph: For the crossover, the first tube occupies the upper route. The second is routed underneath it, with an 8 mm centreline separation at the crossing. Both are independently supported.
+    - img "Parallel scaled capillary-assembled stepwise microchannel device [IMAGE] | EurekAlert! Science News Releases"
+    - button "Open Parallel scaled capillary-assembled stepwise microchannel device [IMAGE] | EurekAlert! Science News Releases"
+    - button "Add to Favorites":
+    - link "eurekalert.org":
+      - /url: https://www.eurekalert.org/multimedia/966031?utm_source=chatgpt.com
+      - generic: eurekalert.org
+    - paragraph: The intended internal arrangement has no hidden stage, cured adhesive or external shape-holding mechanism.
+    - heading "Why the host needs two service ports" [level=3]:
+      - strong: Why the host needs two service ports
+    - paragraph: The first service port carries the microgripper. The second carries the borescope.
+    - paragraph: This avoids repeatedly removing the gripper to inspect every small movement. The gimbal changes the viewing angle while both instruments remain independently accessible.
+    - paragraph: The gripper, camera, illumination, clip, tube and host all have separate swept-volume models. A successful tube insertion is not accepted if the clip tool cannot subsequently approach the retaining foot or if the finished path prevents its own removal.
+    - paragraph: The microgripper and its miniature end effector are custom equipment. Their successful operation through a 1.8 mm port remains a major experimental gate.
+    - heading "4. The complete fabrication and acceptance process" [level=2]:
+      - strong: 4. The complete fabrication and acceptance process
+    - heading "Initial construction" [level=3]:
+      - strong: Initial construction
+    - list:
+      - paragraph:
+        - strong: Receive the closed host
+      - paragraph: Verify its serial number, pressure boundary, four fluid ports, two service ports, rail positions and empty-state cleanliness.
+      - paragraph:
+        - strong: Register the internal coordinate system
+      - paragraph: Use the common rail fiducials and borescope views to establish the host's actual position and orientation. The permitted initial registration error is ±0.5 mm and ±2°; the routing tool must correct it before installation.
+      - paragraph:
+        - strong: Screen tubing
+      - paragraph: Measure tube diameter and hydraulic conductance. Reject contaminated, kinked or dimensionally unsuitable stock.
+      - paragraph:
+        - strong: Prepare the junction
+      - paragraph: For either splitter, insert the same micro-PEEK Y-node and positively engage its universal clip.
+      - paragraph:
+        - strong: Route the passages
+      - paragraph: Feed the required lengths of FEP tubing through the ports, position them in the anchor clips and establish the three-dimensional geometry.
+      - paragraph:
+        - strong: Complete the fluid connections
+      - paragraph: Fit the miniature port ferrules, secure unused ports with paid plugs and verify every termination.
+      - paragraph:
+        - strong: Remove fabrication residues
+      - paragraph: Flush at controlled pressure, capture effluent through a 0.2 µm filter and dry using filtered nitrogen.
+      - paragraph:
+        - strong: Inspect and hydraulically qualify
+      - paragraph: Check geometry, flow, pressure, split ratio, leakage, cross-communication and residue.
+      - paragraph:
+        - strong: Withdraw the tools
+      - paragraph: Remove the gripper and borescope, install the service-port plugs and repeat final leak and pressure checks.
+    - paragraph: The device is only accepted after the external tools have withdrawn.
+    - heading "Hydraulic acceptance" [level=3]:
+      - strong: Hydraulic acceptance
+    - paragraph: The following are proposed measurable gates.
+    - table:
+      - rowgroup:
+        - row "Test Requirement":
+          - columnheader "Test":
+            - paragraph: Test
+          - columnheader "Requirement":
+            - paragraph: Requirement
+        - row "Splitter flow 5, 10 and 15 ml/min":
+          - cell "Splitter flow":
+            - paragraph: Splitter flow
+          - cell "5, 10 and 15 ml/min":
+            - paragraph: 5, 10 and 15 ml/min
+        - row "1:1 ratio 0.90–1.10":
+          - cell "1:1 ratio":
+            - paragraph: 1:1 ratio
+          - cell "0.90–1.10":
+            - paragraph: 0.90–1.10
+        - row "1:4 ratio 3.60–4.40":
+          - cell "1:4 ratio":
+            - paragraph: 1:4 ratio
+          - cell "3.60–4.40":
+            - paragraph: 3.60–4.40
+        - row "Inlet pressure ≤20 kPa above outlet":
+          - cell "Inlet pressure":
+            - paragraph: Inlet pressure
+          - cell "≤20 kPa above outlet":
+            - paragraph: ≤20 kPa above outlet
+        - row "Crossover flow 5 ml/min per passage":
+          - cell "Crossover flow":
+            - paragraph: Crossover flow
+          - cell "5 ml/min per passage":
+            - paragraph: 5 ml/min per passage
+        - row "Crossover communication ≤1%":
+          - cell "Crossover communication":
+            - paragraph: Crossover communication
+          - cell "≤1%":
+            - paragraph: ≤1%
+        - row "Fluid recovery ≥98%":
+          - cell "Fluid recovery":
+            - paragraph: Fluid recovery
+          - cell "≥98%":
+            - paragraph: ≥98%
+        - row "Proof pressure 60 kPa for five minutes":
+          - cell "Proof pressure":
+            - paragraph: Proof pressure
+          - cell "60 kPa for five minutes":
+            - paragraph: 60 kPa for five minutes
+        - row "External leakage Below calibrated detection limit":
+          - cell "External leakage":
+            - paragraph: External leakage
+          - cell "Below calibrated detection limit":
+            - paragraph: Below calibrated detection limit
+        - row "Permanent deformation No unacceptable change in post-proof flow or pressure":
+          - cell "Permanent deformation":
+            - paragraph: Permanent deformation
+          - cell "No unacceptable change in post-proof flow or pressure":
+            - paragraph: No unacceptable change in post-proof flow or pressure
+        - row "Minimum passage ≥0.3 mm":
+          - cell "Minimum passage":
+            - paragraph: Minimum passage
+          - cell "≥0.3 mm":
+            - paragraph: ≥0.3 mm
+        - row "Manufacturing debris No loose retained material above the declared filter/particle limits":
+          - cell "Manufacturing debris":
+            - paragraph: Manufacturing debris
+          - cell "No loose retained material above the declared filter/particle limits":
+            - paragraph: No loose retained material above the declared filter/particle limits
+    - paragraph: For the mass-recovery test, admit 100 ml of water at the appropriate flow and weigh all intended outlets. Account separately for retained liquid, sampling and cleaning fluid.
+    - paragraph: "For crossover isolation, use a low-concentration KCl tracer in one passage and measure its appearance in the other outlet. The permitted equivalent cross-flow is:"
+    - math:
+      - generic: "0.01"
+      - generic: (
+      - generic: "5"
+      - generic: )
+      - generic: =
+      - generic: "0.05"
+      - generic: m
+      - generic: l
+      - generic: /
+      - generic: m
+      - generic: i
+      - generic: "n"
+      - generic: .
+    - generic: 0.01(5) =
+    - text: "0.05"
+    - generic: ml/min
+    - text: .
+    - paragraph: The test must distinguish genuine leakage from conductivity changes caused by the housing, temperature or residual cleaning fluid.
+    - paragraph: A final rinse is passed through the particle filter. The proposed acceptance limits are no particles larger than 50 µm, less than 0.1 mg retained filter residue per host and a final-rinse TOC increase no greater than 1 mg/L over the incoming water blank. These are engineering purchasing gates, not existing standards or measured performance.
+    - paragraph: For the 60 kPa proof, the entire installed tube, Y-node, clip, port gland and host system is tested. The FEP manufacturer's tube rating alone cannot certify the assembly.
+    - paragraph:
+      - text: "A suitable commercial pressure-vessel fabrication route exists in Brisbane: Stainless Tanks Australia describes 316L construction, AS 1210 design work, independent RPEQ verification and hydrostatic testing. That establishes an obtainable manufacturing route, not a certified design for this particular small housing."
+      - button "STA":
+        - generic: STA
+    - 'heading "5. Renewal: removing the old structure without opening the host" [level=2]':
+      - strong: "5. Renewal: removing the old structure without opening the host"
+    - paragraph: This is the most important part of the proposed system.
+    - paragraph:
+      - text: The tubes are deliberately
+      - strong: consumable product components
+      - text: . The machine does not claim that a bent FEP tube can be removed and reused indefinitely.
+    - paragraph: The reusable items are the host, anchor rails, retaining clips, common Y-node and manufacturing equipment, each with its own inspection and renewal policy.
+    - heading "Retargeting sequence" [level=3]:
+      - strong: Retargeting sequence
+    - list:
+      - paragraph:
+        - strong: Depressurize and drain
+      - paragraph: Disconnect the external test manifold. Drain the active paths and capture the liquid.
+      - paragraph:
+        - strong: Capture the existing structure
+      - paragraph: Insert the microgripper and borescope. Identify the tube ends, clip positions, junction and any damaged sections.
+      - paragraph:
+        - strong: Disconnect the port terminations
+      - paragraph: Release the external compression glands and capture the tube ends.
+      - paragraph:
+        - strong: Release the anchor clips
+      - paragraph: The normal tool opens the snap latch. If it remains jammed, a second tool engages the independent retrieval eye and removes the captive quarter-turn foot.
+      - paragraph:
+        - strong: Remove the tubing
+      - paragraph: Withdraw each tube through its actual fluid port or service port. A broken section is captured and extracted through the service opening.
+      - paragraph:
+        - strong: Remove the Y-node
+      - paragraph: Capture both retrieval features and withdraw it through the 1.8 mm service port. A jammed node is quarantined; the host is not declared clean merely because the tubes have disappeared.
+      - paragraph:
+        - strong: Clean and restore
+      - paragraph: Flush the internal volume, filter the effluent, dry with filtered nitrogen and inspect the anchor rails, port seats and host walls.
+      - paragraph:
+        - strong: Qualify the empty host
+      - paragraph: Check pressure retention, port leakage, residual particles and anchor-clip retention before loading the next layout.
+      - paragraph:
+        - strong: Build the new geometry
+      - paragraph: Use the same tubing, Y-node, clip and routing tools to create the next topology.
+    - heading "Independent clip-jam recovery" [level=3]:
+      - strong: Independent clip-jam recovery
+    - paragraph: "The universal clip has two retention features:"
+    - list:
+      - paragraph: A normal snap latch.
+      - paragraph: A separate captive quarter-turn foot.
+    - paragraph: The normal tool operates the latch. If the latch cannot move, the recovery tool captures the clip and rotates the foot through a different mechanical interface.
+    - paragraph: If both features are jammed, the machine is allowed to quarantine the clip and, if the rail has been damaged, the host. It must not silently classify a failed removal as a successful clean reset.
+    - paragraph: "The same principle applies to the Y-node: normal extraction uses its retrieval eyes; a persistent jam is a reject condition unless the separate cutting/extraction tool can remove it without damaging the host."
+    - paragraph:
+      - strong: This is a proposed independent escape mechanism, not a demonstrated one.
+      - text: The microgripper, quarter-turn foot, cutting tool and debris capture all need to be manufactured and tested together.
+    - heading "6. Production and continuous-use campaigns" [level=2]:
+      - strong: 6. Production and continuous-use campaigns
+    - heading "Separate 24-hour production windows" [level=3]:
+      - strong: Separate 24-hour production windows
+    - paragraph: The proposed cell has two parallel routing lanes and four parallel hydraulic qualification positions.
+    - paragraph: "For each layout:"
+    - table:
+      - rowgroup:
+        - row "Activity Time":
+          - columnheader "Activity":
+            - paragraph: Activity
+          - columnheader "Time":
+            - paragraph: Time
+        - row "Twelve attempted hosts, two routing lanes, 90 minutes each 9.0 h":
+          - cell "Twelve attempted hosts, two routing lanes, 90 minutes each":
+            - paragraph: Twelve attempted hosts, two routing lanes, 90 minutes each
+          - cell "9.0 h":
+            - paragraph: 9.0 h
+        - row "Four-at-a-time hydraulic qualification, three batches 3.0 h":
+          - cell "Four-at-a-time hydraulic qualification, three batches":
+            - paragraph: Four-at-a-time hydraulic qualification, three batches
+          - cell "3.0 h":
+            - paragraph: 3.0 h
+        - row "Cell setup and calibration 1.5 h":
+          - cell "Cell setup and calibration":
+            - paragraph: Cell setup and calibration
+          - cell "1.5 h":
+            - paragraph: 1.5 h
+        - row "Final cleaning, inventory reconciliation and reset 1.0 h":
+          - cell "Final cleaning, inventory reconciliation and reset":
+            - paragraph: Final cleaning, inventory reconciliation and reset
+          - cell "1.0 h":
+            - paragraph: 1.0 h
+        - row "Total 14.5 h":
+          - cell "Total":
+            - paragraph:
+              - strong: Total
+          - cell "14.5 h":
+            - paragraph:
+              - strong: 14.5 h
+    - paragraph: "The proposed batch is twelve attempts, eleven passing and one rejected:"
+    - math:
+      - generic: Yield
+      - generic: =
+      - generic: "11"
+      - generic: "12"
+      - generic: =
+      - generic: "91.67"
+      - generic: "%"
+      - generic: .
+    - generic: Yield
+    - text: =
+    - generic: "12"
+    - generic: "11"
+    - text: =
+    - generic: 91.67%.
+    - paragraph: Ten accepted hosts are delivered; the eleventh remains a qualified reserve.
+    - generic: Conditional schedule pass
+    - paragraph: The 14.5-hour result is a scheduling calculation using introduced routing and qualification times, not measured robotic throughput.
+    - paragraph: "This leaves 9.5 hours of nominal window margin. It does not justify assuming the 90-minute routing time: clip placement, junction insertion and complete swept-path access must be physically demonstrated."
+    - paragraph: "Upstream preparation remains paid separately. It includes:"
+    - list:
+      - paragraph: Host manufacture and pressure screening.
+      - paragraph: Anchor-rail inspection.
+      - paragraph: Tube dimensional and hydraulic screening.
+      - paragraph: Micro-Y manufacture and inspection.
+      - paragraph: Clip preparation and retention testing.
+      - paragraph: Tool calibration.
+      - paragraph: Layout-specific motion programming and verification.
+    - paragraph: The same machine and material stock are used for all three production windows.
+    - heading "Continuous 100-attempt history" [level=3]:
+      - strong: Continuous 100-attempt history
+    - paragraph: "I constructed the following finite inventory scenario:"
+    - table:
+      - rowgroup:
+        - row "Host Attempts Successive changes":
+          - columnheader "Host":
+            - paragraph: Host
+          - columnheader "Attempts":
+            - paragraph: Attempts
+          - columnheader "Successive changes":
+            - paragraph: Successive changes
+        - row "H01 11 10":
+          - cell "H01":
+            - paragraph: H01
+          - cell "11":
+            - paragraph: "11"
+          - cell "10":
+            - paragraph: "10"
+        - row "H02–H09 10 each 9 each":
+          - cell "H02–H09":
+            - paragraph: H02–H09
+          - cell "10 each":
+            - paragraph: 10 each
+          - cell "9 each":
+            - paragraph: 9 each
+        - row "H10 9 8":
+          - cell "H10":
+            - paragraph: H10
+          - cell "9":
+            - paragraph: "9"
+          - cell "8":
+            - paragraph: "8"
+    - paragraph: This gives 100 total attempts and ten successive layout changes in H01.
+    - paragraph: "The inventory policy is:"
+    - table:
+      - rowgroup:
+        - row "Item Treatment":
+          - columnheader "Item":
+            - paragraph: Item
+          - columnheader "Treatment":
+            - paragraph: Treatment
+        - row "FEP tubes Consumed and replaced every attempt":
+          - cell "FEP tubes":
+            - paragraph: FEP tubes
+          - cell "Consumed and replaced every attempt":
+            - paragraph: Consumed and replaced every attempt
+        - row "Micro-Y nodes Cleaned, flow-tested and reused up to ten cycles":
+          - cell "Micro-Y nodes":
+            - paragraph: Micro-Y nodes
+          - cell "Cleaned, flow-tested and reused up to ten cycles":
+            - paragraph: Cleaned, flow-tested and reused up to ten cycles
+        - row "Anchor clips Reused with retention-force inspection":
+          - cell "Anchor clips":
+            - paragraph: Anchor clips
+          - cell "Reused with retention-force inspection":
+            - paragraph: Reused with retention-force inspection
+        - row "Host shells Reused with pressure proof after every configuration":
+          - cell "Host shells":
+            - paragraph: Host shells
+          - cell "Reused with pressure proof after every configuration":
+            - paragraph: Reused with pressure proof after every configuration
+        - row "Port seals Replaced every five host cycles":
+          - cell "Port seals":
+            - paragraph: Port seals
+          - cell "Replaced every five host cycles":
+            - paragraph: Replaced every five host cycles
+        - row "Ferrules Replaced when compression or sealing inspection fails":
+          - cell "Ferrules":
+            - paragraph: Ferrules
+          - cell "Replaced when compression or sealing inspection fails":
+            - paragraph: Replaced when compression or sealing inspection fails
+        - row "Service tools Reusable, with measured wear and calibration":
+          - cell "Service tools":
+            - paragraph: Service tools
+          - cell "Reusable, with measured wear and calibration":
+            - paragraph: Reusable, with measured wear and calibration
+        - row "Cleaning filters Consumable":
+          - cell "Cleaning filters":
+            - paragraph: Cleaning filters
+          - cell "Consumable":
+            - paragraph: Consumable
+        - row "Captured debris Paid waste disposal":
+          - cell "Captured debris":
+            - paragraph: Captured debris
+          - cell "Paid waste disposal":
+            - paragraph: Paid waste disposal
+    - paragraph: "Ten unannounced disturbances are included:"
+    - table:
+      - rowgroup:
+        - row "Fault Recovery":
+          - columnheader "Fault":
+            - paragraph: Fault
+          - columnheader "Recovery":
+            - paragraph: Recovery
+        - row "Incorrect tube bore Pre-installation hydraulic screening":
+          - cell "Incorrect tube bore":
+            - paragraph: Incorrect tube bore
+          - cell "Pre-installation hydraulic screening":
+            - paragraph: Pre-installation hydraulic screening
+        - row "Incorrect branch length Flow-ratio test and physical recutting":
+          - cell "Incorrect branch length":
+            - paragraph: Incorrect branch length
+          - cell "Flow-ratio test and physical recutting":
+            - paragraph: Flow-ratio test and physical recutting
+        - row "Partly seated clip Pressure pulse and position check":
+          - cell "Partly seated clip":
+            - paragraph: Partly seated clip
+          - cell "Pressure pulse and position check":
+            - paragraph: Pressure pulse and position check
+        - row "Y-node ferrule leakage Replace ferrule and repeat proof":
+          - cell "Y-node ferrule leakage":
+            - paragraph: Y-node ferrule leakage
+          - cell "Replace ferrule and repeat proof":
+            - paragraph: Replace ferrule and repeat proof
+        - row "Crossover height error Borescope inspection and rerouting":
+          - cell "Crossover height error":
+            - paragraph: Crossover height error
+          - cell "Borescope inspection and rerouting":
+            - paragraph: Borescope inspection and rerouting
+        - row "Persistent clip-latch jam Independent quarter-turn release; reject if unsuccessful":
+          - cell "Persistent clip-latch jam":
+            - paragraph: Persistent clip-latch jam
+          - cell "Independent quarter-turn release; reject if unsuccessful":
+            - paragraph: Independent quarter-turn release; reject if unsuccessful
+        - row "Broken tube fragment Capture and withdraw":
+          - cell "Broken tube fragment":
+            - paragraph: Broken tube fragment
+          - cell "Capture and withdraw":
+            - paragraph: Capture and withdraw
+        - row "Damaged anchor rail Quarantine host":
+          - cell "Damaged anchor rail":
+            - paragraph: Damaged anchor rail
+          - cell "Quarantine host":
+            - paragraph: Quarantine host
+        - row "Interrupted routing operation Mechanical tool brake, inspect and resume":
+          - cell "Interrupted routing operation":
+            - paragraph: Interrupted routing operation
+          - cell "Mechanical tool brake, inspect and resume":
+            - paragraph: Mechanical tool brake, inspect and resume
+        - row "Damaged port seal Replace seal or quarantine host":
+          - cell "Damaged port seal":
+            - paragraph: Damaged port seal
+          - cell "Replace seal or quarantine host":
+            - paragraph: Replace seal or quarantine host
+    - paragraph: The scenario retains five rejected attempts and 95 accepted attempts.
+    - generic: Conditional 95% campaign yield
+    - paragraph: Again, this is an inventory and scheduling scenario, not 100 physical operations.
+    - heading "Wet-use history" [level=3]:
+      - strong: Wet-use history
+    - paragraph: Ten separate 24-hour wet-use intervals are assigned, one to each host.
+    - paragraph: "At 10 ml/min:"
+    - math:
+      - generic: V
+      - generic: =
+      - generic: "10"
+      - generic: ×
+      - generic: "60"
+      - generic: ×
+      - generic: "24"
+      - generic: =
+      - generic: "14.4"
+      - generic: L
+    - generic: V =
+    - generic: 10 ×
+    - generic: 60 ×
+    - generic: 24 =
+    - text: "14.4"
+    - text: L
+    - paragraph: of water passes through each splitter during its 24-hour interval.
+    - paragraph: Across ten intervals, this is 144 litres of circulated water. The same external pump and reservoir are used sequentially.
+    - paragraph: "The test arrangement includes:"
+    - list:
+      - paragraph: A 2 L filtered-water reservoir.
+      - paragraph: A calibrated pump.
+      - paragraph: Inlet and outlet flow measurement.
+      - paragraph: Differential-pressure logging.
+      - paragraph: Temperature control at 25 ±1°C.
+      - paragraph: A conductivity/tracer measurement for crossover contamination.
+      - paragraph: A captured filter and cleaning-fluid inventory.
+    - paragraph: This gives 240 hours of wet service. It is additional to the fabrication windows and must not be hidden inside the 24-hour production schedule.
+    - paragraph: The host's useful function is tested while the external pump supplies the fluid. The manufacturing apparatus is absent.
+    - 'heading "7. The economics: a strong ordinary alternative wins" [level=2]':
+      - strong: "7. The economics: a strong ordinary alternative wins"
+    - paragraph: The most important comparison is not with a difficult remote-printing process. It is with an ordinary microfluidic assembly that can open the host, install an insert and close it again.
+    - paragraph: The proposed host deliberately has a removable endcap secured by six M2 fasteners and a replaceable face seal. It remains closed during the candidate process, but the alternative can open it.
+    - paragraph: That is a legitimate competitor.
+    - heading "Strong ordinary construction" [level=3]:
+      - strong: Strong ordinary construction
+    - paragraph: "The comparator uses:"
+    - list:
+      - paragraph: A two-piece micro-milled PEEK manifold.
+      - paragraph: A standard PEEK Y connector where appropriate.
+      - paragraph: Commercial capillary tubing.
+      - paragraph: A separate upper/lower layer for the crossover.
+      - paragraph: Conventional internal assembly through the open end.
+      - paragraph: The same anchor rails if needed.
+      - paragraph: Pressure, flow and cross-leak testing.
+      - paragraph: Endcap reassembly and proof testing.
+    - paragraph:
+      - text: Commercial PEEK Y assemblies are already available with 0.50 mm through-holes and published 69 bar pressure ratings. A listed example costs approximately US$59.10, although its standard fittings are not compatible with the candidate's restricted service port. The ordinary comparator can install the larger commercial connector because its host is open.
+      - button "Darwin Microfluidics":
+        - generic: Darwin Microfluidics
+    - paragraph: This is a stronger comparison than assuming an incumbent must perform every operation through the 1.8 mm service port.
+    - heading "Indicative cost comparison" [level=3]:
+      - strong: Indicative cost comparison
+    - paragraph: The following is a planning scenario at 1,000 reconfigurations/year, using $40/hour labour and $80/MWh electricity. Prices are engineering allowances, not supplier quotations.
+    - table:
+      - rowgroup:
+        - row "Cost per accepted configuration Capillary-loom candidate Open-host ordinary assembly":
+          - columnheader "Cost per accepted configuration":
+            - paragraph: Cost per accepted configuration
+          - columnheader "Capillary-loom candidate":
+            - paragraph: Capillary-loom candidate
+          - columnheader "Open-host ordinary assembly":
+            - paragraph: Open-host ordinary assembly
+        - row "Host shell and common preparation $90 $90":
+          - cell "Host shell and common preparation":
+            - paragraph: Host shell and common preparation
+          - cell "$90":
+            - paragraph: $90
+          - cell "$90":
+            - paragraph: $90
+        - row "Tubing, junctions, clips and seals $24 $55":
+          - cell "Tubing, junctions, clips and seals":
+            - paragraph: Tubing, junctions, clips and seals
+          - cell "$24":
+            - paragraph: $24
+          - cell "$55":
+            - paragraph: $55
+        - row "Assembly labour $20 $30":
+          - cell "Assembly labour":
+            - paragraph: Assembly labour
+          - cell "$20":
+            - paragraph: $20
+          - cell "$30":
+            - paragraph: $30
+        - row "Stock preparation and inspection $15 $10":
+          - cell "Stock preparation and inspection":
+            - paragraph: Stock preparation and inspection
+          - cell "$15":
+            - paragraph: $15
+          - cell "$10":
+            - paragraph: $10
+        - row "Capital allocation $48.70 $17.40":
+          - cell "Capital allocation":
+            - paragraph: Capital allocation
+          - cell "$48.70":
+            - paragraph: $48.70
+          - cell "$17.40":
+            - paragraph: $17.40
+        - row "Maintenance and calibration $15 $8":
+          - cell "Maintenance and calibration":
+            - paragraph: Maintenance and calibration
+          - cell "$15":
+            - paragraph: $15
+          - cell "$8":
+            - paragraph: $8
+        - row "Qualification and waste $7 $6":
+          - cell "Qualification and waste":
+            - paragraph: Qualification and waste
+          - cell "$7":
+            - paragraph: $7
+          - cell "$6":
+            - paragraph: $6
+        - row "Utilities $2 $1":
+          - cell "Utilities":
+            - paragraph: Utilities
+          - cell "$2":
+            - paragraph: $2
+          - cell "$1":
+            - paragraph: $1
+        - row "Total $221.70 $217.40":
+          - cell "Total":
+            - paragraph:
+              - strong: Total
+          - cell "$221.70":
+            - paragraph:
+              - strong: $221.70
+          - cell "$217.40":
+            - paragraph:
+              - strong: $217.40
+    - paragraph: These figures have substantial uncertainty, especially around the custom micro-Y, clip manufacture and automated tool package.
+    - paragraph: The candidate's cost advantage is not demonstrated. Its principal benefit is that it can retarget a host without opening it. But for this particular small housing, opening the bolted endcap is relatively straightforward.
+    - heading "Time comparison" [level=3]:
+      - strong: Time comparison
+    - table:
+      - rowgroup:
+        - row "Operation Candidate Ordinary construction":
+          - columnheader "Operation":
+            - paragraph: Operation
+          - columnheader "Candidate":
+            - paragraph: Candidate
+          - columnheader "Ordinary construction":
+            - paragraph: Ordinary construction
+        - row "Internal route assembly 90 min 35–50 min":
+          - cell "Internal route assembly":
+            - paragraph: Internal route assembly
+          - cell "90 min":
+            - paragraph: 90 min
+          - cell "35–50 min":
+            - paragraph: 35–50 min
+        - row "Connection and closure Included in routing 15–20 min":
+          - cell "Connection and closure":
+            - paragraph: Connection and closure
+          - cell "Included in routing":
+            - paragraph: Included in routing
+          - cell "15–20 min":
+            - paragraph: 15–20 min
+        - row "Hydraulic qualification 60 min 60 min":
+          - cell "Hydraulic qualification":
+            - paragraph: Hydraulic qualification
+          - cell "60 min":
+            - paragraph: 60 min
+          - cell "60 min":
+            - paragraph: 60 min
+        - row "Complete host cycle Approximately 150 min Approximately 110–130 min":
+          - cell "Complete host cycle":
+            - paragraph: Complete host cycle
+          - cell "Approximately 150 min":
+            - paragraph: Approximately 150 min
+          - cell "Approximately 110–130 min":
+            - paragraph: Approximately 110–130 min
+    - paragraph: The candidate does not establish a threefold turnaround advantage either.
+    - paragraph: The result changes if the host is installed in a machine where endcap removal is genuinely inaccessible or where opening requires expensive decontamination and recommissioning. That is a different deployment boundary and needs its own cost comparison.
+    - heading "8. What the executable model establishes" [level=2]:
+      - strong: 8. What the executable model establishes
+    - paragraph: "I created and executed a small Python model covering:"
+    - list:
+      - paragraph: Straight-tube pressure losses.
+      - paragraph: Reynolds numbers.
+      - paragraph: The 1:1 and 1:4 branch-resistance construction.
+      - paragraph: The crossover pressure screen.
+      - paragraph: A conditional 24-hour production schedule.
+      - paragraph: The 100-attempt host and stock history.
+    - paragraph:
+      - strong: Executable model
+    - paragraph: Python source, README and executed JSON results
+    - paragraph:
+      - strong: capillary
+      - strong: _
+      - strong: loom
+      - strong: _
+      - strong: model
+      - strong: _
+      - strong: package.zip
+    - paragraph: Runnable screening model; no external packages required
+    - generic: Created
+    - paragraph:
+      - link "Open Download the model package":
+        - text: Download the model
+        - text: package
+    - paragraph: "The model returns:"
+    - table:
+      - rowgroup:
+        - row "Hydraulic test Calculated result including assumed local losses":
+          - columnheader "Hydraulic test":
+            - paragraph: Hydraulic test
+          - columnheader "Calculated result including assumed local losses":
+            - paragraph: Calculated result including assumed local losses
+        - row "1:1, 15 ml/min 16.04 kPa":
+          - cell "1:1, 15 ml/min":
+            - paragraph: 1:1, 15 ml/min
+          - cell "16.04 kPa":
+            - paragraph: 16.04 kPa
+        - row "1:4, 15 ml/min 14.73 kPa":
+          - cell "1:4, 15 ml/min":
+            - paragraph: 1:4, 15 ml/min
+          - cell "14.73 kPa":
+            - paragraph: 14.73 kPa
+        - row "Crossover, 5 ml/min per path 4.26 kPa":
+          - cell "Crossover, 5 ml/min per path":
+            - paragraph: Crossover, 5 ml/min per path
+          - cell "4.26 kPa":
+            - paragraph: 4.26 kPa
+    - paragraph: The model does not simulate the microgripper's real contact mechanics, complete three-dimensional trajectories, clip failure, Y-node leakage, debris capture or host fatigue. Those operations remain experimental requirements.
+    - heading "9. The decisive experiment" [level=2]:
+      - strong: 9. The decisive experiment
+    - paragraph: I would not build the dual-lane cell first.
+    - paragraph:
+      - text: The smallest useful experiment is a
+      - strong: single closed host with two interchangeable routing heads
+      - text: ", using actual FEP tubing, a manufactured micro-Y node, common anchor rails and the two service tools."
+    - heading "Test sequence" [level=3]:
+      - strong: Test sequence
+    - list:
+      - paragraph: Manufacture one empty 316L host and pressure-test it.
+      - paragraph: Install a 1:1 splitter through the ports.
+      - paragraph: Inspect and qualify the complete assembly.
+      - paragraph: Run a 24-hour wet interval.
+      - paragraph: Remove all tubing, clips and the Y-node.
+      - paragraph: Flush, dry and inspect the host.
+      - paragraph: Rebuild as a 1:4 splitter.
+      - paragraph: Repeat the flow and proof tests.
+      - paragraph: Reconfigure as the 3D crossover.
+      - paragraph: Run the crossover contamination and 24-hour endurance tests.
+      - paragraph: Repeat at least ten layout changes in the same host.
+    - paragraph: The ordinary open-host method is the matched control.
+    - heading "Measurements that can falsify the mechanism" [level=3]:
+      - strong: Measurements that can falsify the mechanism
+    - table:
+      - rowgroup:
+        - row "Measurement Failure it exposes":
+          - columnheader "Measurement":
+            - paragraph: Measurement
+          - columnheader "Failure it exposes":
+            - paragraph: Failure it exposes
+        - row "Independent tube flow calibration Incorrect bore or resistance":
+          - cell "Independent tube flow calibration":
+            - paragraph: Independent tube flow calibration
+          - cell "Incorrect bore or resistance":
+            - paragraph: Incorrect bore or resistance
+        - row "High-magnification route inspection Incorrect height, kink or unsupported span":
+          - cell "High-magnification route inspection":
+            - paragraph: High-magnification route inspection
+          - cell "Incorrect height, kink or unsupported span":
+            - paragraph: Incorrect height, kink or unsupported span
+        - row "Clip force/displacement Incomplete seating or damaged clip":
+          - cell "Clip force/displacement":
+            - paragraph: Clip force/displacement
+          - cell "Incomplete seating or damaged clip":
+            - paragraph: Incomplete seating or damaged clip
+        - row "Flow ratio at 5, 10, 15 ml/min Incorrect hydraulic resistance":
+          - cell "Flow ratio at 5, 10, 15 ml/min":
+            - paragraph: Flow ratio at 5, 10, 15 ml/min
+          - cell "Incorrect hydraulic resistance":
+            - paragraph: Incorrect hydraulic resistance
+        - row "Pressure measurement Excessive junction/bend loss":
+          - cell "Pressure measurement":
+            - paragraph: Pressure measurement
+          - cell "Excessive junction/bend loss":
+            - paragraph: Excessive junction/bend loss
+        - row "Tracer test Unintended crossover communication":
+          - cell "Tracer test":
+            - paragraph: Tracer test
+          - cell "Unintended crossover communication":
+            - paragraph: Unintended crossover communication
+        - row "Gravimetric balance Fluid loss or retained volume":
+          - cell "Gravimetric balance":
+            - paragraph: Gravimetric balance
+          - cell "Fluid loss or retained volume":
+            - paragraph: Fluid loss or retained volume
+        - row "Final rinse particle count Loose manufacturing residue":
+          - cell "Final rinse particle count":
+            - paragraph: Final rinse particle count
+          - cell "Loose manufacturing residue":
+            - paragraph: Loose manufacturing residue
+        - row "Pressure proof Weak tube, junction or termination":
+          - cell "Pressure proof":
+            - paragraph: Pressure proof
+          - cell "Weak tube, junction or termination":
+            - paragraph: Weak tube, junction or termination
+        - row "Repeated 24-hour flow Creep, migration, blockage or leakage":
+          - cell "Repeated 24-hour flow":
+            - paragraph: Repeated 24-hour flow
+          - cell "Creep, migration, blockage or leakage":
+            - paragraph: Creep, migration, blockage or leakage
+        - row "Removal and reassembly Clip and Y-node wear":
+          - cell "Removal and reassembly":
+            - paragraph: Removal and reassembly
+          - cell "Clip and Y-node wear":
+            - paragraph: Clip and Y-node wear
+    - heading "Budget" [level=3]:
+      - strong: Budget
+    - table:
+      - rowgroup:
+        - row "Item Planning allowance":
+          - columnheader "Item":
+            - paragraph: Item
+          - columnheader "Planning allowance":
+            - paragraph: Planning allowance
+        - row "316L host and anchor rails $500":
+          - cell "316L host and anchor rails":
+            - paragraph: 316L host and anchor rails
+          - cell "$500":
+            - paragraph: $500
+        - row "Actual FEP stock and screening $250":
+          - cell "Actual FEP stock and screening":
+            - paragraph: Actual FEP stock and screening
+          - cell "$250":
+            - paragraph: $250
+        - row "Micro-PEEK Y-node prototypes $900":
+          - cell "Micro-PEEK Y-node prototypes":
+            - paragraph: Micro-PEEK Y-node prototypes
+          - cell "$900":
+            - paragraph: $900
+        - row "Universal clips and spacers $500":
+          - cell "Universal clips and spacers":
+            - paragraph: Universal clips and spacers
+          - cell "$500":
+            - paragraph: $500
+        - row "Two micro-tools and capture tips $2,000":
+          - cell "Two micro-tools and capture tips":
+            - paragraph: Two micro-tools and capture tips
+          - cell "$2,000":
+            - paragraph: $2,000
+        - row "Borescope and optical access $3,500":
+          - cell "Borescope and optical access":
+            - paragraph: Borescope and optical access
+          - cell "$3,500":
+            - paragraph: $3,500
+        - row "Pressure/flow/tracer test equipment $2,000":
+          - cell "Pressure/flow/tracer test equipment":
+            - paragraph: Pressure/flow/tracer test equipment
+          - cell "$2,000":
+            - paragraph: $2,000
+        - row "Hydraulic fixture and host gimbal $1,500":
+          - cell "Hydraulic fixture and host gimbal":
+            - paragraph: Hydraulic fixture and host gimbal
+          - cell "$1,500":
+            - paragraph: $1,500
+        - row "Fabrication and process engineering $3,000":
+          - cell "Fabrication and process engineering":
+            - paragraph: Fabrication and process engineering
+          - cell "$3,000":
+            - paragraph: $3,000
+        - row "Testing and labour $2,000":
+          - cell "Testing and labour":
+            - paragraph: Testing and labour
+          - cell "$2,000":
+            - paragraph: $2,000
+        - row "Cleaning, waste and utilities $300":
+          - cell "Cleaning, waste and utilities":
+            - paragraph: Cleaning, waste and utilities
+          - cell "$300":
+            - paragraph: $300
+        - row "Contingency $1,500":
+          - cell "Contingency":
+            - paragraph: Contingency
+          - cell "$1,500":
+            - paragraph: $1,500
+        - row "Total $17,950":
+          - cell "Total":
+            - paragraph:
+              - strong: Total
+          - cell "$17,950":
+            - paragraph:
+              - strong: $17,950
+    - paragraph: These are unquoted experimental allowances.
+    - paragraph: "The test should be abandoned or redesigned if:"
+    - list:
+      - paragraph: The Y-node cannot fit through the service port with adequate tolerance.
+      - paragraph: The clip cannot be independently released and recovered.
+      - paragraph: The flow ratio cannot be maintained within ±10% after tube screening and physical length adjustment.
+      - paragraph: The crossover fails the tracer test.
+      - paragraph: A 24-hour wet run causes tube migration or obstruction.
+      - paragraph: The host cannot be restored to its original clean condition.
+      - paragraph: The ordinary open-host method performs the same useful operation faster and cheaper.
+    - heading "10. Final assessment" [level=2]:
+      - strong: 10. Final assessment
+    - paragraph: The capillary-loom architecture offers a practical alternative to trying to cure or print an internal fluidic manifold through a tiny port.
+    - paragraph: "It uses:"
+    - list:
+      - paragraph: Real FEP microcapillaries.
+      - paragraph: A common reusable junction.
+      - paragraph: Universal retaining clips.
+      - paragraph: A generic internal anchoring surface.
+      - paragraph: A common microgripper.
+      - paragraph: A real small-diameter borescope.
+      - paragraph: External pressure, flow and contamination measurements.
+    - paragraph: It can represent all three requested fluidic layouts without geometry-specific internal cores or external flow restrictions.
+    - paragraph: "However, three important results remain unestablished:"
+    - list:
+      - paragraph: The custom 1.7 mm micro-Y junction has not been manufactured or qualified.
+      - paragraph: The microgripper's routing, clip recovery and complete swept paths have not been demonstrated.
+      - paragraph: The candidate has not shown a 30% cost reduction or threefold turnaround advantage over opening and rebuilding the same host.
+    - paragraph:
+      - strong: My conclusion is to pursue the capillary-loom experiment, not yet the production machine.
+      - text: The physical architecture is simpler than remote curing of a bulk material and has a more credible path to repeated cleaning and renewal. Its strongest potential advantage is maintaining the host closed during retargeting. Whether that advantage is economically valuable depends on the actual access cost of the competing open-host process.
+    - paragraph: The important distinction is that the hydraulic design now has a physically obtainable construction and a reproducible numerical screening model, but the complete manufacturing and renewal capability remains unqualified.
+    - button "View analysis":

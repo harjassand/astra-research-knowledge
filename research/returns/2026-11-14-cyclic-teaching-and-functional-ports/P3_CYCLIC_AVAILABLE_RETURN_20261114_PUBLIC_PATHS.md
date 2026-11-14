@@ -1,0 +1,802 @@
+# P3 cyclic-boundary teaching — available visible return
+
+Observed 14 November 2026 in same Pro chat https://chatgpt.com/c/6af4eb36-d13c-83ec-811c-00db062459b3 after the once-only continuation. Exact issued question: research/returns/2026-11-14-cyclic-teaching-and-functional-ports/P3_FULL_GLOBAL_BOUNDARY_TEACHING_OF_CYCLIC_PHYSICAL_NETWORKS_FOUNDATIONAL_DISCOVERY_PRO_20261114.txt The earlier expanded top-level unfinished activity is preserved in research/returns/2026-11-14-cyclic-teaching-and-functional-ports/source-artifacts/P3_CYCLIC_PRE_RECOVERY_VISIBLE_20261114.txt Expanded post-continuation top-level activity and full final follow as visible DOM accessibility transcript, not native/server text. Equations and tables may be fragmented or duplicated and some source URLs may be missing. Linked reports, ZIPs, sources, nested private reasoning and producer code were not opened or executed. Claims not independently verified.
+
+    - button "Worked for 6m 52s" [expanded] [active]:
+      - generic: Worked for 6m 52s
+    - paragraph: Refined the theorem
+    - paragraph: Balanced loop strength
+    - paragraph: Reviewed boundary research, latest theorem, loop-grid, and model results
+    - paragraph: Assessed architecture tradeoffs
+    - paragraph: Generalized the selector
+    - paragraph: Strengthened the bound
+    - paragraph: Quantified loop visibility
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - button "Analyzed"
+    - generic: Analyzed
+    - heading "ChatGPT said:" [level=4]
+    - 'heading "Further result: the loop strength and teaching reliability have a quantitative trade-off" [level=2]':
+      - strong: "Further result: the loop strength and teaching reliability have a quantitative trade-off"
+    - paragraph:
+      - text: The most useful next step is not to make the existing grid larger or cheaper. It is to determine
+      - strong: how strongly its loops can participate in the useful response without destroying selective writing
+      - text: .
+    - paragraph: The existing construction provides an exact way to calculate that trade-off.
+    - paragraph:
+      - text: For an
+      - math:
+        - generic: "n"
+        - generic: ×
+        - generic: "n"
+      - generic: n ×
+      - generic: "n"
+      - text: grid, define
+    - math:
+      - generic: γ
+      - generic: =
+      - generic: "n"
+      - generic: "2"
+      - generic: r
+      - generic: max
+      - generic: ⁡
+      - generic: R
+      - generic: v
+      - generic: ","
+      - generic: min
+      - generic: ⁡
+      - generic: ","
+    - generic: γ =
+    - text: R
+    - text: v,
+    - generic: min
+    - text: "n"
+    - generic: "2"
+    - text: r
+    - generic: max
+    - text: ","
+    - paragraph:
+      - text: where
+      - math:
+        - generic: r
+        - generic: max
+        - generic: ⁡
+      - text: r
+      - generic: max
+      - text: is the largest allowed horizontal resistance and
+      - math:
+        - generic: R
+        - generic: v
+        - generic: ","
+        - generic: min
+        - generic: ⁡
+      - text: R
+      - text: v,
+      - generic: min
+      - text: is the smallest transverse resistance.
+    - paragraph: The stronger selector theorem gives
+    - math:
+      - generic: β
+      - generic: "n"
+      - generic: (
+      - generic: γ
+      - generic: )
+      - generic: =
+      - generic: c
+      - generic: "n"
+      - generic: "1"
+      - generic: −
+      - generic: c
+      - generic: "n"
+      - generic: ","
+    - text: β
+    - generic: "n"
+    - text: (γ) =
+    - text: 1 −
+    - text: c
+    - generic: "n"
+    - text: c
+    - generic: "n"
+    - text: ","
+    - paragraph: where
+    - math:
+      - generic: c
+      - generic: "n"
+      - generic: =
+      - generic: γ
+      - generic: (
+      - generic: "n"
+      - generic: −
+      - generic: "1"
+      - generic: )
+      - generic: (
+      - generic: "n"
+      - generic: −
+      - generic: "1"
+      - generic: )
+      - generic: "2"
+      - generic: −
+      - generic: "1"
+      - generic: "12"
+      - generic: "n"
+      - generic: "2"
+      - generic: .
+    - text: c
+    - generic: "n"
+    - text: =
+    - generic: "12"
+    - text: "n"
+    - generic: "2"
+    - text: γ(n − 1)
+    - text: (n − 1
+    - text: )
+    - generic: "2"
+    - text: − 1
+    - text: .
+    - paragraph:
+      - text: Here
+      - math:
+        - generic: β
+        - generic: "n"
+      - text: β
+      - generic: "n"
+      - text: bounds the largest current in any nonselected row, relative to the commanded current.
+    - paragraph: Meanwhile, for the strongest transverse spatial mode, the continuum loop contribution relative to an uncoupled row is
+    - math:
+      - generic: Λ
+      - generic: (
+      - generic: γ
+      - generic: )
+      - generic: =
+      - generic: "2"
+      - generic: γ
+      - generic: tanh
+      - generic: ⁡
+      - generic: (
+      - generic: γ
+      - generic: )
+      - generic: .
+    - generic: Λ(γ) =
+    - text: "2"
+    - generic: γ
+    - text: tanh(
+    - generic: γ
+    - text: ).
+    - paragraph: "These equations expose a useful design frontier:"
+    - list:
+      - paragraph:
+        - text: Increasing
+        - math:
+          - generic: γ
+        - generic: γ
+        - text: makes the hidden loops more consequential to the measured physical response.
+      - paragraph:
+        - text: Increasing
+        - math:
+          - generic: γ
+        - generic: γ
+        - text: also increases unwanted current in unselected rows.
+      - paragraph: Eventually the memory's nondisturb threshold prevents further strengthening of the loops.
+    - heading "A revised 16-row design" [level=3]:
+      - strong: A revised 16-row design
+    - paragraph: "Retain the existing local memory contract:"
+    - list:
+      - paragraph: "Selected current: at least 35 mA."
+      - paragraph: "Nondisturbing current: at most 2.5 mA."
+      - paragraph: "Command current: 38 mA."
+      - paragraph: "Source uncertainty: 0.2%."
+      - paragraph: "Additional transient and leakage allowance: 0.1 mA."
+    - paragraph: The resulting allowable off-row fraction is
+    - math:
+      - generic: β
+      - generic: max
+      - generic: ⁡
+      - generic: =
+      - generic: min
+      - generic: ⁡
+      - generic: "["
+      - generic: "1"
+      - generic: −
+      - generic: "35.1"
+      - generic: "0.998"
+      - generic: (
+      - generic: "38"
+      - generic: )
+      - generic: ","
+      - generic: "2.5"
+      - generic: −
+      - generic: "0.1"
+      - generic: "1.002"
+      - generic: (
+      - generic: "38"
+      - generic: )
+      - generic: "]"
+      - generic: =
+      - generic: 0.06303.
+    - text: β
+    - generic: max
+    - text: =
+    - text: min
+    - generic: "["
+    - text: 1 −
+    - generic: 0.998(38)
+    - generic: "35.1"
+    - text: ","
+    - generic: 1.002(38)
+    - generic: 2.5 − 0.1
+    - generic: "]"
+    - text: =
+    - generic: 0.06303.
+    - paragraph: For sixteen rows, the exact finite-size bound permits approximately
+    - math:
+      - generic: γ
+      - generic: max
+      - generic: ⁡
+      - generic: =
+      - generic: 0.2342.
+    - text: γ
+    - generic: max
+    - text: =
+    - generic: 0.2342.
+    - paragraph:
+      - text: I would therefore investigate
+      - math:
+        - generic: γ
+        - generic: =
+        - generic: "0.23"
+      - generic: γ =
+      - generic: "0.23"
+      - text: rather than the previous 0.20.
+    - paragraph:
+      - strong: Updated theoretical operating point
+    - heading "0.0618" [level=1]:
+      - strong: "0.0618"
+    - paragraph: Maximum off-row current fraction
+    - heading "42.8%" [level=1]:
+      - strong: 42.8%
+    - paragraph: High transverse-mode loop contribution
+    - heading "35.47 mA" [level=1]:
+      - strong: 35.47 mA
+    - paragraph: Minimum selected current after allowances
+    - heading "2.45 mA" [level=1]:
+      - strong: 2.45 mA
+    - paragraph: Maximum off-row current after allowances
+    - paragraph: Calculated using the finite 16-row selector bound and introduced source/transient tolerances. Not measured hardware performance.
+    - paragraph:
+      - text: For
+      - math:
+        - generic: "n"
+        - generic: =
+        - generic: "16"
+      - generic: n =
+      - generic: "16"
+      - text: and
+      - math:
+        - generic: r
+        - generic: max
+        - generic: ⁡
+        - generic: =
+        - generic: "240"
+        - generic: Ω
+      - text: r
+      - generic: max
+      - text: =
+      - generic: 240 Ω
+      - text: ", this requires approximately"
+    - math:
+      - generic: R
+      - generic: v
+      - generic: ","
+      - generic: min
+      - generic: ⁡
+      - generic: =
+      - generic: "256"
+      - generic: (
+      - generic: "240"
+      - generic: )
+      - generic: "0.23"
+      - generic: ≈
+      - generic: "267"
+      - generic: k
+      - generic: Ω
+      - generic: .
+    - text: R
+    - text: v,
+    - generic: min
+    - text: =
+    - generic: "0.23"
+    - generic: 256(240)
+    - text: ≈
+    - text: "267"
+    - generic: kΩ
+    - text: .
+    - paragraph: A nominal 270 kΩ rung is therefore a candidate, provided its minimum resistance after tolerance and temperature remains above the required bound.
+    - paragraph: "This is a meaningful improvement in the theoretical design: the loops contribute approximately 42.8% in the selected transverse mode, without exceeding the proposed current-disturb limits."
+    - paragraph: It is not a free improvement. The 0.1 mA allowance for parasitic and transient currents is particularly important. A physical board that produces larger current spikes could invalidate the result even if its steady-state resistor values are perfect.
+    - heading "2. The loops now have a measurable useful function" [level=2]:
+      - strong: 2. The loops now have a measurable useful function
+    - paragraph: There is a stronger way to demonstrate that the loops are not merely decorative connections.
+    - paragraph: "Consider the same 16-row grid. Apply a transverse boundary voltage pattern at both ends:"
+    - math:
+      - generic: v
+      - generic: l
+      - generic: e
+      - generic: f
+      - generic: t
+      - generic: =
+      - generic: u
+      - generic: ","
+      - generic: v
+      - generic: r
+      - generic: i
+      - generic: g
+      - generic: h
+      - generic: t
+      - generic: =
+      - generic: u
+      - generic: ","
+    - text: v
+    - generic: left
+    - text: =
+    - text: u,
+    - text: v
+    - generic: right
+    - text: =
+    - generic: u,
+    - paragraph:
+      - text: where
+      - math:
+        - generic: u
+      - generic: u
+      - text: is the highest spatial eigenmode of the 16-row path Laplacian.
+    - paragraph: If the rows were disconnected, every row would have identical voltage at both ends. There would be no longitudinal current and no power transfer.
+    - paragraph: With the internal rungs connected, current circulates through the loops. The network now produces a nonzero boundary response.
+    - paragraph: For a uniform row resistance, the continuum prediction is
+    - math:
+      - generic: k
+      - generic: =
+      - generic: γ
+      - generic: λ
+      - generic: ","
+    - generic: k =
+    - generic: γλ
+    - text: ","
+    - math:
+      - generic: v
+      - generic: (
+      - generic: x
+      - generic: )
+      - generic: =
+      - generic: cosh
+      - generic: ⁡
+      - generic: (
+      - generic: k
+      - generic: (
+      - generic: x
+      - generic: −
+      - generic: "1"
+      - generic: "2"
+      - generic: )
+      - generic: )
+      - generic: cosh
+      - generic: ⁡
+      - generic: (
+      - generic: k
+      - generic: /
+      - generic: "2"
+      - generic: )
+      - generic: u
+      - generic: .
+    - generic: v(x) =
+    - generic: cosh(k/2)
+    - text: cosh(k(x −
+    - generic: "2"
+    - generic: "1"
+    - text: ))
+    - text: u.
+    - paragraph: The resulting loop-mediated conductance is
+    - math:
+      - generic: G
+      - generic: l
+      - generic: o
+      - generic: o
+      - generic: p
+      - generic: =
+      - generic: "2"
+      - generic: k
+      - generic: tanh
+      - generic: ⁡
+      - generic: (
+      - generic: k
+      - generic: /
+      - generic: "2"
+      - generic: )
+      - generic: "n"
+      - generic: r
+      - generic: .
+    - text: G
+    - generic: loop
+    - text: =
+    - generic: nr
+    - generic: 2k tanh(k/2)
+    - text: .
+    - paragraph: I also evaluated the actual finite 16 × 16 resistor graph, rather than relying exclusively on the continuum approximation.
+    - paragraph:
+      - strong: Finite-network calculation
+    - paragraph: Same transverse boundary excitation; same 270 kΩ rung network
+    - paragraph:
+      - strong: All rows at 120 Ω
+    - heading "20.5%" [level=1]:
+      - strong: 20.5%
+    - paragraph: Loop conductance relative to the two-end longitudinal reference
+    - paragraph:
+      - strong: All rows at 240 Ω
+    - heading "39.6%" [level=1]:
+      - strong: 39.6%
+    - paragraph: Same normalized loop response
+    - heading "1.93×" [level=1]:
+      - strong: 1.93×
+    - paragraph: Increase in the normalized loop-mediated response between the two retained states.
+    - paragraph: "This is a useful physical consequence of teaching the horizontal rows: it changes the behavior of the hidden loops even though their resistors are not individually rewritten."
+    - paragraph: "It also provides a concrete application: a passive, reconfigurable electrical network whose internal coupling response can be changed after fabrication without internal control wiring."
+    - paragraph: The calculation uses positive resistances and preserves reciprocity and passivity. It is a finite-network numerical result, not an experimental measurement.
+    - heading "3. A more precise statement of the scaling law" [level=2]:
+      - strong: 3. A more precise statement of the scaling law
+    - paragraph: The stronger result is that loop participation need not disappear as the hidden structure grows.
+    - paragraph: For fixed local switching requirements, the finite selector bound approaches
+    - math:
+      - generic: β
+      - generic: ∞
+      - generic: =
+      - generic: γ
+      - generic: "12"
+      - generic: −
+      - generic: γ
+      - generic: .
+    - text: β
+    - generic: ∞
+    - text: =
+    - generic: "12"
+    - text: − γ
+    - generic: γ
+    - text: .
+    - paragraph: Including the 0.1 mA dynamic/leakage allowance and the source tolerance from the revised operating case gives a conservative asymptotic coupling limit of approximately
+    - math:
+      - generic: γ
+      - generic: ∞
+      - generic: ≤
+      - generic: 0.2054.
+    - text: γ
+    - generic: ∞
+    - text: ≤
+    - generic: 0.2054.
+    - paragraph: At this limit, the highest transverse mode retains a continuum loop contribution of approximately
+    - math:
+      - generic: Λ
+      - generic: ∞
+      - generic: ≈
+      - generic: "38.5"
+      - generic: "%"
+      - generic: .
+    - text: Λ
+    - generic: ∞
+    - text: ≈ 38.5%.
+    - paragraph:
+      - text: "That is the significant result:"
+      - strong: the useful loop response remains a finite fraction of the reference response even as both network depth and the number of hidden loops grow.
+    - paragraph: "The resource scaling is:"
+    - table:
+      - rowgroup:
+        - row "Resource Dependence":
+          - columnheader "Resource":
+            - paragraph: Resource
+          - columnheader "Dependence":
+            - paragraph: Dependence
+        - row "Hidden state cells":
+          - cell "Hidden state cells":
+            - paragraph: Hidden state cells
+          - cell:
+            - paragraph:
+              - math:
+                - generic: O
+                - generic: (
+                - generic: "n"
+                - generic: "2"
+                - generic: )
+              - text: O(
+              - text: "n"
+              - generic: "2"
+              - text: )
+        - row "Independent cycles":
+          - cell "Independent cycles":
+            - paragraph: Independent cycles
+          - cell:
+            - paragraph:
+              - math:
+                - generic: O
+                - generic: (
+                - generic: "n"
+                - generic: "2"
+                - generic: )
+              - text: O(
+              - text: "n"
+              - generic: "2"
+              - text: )
+        - row "Boundary ports":
+          - cell "Boundary ports":
+            - paragraph: Boundary ports
+          - cell:
+            - paragraph:
+              - math:
+                - generic: O
+                - generic: (
+                - generic: "n"
+                - generic: )
+              - generic: O(n)
+        - row "Independently programmable response coordinates":
+          - cell "Independently programmable response coordinates":
+            - paragraph: Independently programmable response coordinates
+          - cell:
+            - paragraph:
+              - math:
+                - generic: "n"
+              - generic: "n"
+        - row "Retained target maps":
+          - cell "Retained target maps":
+            - paragraph: Retained target maps
+          - cell:
+            - paragraph:
+              - math:
+                - generic: "2"
+                - generic: "n"
+              - text: "2"
+              - generic: "n"
+        - row "Teaching pulses":
+          - cell "Teaching pulses":
+            - paragraph: Teaching pulses
+          - cell:
+            - paragraph:
+              - math:
+                - generic: O
+                - generic: (
+                - generic: "n"
+                - generic: )
+              - generic: O(n)
+        - row "Full-response scalar observations":
+          - cell "Full-response scalar observations":
+            - paragraph: Full-response scalar observations
+          - cell:
+            - paragraph:
+              - math:
+                - generic: O
+                - generic: (
+                - generic: "n"
+                - generic: "2"
+                - generic: )
+              - text: O(
+              - text: "n"
+              - generic: "2"
+              - text: )
+        - row "Resistive writing work":
+          - cell "Resistive writing work":
+            - paragraph: Resistive writing work
+          - cell:
+            - paragraph:
+              - math:
+                - generic: O
+                - generic: (
+                - generic: "n"
+                - generic: "2"
+                - generic: )
+              - text: O(
+              - text: "n"
+              - generic: "2"
+              - text: )
+        - row "Required source voltage":
+          - cell "Required source voltage":
+            - paragraph: Required source voltage
+          - cell:
+            - paragraph:
+              - math:
+                - generic: O
+                - generic: (
+                - generic: "n"
+                - generic: )
+              - generic: O(n)
+        - row "Physical insulation and leakage burden Must be qualified with increasing size":
+          - cell "Physical insulation and leakage burden":
+            - paragraph: Physical insulation and leakage burden
+          - cell "Must be qualified with increasing size":
+            - paragraph: Must be qualified with increasing size
+    - paragraph:
+      - text: The target family is deliberately smaller than the microscopic state space. It does not claim that all
+      - math:
+        - generic: O
+        - generic: (
+        - generic: "n"
+        - generic: "2"
+        - generic: )
+      - text: O(
+      - text: "n"
+      - generic: "2"
+      - text: )
+      - text: memory cells can be independently programmed.
+    - paragraph: That restriction is what allows the construction to avoid an internal addressing network.
+    - heading "4. The actual component evidence needs a stricter interpretation" [level=2]:
+      - strong: 4. The actual component evidence needs a stricter interpretation
+    - paragraph: The proposed local memory uses Omron's G6KU-2F-Y magnetic latching relay.
+    - paragraph: "The manufacturer's specifications establish:"
+    - list:
+      - paragraph: Approximately 0.7 g mass.
+      - paragraph: 3 ms maximum operating and reset times.
+      - paragraph: 10 ms minimum set/reset pulse width.
+      - paragraph: 50 million mechanical operations minimum.
+      - paragraph: 100,000 electrical operations under the specified rated-load test.
+      - paragraph: 100 mΩ maximum initial contact resistance.
+    - paragraph:
+      - text: These specifications are useful, but they do not establish the assembled cell's selectivity, cumulative half-select immunity or resistance stability. The electrical endurance test is not the same as the repeated low-current read and high-voltage write history proposed here.
+      - button "omronfs.omron.com":
+        - generic: omronfs.omron.com
+    - paragraph: "There is a particularly important distinction:"
+    - paragraph:
+      - strong: A relay's guaranteed operating voltage does not establish its immunity to repeated subthreshold excitation.
+    - paragraph: "The decisive physical qualification must measure:"
+    - list:
+      - paragraph: Both switching polarities from both initial states.
+      - paragraph: Minimum switching pulse duration at temperature extremes.
+      - paragraph: Repeated half-selected exposure.
+      - paragraph: Contact resistance after repeated switching.
+      - paragraph: Relay coil and diode temperature.
+      - paragraph: Transient current redistribution through the complete network.
+      - paragraph: Retention after 24 hours and repeated retargeting.
+    - paragraph: The 0.1 mA parasitic-current allowance is a design requirement. It is not a measured property of the circuit.
+    - heading "5. The economic conclusion has not changed" [level=2]:
+      - strong: 5. The economic conclusion has not changed
+    - paragraph: The optimized coupling improves the theoretical use of the hidden loops, but it does not solve the commercial disadvantage.
+    - paragraph: "The previous complete-service comparison remains:"
+    - table:
+      - rowgroup:
+        - row "Construction USD per accepted retarget and retained service":
+          - columnheader "Construction":
+            - paragraph: Construction
+          - columnheader "USD per accepted retarget and retained service":
+            - paragraph: USD per accepted retarget and retained service
+        - row "Boundary-taught loop network $16.19":
+          - cell "Boundary-taught loop network":
+            - paragraph: Boundary-taught loop network
+          - cell "$16.19":
+            - paragraph:
+              - strong: $16.19
+        - row "Competent internally wired row-control network $13.72":
+          - cell "Competent internally wired row-control network":
+            - paragraph: Competent internally wired row-control network
+          - cell "$13.72":
+            - paragraph:
+              - strong: $13.72
+    - paragraph: The boundary-only construction is more expensive under these assumptions.
+    - paragraph: The difference is important scientifically. The internally wired network has a conventional address path. The boundary-taught network achieves a restricted family of functions without that path.
+    - paragraph: The latter is a genuine access capability, but it is not yet an economic improvement.
+    - heading "6. The next decisive experiment" [level=2]:
+      - strong: 6. The next decisive experiment
+    - paragraph: I would now stop expanding the mathematical family and test the most important physical inequality.
+    - paragraph:
+      - text: Build a
+      - strong: 4 × 8 cyclic grid
+      - text: ", with all transverse links permanently connected."
+    - paragraph: "Use the revised coupling specification:"
+    - list:
+      - paragraph: "Nominal horizontal states: 120 and 240 Ω."
+      - paragraph: "Transverse resistors: approximately 270 kΩ."
+      - paragraph: Four boundary rows.
+      - paragraph: Eight horizontal segments per row.
+      - paragraph: Four accessible ports per row pair.
+      - paragraph: Blinded mixed initial relay states.
+    - paragraph: "The test should establish the complete local current separation:"
+    - math:
+      - generic: I
+      - generic: s
+      - generic: e
+      - generic: l
+      - generic: e
+      - generic: c
+      - generic: t
+      - generic: e
+      - generic: d
+      - generic: ≥
+      - generic: "35"
+      - generic: m
+      - generic: A
+      - generic: ","
+    - text: I
+    - generic: selected
+    - text: ≥
+    - text: "35"
+    - generic: mA
+    - text: ","
+    - math:
+      - generic: I
+      - generic: "n"
+      - generic: o
+      - generic: "n"
+      - generic: s
+      - generic: e
+      - generic: l
+      - generic: e
+      - generic: c
+      - generic: t
+      - generic: e
+      - generic: d
+      - generic: ≤
+      - generic: "2.5"
+      - generic: m
+      - generic: A
+      - generic: ","
+    - text: I
+    - generic: nonselected
+    - text: ≤
+    - text: "2.5"
+    - generic: mA
+    - text: ","
+    - paragraph: including actual transient and parasitic currents.
+    - paragraph: It should then execute every row-target combination, followed by retargeting from the retained state.
+    - paragraph: The measurement procedure must use only boundary instruments during teaching. Temporary internal diagnostic instrumentation may be used on separate development specimens, but not as a hidden control channel in the acceptance test.
+    - paragraph: The experiment should also apply the common transverse boundary pattern and measure the loop-mediated response in both retained states. This tests whether the network actually produces the predicted coupling change.
+    - paragraph:
+      - strong: Decisive pass conditions
+    - list:
+      - paragraph: All 16 target patterns reached from blinded initial states.
+      - paragraph: No false acceptance after a deliberately underpowered write.
+      - paragraph: Selected/off-row current inequalities maintained throughout switching.
+      - paragraph: Boundary response error within 2%.
+      - paragraph: Measured transverse-mode response agrees with the finite-network model within 3%.
+      - paragraph: 24-hour unplugged retention within the declared endpoint tolerance.
+      - paragraph: No hidden internal measurement or control used by the teacher.
+    - paragraph: The small graph can establish the local physical operation. It cannot establish the larger source-compliance, insulation, leakage and manufacturing requirements of a 16 × 16 network.
+    - heading "7. Overall scientific position" [level=2]:
+      - strong: 7. Overall scientific position
+    - paragraph: "The most useful result is now a combination of three ideas:"
+    - list:
+      - paragraph:
+        - strong: Topology converts boundary currents into predictable hidden writing fields.
+      - paragraph:
+        - strong: A local threshold converts those fields into retained selective changes.
+      - paragraph:
+        - strong: A sparse, well-conditioned boundary measurement basis certifies the useful response without reconstructing the microscopic interior.
+    - paragraph: "The new coupling calculation adds a fourth consequence: the same structure can retain a meaningful loop-mediated response as it grows, rather than becoming a collection of disconnected programmable paths."
+    - paragraph: The resulting principle is not universal. It applies to a prepared anisotropic family with bounded positive resistances, a qualified local memory contract, controlled boundary leakage and a known topology.
+    - paragraph:
+      - text: "But it establishes something stronger than a local rank calculation:"
+      - strong: a global, finite-error, boundary-only teaching procedure for a growing cyclic bulk, from unknown initial states and without internal addressing.
+    - paragraph: The remaining gap is physical qualification and economic superiority. Neither should be claimed from the executed models.
+    - paragraph: The existing dossier and executable models remain the reference record; this continuation adds the finite-size coupling optimisation and the explicit loop-response comparison.
+    - button "View analysis":

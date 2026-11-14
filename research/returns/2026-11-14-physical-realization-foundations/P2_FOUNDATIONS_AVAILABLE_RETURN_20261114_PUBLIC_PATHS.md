@@ -1,0 +1,874 @@
+# P2 physical possibility foundations — available visible return
+
+Observed 14 November 2026 in same Pro chat https://chatgpt.com/c/6af520d7-3fcc-83ec-8bf0-80e8531141ea after one authorized continuation. Exact issued question: research/returns/2026-11-14-physical-realization-foundations/P2_FOUNDATIONS_OF_PHYSICAL_POSSIBILITY_AND_COMPOSABLE_LAWS_PRO_20261114.txt Earlier visible pre-recovery activity: research/returns/2026-11-14-physical-realization-foundations/source-artifacts/P2_FOUNDATIONS_PRE_RECOVERY_VISIBLE_20261114.txt Expanded top-level post-continuation activity and final shown in the DOM accessibility transcript below, not native/server text. Equations and tables may be fragmented or duplicated and some source URLs may be missing. No nested private reasoning, linked files, source recovery or producer code execution; claims not independently verified.
+
+    - button "Worked for 1m 3s" [expanded] [active]:
+      - generic: Worked for 1m 3s
+    - paragraph: Researched compositional port-Hamiltonian integrability
+    - paragraph: Developed and unified a closure principle and test
+    - paragraph: Added computational limits
+    - generic: Searched the web
+    - button "Analyzed"
+    - generic: Analyzed
+    - heading "ChatGPT said:" [level=4]
+    - 'heading "Further development: from cycle closure to a general theory of physical realization" [level=1]':
+      - strong: "Further development: from cycle closure to a general theory of physical realization"
+    - paragraph:
+      - text: "The previous investigation exposed an important limitation:"
+      - strong: cycle closure is necessary for certain passive realizations, but it is not a sufficient general theory of physical possibility.
+    - paragraph: "I have extended the construction into a more general framework with four distinct requirements:"
+    - list:
+      - paragraph: State closure.
+      - paragraph: Power closure.
+      - paragraph: Interface closure.
+      - paragraph: Resource closure.
+    - paragraph: This is a stronger candidate foundation because it addresses not only whether an isolated response law is physically consistent, but whether its capabilities survive elimination of internal variables, composition with other systems and repeated operation.
+    - paragraph: The additional mathematical examples have been executed and added to the research package.
+    - 'heading "1. The deeper principle: physical response must close at every boundary" [level=2]':
+      - strong: "1. The deeper principle: physical response must close at every boundary"
+    - paragraph: Consider two physical components connected together.
+    - paragraph: "An abstract model might say:"
+    - list:
+      - paragraph: Component A produces a displacement.
+      - paragraph: Component B responds to that displacement.
+      - paragraph: Their combination produces a desired force.
+    - paragraph: But this is not sufficient to establish that the combination exists physically.
+    - paragraph: The components may have incompatible interfaces, hidden internal states, different energy requirements or an unstable interaction.
+    - paragraph: "I propose the following stronger condition:"
+    - math:
+      - generic: Physical composability
+      - generic: =
+      - generic: state closure
+      - generic: +
+      - generic: power closure
+      - generic: +
+      - generic: interface closure
+      - generic: +
+      - generic: resource closure
+    - generic: Physical composability
+    - text: =
+    - generic: state closure
+    - text: +
+    - generic: power closure
+    - text: +
+    - generic: interface closure
+    - text: +
+    - generic: resource closure
+    - paragraph: These are four different mathematical obligations, not four interchangeable ways of describing energy conservation.
+    - heading "A. State closure" [level=3]:
+      - strong: A. State closure
+    - paragraph: The reduced description must retain everything necessary to predict future observable behaviour.
+    - paragraph: If eliminating an internal variable changes future response, its influence must remain through memory, an effective state or a controlled approximation.
+    - paragraph: A memoryless response cannot simply be assumed.
+    - heading "B. Power closure" [level=3]:
+      - strong: B. Power closure
+    - paragraph: Every component must account for energy entering, leaving and remaining stored.
+    - paragraph:
+      - text: For component
+      - math:
+        - generic: i
+      - generic: i
+      - text: ","
+    - math:
+      - generic: S
+      - generic: ˙
+      - generic: i
+      - generic: ≤
+      - generic: u
+      - generic: i
+      - generic: T
+      - generic: "y"
+      - generic: i
+      - generic: −
+      - generic: d
+      - generic: i
+      - generic: ","
+      - generic: d
+      - generic: i
+      - generic: ≥
+      - generic: "0."
+    - generic: S
+    - text: ˙
+    - generic: i
+    - text: ≤
+    - text: u
+    - generic: i
+    - generic: T
+    - text: "y"
+    - generic: i
+    - text: −
+    - text: d
+    - generic: i
+    - text: ","
+    - text: d
+    - generic: i
+    - text: ≥
+    - generic: "0."
+    - paragraph:
+      - text: Here
+      - math:
+        - generic: S
+        - generic: i
+      - text: S
+      - generic: i
+      - text: is stored energy,
+      - math:
+        - generic: u
+        - generic: i
+        - generic: ","
+        - generic: "y"
+        - generic: i
+      - text: u
+      - generic: i
+      - text: ","
+      - text: "y"
+      - generic: i
+      - text: are conjugate physical ports and
+      - math:
+        - generic: d
+        - generic: i
+      - text: d
+      - generic: i
+      - text: is dissipation.
+    - paragraph: When interconnected components have a power-conserving interface,
+    - math:
+      - generic: ∑
+      - generic: i
+      - generic: u
+      - generic: i
+      - generic: T
+      - generic: "y"
+      - generic: i
+      - generic: =
+      - generic: "0."
+    - generic: i
+    - generic: ∑
+    - text: u
+    - generic: i
+    - generic: T
+    - text: "y"
+    - generic: i
+    - text: =
+    - generic: "0."
+    - paragraph: Consequently,
+    - math:
+      - generic: d
+      - generic: d
+      - generic: t
+      - generic: ∑
+      - generic: i
+      - generic: S
+      - generic: i
+      - generic: ≤
+      - generic: −
+      - generic: ∑
+      - generic: i
+      - generic: d
+      - generic: i
+      - generic: .
+    - generic: dt
+    - generic: d
+    - generic: i
+    - generic: ∑
+    - text: S
+    - generic: i
+    - text: ≤
+    - text: −
+    - generic: i
+    - generic: ∑
+    - text: d
+    - generic: i
+    - text: .
+    - paragraph: The important consequence is that a collection of individually valid components can be composed without inventing additional energy.
+    - paragraph:
+      - text: This recovers the established dissipativity result of Willems (1972). It is not a new theorem.
+      - button "doi.org +1":
+        - generic: doi.org
+        - generic: "+1"
+    - heading "C. Interface closure" [level=3]:
+      - strong: C. Interface closure
+    - paragraph: The components must exchange physically compatible quantities.
+    - paragraph: "For example:"
+    - list:
+      - paragraph: Mechanical force and displacement.
+      - paragraph: Electrical voltage and current.
+      - paragraph: Chemical potential and material flux.
+      - paragraph: Temperature and entropy flow.
+    - paragraph: A logical output is not automatically a physically usable input.
+    - heading "D. Resource closure" [level=3]:
+      - strong: D. Resource closure
+    - paragraph: A reusable operation must retain its capacity or pay for its renewal.
+    - paragraph: For a consumable resource,
+    - math:
+      - generic: r
+      - generic: "n"
+      - generic: +
+      - generic: "1"
+      - generic: =
+      - generic: r
+      - generic: "n"
+      - generic: −
+      - generic: c
+      - generic: "n"
+      - generic: +
+      - generic: ρ
+      - generic: "n"
+      - generic: ","
+    - text: r
+    - generic: n+1
+    - text: =
+    - text: r
+    - generic: "n"
+    - text: −
+    - text: c
+    - generic: "n"
+    - text: +
+    - text: ρ
+    - generic: "n"
+    - text: ","
+    - paragraph:
+      - text: where
+      - math:
+        - generic: c
+        - generic: "n"
+      - text: c
+      - generic: "n"
+      - text: is consumption and
+      - math:
+        - generic: ρ
+        - generic: "n"
+      - text: ρ
+      - generic: "n"
+      - text: is actual replenishment.
+    - paragraph: This includes material, stored energy, calibration, measurement precision and discarded products.
+    - paragraph: Restarting a mathematical model does not restore a physical inventory.
+    - 'heading "2. A new distinction: eliminating matter is not eliminating its influence" [level=2]':
+      - strong: "2. A new distinction: eliminating matter is not eliminating its influence"
+    - paragraph: I constructed another executable example to investigate this.
+    - paragraph: "Consider two masses:"
+    - list:
+      - paragraph:
+        - text: A visible mass
+        - math:
+          - generic: m
+          - generic: x
+        - text: m
+        - generic: x
+        - text: .
+      - paragraph:
+        - text: A hidden mass
+        - math:
+          - generic: m
+          - generic: "y"
+        - text: m
+        - generic: "y"
+        - text: .
+      - paragraph: A spring connecting them.
+      - paragraph: A separate ground spring and dampers.
+    - paragraph: The equations are
+    - math:
+      - generic: m
+      - generic: x
+      - generic: x
+      - generic: ¨
+      - generic: +
+      - generic: c
+      - generic: x
+      - generic: x
+      - generic: ˙
+      - generic: +
+      - generic: k
+      - generic: "0"
+      - generic: x
+      - generic: +
+      - generic: k
+      - generic: (
+      - generic: x
+      - generic: −
+      - generic: "y"
+      - generic: )
+      - generic: =
+      - generic: f
+      - generic: ","
+    - text: m
+    - generic: x
+    - generic: x
+    - text: ¨
+    - text: +
+    - text: c
+    - generic: x
+    - generic: x
+    - text: ˙
+    - text: +
+    - text: k
+    - generic: "0"
+    - text: x +
+    - generic: k(x −
+    - generic: y) =
+    - generic: f,
+    - math:
+      - generic: m
+      - generic: "y"
+      - generic: "y"
+      - generic: ¨
+      - generic: +
+      - generic: c
+      - generic: "y"
+      - generic: "y"
+      - generic: ˙
+      - generic: +
+      - generic: k
+      - generic: (
+      - generic: "y"
+      - generic: −
+      - generic: x
+      - generic: )
+      - generic: =
+      - generic: "0."
+    - text: m
+    - generic: "y"
+    - generic: "y"
+    - text: ¨
+    - text: +
+    - text: c
+    - generic: "y"
+    - generic: "y"
+    - text: ˙
+    - text: +
+    - generic: k(y −
+    - generic: x) =
+    - generic: "0."
+    - paragraph:
+      - text: Eliminating
+      - math:
+        - generic: "y"
+      - generic: "y"
+      - text: "produces the exact boundary response:"
+    - math:
+      - generic: F
+      - generic: (
+      - generic: s
+      - generic: )
+      - generic: X
+      - generic: (
+      - generic: s
+      - generic: )
+      - generic: =
+      - generic: m
+      - generic: x
+      - generic: s
+      - generic: "2"
+      - generic: +
+      - generic: c
+      - generic: x
+      - generic: s
+      - generic: +
+      - generic: k
+      - generic: "0"
+      - generic: +
+      - generic: k
+      - generic: −
+      - generic: k
+      - generic: "2"
+      - generic: m
+      - generic: "y"
+      - generic: s
+      - generic: "2"
+      - generic: +
+      - generic: c
+      - generic: "y"
+      - generic: s
+      - generic: +
+      - generic: k
+    - generic: X(s)
+    - generic: F(s)
+    - text: =
+    - text: m
+    - generic: x
+    - text: s
+    - generic: "2"
+    - text: +
+    - text: c
+    - generic: x
+    - text: s +
+    - text: k
+    - generic: "0"
+    - text: + k −
+    - text: m
+    - generic: "y"
+    - text: s
+    - generic: "2"
+    - text: +
+    - text: c
+    - generic: "y"
+    - text: s + k
+    - text: k
+    - generic: "2"
+    - paragraph: The final term contains the effect of the hidden mass.
+    - paragraph: It is frequency-dependent.
+    - paragraph:
+      - strong: Physical interpretation
+    - paragraph:
+      - strong: Slow driving
+    - paragraph: The hidden mass follows the visible mass. The connecting spring contributes little additional stiffness.
+    - paragraph:
+      - strong: Fast driving
+    - paragraph: The hidden mass cannot follow. The connecting spring contributes substantially to the response.
+    - paragraph:
+      - strong: Near resonance
+    - paragraph: The hidden degree of freedom strongly changes the observed response.
+    - paragraph: The material's internal state has not disappeared. It has become memory in the boundary description.
+    - paragraph: "The executable model produced:"
+    - table:
+      - rowgroup:
+        - row "Driving frequency Error using low-frequency static replacement":
+          - columnheader "Driving frequency":
+            - paragraph: Driving frequency
+          - columnheader "Error using low-frequency static replacement":
+            - paragraph: Error using low-frequency static replacement
+        - row "0.1 rad/s 0.005":
+          - cell "0.1 rad/s":
+            - paragraph: 0.1 rad/s
+          - cell "0.005":
+            - paragraph: "0.005"
+        - row "1 rad/s 0.422":
+          - cell "1 rad/s":
+            - paragraph: 1 rad/s
+          - cell "0.422":
+            - paragraph: "0.422"
+        - row "4 rad/s 31.916":
+          - cell "4 rad/s":
+            - paragraph: 4 rad/s
+          - cell "31.916":
+            - paragraph: "31.916"
+        - row "10 rad/s 10.000":
+          - cell "10 rad/s":
+            - paragraph: 10 rad/s
+          - cell "10.000":
+            - paragraph: "10.000"
+        - row "100 rad/s 8.016":
+          - cell "100 rad/s":
+            - paragraph: 100 rad/s
+          - cell "8.016":
+            - paragraph: "8.016"
+    - paragraph: This is a particularly useful demonstration because the original system is entirely passive. Its memory is not evidence of an external energy source.
+    - paragraph:
+      - text: The implication is that
+      - strong: a physically meaningful reduced law must preserve the influence of eliminated internal states, not necessarily their explicit coordinates.
+    - paragraph:
+      - text: Structure-preserving model reduction of port-Hamiltonian systems already investigates closely related issues.
+      - button "sciencedirect.com +2":
+        - generic: sciencedirect.com
+        - generic: "+2"
+    - heading "3. Cycle closure becomes a diagnostic for missing physical resources" [level=2]:
+      - strong: 3. Cycle closure becomes a diagnostic for missing physical resources
+    - paragraph: The earlier mechanical and stochastic examples can now be understood as special cases.
+    - paragraph: For a static generalized-force law,
+    - math:
+      - generic: α
+      - generic: =
+      - generic: F
+      - generic: "1"
+      - generic: (
+      - generic: x
+      - generic: )
+      - generic: d
+      - generic: x
+      - generic: "1"
+      - generic: +
+      - generic: ⋯
+      - generic: +
+      - generic: F
+      - generic: "n"
+      - generic: (
+      - generic: x
+      - generic: )
+      - generic: d
+      - generic: x
+      - generic: "n"
+      - generic: ","
+    - generic: α =
+    - text: F
+    - generic: "1"
+    - text: (x) d
+    - text: x
+    - generic: "1"
+    - text: +
+    - generic: ⋯ +
+    - text: F
+    - generic: "n"
+    - text: (x) d
+    - text: x
+    - generic: "n"
+    - text: ","
+    - paragraph: a conservative realization requires
+    - math:
+      - generic: ∮
+      - generic: C
+      - generic: α
+      - generic: =
+      - generic: "0"
+    - text: ∮
+    - generic: C
+    - text: α =
+    - generic: "0"
+    - paragraph: for every closed loop in a simply connected domain.
+    - paragraph: If the integral is nonzero, the declared position-only conservative representation is incomplete.
+    - paragraph: "There are several possible explanations:"
+    - list:
+      - paragraph: An active energy source.
+      - paragraph: An omitted internal state.
+      - paragraph: A non-equilibrium reservoir.
+      - paragraph: An incorrect choice of physical coordinates.
+      - paragraph: A genuinely nonconservative interaction.
+    - paragraph: This last distinction matters. A gyroscopic force can be velocity-dependent and do zero work while still producing an antisymmetric response. Nonreciprocity is not automatically evidence of an energy source.
+    - paragraph: For a stochastic network, the corresponding invariant is
+    - math:
+      - generic: A
+      - generic: C
+      - generic: =
+      - generic: log
+      - generic: ⁡
+      - generic: ∏
+      - generic: (
+      - generic: i
+      - generic: ","
+      - generic: j
+      - generic: )
+      - generic: ∈
+      - generic: C
+      - generic: k
+      - generic: i
+      - generic: j
+      - generic: k
+      - generic: j
+      - generic: i
+      - generic: .
+    - text: A
+    - generic: C
+    - text: =
+    - generic: log
+    - generic: (i,j)∈C
+    - generic: ∏
+    - text: k
+    - generic: ji
+    - text: k
+    - generic: ij
+    - text: .
+    - paragraph:
+      - text: Under local detailed balance, this measures the thermodynamic driving associated with completing the cycle. It is not valid to interpret every arbitrary rate-graph cycle as chemical work without the local detailed-balance assumptions.
+      - button "vcp.med.harvard.edu +1":
+        - generic: vcp.med.harvard.edu
+        - generic: "+1"
+    - paragraph: The previous executed three-state example had
+    - math:
+      - generic: A
+      - generic: =
+      - generic: log
+      - generic: ⁡
+      - generic: "6"
+    - generic: A =
+    - generic: log
+    - text: "6"
+    - paragraph:
+      - text: and stationary cycle current
+      - math:
+        - generic: "1"
+        - generic: /
+        - generic: "4"
+      - generic: 1/4
+      - text: .
+    - paragraph: Its dimensionless entropy production rate was
+    - math:
+      - generic: Σ
+      - generic: ˙
+      - generic: =
+      - generic: "1"
+      - generic: "4"
+      - generic: log
+      - generic: ⁡
+      - generic: "6"
+      - generic: =
+      - generic: 0.44794.
+    - generic: Σ
+    - text: ˙
+    - text: =
+    - generic: "4"
+    - generic: "1"
+    - generic: log
+    - text: 6 =
+    - generic: 0.44794.
+    - paragraph: The missing driving is quantitatively identifiable.
+    - 'heading "4. A new quantitative requirement: precision is itself a physical resource" [level=2]':
+      - strong: "4. A new quantitative requirement: precision is itself a physical resource"
+    - paragraph: There is another important consequence for materials with activated transitions.
+    - paragraph: Suppose a transition follows
+    - math:
+      - generic: k
+      - generic: =
+      - generic: ν
+      - generic: e
+      - generic: −
+      - generic: β
+      - generic: Δ
+      - generic: E
+      - generic: .
+    - generic: k =
+    - text: ν
+    - text: e
+    - generic: −βΔE
+    - text: .
+    - paragraph:
+      - text: If the activation barrier is uncertain by
+      - math:
+        - generic: η
+        - generic: E
+      - text: η
+      - generic: E
+      - text: ", then"
+    - math:
+      - generic: e
+      - generic: −
+      - generic: β
+      - generic: η
+      - generic: E
+      - generic: ≤
+      - generic: k
+      - generic: a
+      - generic: c
+      - generic: t
+      - generic: u
+      - generic: a
+      - generic: l
+      - generic: k
+      - generic: m
+      - generic: o
+      - generic: d
+      - generic: e
+      - generic: l
+      - generic: ≤
+      - generic: e
+      - generic: β
+      - generic: η
+      - generic: E
+      - generic: .
+    - text: e
+    - text: −β
+    - text: η
+    - generic: E
+    - text: ≤
+    - text: k
+    - generic: model
+    - text: k
+    - generic: actual
+    - text: ≤
+    - text: e
+    - text: β
+    - text: η
+    - generic: E
+    - text: .
+    - paragraph:
+      - text: To guarantee relative rate error no greater than
+      - math:
+        - generic: ϵ
+      - generic: ϵ
+      - text: ", a sufficient condition is"
+    - math:
+      - generic: η
+      - generic: E
+      - generic: ≤
+      - generic: log
+      - generic: ⁡
+      - generic: (
+      - generic: "1"
+      - generic: +
+      - generic: ϵ
+      - generic: )
+      - generic: β
+      - generic: .
+    - text: η
+    - generic: E
+    - text: ≤
+    - generic: β
+    - generic: log
+    - text: (1 + ϵ)
+    - text: .
+    - paragraph:
+      - text: For example, at
+      - math:
+        - generic: β
+        - generic: =
+        - generic: "2"
+      - generic: β =
+      - generic: "2"
+      - text: and a 1% relative rate-error requirement, the sufficient energy uncertainty is
+    - math:
+      - generic: η
+      - generic: E
+      - generic: ≤
+      - generic: 0.004975.
+    - text: η
+    - generic: E
+    - text: ≤
+    - generic: 0.004975.
+    - paragraph: This matters enormously for rare events. A seemingly small error in an activation barrier can become a large error in the predicted physical clock.
+    - paragraph:
+      - text: For
+      - math:
+        - generic: M
+      - generic: M
+      - text: sequential activated steps, a conservative multiplicative error bound becomes
+    - math:
+      - generic: (
+      - generic: "1"
+      - generic: +
+      - generic: ϵ
+      - generic: )
+      - generic: M
+      - generic: −
+      - generic: "1."
+    - generic: (1 +
+    - text: ϵ
+    - text: )
+    - generic: M
+    - text: −
+    - generic: "1."
+    - paragraph: Therefore, precision acquisition cannot be treated as a one-time negligible expense when constructing a large response network.
+    - 'heading "5. The important negative result: locality does not guarantee efficient prediction" [level=2]':
+      - strong: "5. The important negative result: locality does not guarantee efficient prediction"
+    - paragraph: I investigated whether the principle could promise a compact predictive description for all locally interacting materials.
+    - paragraph: It cannot.
+    - paragraph:
+      - text: Two-dimensional signed-majority cellular automata provide a strong warning. Certain local rules can simulate logical circuits and universal computation; their prediction problem is P-complete.
+      - button "sciencedirect.com":
+        - generic: sciencedirect.com
+    - paragraph: This does not prove that every finite-temperature physical system is computationally intractable. It does establish that locality alone is not an adequate reason to expect efficient prediction.
+    - paragraph: A general theory therefore needs to recognize exploitable physical structure.
+    - paragraph: "Candidate structures include:"
+    - table:
+      - rowgroup:
+        - row "Structure Potential predictive advantage":
+          - columnheader "Structure":
+            - paragraph: Structure
+          - columnheader "Potential predictive advantage":
+            - paragraph: Potential predictive advantage
+        - row "Bounded interfaces Reduced state space":
+          - cell "Bounded interfaces":
+            - paragraph: Bounded interfaces
+          - cell "Reduced state space":
+            - paragraph: Reduced state space
+        - row "Conservation laws Restricted reachable states":
+          - cell "Conservation laws":
+            - paragraph: Conservation laws
+          - cell "Restricted reachable states":
+            - paragraph: Restricted reachable states
+        - row "Bounded treewidth Efficient elimination":
+          - cell "Bounded treewidth":
+            - paragraph: Bounded treewidth
+          - cell "Efficient elimination":
+            - paragraph: Efficient elimination
+        - row "Contractive dynamics Loss of dependence on initial conditions":
+          - cell "Contractive dynamics":
+            - paragraph: Contractive dynamics
+          - cell "Loss of dependence on initial conditions":
+            - paragraph: Loss of dependence on initial conditions
+        - row "Detailed balance Energy-based equilibrium representation":
+          - cell "Detailed balance":
+            - paragraph: Detailed balance
+          - cell "Energy-based equilibrium representation":
+            - paragraph: Energy-based equilibrium representation
+        - row "Passive network structure Compositional storage and stability":
+          - cell "Passive network structure":
+            - paragraph: Passive network structure
+          - cell "Compositional storage and stability":
+            - paragraph: Compositional storage and stability
+        - row "Finite-dimensional memory Compact dynamic realization":
+          - cell "Finite-dimensional memory":
+            - paragraph: Finite-dimensional memory
+          - cell "Compact dynamic realization":
+            - paragraph: Compact dynamic realization
+    - paragraph: "When none of these conditions can be established, the correct output may be:"
+    - paragraph:
+      - strong: No efficient physical reduction has been certified.
+    - paragraph: That is more scientifically useful than silently assuming a compact model exists.
+    - heading "6. The updated scientific construction" [level=2]:
+      - strong: 6. The updated scientific construction
+    - paragraph: The strongest formulation now has two complementary parts.
+    - paragraph:
+      - strong: "Forward direction: physical possibility"
+    - paragraph: "Given a local physical model, identify:"
+    - list:
+      - paragraph: Reachable states and hidden memory.
+      - paragraph: Available power and resource ports.
+      - paragraph: Compatible physical interfaces.
+      - paragraph: Closure conditions under composition.
+    - paragraph: Then determine which response laws can actually be realized.
+    - paragraph:
+      - strong: "Inverse direction: physical construction"
+    - paragraph: "Given a desired response:"
+    - list:
+      - paragraph: Test its cycle invariants.
+      - paragraph: Search for a compatible storage function.
+      - paragraph: Determine missing states and memory.
+      - paragraph: Identify required external resources.
+      - paragraph: Construct a compatible physical network.
+      - paragraph: Certify its repeated-use capacity.
+    - paragraph: The strongest prospective mathematical result would be a general algorithm that finds the smallest state, interface and resource extension needed to make a proposed response law physically realizable—or returns a quantitative obstruction.
+    - paragraph: I have not proved that general algorithm.
+    - heading "7. Updated executable research package" [level=2]:
+      - strong: 7. Updated executable research package
+    - paragraph: "I expanded the previous package with:"
+    - list:
+      - paragraph: Hidden mechanical-state elimination.
+      - paragraph: Frequency-dependent boundary response.
+      - paragraph: Nonlinear and stochastic cycle-closure examples.
+      - paragraph: Positive-diagonal symmetrizer recovery.
+      - paragraph: Passive stiffness elimination through Schur complements.
+      - paragraph: Activated-rate precision requirements.
+      - paragraph: A discussion of the limits of locality-based compression.
+    - paragraph:
+      - strong: Updated research package
+    - paragraph: Executable Python, report, numerical outputs and reproduction instructions
+    - paragraph:
+      - link "Open Download the ZIP":
+        - text: Download the
+        - text: ZIP
+    - paragraph: The new numerical checks execute successfully.
+    - heading "8. My current scientific assessment" [level=2]:
+      - strong: 8. My current scientific assessment
+    - paragraph: I would now distinguish three levels of achievement.
+    - paragraph:
+      - strong: Level 1 — Established mathematics recovered
+    - list:
+      - paragraph: Detailed balance and cycle affinities.
+      - paragraph: Maxwell–Betti reciprocity.
+      - paragraph: Positive storage and dissipativity.
+      - paragraph: Schur-complement preservation.
+      - paragraph: Memory generated by eliminating hidden states.
+    - paragraph:
+      - strong: Level 2 — Constructive synthesis demonstrated in restricted classes
+    - list:
+      - paragraph: Recovering the positive metric for a mechanically realizable directed-looking coupling matrix.
+      - paragraph: Rejecting incompatible coupling matrices.
+      - paragraph: Preserving passive response when eliminating internal elastic coordinates.
+      - paragraph: Identifying the energy and memory consequences of incomplete representations.
+    - paragraph:
+      - strong: Level 3 — The actual foundational discovery remains open
+    - paragraph: A general finite-cost theory of physical realizability that connects microscopic interactions, state reduction, power, geometry, resources and composition.
+    - paragraph: The distinction is important. Most of the individual mathematical ingredients are established. The proposed unification has not yet demonstrated a new capability or a consequential theorem beyond them.
+    - heading "The next scientific target" [level=3]:
+      - strong: The next scientific target
+    - paragraph: "I would prioritize a result that is stronger than another abstract composition principle:"
+    - paragraph:
+      - strong: Derive a constructive lower bound on the physical resources required to realize a specified family of coupled response laws, while simultaneously constructing a realization whenever the bound is achievable.
+    - paragraph: "Such a result would connect:"
+    - list:
+      - paragraph: The geometry of the desired response.
+      - paragraph: The microscopic interaction restrictions.
+      - paragraph: The number of independent internal states.
+      - paragraph: The minimum active power or stored free energy.
+      - paragraph: The accuracy and reliability of the realization.
+      - paragraph: The cost of retaining its capacity through repeated use.
+    - paragraph: It would turn the framework from a diagnostic of impossible representations into a theory that predicts what new physical capabilities can be built.
+    - paragraph: That is the direction I would pursue next.
+    - button "View analysis":
