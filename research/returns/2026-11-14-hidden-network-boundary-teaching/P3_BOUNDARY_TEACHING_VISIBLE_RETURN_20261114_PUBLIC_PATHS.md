@@ -1,0 +1,2009 @@
+# P3 boundary teaching — available visible return
+
+Observed completed response 14 November 2026 in same Pro chat https://chatgpt.com/c/6af4eb36-d13c-83ec-811c-00db062459b3. Exact human-posted question: research/returns/2026-11-14-hidden-network-boundary-teaching/P3_FULL_BOUNDARY_TRAINING_OF_INACCESSIBLE_PHYSICAL_NETWORKS_FOUNDATIONAL_DISCOVERY_PRO_20261114.txt Expanded top-level activity and rendered final as visible DOM accessibility transcript; not native/server text. Mathematics and tables may be fragmented or duplicated and source links may not include targets. Linked report, ZIP, nested tools and sources were not opened; no producer code executed or claims independently verified.
+
+    - button "Worked for 114m 53s" [expanded] [active]:
+      - generic: Worked for 114m 53s
+    - paragraph: I’ll separate what the material can realize, what its local adaptation can reach, and what a teacher can reliably achieve from boundary measurements. I’ll then develop a constructive case around a specific retention and writing mechanism, and test its limits against the strongest existing boundary-learning methods.
+    - paragraph: Planned research tracks
+    - button "Boundary literature, Physical medium, and Constructive theorem finished"
+    - generic: Boundary literature, Physical medium, and Constructive theorem finished
+    - paragraph: Located star-network sources and checked tree-flow controllability
+    - paragraph: Derived edge-selective currents by combining pulse pairs
+    - paragraph: Assessed tree routing and defined passive port maps
+    - paragraph: Checked memristor thresholds and ECRAM drift bounds
+    - paragraph: Assessed theorem novelty and refined ladder-graph topology
+    - paragraph: Derived aggregate convergence bounds and formalized bounded drift law
+    - paragraph: Designed resistor clamps and sized ballast resistors
+    - paragraph: Assessed selector isolation and evaluated 1S1R thresholds
+    - paragraph: Compared memory-cell architectures and magnetic memory options
+    - paragraph: Calibrated stochastic pulse bounds and assessed MTJ implementation
+    - paragraph: Estimated switching hazards and bounded adaptive pulse timing
+    - paragraph: Prepared binary branch setter and refined relay-cell design
+    - paragraph: Modeled a passive multiport network and prepared a cable-harness emulator
+    - paragraph: Prepared boundary probes and evaluated relay-cell bundles
+    - paragraph: Designed graded RC cells and evaluated state levels
+    - paragraph: Refined passive RC timers and derived RC load bounds
+    - paragraph: "A promising construction has emerged: in a branching tree, prescribed boundary currents determine every branch current even when all internal resistances are unknown. By splitting current among boundary leaves, the teacher can put a full write current through one hidden branch while keeping every other branch below half that value. I’m checking whether real retained switching elements can provide enough separation between those two currents; that physical margin is what would turn the construction into a learning method."
+    - paragraph: Refined four-port boundary readout and validated target-edge ranges
+    - paragraph: Refined reachability theorem scope and formulated topology lemma
+    - paragraph: Chose thermal test assumptions
+    - paragraph: Estimated training energy needs
+    - paragraph: Checked bench supply limits
+    - paragraph: Checked source isolation
+    - button "Read files, searched the web"
+    - generic: Read files, searched the web
+    - paragraph: Formalized relay-law equations and derived Kelvin target functionals
+    - paragraph: Calculated voltage-error bounds and prepared passive test fixture
+    - paragraph: Defined electrode load fixture and checked whole-coil energy
+    - paragraph: Derived the Vsense equation and analyzed off-transient paths
+    - paragraph: Estimated resistor-readout error
+    - paragraph: Checked regulator thresholds
+    - paragraph: Refined the zener circuit and checked contact current
+    - button "Read files, searched the web"
+    - generic: Read files, searched the web
+    - paragraph: Checked physical network design
+    - paragraph: "The tree construction now has a global teaching argument: it can change a hidden branch from any allowed initial state, then verify that branch through boundary measurements without identifying its individual memory cells. The physical qualification is narrower. A concrete circuit using latching relays appears to have a usable full-current/half-current margin, but that margin, heating and retention still need to be tested together."
+    - button "Read files, searched the web"
+    - generic: Read files, searched the web
+    - paragraph: Defined a useful-reach criterion and qualified the inverse-design claim
+    - paragraph: Formalized threshold-ratio bound and derived learnable quotient
+    - generic: Read files
+    - paragraph: Calculated D6 thermal bounds
+    - paragraph: "Two limits are now clear. First, the construction teaches branch-level responses, not every microscopic state: series elements remain indistinguishable, and an unintended cross-connection can defeat the addressing rule. Second, the laboratory electronics dominate cost and energy. I’m carrying their warmup, calibration and power requirements into the comparison; the defensible benefit is retained function without interior control wiring, not a demonstrated cost saving over a conventional programmable resistor bank."
+    - paragraph: Generated report HTML and packaged the evidence bundle
+    - generic: Searching 2 websites
+    - paragraph: Assessed zener self-heating
+    - paragraph: "The factor-of-two writing margin is also a sharp limit for this topology. At a hidden three-way junction, current through the selected branch must return through the other two, so at least one carries half as much. The proposed command achieves that bound. This gives a concrete qualification criterion: the complete cell’s switching and non-disturb ranges must fit inside that margin."
+    - paragraph: I’m using the Library skill to save the derivation and executable cases alongside the answer.
+    - generic: Ran command
+    - paragraph: Prepared physical-scaling notes
+    - paragraph: Calculated read-power bounds
+    - paragraph: Checked transient current bounds and margin
+    - paragraph: Prepared bounded reliability estimates
+    - paragraph: Refined manufacturing-energy assumptions
+    - paragraph: Calculated retargeting costs
+    - paragraph: Checked retargeting cost assumptions and explained the linear invariant
+    - paragraph: Estimated RC settling time
+    - button "Read files, searched the web"
+    - generic: Read files, searched the web
+    - paragraph: Checked fault-model logic and low-threshold case
+    - paragraph: Refined bounded fault-test model
+    - generic: Ran command
+    - paragraph: Prepared operator-error and cell-wiring checks
+    - generic: Searched 13 websites
+    - paragraph: Revised HVAC and room-service power budgets
+    - paragraph: Modeled HVAC energy costs and reconciled the power-cost model
+    - paragraph: The executable case has completed 64 retargetings on one retained state history, each followed by a simulated 24-hour hold. It used noisy boundary measurements; internal states were kept separate for auditing. The computed branch errors stayed below 1.10 Ω. An independent audit is now checking the energy ledger and failure cases—particularly instrument warmup between daily retargetings and the distinction between simulated thermal behavior and qualified hardware.
+    - paragraph: Developed a general theorem for graph-block structures
+    - paragraph: Formalized voltage bounds and scaled assembly costs
+    - paragraph: Formalized theorem assumptions
+    - button "Edited a file, searched the web"
+    - generic: Edited a file, searched the web
+    - paragraph: Computed sample maps and set 40Ω fault targets
+    - paragraph: Compared control architectures and assessed their differences
+    - paragraph: Framed the restricted theorem and evaluated a stepping rheostat
+    - paragraph: Checked resistor options
+    - paragraph: Accounted for manufacturing energy
+    - paragraph: Prepared staged test budget
+    - paragraph: Prepared enclosure layout and presented programming box
+    - paragraph: Checked relay energy bounds and voltage margin
+    - generic: Ran command
+    - paragraph: Selected provisional voltage limits
+    - button "Edited a file"
+    - generic: Edited a file
+    - paragraph: Checked command polarity
+    - paragraph: Prepared the relay card and planned the shunt bypass
+    - paragraph: Prepared topology qualification and checked factory probe costs
+    - paragraph: "The audit found and corrected two accounting problems: the model now integrates changing read power during each hold, and the campaign ledger charges every daily instrument warmup unless continuous standby is paid instead. The retargeting results are unchanged in substance. The analytical certificate is 0.779% relative impedance error after the declared drift allowance; the simulated worst operator error was about 0.189%. Neither number establishes the hardware’s switching reliability or lifetime."
+    - text: Edited
+    - link "01a1d855-464f-7538-90e6-8d9853152b9f:exec-354a760d-89d2-4c85-9c03-7f4c2c23df7a:exec-354a760d-89d2-4c85-9c03-7f4c2c23df7a"
+    - paragraph: Checked endpoint bounds
+    - paragraph: Bounded read-law nonlinearity and strengthened all-input energy bounds
+    - paragraph: Checked the nonlinear error bound
+    - paragraph: Defined hybrid error bounds
+    - button "Edited a file, searched the web"
+    - generic: Edited a file, searched the web
+    - paragraph: Reconciled theorem resource counts and checked branch-current sums
+    - paragraph: Checked circuit stability and DMM error bounds
+    - paragraph: Specified fixture leakage bounds and equilibrated two SMUs
+    - paragraph: Refined prototype test plan
+    - generic: Searched for Read relay code and applied patch, analyzed strict corners, and built report
+    - paragraph: Extracted corners function and selected report link
+    - paragraph: Chose a boundary principle
+    - paragraph: Verified certificate timing bounds
+    - button "Edited files"
+    - generic: Edited files
+    - paragraph: Validated artifact packaging and prepared target mapping
+    - paragraph: Refined observability claims and checked the response example
+    - paragraph: Modeled current-source power
+    - paragraph: Selected LM334 set resistor
+    - paragraph: Compared application costs and clarified energy requirements
+    - paragraph: Selected the 5V source
+    - paragraph: Finalized 82Ω input choice and added fixture electronics
+    - paragraph: Applied five-year service cap
+    - generic: Read files
+    - paragraph: Refined the calendar-cost model
+    - paragraph: Checked 1W power budget
+    - generic: Searched 14 websites
+    - paragraph: Patched the power ledger
+    - paragraph: Compared replacement-cost annualization
+    - text: Edited
+    - link "01a1d855-464f-7538-90e6-8d9853152b9f:exec-b65c8985-a610-4c76-b53e-ab122113fbd7:exec-b65c8985-a610-4c76-b53e-ab122113fbd7"
+    - paragraph: Checked energy-table arithmetic and applied multi-input model
+    - button "Edited a file"
+    - generic: Edited a file
+    - paragraph: Validated the prepared package and reviewed the design
+    - paragraph: Reviewed source citations and compared direct bus costs
+    - paragraph: Checked arbitrary-L and theorem quantifiers
+    - paragraph: Computed finite cost and saved the audited report
+    - paragraph: Prepared Library artifacts
+    - button "Ran a command"
+    - generic: Ran a command
+    - paragraph: Checked the report snapshot
+    - paragraph: Reviewed leakage-voltage margins and assessed cost advantage
+    - paragraph: The report and executable bundle are ready. They separate the theorem, the numerical checks and the remaining hardware qualifications. The cost model also pays for the application-current source and caps medium life by calendar age, so daily use cannot silently amortize a part over decades. Saving the files to Library now.
+    - generic: Ran command
+    - paragraph: Chose branch-coordinate topology
+    - paragraph: Refined proof setup and defined target map family
+    - paragraph: Computed observer gains and derived resource voltage bound
+    - paragraph: Verified pulse power bounds
+    - paragraph: Formalized graph invariants
+    - paragraph: Confirmed uploaded artifact
+    - paragraph: Verified restricted construction and prepared construction figures
+    - paragraph: Refined the cost comparison
+    - heading "ChatGPT said:" [level=4]
+    - heading "A constructive answer exists for a restricted family" [level=2]
+    - paragraph:
+      - strong: A hidden, branching electrical network can be taught a family of retained passive responses through its boundary alone, with a global guarantee that does not require identifying its microscopic state.
+      - text: "The useful construction combines three physical operations:"
+    - list:
+      - listitem: Conservation of current determines a writing field despite unknown internal resistances.
+      - listitem: A local threshold turns that field into a selective change of retained state.
+      - listitem: Unloaded branches carry information about the relevant hidden voltage drop back to the boundary.
+    - paragraph: I developed a theorem for that organization, a concrete circuit using available components, and an executable model with noisy observations, successive retargeting, thermal history, source limits and complete resource scenarios.
+    - paragraph:
+      - text: The distinction between these results matters.
+      - strong: The mathematical teaching principle is established under explicit constitutive bounds. The proposed composite circuit has not been physically qualified.
+      - text: Its switching margin, cumulative disturbance and retention remain testable engineering claims. Nor does the present laboratory implementation establish an economic advantage over a conventional internally addressed relay network.
+    - paragraph: "The complete derivation, construction, resource ledger and code are here:"
+    - list:
+      - link "Boundary_Teaching_Dossier.html":
+        - /url: https://chatgpt.com/library?file_id=libfile_ca48cfcd5bac819182c130c5c93f33eb&account_id=personal
+      - link "Boundary_Teaching_Model.zip":
+        - /url: https://chatgpt.com/library?file_id=libfile_3460a908902c81919b490648dd05107b&account_id=personal
+    - heading "1. What the material learns" [level=2]
+    - heading "The physical family" [level=3]
+    - paragraph:
+      - text: Use a known tree whose accessible ports are its leaves. Every internal branching junction has degree three. A tree with
+      - math:
+        - generic: m
+      - generic: m
+      - text: accessible leaves has
+    - math:
+      - generic: E
+      - generic: =
+      - generic: "2"
+      - generic: m
+      - generic: −
+      - generic: "3"
+    - generic: E =
+    - generic: 2m −
+    - generic: "3"
+    - paragraph:
+      - text: topological branches. Each branch contains
+      - math:
+        - generic: L
+        - generic: e
+      - text: L
+      - generic: e
+      - text: "two-terminal memory cells in series. The junctions, cells and intermediate connections are enclosed: the teacher cannot clamp, inspect or individually address them."
+    - paragraph: "The worked construction has:"
+    - table:
+      - rowgroup:
+        - row "Property Design":
+          - columnheader "Property"
+          - columnheader "Design"
+      - rowgroup:
+        - row "Accessible boundary ports 8":
+          - cell "Accessible boundary ports"
+          - cell "8"
+        - row "Hidden branching junctions 6":
+          - cell "Hidden branching junctions"
+          - cell "6"
+        - row "Topological branches 13":
+          - cell "Topological branches"
+          - cell "13"
+        - row "Retaining cells per branch 2":
+          - cell "Retaining cells per branch"
+          - cell "2"
+        - row "Total retaining cells 26":
+          - cell "Total retaining cells"
+          - cell "26"
+        - row "Hidden nodes in the transport graph 19":
+          - cell "Hidden nodes in the transport graph"
+          - cell "19"
+        - row "Nominal cell resistance states 167 and 187 Ω":
+          - cell "Nominal cell resistance states"
+          - cell "167 and 187 Ω"
+        - row "Nominal branch target states 334 and 374 Ω":
+          - cell "Nominal branch target states"
+          - cell "334 and 374 Ω"
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph: The local relay circuits contain additional component terminals; the node count above is for the transport graph, not an attempt to exclude those components.
+    - paragraph:
+      - text: A plausible prototype uses two approximately 300 mm circuit boards, with roughly
+      - math:
+        - generic: "60"
+        - generic: ×
+        - generic: "35"
+      - generic: 60 ×
+      - generic: "35"
+      - text: mm allocated per cell, isolated heat spreaders and an enclosure approximately
+      - math:
+        - generic: "300"
+        - generic: ×
+        - generic: "300"
+        - generic: ×
+        - generic: "80"
+      - generic: 300 ×
+      - generic: 300 ×
+      - generic: "80"
+      - text: mm. Those are proposed packaging dimensions.
+    - heading "A useful operation" [level=3]
+    - paragraph:
+      - text: The application is a
+      - strong: sealed, reconfigurable passive multiport load fixture
+      - text: for checking shared-return effects, resistance compensation and current-distribution electronics. It changes the actual electrical loading presented to a device under test, then retains that loading after the teacher is disconnected.
+    - paragraph:
+      - text: Let
+      - math:
+        - generic: q
+      - generic: q
+      - text: be the vector of currents entering the boundary ports, with
+    - math:
+      - generic: "1"
+      - generic: ⊤
+      - generic: q
+      - generic: =
+      - generic: "0"
+      - generic: ","
+      - generic: ∥
+      - generic: q
+      - generic: ∥
+      - generic: "1"
+      - generic: ≤
+      - generic: "2"
+      - generic: m
+      - generic: A
+      - generic: .
+    - text: "1"
+    - generic: ⊤
+    - text: q =
+    - text: 0, ∥q
+    - text: ∥
+    - generic: "1"
+    - text: ≤
+    - text: "2"
+    - generic: mA
+    - text: .
+    - paragraph:
+      - text: The second condition ensures that no branch carries more than
+      - math:
+        - generic: "1"
+      - generic: "1"
+      - text: mA during use.
+    - paragraph:
+      - text: Choose one port as the voltage reference. In the remaining current coordinates
+      - math:
+        - generic: x
+      - generic: x
+      - text: ", the retained response is"
+    - math:
+      - generic: v
+      - generic: =
+      - generic: Z
+      - generic: (
+      - generic: R
+      - generic: )
+      - generic: x
+      - generic: ","
+      - generic: Z
+      - generic: (
+      - generic: R
+      - generic: )
+      - generic: =
+      - generic: ∑
+      - generic: e
+      - generic: =
+      - generic: "1"
+      - generic: E
+      - generic: R
+      - generic: e
+      - generic: c
+      - generic: e
+      - generic: c
+      - generic: e
+      - generic: ⊤
+      - generic: ","
+    - generic: v =
+    - generic: Z(R)x, Z(R) =
+    - generic: e=1
+    - generic: ∑
+    - generic: E
+    - text: R
+    - generic: e
+    - text: c
+    - generic: e
+    - text: c
+    - generic: e
+    - generic: ⊤
+    - text: ","
+    - paragraph:
+      - text: where
+      - math:
+        - generic: c
+        - generic: e
+      - text: c
+      - generic: e
+      - text: describes which boundary currents cross branch
+      - math:
+        - generic: e
+      - generic: e
+      - text: .
+    - paragraph: This map is positive definite and reciprocal. Its power consumption is
+    - math:
+      - generic: x
+      - generic: ⊤
+      - generic: Z
+      - generic: (
+      - generic: R
+      - generic: )
+      - generic: x
+      - generic: =
+      - generic: ∑
+      - generic: e
+      - generic: R
+      - generic: e
+      - generic: (
+      - generic: c
+      - generic: e
+      - generic: ⊤
+      - generic: x
+      - generic: )
+      - generic: "2"
+      - generic: .
+    - text: x
+    - generic: ⊤
+    - text: Z(R)x =
+    - generic: e
+    - generic: ∑
+    - text: R
+    - generic: e
+    - text: (
+    - text: c
+    - generic: e
+    - generic: ⊤
+    - text: x
+    - text: )
+    - generic: "2"
+    - text: .
+    - paragraph: "The target family is specified before training:"
+    - math:
+      - generic: T
+      - generic: m
+      - generic: =
+      - generic: "{"
+      - generic: Z
+      - generic: (
+      - generic: R
+      - generic: )
+      - generic: ":"
+      - generic: R
+      - generic: e
+      - generic: =
+      - generic: L
+      - generic: e
+      - generic: (
+      - generic: r
+      - generic: "0"
+      - generic: +
+      - generic: (
+      - generic: r
+      - generic: "1"
+      - generic: −
+      - generic: r
+      - generic: "0"
+      - generic: )
+      - generic: s
+      - generic: e
+      - generic: )
+      - generic: ","
+      - generic: s
+      - generic: e
+      - generic: ∈
+      - generic: "{"
+      - generic: "0"
+      - generic: ","
+      - generic: "1"
+      - generic: "}"
+      - generic: "}"
+      - generic: .
+    - text: T
+    - generic: m
+    - text: =
+    - generic: "{"
+    - text: "Z(R) :"
+    - text: R
+    - generic: e
+    - text: =
+    - text: L
+    - generic: e
+    - generic: (
+    - text: r
+    - generic: "0"
+    - text: + (
+    - text: r
+    - generic: "1"
+    - text: −
+    - text: r
+    - generic: "0"
+    - text: )
+    - text: s
+    - generic: e
+    - generic: )
+    - text: ","
+    - text: s
+    - generic: e
+    - text: "∈ {0, 1}"
+    - generic: "}"
+    - text: .
+    - paragraph:
+      - text: For the eight-port device, this gives
+      - strong: 8,192 distinct passive response maps with 13 independent response coordinates
+      - text: . The count alone is not the result; the construction below supplies a way to reach every member from every allowed initial state.
+    - paragraph:
+      - text: As a concrete example, inject
+      - math:
+        - generic: "1"
+      - generic: "1"
+      - text: mA at leaf 0 and remove it at leaf 4. Two unloaded sensing leaves expose the drop across the central hidden branch. Changing that branch from 334 to 374 Ω changes this response from
+      - strong: 334 to 374 mV
+      - text: ", while other branch coordinates remain unchanged. This is a useful independently programmable shared-path perturbation, not merely stored digital information."
+    - paragraph:
+      - text: Adding more series cells increases the hidden microscopic state count, but does
+      - strong: not
+      - text: increase the number of independently teachable functional coordinates at fixed
+      - math:
+        - generic: m
+      - generic: m
+      - text: . That limitation is fundamental to this organization.
+    - heading "2. The operation that makes hidden branches teachable" [level=2]
+    - heading "Writing without knowing the internal resistances" [level=3]
+    - paragraph:
+      - text: Consider a hidden branch
+      - math:
+        - generic: e
+        - generic: =
+        - generic: (
+        - generic: u
+        - generic: ","
+        - generic: v
+        - generic: )
+      - generic: e =
+      - generic: (u, v)
+      - text: .
+    - paragraph:
+      - text: At
+      - math:
+        - generic: u
+      - generic: u
+      - text: ", choose boundary leaves"
+      - math:
+        - generic: a
+        - generic: ","
+        - generic: b
+      - generic: a, b
+      - text: in the two components other than the target branch. At
+      - math:
+        - generic: v
+      - generic: v
+      - text: ", choose leaves"
+      - math:
+        - generic: c
+        - generic: ","
+        - generic: d
+      - generic: c, d
+      - text: similarly. Apply
+    - math:
+      - generic: (
+      - generic: q
+      - generic: a
+      - generic: ","
+      - generic: q
+      - generic: b
+      - generic: ","
+      - generic: q
+      - generic: c
+      - generic: ","
+      - generic: q
+      - generic: d
+      - generic: )
+      - generic: =
+      - generic: (
+      - generic: I
+      - generic: "2"
+      - generic: ","
+      - generic: I
+      - generic: "2"
+      - generic: ","
+      - generic: −
+      - generic: I
+      - generic: "2"
+      - generic: ","
+      - generic: −
+      - generic: I
+      - generic: "2"
+      - generic: )
+      - generic: .
+    - text: (
+    - text: q
+    - generic: a
+    - text: ","
+    - text: q
+    - generic: b
+    - text: ","
+    - text: q
+    - generic: c
+    - text: ","
+    - text: q
+    - generic: d
+    - text: ) =
+    - generic: (
+    - generic: "2"
+    - generic: I
+    - text: ","
+    - generic: "2"
+    - generic: I
+    - text: ", −"
+    - generic: "2"
+    - generic: I
+    - text: ", −"
+    - generic: "2"
+    - generic: I
+    - generic: )
+    - text: .
+    - paragraph: In a tree, deleting any branch separates the network into two pieces. Conservation gives the current in that branch as the sum of boundary injections on either side.
+    - paragraph: Consequently,
+    - math:
+      - generic: i
+      - generic: e
+      - generic: =
+      - generic: I
+      - generic: ","
+      - generic: i
+      - generic: f
+      - generic: ∈
+      - generic: "{"
+      - generic: "0"
+      - generic: ","
+      - generic: ±
+      - generic: I
+      - generic: /
+      - generic: "2"
+      - generic: "}"
+      - generic: (
+      - generic: f
+      - generic: ≠
+      - generic: e
+      - generic: )
+      - generic: .
+    - text: i
+    - generic: e
+    - text: = I,
+    - text: i
+    - generic: f
+    - text: "∈ {0, ±I/2} (f"
+    - generic: 
+    - text: =
+    - text: e).
+    - paragraph:
+      - text: This holds
+      - strong: independently of every resistance and retained state
+      - text: . Two floating current sources, connecting
+      - math:
+        - generic: a
+        - generic: →
+        - generic: c
+      - generic: a →
+      - generic: c
+      - text: and
+      - math:
+        - generic: b
+        - generic: →
+        - generic: d
+      - generic: b →
+      - generic: d
+      - text: ", implement the command. A branch adjoining a boundary leaf uses three active ports."
+    - paragraph: The teacher does not solve for hidden voltages and then command them. The physical network establishes those voltages while the current sources enforce the boundary injections.
+    - paragraph:
+      - text: The factor of two is also sharp for a single instantaneous field at a degree-three junction. If the target carries
+      - math:
+        - generic: I
+      - generic: I
+      - text: ", the two other currents sum to"
+      - math:
+        - generic: −
+        - generic: I
+      - generic: −I
+      - text: ", so at least one has magnitude at least"
+      - math:
+        - generic: I
+        - generic: /
+        - generic: "2"
+      - generic: I/2
+      - text: . The construction achieves this best possible separation. It is not a bound on every conceivable multipulse disturbance-and-repair protocol.
+    - paragraph:
+      - text: There is no exponentially small addressing current. One chosen path through each off-target component carries
+      - math:
+        - generic: I
+        - generic: /
+        - generic: "2"
+      - generic: I/2
+      - text: along its length. Longer paths cost voltage and energy instead.
+    - heading "Why the local adaptation law matters" [level=3]
+    - paragraph: Conservation does not itself supply selective writing.
+    - paragraph: For example, with a state-independent linear current-driven update,
+    - math:
+      - generic: R
+      - generic: ˙
+      - generic: =
+      - generic: γ
+      - generic: D
+      - generic: q
+      - generic: ","
+    - generic: R
+    - text: ˙
+    - text: =
+    - generic: γDq,
+    - paragraph:
+      - text: where
+      - math:
+        - generic: D
+      - generic: D
+      - text: is the cut-current matrix, all accumulated changes lie in
+      - math:
+        - generic: range
+        - generic: ⁡
+        - generic: (
+        - generic: D
+        - generic: )
+      - generic: range
+      - text: (D)
+      - text: ", of dimension at most"
+      - math:
+        - generic: m
+        - generic: −
+        - generic: "1"
+      - generic: m −
+      - generic: "1"
+      - text: . The eight-port structure has 13 branch coordinates but only seven independent instantaneous boundary-current directions.
+    - paragraph:
+      - text: "The threshold supplies the missing operation: the selected branch changes at"
+      - math:
+        - generic: I
+      - generic: I
+      - text: ", while branches carrying at most"
+      - math:
+        - generic: I
+        - generic: /
+        - generic: "2"
+      - generic: I/2
+      - text: retain their states. Thus the nonlinear local response turns several boundary fields into separately usable functional updates. That operation must be physically supplied; it cannot be replaced by an instruction saying “update branch
+      - math:
+        - generic: e
+      - generic: e
+      - text: .”
+    - heading "Reading the relevant hidden coordinate" [level=3]
+    - paragraph: "Use the same four leaves differently:"
+    - list:
+      - text: Inject a small current
+      - math:
+        - generic: i
+        - generic: r
+      - text: i
+      - generic: r
+      - text: from
+      - math:
+        - generic: a
+      - generic: a
+      - text: to
+      - math:
+        - generic: c
+      - generic: c
+      - text: .
+      - text: Measure
+      - math:
+        - generic: V
+        - generic: b
+        - generic: −
+        - generic: V
+        - generic: d
+      - text: V
+      - generic: b
+      - text: −
+      - text: V
+      - generic: d
+      - text: with high input impedance.
+    - paragraph:
+      - text: The branches leading to
+      - math:
+        - generic: b
+      - generic: b
+      - text: and
+      - math:
+        - generic: d
+      - generic: d
+      - text: "carry no current in the ideal measurement, so their boundary potentials equal the hidden junction potentials:"
+    - math:
+      - generic: V
+      - generic: b
+      - generic: =
+      - generic: V
+      - generic: u
+      - generic: ","
+      - generic: V
+      - generic: d
+      - generic: =
+      - generic: V
+      - generic: v
+      - generic: .
+    - text: V
+    - generic: b
+    - text: =
+    - text: V
+    - generic: u
+    - text: ","
+    - text: V
+    - generic: d
+    - text: =
+    - text: V
+    - generic: v
+    - text: .
+    - paragraph: Therefore,
+    - math:
+      - generic: R
+      - generic: e
+      - generic: =
+      - generic: V
+      - generic: b
+      - generic: −
+      - generic: V
+      - generic: d
+      - generic: i
+      - generic: r
+      - generic: .
+    - text: R
+    - generic: e
+    - text: =
+    - text: i
+    - generic: r
+    - text: V
+    - generic: b
+    - text: −
+    - text: V
+    - generic: d
+    - text: .
+    - paragraph: These sensing paths are ordinary transport branches that participate in other operating modes. They are not dedicated hidden instrumentation wires.
+    - paragraph:
+      - text: Kelvin measurement and reconstruction from tree path information are established ideas; tree-metric identities are classical. The proposed contribution is the integrated write/read/retention construction and its global guarantee, not a claim to have invented four-terminal measurement or nonlinear selective addressing.
+      - 'link "homepages.inf.ed.ac.uk: JOURNAL OF COMBINATORIAL THEORY (B) 17, 48–50 (1974), https://homepages.inf.ed.ac.uk/opb/homepagefiles/phylogeny-scans/metricproperties.pdf?utm_source=chatgpt.com"':
+        - /url: https://homepages.inf.ed.ac.uk/opb/homepagefiles/phylogeny-scans/metricproperties.pdf?utm_source=chatgpt.com
+        - generic: homepages.inf.ed.ac.uk
+    - heading "3. An actual local memory cell" [level=2]
+    - paragraph: I chose a composite electrical cell because it avoids assuming an unconstructed plastic material.
+    - paragraph: "Each two-terminal cell contains:"
+    - list:
+      - text: A
+      - strong: 147 Ω current-sense network
+      - text: .
+      - text: In parallel with it, a series path containing two opposed
+      - strong: Vishay BZX85C24 Zeners
+      - text: ", a"
+      - strong: single-coil Omron G6KU-2F-Y DC5 magnetic latching relay
+      - text: ", and"
+      - strong: 30 Ω ballast
+      - text: .
+      - text: In series with that parallel combination, a permanent
+      - strong: 40 Ω resistor
+      - text: ", shunted by another"
+      - strong: 40 Ω resistor through the relay contact
+      - text: .
+    - paragraph: Its topology is
+    - math:
+      - generic: "["
+      - generic: "147"
+      - generic: Ω
+      - generic: ∥
+      - generic: (
+      - generic: opposed Zeners
+      - generic: +
+      - generic: coil
+      - generic: +
+      - generic: "30"
+      - generic: Ω
+      - generic: )
+      - generic: "]"
+      - generic: +
+      - generic: "["
+      - generic: "40"
+      - generic: Ω
+      - generic: ∥
+      - generic: (
+      - generic: contact
+      - generic: +
+      - generic: "40"
+      - generic: Ω
+      - generic: )
+      - generic: "]"
+      - generic: .
+    - text: "[147"
+    - text: Ω ∥ (
+    - generic: opposed Zeners
+    - text: +
+    - generic: coil
+    - text: + 30
+    - text: Ω)]
+    - text: +
+    - text: "[40"
+    - text: Ω ∥ (
+    - generic: contact
+    - text: + 40
+    - text: Ω)]
+    - text: .
+    - paragraph: The contact selects approximately 20 or 40 Ω in the second network, giving nominal read states of 167 or 187 Ω. The permanent resistor prevents the transport path from opening during contact motion.
+    - paragraph: There is no local processor, separate setting supply, hidden ground rail or capacitor memory. The passive threshold components still perform a local sensing and control function; their preparation, size and energy are counted.
+    - heading "What established components supply" [level=3]
+    - paragraph:
+      - text: The named relay supplies a real magnetic retention mechanism and polarity-dependent setting/resetting. Its manufacturer specifies a 3.75 V maximum set/reset requirement at 23°C and a minimum set/reset signal width of 10 ms. These are component specifications under stated conditions, not a qualification of my assembled circuit.
+      - 'link "omronfs.omron.com: G6K, https://omronfs.omron.com/en_US/ecb/products/pdf/en-g6k.pdf?utm_source=chatgpt.com"':
+        - /url: https://omronfs.omron.com/en_US/ecb/products/pdf/en-g6k.pdf?utm_source=chatgpt.com
+        - generic: omronfs.omron.com
+    - paragraph:
+      - text: The C24 Zener has a specified voltage range at a particular test current and pulse condition. Its tabulated small-signal dynamic resistance does not establish a large-signal voltage bound throughout this different pulse.
+      - 'link "vishay.com: https://www.vishay.com/docs/85607/bzx85.pdf, https://www.vishay.com/docs/85607/bzx85.pdf?utm_source=chatgpt.com"':
+        - /url: https://www.vishay.com/docs/85607/bzx85.pdf?utm_source=chatgpt.com
+        - generic: vishay.com
+    - heading "The proposed simultaneous operating window" [level=3]
+    - paragraph:
+      - text: The selected branch receives
+      - strong: 238 mA
+      - text: ", produced by two nominal 119 mA sources. Every nonselected branch receives at most approximately 119 mA."
+    - paragraph: For the activated coil path,
+    - math:
+      - generic: I
+      - generic: c
+      - generic: =
+      - generic: max
+      - generic: ⁡
+      - generic: ⁣
+      - generic: "["
+      - generic: ∣
+      - generic: i
+      - generic: ∣
+      - generic: R
+      - generic: s
+      - generic: −
+      - generic: V
+      - generic: D
+      - generic: R
+      - generic: s
+      - generic: +
+      - generic: R
+      - generic: c
+      - generic: +
+      - generic: R
+      - generic: b
+      - generic: ","
+      - generic: "0"
+      - generic: "]"
+      - generic: ","
+    - text: I
+    - generic: c
+    - text: =
+    - text: max
+    - generic: "["
+    - text: R
+    - generic: s
+    - text: +
+    - text: R
+    - generic: c
+    - text: +
+    - text: R
+    - generic: b
+    - text: ∣i∣
+    - text: R
+    - generic: s
+    - text: −
+    - text: V
+    - generic: D
+    - text: ", 0"
+    - generic: "]"
+    - text: ","
+    - paragraph: and
+    - math:
+      - generic: V
+      - generic: s
+      - generic: =
+      - generic: R
+      - generic: s
+      - generic: (
+      - generic: ∣
+      - generic: i
+      - generic: ∣
+      - generic: −
+      - generic: I
+      - generic: c
+      - generic: )
+      - generic: ","
+      - generic: ∣
+      - generic: V
+      - generic: c
+      - generic: e
+      - generic: l
+      - generic: l
+      - generic: ∣
+      - generic: =
+      - generic: V
+      - generic: s
+      - generic: +
+      - generic: ∣
+      - generic: i
+      - generic: ∣
+      - generic: R
+      - generic: a
+      - generic: d
+      - generic: a
+      - generic: p
+      - generic: t
+      - generic: i
+      - generic: v
+      - generic: e
+      - generic: .
+    - text: V
+    - generic: s
+    - text: =
+    - text: R
+    - generic: s
+    - text: (∣i∣ −
+    - text: I
+    - generic: c
+    - text: ), ∣
+    - text: V
+    - generic: cell
+    - text: ∣ =
+    - text: V
+    - generic: s
+    - text: +
+    - text: ∣i∣
+    - text: R
+    - generic: adaptive
+    - text: .
+    - paragraph: This is the circuit’s write-voltage model. Using its low-current read resistance as the write-energy model would be wrong.
+    - paragraph: "The proposed qualification contract includes:"
+    - table:
+      - rowgroup:
+        - row "Quantity Required or introduced bound":
+          - columnheader "Quantity"
+          - columnheader "Required or introduced bound"
+      - rowgroup:
+        - row "Selected waveform 50 ms, including ramps and settling":
+          - cell "Selected waveform"
+          - cell "50 ms, including ramps and settling"
+        - row "Sufficient coil excitation At least 3.9 V for 20 ms":
+          - cell "Sufficient coil excitation"
+          - cell "At least 3.9 V for 20 ms"
+        - row "Source-current variation ±0.2%":
+          - cell "Source-current variation"
+          - cell "±0.2%"
+        - row "Sense-network tolerance ±0.1%":
+          - cell "Sense-network tolerance"
+          - cell "±0.1%"
+        - row "Coil-resistance variation ±10%":
+          - cell "Coil-resistance variation"
+          - cell "±10%"
+        - row "Ballast tolerance ±1%":
+          - cell "Ballast tolerance"
+          - cell "±1%"
+        - row "Coil/card temperature 20–35°C":
+          - cell "Coil/card temperature"
+          - cell "20–35°C"
+        - row "Whole diode-path voltage during the actual pulse 23.7–27.5 V":
+          - cell "Whole diode-path voltage during the actual pulse"
+          - cell "23.7–27.5 V"
+        - row "Repeated half-select exposure No state change within the declared service history":
+          - cell "Repeated half-select exposure"
+          - cell "No state change within the declared service history"
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph: "An executed corner calculation gives:"
+    - list:
+      - text: "Selected coil voltage:"
+      - strong: 4.0105–6.9129 V
+      - text: .
+      - text: "Minimum margin above the introduced 3.9 V switching contract:"
+      - strong: 0.1105 V
+      - text: .
+      - text: "Maximum half-selected sense voltage:"
+      - strong: 17.546 V
+      - text: .
+    - paragraph: The selected-current margin is tight. Coil dynamics, magnetic variation, contact bounce and source transients could consume it. The diode-path interval must include junction self-heating; a cool circuit board does not establish a cool semiconductor junction.
+    - paragraph:
+      - text: Power handling is physically sized. An AC10 160 Ω power resistor with a measured parallel trim can form the 147 Ω network. AC03 36 Ω resistors with series trims can form the adaptive legs. Their chosen ratings accommodate the approximately 8 W sense-network and 2.3 W adaptive-leg pulse powers without borrowing an unspecified overload capability. These are sizable wirewound parts, which is why the proposed cell occupies centimetres.
+      - 'link "vishay.com: 28730AC_AC-AT_AC-NI.fm, https://www.vishay.com/docs/28730/ac_ac-at_ac-ni.pdf?utm_source=chatgpt.com"':
+        - /url: https://www.vishay.com/docs/28730/ac_ac-at_ac-ni.pdf?utm_source=chatgpt.com
+        - generic: vishay.com
+    - paragraph:
+      - strong: This circuit is a concrete physical candidate, not measured evidence that the complete local contract holds.
+    - heading "4. A global boundary-teaching theorem" [level=2]
+    - paragraph: Here is the precise positive result.
+    - heading "Assumptions" [level=3]
+    - paragraph: "For every cell in the prepared family:"
+    - list:
+      - listitem: A selected signed waveform puts the cell into the requested retained endpoint from either initial state, within bounded time.
+      - listitem: Every nonselected waveform leaves it unchanged, apart from a declared bounded disturbance.
+      - listitem: Read and application currents remain nondisturbing.
+      - listitem: Endpoint variation, read-law error, temperature, aging and retention lie within specified bounds.
+      - listitem: Boundary sources and measurements satisfy their finite compliance, transient, leakage and accuracy bounds.
+    - paragraph: The tree topology and cell polarities are known from paid preparation. Initial retained states and exact component parameters are unknown.
+    - heading "Statement" [level=3]
+    - paragraph:
+      - strong:
+        - text: For every tree in this family, every allowed assignment of component parameters, every initial assignment of its
+        - math:
+          - generic: "N"
+        - generic: "N"
+        - text: retained states, every bounded observation-error sequence, and every target in
+        - math:
+          - generic: T
+          - generic: m
+        - text: T
+        - generic: m
+        - text: ", a boundary-only teacher can establish and qualify the target in finitely many writes and observations."
+    - paragraph: "The teacher receives only:"
+    - list:
+      - listitem: The desired boundary response.
+      - listitem: Generic topology and qualification bounds.
+      - listitem: Measured boundary voltages and currents.
+    - paragraph: It receives no internal state, individual switching threshold, cell temperature, defect label or gradient.
+    - heading "Procedure" [level=3]
+    - paragraph: "For each branch:"
+    - list:
+      - listitem: Measure its aggregate resistance through the boundary.
+      - listitem: If it already meets the target band, leave it alone.
+      - listitem: Otherwise apply the compiled positive or negative waveform.
+      - listitem: Re-measure, allowing a finite paid retry.
+      - listitem: After all branches, re-measure every branch to catch disturbance from later writes.
+    - paragraph: An out-of-contract specimen is rejected or quarantined.
+    - heading "Why this is global" [level=3]
+    - paragraph:
+      - text: A selected command puts its branch at the requested endpoint while preserving the others. Induction over the
+      - math:
+        - generic: E
+      - generic: E
+      - text: branches reaches the target from
+      - strong: any
+      - text: allowed initial microstate.
+    - paragraph: No step invokes a favorable initial condition, a local Jacobian rank, an exact internal model or a free reset.
+    - paragraph: Retargeting uses precisely the same procedure starting from the previously retained state.
+    - heading "Why the certificate covers all inputs" [level=3]
+    - paragraph: Suppose the qualified branch measurements establish
+    - math:
+      - generic: ∣
+      - generic: R
+      - generic: e
+      - generic: −
+      - generic: R
+      - generic: e
+      - generic: ⋆
+      - generic: ∣
+      - generic: ≤
+      - generic: ξ
+      - generic: R
+      - generic: e
+      - generic: ⋆
+      - generic: for every
+      - generic: e
+      - generic: .
+    - text: ∣
+    - text: R
+    - generic: e
+    - text: −
+    - text: R
+    - generic: e
+    - generic: ⋆
+    - text: ∣ ≤
+    - text: ξ
+    - text: R
+    - generic: e
+    - generic: ⋆
+    - generic: for every
+    - text: e.
+    - paragraph: Because every term in the power sum is nonnegative,
+    - math:
+      - generic: (
+      - generic: "1"
+      - generic: −
+      - generic: ξ
+      - generic: )
+      - generic: Z
+      - generic: ⋆
+      - generic: ⪯
+      - generic: Z
+      - generic: ⪯
+      - generic: (
+      - generic: "1"
+      - generic: +
+      - generic: ξ
+      - generic: )
+      - generic: Z
+      - generic: ⋆
+      - generic: .
+    - generic: (1 −
+    - text: ξ)
+    - text: Z
+    - generic: ⋆
+    - text: ⪯
+    - generic: Z ⪯
+    - generic: (1 +
+    - text: ξ)
+    - text: Z
+    - generic: ⋆
+    - text: .
+    - paragraph: Equivalently,
+    - math:
+      - generic: ∥
+      - generic: (
+      - generic: Z
+      - generic: ⋆
+      - generic: )
+      - generic: −
+      - generic: "1"
+      - generic: /
+      - generic: "2"
+      - generic: (
+      - generic: Z
+      - generic: −
+      - generic: Z
+      - generic: ⋆
+      - generic: )
+      - generic: (
+      - generic: Z
+      - generic: ⋆
+      - generic: )
+      - generic: −
+      - generic: "1"
+      - generic: /
+      - generic: "2"
+      - generic: ∥
+      - generic: "2"
+      - generic: ≤
+      - generic: ξ
+      - generic: .
+    - text: (
+    - text: Z
+    - generic: ⋆
+    - text: )
+    - generic: −1/2
+    - text: (Z −
+    - text: Z
+    - generic: ⋆
+    - text: )(
+    - text: Z
+    - generic: ⋆
+    - text: )
+    - generic: −1/2
+    - generic: "2"
+    - text: ≤ ξ.
+    - paragraph: This proves a response bound for every permitted combination of application currents. It is not merely agreement on the training probes.
+    - paragraph:
+      - text: It does not give small
+      - emphasis: relative
+      - text: error in an almost-cancelled individual output. An absolute voltage bound is
+    - math:
+      - generic: ∣
+      - generic: Δ
+      - generic: (
+      - generic: V
+      - generic: a
+      - generic: −
+      - generic: V
+      - generic: b
+      - generic: )
+      - generic: ∣
+      - generic: ≤
+      - generic: D
+      - generic: I
+      - generic: u
+      - generic: s
+      - generic: e
+      - generic: max
+      - generic: ⁡
+      - generic: e
+      - generic: ∣
+      - generic: Δ
+      - generic: R
+      - generic: e
+      - generic: ∣
+      - generic: ","
+    - text: ∣Δ(
+    - text: V
+    - generic: a
+    - text: −
+    - text: V
+    - generic: b
+    - text: )∣ ≤
+    - text: D
+    - text: I
+    - generic: use
+    - generic: e
+    - generic: max
+    - text: ∣Δ
+    - text: R
+    - generic: e
+    - text: ∣,
+    - paragraph:
+      - text: where
+      - math:
+        - generic: D
+      - generic: D
+      - text: is the tree diameter in branches.
+    - heading "5. Finite observations and retained accuracy" [level=2]
+    - paragraph: "For the worked case, use:"
+    - list:
+      - text: "Measured acceptance band:"
+      - strong: 2 Ω
+      - text: .
+      - text: "Installed resistance-estimate uncertainty:"
+      - strong: 0.1 Ω
+      - text: .
+      - text: "Subsequent branch disturbance and 24-hour retention allowance:"
+      - strong: 0.5 Ω
+      - text: .
+    - paragraph: Then
+    - math:
+      - generic: ξ
+      - generic: t
+      - generic: r
+      - generic: a
+      - generic: i
+      - generic: "n"
+      - generic: e
+      - generic: d
+      - generic: ≤
+      - generic: "2.1"
+      - generic: "334"
+      - generic: =
+      - generic: "0.629"
+      - generic: "%"
+      - generic: ","
+    - text: ξ
+    - generic: trained
+    - text: ≤
+    - generic: "334"
+    - generic: "2.1"
+    - text: =
+    - generic: 0.629%,
+    - paragraph: and
+    - math:
+      - generic: ξ
+      - generic: r
+      - generic: e
+      - generic: t
+      - generic: a
+      - generic: i
+      - generic: "n"
+      - generic: e
+      - generic: d
+      - generic: ≤
+      - generic: "2.6"
+      - generic: "334"
+      - generic: =
+      - generic: "0.779"
+      - generic: "%"
+      - generic: .
+    - text: ξ
+    - generic: retained
+    - text: ≤
+    - generic: "334"
+    - generic: "2.6"
+    - text: = 0.779%.
+    - paragraph: Manufacturing acceptance must leave enough room for the measurement error. For example, a 0.5% endpoint envelope has a maximum 1.87 Ω deviation at the higher branch endpoint, fitting the 2 Ω gate after 0.1 Ω observation uncertainty.
+    - paragraph:
+      - text: The 0.1 Ω observer is an
+      - strong: installed qualification target
+      - text: ", not an ideal sensor. The construction uses an actual current measurement through a calibrated external shunt, a high-impedance DMM, and bounded switch/chassis leakage. The source’s nominal current-setting accuracy alone is insufficient."
+    - paragraph:
+      - text: For a finite differential meter resistance
+      - math:
+        - generic: Z
+        - generic: i
+        - generic: "n"
+      - text: Z
+      - generic: in
+      - text: ", with no other leakage, the exact estimate is"
+    - math:
+      - generic: R
+      - generic: ^
+      - generic: e
+      - generic: =
+      - generic: R
+      - generic: e
+      - generic: Z
+      - generic: i
+      - generic: "n"
+      - generic: Z
+      - generic: i
+      - generic: "n"
+      - generic: +
+      - generic: S
+      - generic: ","
+    - generic: R
+    - generic: e
+    - text: =
+    - text: R
+    - generic: e
+    - text: Z
+    - generic: in
+    - text: + S
+    - text: Z
+    - generic: in
+    - text: ","
+    - paragraph:
+      - text: where
+      - math:
+        - generic: S
+      - generic: S
+      - text: is the sensing-port path resistance. A 10 GΩ meter makes this particular loading error very small here, but common-mode leakage and calibration remain separate terms.
+    - paragraph:
+      - text: The numerical model uses a voltage-error envelope of ±(35 ppm of reading + 4 μV), consistent with the chosen class of meter, and a separately qualified 100 ppm current observation. Available Keysight instruments provide the relevant high-input-resistance measurement mode.
+      - 'link "keysight.com: Digital Multimeters 34460A, 34461A, 34465A (6½ digit), 34470A (7½ digit), https://www.keysight.com/content/dam/keysight/en/doc/ungate/data-sheets/5991-1983.pdf?utm_source=chatgpt.com"':
+        - /url: https://www.keysight.com/content/dam/keysight/en/doc/ungate/data-sheets/5991-1983.pdf?utm_source=chatgpt.com
+        - generic: keysight.com
+    - paragraph: The 0.779% result assumes the qualified linear read law. If the physical device instead has a bounded nonlinear residual
+    - math:
+      - generic: ∣
+      - generic: v
+      - generic: e
+      - generic: (
+      - generic: i
+      - generic: )
+      - generic: −
+      - generic: R
+      - generic: e
+      - generic: i
+      - generic: ∣
+      - generic: ≤
+      - generic: η
+      - generic: R
+      - generic: e
+      - generic: ∣
+      - generic: i
+      - generic: ∣
+      - generic: ","
+    - text: ∣
+    - text: v
+    - generic: e
+    - text: (i) −
+    - text: R
+    - generic: e
+    - text: i∣ ≤
+    - text: η
+    - text: R
+    - generic: e
+    - text: ∣i∣,
+    - paragraph:
+      - text: then
+      - math:
+        - generic: η
+        - generic: =
+        - generic: "0.001"
+      - generic: η =
+      - generic: "0.001"
+      - text: raises the pointwise response budget to approximately
+      - strong: 0.879%
+      - text: . That would fit a proposed 1% physical specification. The residual bound must be established across the application range; one resistance reading cannot supply it. Thermoelectric offsets at very small inputs also need an absolute voltage allowance.
+    - heading "6. What the executable work established" [level=2]
+    - paragraph:
+      - text: I ran the finite circuit model through
+      - strong: 64 successive retargetings of the same medium
+      - text: ", each followed by a propagated 24-hour hold."
+    - paragraph: "The model uses actual local currents and the declared nonlinear circuit voltage to determine coil excitation. The teacher is separated from the plant audit: it receives only boundary observations and can issue only boundary commands."
+    - table:
+      - rowgroup:
+        - row "Result Executed model":
+          - columnheader "Result"
+          - columnheader "Executed model"
+      - rowgroup:
+        - row "Accepted successive retargets 64":
+          - cell "Accepted successive retargets"
+          - cell "64"
+        - row "Boundary probes 2,110":
+          - cell "Boundary probes"
+          - cell "2,110"
+        - row "Write pulses 446":
+          - cell "Write pulses"
+          - cell "446"
+        - row "Total active teaching time 744.5 s":
+          - cell "Total active teaching time"
+          - cell "744.5 s"
+        - row "Longest retarget 14.95 s":
+          - cell "Longest retarget"
+          - cell "14.95 s"
+        - row "Largest branch error after a hold 1.0952 Ω":
+          - cell "Largest branch error after a hold"
+          - cell "1.0952 Ω"
+        - row "Largest exact generalized operator error 0.1894%":
+          - cell "Largest exact generalized operator error"
+          - cell "0.1894%"
+        - row "Largest branch-based operator-error bound 0.2928%":
+          - cell "Largest branch-based operator-error bound"
+          - cell "0.2928%"
+        - row "Terminal teaching work 871.04 J":
+          - cell "Terminal teaching work"
+          - cell "871.04 J"
+        - row "Output-capacitance allowance 0.207 J":
+          - cell "Output-capacitance allowance"
+          - cell "0.207 J"
+        - row "Maximum modeled cell-body temperature 23.589°C":
+          - cell "Maximum modeled cell-body temperature"
+          - cell "23.589°C"
+        - row "Maximum modeled spreader temperature 23.042°C":
+          - cell "Maximum modeled spreader temperature"
+          - cell "23.042°C"
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph: The thermal model contains 26 finite cell heat capacities and a finite 450 J/K spreader. It propagates through writing, measurement and holding. It never resets temperature by assignment.
+    - paragraph: Those heat capacities and thermal conductances are introduced parameters. The calculation does not resolve real diode junction heat flow or relay inductance. Its successful switching trajectories therefore test consistency of the declared contract, not physical switching reliability.
+    - paragraph:
+      - text: I also checked the exact writing construction and response-coordinate independence for
+      - math:
+        - generic: m
+        - generic: =
+        - generic: "4"
+        - generic: ","
+        - generic: "8"
+        - generic: ","
+        - generic: "16"
+        - generic: ","
+        - generic: "32"
+        - generic: ","
+        - generic: "64"
+      - generic: m =
+      - generic: 4, 8, 16, 32, 64
+      - text: . Every selected current coefficient was 1, every nonselected magnitude was at most
+      - math:
+        - generic: "1"
+        - generic: /
+        - generic: "2"
+      - generic: 1/2
+      - text: ", and the response-coordinate rank was"
+      - math:
+        - generic: "2"
+        - generic: m
+        - generic: −
+        - generic: "3"
+      - generic: 2m −
+      - generic: "3"
+      - text: . These checks support the derivation; they do not replace its quantifiers.
+    - paragraph: Twelve modeled blocked-cell cases were rejected after finite attempts. Twelve deliberately out-of-contract low-threshold cases were also rejected, but they overdrive the modeled coils. Those are failure calculations, not evidence of safe hardware recovery.
+    - heading "7. Admissible, reachable and teachable are different sets" [level=2]
+    - paragraph: The construction makes this distinction explicit.
+    - table:
+      - rowgroup:
+        - row "Scientific object Here":
+          - columnheader "Scientific object"
+          - columnheader "Here"
+      - rowgroup:
+        - row "Physically admissible responses Positive branch resistances give a continuous family of reciprocal passive tree maps.":
+          - cell "Physically admissible responses"
+          - cell "Positive branch resistances give a continuous family of reciprocal passive tree maps."
+        - row "Responses compatible with the memory stock Binary cells permit discrete aggregate resistance levels.":
+          - cell "Responses compatible with the memory stock"
+          - cell "Binary cells permit discrete aggregate resistance levels."
+        - row "Uniformly reachable responses under qualified commands The two all-set/all-reset endpoint aggregates per branch.":
+          - cell "Uniformly reachable responses under qualified commands"
+          - cell "The two all-set/all-reset endpoint aggregates per branch."
+        - row "Reliably teachable responses Those reachable targets whose uncertainty, disturbance and retention fit the observation and service budgets.":
+          - cell "Reliably teachable responses"
+          - cell "Those reachable targets whose uncertainty, disturbance and retention fit the observation and service budgets."
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph: An important obstruction survives even in this favorable geometry.
+    - paragraph: Identical cells in series experience identical current. Starting from identical states, symmetry preserves their identical evolution under every boundary-current history. Consequently, the teacher cannot guarantee arbitrary independent states of those cells.
+    - paragraph:
+      - text: That does not prevent teaching their aggregate response. It explains why
+      - strong: functional equivalence
+      - text: ", rather than complete microscopic identification, is the appropriate object."
+    - paragraph: The method also has a sharp topological failure.
+    - paragraph:
+      - text: Take a four-leaf tree with five unit resistances and add a chord of resistance
+      - math:
+        - generic: ρ
+      - generic: ρ
+      - text: between two opposite leaves. Under the nominal central-branch writing pattern,
+    - math:
+      - generic: i
+      - generic: t
+      - generic: a
+      - generic: r
+      - generic: g
+      - generic: e
+      - generic: t
+      - generic: =
+      - generic: ρ
+      - generic: +
+      - generic: "1"
+      - generic: ρ
+      - generic: +
+      - generic: "3"
+      - generic: ","
+      - generic: i
+      - generic: c
+      - generic: h
+      - generic: o
+      - generic: r
+      - generic: d
+      - generic: =
+      - generic: "2"
+      - generic: ρ
+      - generic: +
+      - generic: "3"
+      - generic: .
+    - text: i
+    - generic: target
+    - text: =
+    - generic: ρ + 3
+    - generic: ρ + 1
+    - text: ","
+    - text: i
+    - generic: chord
+    - text: =
+    - generic: ρ + 3
+    - generic: "2"
+    - text: .
+    - paragraph:
+      - text: At
+      - math:
+        - generic: ρ
+        - generic: =
+        - generic: "0.1"
+      - generic: ρ =
+      - generic: "0.1"
+      - text: ","
+    - math:
+      - generic: i
+      - generic: t
+      - generic: a
+      - generic: r
+      - generic: g
+      - generic: e
+      - generic: t
+      - generic: =
+      - generic: "0.35484"
+      - generic: ","
+      - generic: i
+      - generic: c
+      - generic: h
+      - generic: o
+      - generic: r
+      - generic: d
+      - generic: =
+      - generic: 0.64516.
+    - text: i
+    - generic: target
+    - text: =
+    - text: 0.35484,
+    - text: i
+    - generic: chord
+    - text: =
+    - generic: 0.64516.
+    - paragraph: The supposedly selected branch now carries less current than the unintended chord. The compiler fails. This does not prove that networks with cycles are unlearnable; it identifies exactly which part of this construction has ceased to hold.
+    - heading "8. Resources and scaling" [level=2]
+    - heading "Physical teaching effort" [level=3]
+    - paragraph:
+      - text: For the binary family, normal teaching requires at most
+      - math:
+        - generic: E
+      - generic: E
+      - text: writes and
+      - math:
+        - generic: "3"
+        - generic: E
+      - generic: 3E
+      - text: probes with the probe-first policy. A fixed-write variant can use
+      - math:
+        - generic: E
+      - generic: E
+      - text: writes and
+      - math:
+        - generic: "2"
+        - generic: E
+      - generic: 2E
+      - text: probes.
+    - paragraph:
+      - text: Preparation remains proportional to the actual cell count
+      - math:
+        - generic: "N"
+      - generic: "N"
+      - text: . The boundary switching matrix grows with
+      - math:
+        - generic: m
+      - generic: m
+      - text: . The controller stores the known topology and target coefficients, not an identified
+      - math:
+        - generic: "N"
+      - generic: "N"
+      - text: "-state model."
+    - paragraph:
+      - text: For a balanced tree,
+      - math:
+        - generic: D
+        - generic: =
+        - generic: O
+        - generic: (
+        - generic: log
+        - generic: ⁡
+        - generic: m
+        - generic: )
+      - generic: D =
+      - text: O(
+      - generic: log
+      - text: m)
+      - text: ; for a comb-shaped tree,
+      - math:
+        - generic: D
+        - generic: =
+        - generic: O
+        - generic: (
+        - generic: m
+        - generic: )
+      - generic: D =
+      - generic: O(m)
+      - text: . A useful compliance bound is
+    - math:
+      - generic: V
+      - generic: s
+      - generic: o
+      - generic: u
+      - generic: r
+      - generic: c
+      - generic: e
+      - generic: ≤
+      - generic: L
+      - generic: max
+      - generic: ⁡
+      - generic: "["
+      - generic: V
+      - generic: c
+      - generic: e
+      - generic: l
+      - generic: l
+      - generic: +
+      - generic: (
+      - generic: I
+      - generic: )
+      - generic: +
+      - generic: (
+      - generic: D
+      - generic: −
+      - generic: "1"
+      - generic: )
+      - generic: V
+      - generic: c
+      - generic: e
+      - generic: l
+      - generic: l
+      - generic: +
+      - generic: (
+      - generic: I
+      - generic: /
+      - generic: "2"
+      - generic: )
+      - generic: "]"
+      - generic: .
+    - text: V
+    - generic: source
+    - text: ≤
+    - text: L
+    - generic: max
+    - generic: "["
+    - text: V
+    - generic: cell
+    - generic: +
+    - text: (I) + (D − 1)
+    - text: V
+    - generic: cell
+    - generic: +
+    - text: (I/2)
+    - generic: "]"
+    - text: .
+    - paragraph: Thus scaling costs voltage, insulation, settling and dissipation. The theorem does not supply an unlimited source.
+    - paragraph: "For the worked device, a conservative calculation covering both polarities, parameter corners and the wider retained-drift allowance gives:"
+    - list:
+      - text: "Differential source bound:"
+      - strong: 268.830 V
+      - text: .
+      - text: "Second-source LO common-mode bound:"
+      - strong: 224.025 V
+      - text: .
+    - paragraph:
+      - text: Two Keithley 2657A instruments have a joint current/voltage operating range that accommodates the proposed 119 mA sources. Their 250 V common-mode limit still leaves only about 26 V of margin in the conservative calculation. Matrix switching, grounding and transient behavior must respect that limit.
+      - 'link "download.tek.com: Model 2657A, https://download.tek.com/document/SPEC-2657AB_Dec2012_Customer.pdf?utm_source=chatgpt.com"':
+        - /url: https://download.tek.com/document/SPEC-2657AB_Dec2012_Customer.pdf?utm_source=chatgpt.com
+        - generic: download.tek.com
+    - paragraph:
+      - text: The boundary matrix can use rated high-voltage reed relays, with source routing changed at zero current after discharge. The switching component exists; the proposed assembled matrix is not automatically qualified by that component’s rating.
+      - 'link "Pickering Electronics Ltd: 104-1-A-5/3D Reed Relay, https://www.pickeringrelay.com/product/104-1-a-5-3d/?utm_source=chatgpt.com"':
+        - /url: https://www.pickeringrelay.com/product/104-1-a-5-3d/?utm_source=chatgpt.com
+        - generic: Pickering Electronics Ltd
+    - heading "Observation cost and conditioning" [level=3]
+    - paragraph: "A conservative error expression makes the scaling burden visible:"
+    - math:
+      - generic: ϵ
+      - generic: R
+      - generic: ≲
+      - generic: ϵ
+      - generic: V
+      - generic: i
+      - generic: r
+      - generic: +
+      - generic: R
+      - generic: max
+      - generic: ⁡
+      - generic: ϵ
+      - generic: I
+      - generic: i
+      - generic: r
+      - generic: +
+      - generic: (
+      - generic: "2"
+      - generic: D
+      - generic: +
+      - generic: "1"
+      - generic: )
+      - generic: R
+      - generic: max
+      - generic: ⁡
+      - generic: m
+      - generic: I
+      - generic: l
+      - generic: e
+      - generic: a
+      - generic: k
+      - generic: i
+      - generic: r
+      - generic: .
+    - text: ϵ
+    - generic: R
+    - text: ≲
+    - text: i
+    - generic: r
+    - text: ϵ
+    - generic: V
+    - text: +
+    - text: R
+    - generic: max
+    - text: i
+    - generic: r
+    - text: ϵ
+    - generic: I
+    - text: +
+    - generic: (2D +
+    - text: 1)
+    - text: R
+    - generic: max
+    - text: i
+    - generic: r
+    - text: m
+    - text: I
+    - generic: leak
+    - text: .
+    - paragraph: Increasing boundary size while keeping the same leakage, signal and precision eventually breaks the measurement contract.
+    - paragraph: The positive-sum response certificate avoids an additional network-size factor once branch accuracy is established. That does not remove the physical cost of obtaining that accuracy.
+    - heading "Complete energy" [level=3]
+    - paragraph:
+      - text: The 871 J circuit result is
+      - strong: not purchased teaching energy
+      - text: .
+    - paragraph: "The conservative accounting uses:"
+    - list:
+      - listitem: Two source instruments, each with a 350 VA input maximum.
+      - listitem: A 900 W complete-rack cap including readout, control and fixture auxiliaries.
+      - listitem: A separate introduced facility-conditioning allocation of 0.5 purchased joules per rack joule.
+      - listitem: A two-hour precision warmup.
+      - listitem: A paid application-current fixture during the holds, with a 1 W purchased-input cap.
+    - paragraph:
+      - text: The instruments’ warmup and input-power conditions come from their specifications; the auxiliary and facility allocations are explicit engineering scenarios.
+      - 'link "download.tek.com: Model 2657A, https://download.tek.com/document/SPEC-2657AB_Dec2012_Customer.pdf?utm_source=chatgpt.com"':
+        - /url: https://download.tek.com/document/SPEC-2657AB_Dec2012_Customer.pdf?utm_source=chatgpt.com
+        - generic: download.tek.com
+    - paragraph: "For 64 daily retargetings with the teacher powered down between sessions:"
+    - table:
+      - rowgroup:
+        - row "Term Conservative purchased-energy allocation":
+          - columnheader "Term"
+          - columnheader "Conservative purchased-energy allocation"
+      - rowgroup:
+        - row "64 warmups, including facility conditioning 172.800 kWh":
+          - cell "64 warmups, including facility conditioning"
+          - cell "172.800 kWh"
+        - row "Active teaching, including facility conditioning 0.279 kWh":
+          - cell "Active teaching, including facility conditioning"
+          - cell "0.279 kWh"
+        - row "Application-input fixtures during the holds 1.536 kWh":
+          - cell "Application-input fixtures during the holds"
+          - cell "1.536 kWh"
+        - row "Total 174.615 kWh":
+          - cell "Total":
+            - strong: Total
+          - cell "174.615 kWh":
+            - strong: 174.615 kWh
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph: Later warmups may overlap the end of the preceding passive hold. They still consume energy.
+    - paragraph:
+      - text: Keeping the entire rack continuously warm instead gives a conservative allocation of about
+      - strong: 2,078 kWh
+      - text: . These are power-cap allocations, not measured consumption. A shared laboratory can allocate actual occupation across other work, but cannot erase its standby bill.
+    - paragraph: The application-current fixture supplies the declared input; it does not maintain memory. At zero application input, the retained medium has no operating electrical demand.
+    - heading "Cost and lifetime" [level=3]
+    - paragraph:
+      - text: The first laboratory allowance is approximately
+      - strong: $87,900
+      - text: ", including the application-input fixture. Of that,"
+      - strong: $77,000
+      - text: is the current manufacturer list price for two new 2657A instruments. Other figures are introduced preparation and fabrication allowances, not a system quotation.
+      - 'link "Tektronix: Keithley SMU 2650 Series High Power SourceMeter®, https://www.tek.com/en/products/keithley/source-measure-units/2650-series-high-power-sourcemeter?utm_source=chatgpt.com"':
+        - /url: https://www.tek.com/en/products/keithley/source-measure-units/2650-series-high-power-sourcemeter?utm_source=chatgpt.com
+        - generic: Tektronix
+    - paragraph: The first medium itself is approximately $2,062 in this allowance, including rejected preparation stock, assembly and screening.
+    - paragraph: "The recurring model uses:"
+    - list:
+      - listitem: "Electricity: $80/MWh."
+      - listitem: "Labor: $40/hour."
+      - listitem: "Teacher finance: ten years, 8% real discount."
+      - listitem: "Actual shared occupation: an assumed 2,000 hours/year."
+      - listitem: Paid calibration, repair, facility service, handling and retirement.
+      - listitem: Medium retirement at the earlier of 10,000 retargets or five years.
+      - text: At 250 services/year, the calendar limit therefore permits only
+      - strong: 1,250 services
+      - text: per medium.
+    - paragraph: "Under those assumptions:"
+    - table:
+      - rowgroup:
+        - row "Service arrangement Modeled cost per service":
+          - columnheader "Service arrangement"
+          - columnheader "Modeled cost per service"
+      - rowgroup:
+        - row "Shared daily batch of 100 heads, paid 20 s exchange per head $2.91":
+          - cell "Shared daily batch of 100 heads, paid 20 s exchange per head"
+          - cell "$2.91":
+            - strong: $2.91
+        - row "Same shared case, medium fails after 1,000 services $3.32":
+          - cell "Same shared case, medium fails after 1,000 services"
+          - cell "$3.32":
+            - strong: $3.32
+        - row "Same shared case, medium fails after 100 services $21.96":
+          - cell "Same shared case, medium fails after 100 services"
+          - cell "$21.96":
+            - strong: $21.96
+        - row "Dedicated cold teacher, one head per daily setup $40.29":
+          - cell "Dedicated cold teacher, one head per daily setup"
+          - cell "$40.29":
+            - strong: $40.29
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph: These figures do not establish competitiveness. They expose how strongly the result depends on actual sharing, preparation and calendar life.
+    - paragraph: "Upstream manufacturing energy is not known well enough to report a measured total. The model retains it explicitly: for medium manufacture of 10, 100 or 1,000 kWh, the 1,250-service allocation is 0.008, 0.08 or 0.8 kWh/service. Instrument manufacture and replacement must also be allocated. Purchased component prices already include manufacturing cost; that energy is not billed again as laboratory electricity."
+    - heading "9. Comparison with the strongest relevant constructions" [level=2]
+    - paragraph:
+      - strong: Conventional boundary control can use this result.
+      - text: Once the writing fields and Kelvin observations exist, an ordinary controller can execute the policy. The optimizer is not the invention. The contribution is the physical access organization that makes the policy valid without internal addressing or microscopic identification.
+    - paragraph: A directly controlled relay bank is a particularly strong comparator. It can use the same retained resistor states, inexpensive low-voltage drivers and an internal bus. A local controller could communicate through existing external terminals while adding internal wiring. It may be substantially cheaper than this laboratory implementation. Giving that competitor competent electronics removes any basis for claiming an economic win here.
+    - paragraph: "Other relevant work is also substantial:"
+    - table:
+      - rowgroup:
+        - row "Existing approach Established capability Difference in this construction":
+          - columnheader "Existing approach"
+          - columnheader "Established capability"
+          - columnheader "Difference in this construction"
+      - rowgroup:
+        - row "Direct nonlinear crossbar writing Selective addressing through nonlinear devices Selection here passes through hidden branching junctions and unknown series cells. Reach remains restricted.":
+          - cell "Direct nonlinear crossbar writing"
+          - cell "Selective addressing through nonlinear devices"
+          - cell "Selection here passes through hidden branching junctions and unknown series cells. Reach remains restricted."
+        - row "Coupled/contrastive learning Real networks can learn through boundary inputs and labels with constructed local update circuitry This design uses one retaining two-terminal medium and an all-state endpoint theorem, while giving up broader nonlinear tasks.":
+          - cell "Coupled/contrastive learning"
+          - cell "Real networks can learn through boundary inputs and labels with constructed local update circuitry"
+          - cell "This design uses one retaining two-terminal medium and an all-state endpoint theorem, while giving up broader nonlinear tasks."
+        - row "Directed aging Actual material responses can be trained and retained through applied loads and conditioning This theorem supplies specified transfer-coordinate reach; it does not establish superior mechanical material behavior.":
+          - cell "Directed aging"
+          - cell "Actual material responses can be trained and retained through applied loads and conditioning"
+          - cell "This theorem supplies specified transfer-coordinate reach; it does not establish superior mechanical material behavior."
+        - row "Physical adjoint methods Local gradients can be obtained from forward/adjoint fields under stated assumptions Here topology supplies isolated updates, avoiding local field correlation but constraining the admissible architecture.":
+          - cell "Physical adjoint methods"
+          - cell "Local gradients can be obtained from forward/adjoint fields under stated assumptions"
+          - cell "Here topology supplies isolated updates, avoiding local field correlation but constraining the admissible architecture."
+        - row "Model-based inverse design Strong when models, measurements and parameter actuators are available Exact internal parameter identification is unnecessary here; the physical writing operation is explicitly constructed.":
+          - cell "Model-based inverse design"
+          - cell "Strong when models, measurements and parameter actuators are available"
+          - cell "Exact internal parameter identification is unnecessary here; the physical writing operation is explicitly constructed."
+    - button "Copy table":
+    - button "Expand table":
+    - paragraph:
+      - text: Dillavou and collaborators’ nonlinear contrastive network is an actual hidden-network learning experiment with local twin-edge circuitry and capacitor memory. It should not be dismissed as a boundary-only simulation.
+      - 'link "PMC: Machine learning without a processor: Emergent learning in a nonlinear analog network, https://pmc.ncbi.nlm.nih.gov/articles/PMC11252732/?utm_source=chatgpt.com"':
+        - /url: https://pmc.ncbi.nlm.nih.gov/articles/PMC11252732/?utm_source=chatgpt.com
+        - generic: PMC
+    - paragraph:
+      - text: Likewise, retrainable liquid-crystal-elastomer experiments demonstrate real retained mechanical changes and finite reset procedures. Their measured preparation and training conditions are material evidence this circuit proposal does not yet possess.
+      - 'link "pmc.ncbi.nlm.nih.gov: Training and retraining liquid crystal elastomer metamaterials for pluripotent functionality, https://pmc.ncbi.nlm.nih.gov/articles/PMC12304956/?utm_source=chatgpt.com"':
+        - /url: https://pmc.ncbi.nlm.nih.gov/articles/PMC12304956/?utm_source=chatgpt.com
+        - generic: pmc.ncbi.nlm.nih.gov
+    - paragraph:
+      - text: The Ezraty–Stern–Rubinstein construction supplies relevant boundary-training ideas, while its main displayed architecture and hidden-layer results do not establish the global hidden-tree operation proved here. Li and Mao’s dynamic framework explicitly requires co-located forward and adjoint fields for its local updates.
+      - 'link "arxiv.org: Harnessing intuitive local evolution rules for physical learning, https://arxiv.org/html/2507.19561v1?utm_source=chatgpt.com, 1 additional source"':
+        - /url: https://arxiv.org/html/2507.19561v1?utm_source=chatgpt.com
+        - generic: arxiv.org
+        - generic: "+1"
+    - paragraph:
+      - text: Rigorous convergence results for particular resistive learning algorithms also already exist. This should not be presented as the first convergence theorem for physical learning.
+      - 'link "the University of Groningen research portal: Convergence of energy-based learning in linear resistive networks, https://research.rug.nl/en/publications/convergence-of-energy-based-learning-in-linear-resistive-networks/?utm_source=chatgpt.com"':
+        - /url: https://research.rug.nl/en/publications/convergence-of-energy-based-learning-in-linear-resistive-networks/?utm_source=chatgpt.com
+        - generic: the University of Groningen research portal
+    - paragraph: "The defensible consequence is narrower:"
+    - blockquote:
+      - paragraph:
+        - strong: A specified hidden topology can replace an internal address network and microscopic identification with a small boundary instrument set, while preserving a global, finite-error teaching guarantee.
+    - paragraph: Priority of this exact combination has not been established by an exhaustive literature or patent search.
+    - heading "10. The decisive physical test" [level=2]
+    - paragraph:
+      - text: The smallest useful test is a
+      - strong: four-leaf, five-branch tree with two cells per branch
+      - text: . It already contains a hidden-to-hidden branch and tests the central operation.
+    - paragraph: "The test should proceed as follows:"
+    - list:
+      - strong: Build cells from two component lots.
+      - text: Record endpoint resistance, polarity, pulse I–V, low-bias leakage, temperature coefficients and parasitic capacitance. Screen the diode-path window rather than assuming it.
+      - strong: Prepare blind initial states.
+      - text: An independent preparer assigns mixed retained states before sealing. The teacher receives only topology and the qualification intervals.
+      - strong: Test full/half selection.
+      - text: Exercise both polarities at the worst allowed current errors and temperatures. Measure local coil and junction behavior on separate development specimens; those diagnostic leads are absent from the sealed teaching specimens.
+      - strong: Use boundary observations for decisions.
+      - text: Require ≤0.1 Ω installed estimation error and the 2 Ω final acceptance gate. Independently check the resulting multiport response.
+      - strong: Retain and retarget.
+      - text: Disconnect the teacher for 24-hour holds, including application bias and temperature changes. Require ≤0.5 Ω branch drift. Preserve every preceding state and exposure history.
+      - strong: Then test service life.
+      - text: Selected and cumulative half-selected exposures both matter. The supplier’s mechanical cycle rating is not a precision-retention lifetime.
+    - paragraph:
+      - text: A marginal first-test allowance is approximately
+      - strong: $4,400
+      - text: "with genuinely paid shared apparatus access: cells and rejects, diagnostic fixtures, an application-current source, technician work and bench occupation. If the apparatus is not available, the approximately $87,900 first-build allowance applies. Neither budget buys a successful qualification in advance."
+    - paragraph: Success would establish the proposed composite operation within measured limits. Failure could invalidate the circuit’s threshold or retention contract without invalidating the tree theorem.
+    - heading "11. What this establishes about physical learning" [level=2]
+    - paragraph: "The central gap can be closed when three things coexist:"
+    - list:
+      - listitem: A useful response depends on a tractable set of aggregate internal coordinates.
+      - listitem: Boundary fields can change those coordinates under the material’s actual local law.
+      - listitem: Boundary observations can certify the resulting function with adequate precision.
+    - paragraph: The tree construction supplies the first two access identities exactly. The retaining cell supplies a concrete candidate for the local physical operation. The feedback policy then has a global proof, including unknown initial states and finite observations.
+    - paragraph:
+      - text: "A separate analog corollary is possible: if selected cells move monotonically toward bounded endpoints with known lower and upper rate envelopes, conservative boundary pulses give finite-error convergence without identifying individual gains."
+      - strong: The binary relay does not supply that analog law
+      - text: ", and I have kept that corollary separate from the hardware claim."
+    - paragraph:
+      - text: "The result therefore supports a substantial but bounded conclusion:"
+      - strong: an inaccessible interior need not be fully identified, directly sensed or individually wired to acquire a specified retained physical response.
+      - text: The cost is architectural preparation, a real nonlinear writing margin, finite boundary metrology and a measured retention contract. Extending this guarantee to general networks with cycles, broad nonlinear functions or inexpensive material-scale implementations remains open.

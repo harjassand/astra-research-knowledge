@@ -1,0 +1,20 @@
+# Full-flow extension: exact finite acquisition, R200 partial acquisition
+
+## What now runs
+`full_finite_flow.py` builds the entire translated flow in a finite d1,K3,M4,L8 model at rational q1/2. It enumerates16 corner channels and64 translations. Prefix is the row-contiguous archived construction. Core is the uniform-interval construction. Merge uses an explicitly specified lexicographically smallest eligible hole, with at least two occupied native neighbors; this is a declared ordering refinement, not a recovery of the old set-iteration order. Late paths are deterministic rectangles. The shared source-reservoir edge has current1 and resistance1 for the finite κ1 test.
+
+There are10880 distinct physical edges. All node divergences were checked exactly: source divergence1; zero at every non-target internal state; total target absorption1. Physical currents sum every phase and translation contribution before squaring. Exact rational energy decomposition including all cross terms was verified.
+
+Phase edge counts: prefix2176, core7424, merge960, late1024. There are512 prefix/core overlaps and192 core/merge overlaps. Their resistance cross terms are202.27160494 and449.49245542. Other phase intersections are empty in this model. Full resistance102951.55296925 gives a valid unit-flow capacity lower bound9.71330661e-6 in this finite network, with no claim that it is tight. Late resistance dominates in this arbitrary small-parameter test. This is not original R200 performance evidence.
+
+## R200 late and reservoir oracle
+After merge, all corner channels share the same deterministic rectangular path. For any physical late edge, the occupied-site count k uniquely fixes the canonical path stage and canonical flipped site. Align that site with the observed physical flip. This fixes the translation uniquely, even when the configuration itself has a translation symmetry. Check that the translated canonical pre-state is exactly the supplied pre-state. If so current=1/n, otherwise0. Therefore late-current acquisition needs no channel enumeration and no costly overlap sum. Late starts at count M², while prefix/core/merge edges all have smaller pre-flip count, so no interphase overlap occurs there.
+
+`late_oracle.py` executed on an R200 state of360100 sites, wrapped by translation[1550,1590]. It returns exactly1/2560000 for the actual next edge and0 for a wrong next flip. Total generation plus tests took0.68 seconds. Reservoir current is exactly1; its conductance remains κμ(empty), and its resistance must be paid separately, not divided by n.
+
+## Remaining prefix/merge obstacle
+The exact finite implementation enumerates corner channels. This is not feasible at d132: a single d-by-d corner already has binomial(264,132) possible shapes, and four corners multiply the count. It is therefore NOT an efficient R200 full-flow oracle. Prefix and merge conditional-completion sums need additional Ferrers dynamic programming or other inverse descriptions. The completed core oracle does not solve those phases automatically.
+
+There is a safe unbiased fallback, but it is demonstrably impractical. For a physical edge at occupied count k, independently sample a channel and its random interval choices; take that path's kth edge; translate its flipped site to the observed flip. Return1/n if the translated pre-state matches, otherwise0. Since every monotone path has exactly one edge at each k, this is unbiased for full current and eliminates the gratuitous random-translation factor. Its relative variance is1/(n phi)-1. At the executed R200 core edge with phi about7.2147e-139, this is about5.4e131. Thus mere unbiasedness is not a practical solution.
+
+Core-plus-rest analytical upper bounds remain the sensible way to control full resistance until prefix/merge acquisition is improved. Any claimed full resistance estimator must account for actual phase overlaps, not add separate phase energies as if they were disjoint. The exact finite experiment demonstrates those overlaps explicitly.
