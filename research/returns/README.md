@@ -1,6 +1,6 @@
 # Completed research: proofs and results
 
-These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **92 result families and 2413 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
+These pages publish the available proofs, complete return text, scoped assessments and supplied archives for **92 result families and 2426 result units**, including one addition to N1648. Each result page links its exact conditions, limitations and source passages. Unresolved full targets remain unresolved.
 
 The proofs, canonical cards and reusable result units are merged on `main`, together with their generated Capital packets and search indexes. Each result keeps its exact assumptions and unresolved obligations. The portable reader can retrieve this batch; the separate native model query remains blocked by the existing 2 GiB memory limit.
 
@@ -91,12 +91,12 @@ The proofs, canonical cards and reusable result units are merged on `main`, toge
 | [N1829](published-20261109/N1829.md) | Floating metal growth: shared electronic potential, ionic guards and paid regeneration | 6 |
 | [N1830](published-20261109/N1830.md) | Retained interconnect state: private metal stocks, dielectric routing and opposed gas | 12 |
 | [N1831](published-20261109/N1831.md) | Renewable channels: coupled pressure-flow, capture before proof and cross-flow isolation | 5 |
-| [N1832](published-20261109/N1832.md) | Hidden-network teaching: cyclic selection, useful quotients and port qualification | 27 |
+| [N1832](published-20261109/N1832.md) | Hidden-network teaching: positive currents, useful inverses and fixed-unit responses | 37 |
 | [N1833](published-20261109/N1833.md) | Reciprocal adaptation: backaction, useful-observable retention and gates | 7 |
 | [N1834](published-20261109/N1834.md) | Invariant-front physical clocks and limits of excursion transfer | 11 |
 | [N1835](published-20261109/N1835.md) | Directed-looking hysterons: symmetrization, energy descent and physical limits | 7 |
 | [N1836](published-20261109/N1836.md) | Closed-host capillary assembly: hydraulic screens, renewal and service limits | 9 |
-| [N1837](published-20261109/N1837.md) | Inverse growth metrics and global finite-thickness realization | 5 |
+| [N1837](published-20261109/N1837.md) | Inverse growth: metric restrictions, global reach and a clear graph formation path | 8 |
 | [N1838](published-20261109/N1838.md) | Physical realization: closure tests, memory and restricted examples | 6 |
 | [N1648 addendum](published-20261108/N1648-addendum.md) | Recurrent comparator; naive last-mark gluing fails | 1 |
 
