@@ -1,0 +1,155 @@
+# P3 cyclic-boundary teaching — available visible unfinished activity
+
+Observed 14 November 2026 around 19:45 Brisbane in the same Pro chat https://chatgpt.com/c/6af4eb36-d13c-83ec-811c-00db062459b3. Issued full question: research/returns/2026-11-14-cyclic-teaching-and-functional-ports/source-artifacts/P3_FULL_GLOBAL_BOUNDARY_TEACHING_OF_CYCLIC_PHYSICAL_NETWORKS_FOUNDATIONAL_DISCOVERY_PRO_20261114.txt This is the expanded visible top-level activity, not native/server text or a complete final. Nested private reasoning and linked reports, ZIPs, sources and producer code not opened. Observed latest visible searching activity unchanged since approximately 19:25; Stop visible, precise cause and server state unknown.
+
+    - button "Thinking" [expanded]
+    - status:
+      - text: Thinking
+      - generic: Thinking
+    - paragraph: I’ll focus on the missing link between observing a loopy network and physically writing it. I’ll look for a family where the boundary signals remain usable as the bulk grows, derive a finite-pulse teaching procedure, and test the conditioning and resource costs. I’ll keep the mathematical guarantees separate from any material operation that still needs qualification.
+    - paragraph: Drafted physical architecture and constructed scalable loop networks
+    - button "Loopy theorem interrupted, Loopy physical and Loopy inverse finished"
+    - generic: Loopy theorem interrupted, Loopy physical and Loopy inverse finished
+    - button "Ran a command, searched the web"
+    - generic: Ran a command, searched the web
+    - paragraph: Explored valve architectures and evaluated preparatory scaffolds
+    - paragraph: Checked physical law and evaluated memristor reachability
+    - paragraph: Evaluated boundary-voltage addressing and checked lossy-line crossbars
+    - paragraph: Defined wave-based addressing and evaluated bistable resonators
+    - paragraph: Derived low-frequency inverse and selected phase-change resistor
+    - paragraph: Assessed inchworm feasibility and explored planar network topologies
+    - paragraph: Tested boundary chord cancellation and lifted graph functionality
+    - paragraph: Tested triangle isolation and derived thresholds
+    - paragraph: Assessed candidate graph families and evaluated the breakover selector
+    - paragraph: "The key obstacle is that a measurable interior change may still be impossible to write selectively: the teaching field can alter other regions more strongly. I’m checking two ways around that—networks with bounded loop regions whose internal currents can be inferred and controlled, and larger meshes where observability and writing costs may worsen rapidly with depth."
+    - paragraph: Computed effective coupling and represented emulator function
+    - paragraph: Refined the robust circuit model and bounded leakage currents
+    - paragraph: Evaluated balanced pair currents and modeled differential coupling
+    - paragraph: Derived network bounds and estimated differential admittance
+    - paragraph: Derived tighter leakage bounds
+    - paragraph: Selected resistor values and checked resin insulation
+    - paragraph: Selected per-cell trim values
+    - paragraph: Refined coupling measurement and checked transfer signs
+    - paragraph: Refined cross-coupling bounds and estimated cross-read effects
+    - paragraph: Derived uniform Green and rowwise energy bounds
+    - paragraph: Analyzed bounding loop coupling
+    - button "Read files, searched the web"
+    - generic: Read files, searched the web
+    - paragraph: Monitored and bounded inductive transient branch currents
+    - paragraph: Defined RC pulse limits and derived RL current bounds
+    - paragraph: Derived bounds for ramp error
+    - paragraph: Refined clamp-based bounds and bounded ECMR behavior
+    - paragraph: "A constructive route has emerged: a deep grid with retained horizontal links and permanent transverse links. By bounding the transverse conductance, a current applied at one row’s boundary ends can overwrite that entire hidden row without disturbing the others—even as its resistances change. The loops stay present and affect the useful response. The tradeoff is explicit: this teaches a growing set of row-level responses, not every internal link, and requires a manufactured anisotropy whose cost grows with depth."
+    - paragraph: Defined and selected stable modal input ports
+    - paragraph: Specified boundary sensing hardware and finalized readhead layout
+    - paragraph: Refined bipolar TIA calibration
+    - paragraph: Defined local current inputs and selected an edge-current basis
+    - paragraph: Refined boundary-current transformation and checked Kron-reduced grid bounds
+    - paragraph: Established state-robust bounds and checked SMU compliance
+    - paragraph: Designed boundary qualification and prepared thermal model
+    - paragraph: Refined thermal bounds and bounded off-error leakage
+    - paragraph: Checked Green H bounds and estimated crosstarget response
+    - paragraph: Quantified loop-response variation and assessed matrix-addressing novelty
+    - paragraph: Formulated observability theorem and refined acceptance margin
+    - paragraph: Verified 3458A specifications and assessed 2 mA probe
+    - button "Read files, searched the web"
+    - generic: Read files, searched the web
+    - paragraph: Built budgeted test model and set thermal test inputs
+    - paragraph: Prepared DMM pair readings
+    - paragraph: Measured currents via shunt
+    - paragraph: Calibrated shunts and measured the initial full map
+    - paragraph: Prepared finite RLC measurements
+    - paragraph: Estimated network service costs
+    - paragraph: Modeled leakage budget
+    - paragraph: Computed metrology error bounds and set probe current
+    - paragraph: Defined emulator accuracy under 23±2°C conditions
+    - paragraph: Prepared agent precondition files
+    - paragraph: "The stronger bound improves the tradeoff: the transverse links can produce a substantial loop-sensitive response while off-row write currents remain below roughly 6% of the applied current. A second result separates two costs that are easy to confuse: recovering every hidden resistor can be badly conditioned, while certifying the useful boundary response can remain well conditioned with suitable boundary probe patterns. I’m now accounting for those probes, finite pulses, retention and the paid hardware."
+    - paragraph: Evaluated NTC compensation
+    - paragraph: Assessed low-R NTC fit
+    - paragraph: Compared thermal-control options and defined the hold point
+    - paragraph: Assessed coil-branch options and compared efficiency targets
+    - generic: Searched for Patched preconditioning files and ran boundary learning and ledger scripts
+    - paragraph: Created operation model and recorded source power
+    - paragraph: Estimated module cost basis
+    - paragraph: Compared module costs
+    - paragraph: Prepared synchronous logic and pulse-state update models
+    - paragraph: Prepared direct G loading test and checked measurement limits
+    - button "Ran a command"
+    - generic: Ran a command
+    - paragraph: Prepared the simulation observer
+    - button "Ran a command"
+    - generic: Ran a command
+    - paragraph: Checked thermal margin
+    - paragraph: Compiled module cost budget
+    - paragraph: Sized the test fixture and selected a portable current source
+    - button "Edited a file"
+    - generic: Edited a file
+    - paragraph: Refined shared-hour allocation
+    - button "Edited a file, searched the web"
+    - generic: Edited a file, searched the web
+    - paragraph: Constructed an off-diagonal witness and paired current patterns
+    - paragraph: Estimated a two-energy witness
+    - paragraph: Ran pair-energy witness and bounded energy error
+    - button "Edited a file"
+    - generic: Edited a file
+    - paragraph: Modeled reset-state and startup energy
+    - paragraph: Defined thermal-state assumptions and added paid thermal conditioning
+    - paragraph: Updated thermal accounting and prepared conditioning figures
+    - paragraph: Read and prepared source scripts
+    - paragraph: The comparison found an important limitation. At a loose 6% response tolerance, boundary series resistors can approximate several target maps without changing the interior. I’m therefore treating the proposed 2% whole-response specification separately and charging for its temperature control and metrology. The loop-grid construction appears to earn a stronger access result, but the current cost case still favors a competent design with separate internal write wiring.
+    - button "Edited files"
+    - generic: Edited files
+    - paragraph: Compared and preserved helper file contents
+    - paragraph: Reviewed base64 helper and specified DC test conditions
+    - paragraph: Tested source bounds and boundary target variation
+    - paragraph: Prepared solver complexity bounds
+    - paragraph: Refined network scaling limits
+    - paragraph: Prepared cell qualification tests and added temporary test points
+    - paragraph: Refined qualification budget
+    - button "Ran a command, searched the web"
+    - generic: Ran a command, searched the web
+    - paragraph: Checked calibrated source bounds
+    - paragraph: Sized the reference shunt
+    - paragraph: Refined the precision target
+    - paragraph: Refined the tolerance budget
+    - paragraph: Refined contract constraints and chamber temperature
+    - paragraph: Checked dose-contract rules and conditional energy bounds
+    - button "Edited files"
+    - generic: Edited files
+    - paragraph: Updated contract supersession note and recalculated conditioning bound
+    - paragraph: Verified hardware bounds and checked insulation leakage
+    - paragraph: Sized the manufacturing envelope
+    - paragraph: Formalized geometry and established bounds
+    - button "Ran a command"
+    - generic: Ran a command
+    - paragraph: Revised qualification budget
+    - paragraph: Checked computational proof and framed the programming principle
+    - button "Edited a file"
+    - generic: Edited a file
+    - paragraph: Verified report outputs
+    - paragraph: Selected 70ms pulse ramps
+    - paragraph: Refined 24-hour cost scenarios and defined shared source costs
+    - paragraph: Evaluated field-source design
+    - paragraph: Estimated prototype component costs
+    - paragraph: Checked precision grid
+    - paragraph: Checked instrument power use and clarified active-test costs
+    - button "Ran a command"
+    - generic: Ran a command
+    - paragraph: "The main result is now a restricted constructive theorem: a growing network can retain its loops while boundary current pulses reliably write a substantial family of useful responses. I’m checking the final proof, executable results, and resource ledger together. The proposed hardware still needs qualification of its local switching, disturbance, and retention bounds; the cost comparison does not currently show an advantage over a separately wired implementation."
+    - generic: Ran command
+    - paragraph: Checked the save workflow
+    - paragraph: Checked certificate and power-cost scope
+    - paragraph: The full response can be certified without reconstructing every hidden resistance. Sparse boundary probes give a bounded-error measurement of the complete multiport map, while a separate current-routing argument guarantees the write from every allowed initial state.
+    - paragraph: "The final ledger also makes the practical limitation clear: precise operation needs paid temperature control and metrology. The introduced service case is about $16.19, compared with $13.72 for a competent design using internal row-control wiring. I’m saving the proofs, executable models, and comparisons with those limits explicit."
+    - button "Ran a command"
+    - generic: Ran a command
+    - paragraph: Defined the emulator grid
+    - paragraph: Derived response and nuclear-action bounds
+    - paragraph: Checked boundary certificate and fault-pass limits
+    - generic: Read files
+    - paragraph: Assessed boundary emulation
+    - paragraph: Checked conversion scope
+    - status:
+      - generic: Searching for “Searching Boundary Comparison References”
+      - generic: Searching for “Searching Boundary Comparison References”
